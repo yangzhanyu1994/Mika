@@ -67,7 +67,12 @@ class RecoverySettings(private val prefs: SharedPreferences) : RecoveryConsentSt
 
     private fun read() = RecoveryConsent(
         applied = KEYS.filter { (_, key) -> prefs.getBoolean(key, false) }.keys,
-        declined = KEYS.filter { (_, key) -> prefs.getBoolean(key + DECLINED, false) }.keys,
+        // 重启后自动打开无线调试默认关。旧版本写过「已生效」却没有「关掉」这一键的,仍按没动过、要打开。
+        declined = KEYS.filter { (c, key) ->
+            val choice = key + DECLINED
+            val fresh = c == RecoveryCapability.RestoreAfterReboot && !prefs.contains(choice) && !prefs.contains(key)
+            prefs.getBoolean(choice, fresh)
+        }.keys,
     )
 
     private fun readOutcome(): RestoreOutcome? =

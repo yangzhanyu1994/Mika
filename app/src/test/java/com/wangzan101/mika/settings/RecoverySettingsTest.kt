@@ -14,10 +14,11 @@ class RecoverySettingsTest {
     private val battery = RecoveryCapability.BatteryWhitelist
     private val restore = RecoveryCapability.RestoreAfterReboot
 
-    @Test fun freshInstallWantsEverythingAndHasNothingApplied() {
+    @Test fun freshInstallLeavesBootRestoreOff() {
         val c = RecoverySettings(MemoryPrefs()).consent.value
-        assertEquals(RecoveryConsent(), c)
-        assertEquals(RecoveryCapability.entries, c.pending)
+        assertEquals(RecoveryConsent(declined = setOf(restore)), c)
+        assertEquals(false, c.wants(restore))
+        assertEquals(listOf(a11y, battery, RecoveryCapability.AutoWirelessDebugging), c.pending)
     }
 
     @Test fun oldInstallWithoutChoiceKeysCountsAsUntouched() {

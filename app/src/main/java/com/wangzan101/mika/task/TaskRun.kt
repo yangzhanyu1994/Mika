@@ -783,6 +783,7 @@ class TaskRun(
                 userScreens = userScreens,
                 // 同一网站、App 里连着联系别人、提交:两次之间隔一段随机的时间
                 outwardPacing = OutwardPacing.human(),
+                caution = (service.application as com.wangzan101.mika.MikaApp).caution,
             )
             loop = agent
             liveFeed = agent.events.subscribe(liveEvents)

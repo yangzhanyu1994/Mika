@@ -17,7 +17,7 @@ sealed interface Outcome {
     ) : Outcome
     data class Input(val prompt: String, val options: List<String>? = null) : Outcome
     /** 模型申报不可逆操作;[foregroundApp] 是申报时读到的前台包名,读不到为 null。 */
-    data class Confirm(val request: ConfirmationRequest, val foregroundApp: String?) : Outcome
+    data class Confirm(val request: ConfirmationRequest, val foregroundApp: String?, val again: Boolean = false) : Outcome
 }
 
 /**

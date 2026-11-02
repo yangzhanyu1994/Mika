@@ -52,6 +52,10 @@ object DeveloperSettings {
     fun turnOnWirelessDebugging(cr: ContentResolver): Boolean =
         runCatching { Settings.Global.putInt(cr, ADB_WIFI_ENABLED, 1) }.getOrDefault(false)
 
+    /** 关掉无线调试。没有修改系统设置的授权时写不进去。 */
+    fun turnOffWirelessDebugging(cr: ContentResolver): Boolean =
+        runCatching { Settings.Global.putInt(cr, ADB_WIFI_ENABLED, 0) }.getOrDefault(false)
+
     fun usbDebugging(cr: ContentResolver): Boolean = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0) == 1
 
     /** 「关于手机」,版本号在这里(有的手机在它下面的「软件信息」里)。 */

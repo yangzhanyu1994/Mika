@@ -155,6 +155,8 @@ class AgentLoop(
     /** 同一网站、App 里连着做对外动作(发送、提交)时两次之间的间隔;默认不等。 */
     private val outwardPacing: OutwardPacing = OutwardPacing.Off,
     private val trace: RunTrace? = null,
+    /** 微信、小红书等账号保护。没有时不额外限制。 */
+    private val caution: com.wangzan101.mika.core.caution.AppCautionRuntime? = null,
 ) {
     init {
         require(maxSteps > 0) { "maxSteps must be positive" }
@@ -371,9 +373,17 @@ class AgentLoop(
         refreshOffer()
         val guards = OperationGuards(maxSteps)
         val recorder = ActionRecorder(sink, clock, saveScreen = { id, png -> sink.media(id, png) })
+        var askStep = 0
+        var askRunning: TaskState = TaskState.Running(0, "")
         val executor = ActionExecutor(tools, guards, confirmations, gate = ::awaitGate, recorder = recorder, offScreen = tools.offScreenGuard(), approvals = approvals,
             provenance = provenance,
-            selfPackage = selfPackage, autonomous = autonomous, pacing = outwardPacing)
+            selfPackage = selfPackage, autonomous = autonomous, pacing = outwardPacing,
+            caution = caution,
+            cautionAsk = caution?.let { { req ->
+                val result = user.confirm(com.wangzan101.mika.core.tool.Outcome.Confirm(req, req.app, again = true), askStep, askRunning)
+                (result.content["approved"] as? JsonPrimitive)?.booleanOrNull == true
+            } },
+        )
         var emptyNudged = false
         // 调过工具才有可核对的材料;交给用户付款和放行过对外动作一样,回答要另请核查
         var acted = false
@@ -603,6 +613,8 @@ class AgentLoop(
             val verb = tools.verb(first.name)
             val offScreen = tools.offScreen(first.name)
             val running = TaskState.Running(step, note, tool, reason = reason, narration = narration)
+            askStep = step
+            askRunning = running
             gateState = running
             var advice: String? = null
             var waitsForUser = false
@@ -647,6 +659,17 @@ class AgentLoop(
             val ran = when (action) {
                 is ActionOutcome.Cancelled -> return TaskState.Cancelled
                 is ActionOutcome.Refused -> {
+                    if (action.code == "caution_stop") {
+                        val msg = (action.content["message"] as? JsonPrimitive)?.contentOrNull ?: "已停止"
+                        if (action.content["takeover"] == JsonPrimitive(true)) {
+                            user.takeover(com.wangzan101.mika.core.tool.Outcome.Takeover("access_blocked", msg), running) ?: return TaskState.Cancelled
+                        }
+                        return TaskState.Failed(msg, FailKind.Guard)
+                    }
+                    if (action.code == "caution_blocked") {
+                        track.after(tools.verb(first.name), ok = false, guard = false, changed = null, recovery = false, app = null)
+                        continue
+                    }
                     guards.stop?.let {
                         recordReply(Redactor.args(tools.verb(first.name), first.argsJson, secretField = true))
                         return StopRules.guard(it)
@@ -882,6 +905,15 @@ class AgentLoop(
             record { sink.media(shotId, picture) }
             media.getOrPut(step) { mutableListOf() } += shotId
             emit(RunEvent.Media(now(), shotId, step, RunEvent.placeLabel(currentPlace)))
+        }
+        val stopped = exec.content["reason"]?.let { (it as? JsonPrimitive)?.contentOrNull } == "caution_stop" ||
+            exec.content["error"]?.let { (it as? JsonPrimitive)?.contentOrNull } == "caution_stop"
+        if (stopped) {
+            val msg = (exec.content["message"] as? JsonPrimitive)?.contentOrNull ?: "已停止"
+            if (exec.content["takeover"] == JsonPrimitive(true)) {
+                user.takeover(com.wangzan101.mika.core.tool.Outcome.Takeover("access_blocked", msg), running) ?: return TaskState.Cancelled
+            }
+            return TaskState.Failed(msg, FailKind.Guard)
         }
         return guards.stop?.let(StopRules::guard)
     }

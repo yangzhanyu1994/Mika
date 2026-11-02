@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="caution_title">账号保护</string>
+    <string name="settings_caution">账号保护</string>
+    <string name="settings_caution_sub">微信和小红书默认只读</string>
+    <string name="caution_intro">只读可以打开、滚动、阅读和总结，不能发送、发布、评论、点赞、关注、加好友、删除或提交。每次确认会先问你。正常不再额外限制。</string>
+    <string name="caution_mode_read">只读</string>
+    <string name="caution_mode_confirm">每次确认</string>
+    <string name="caution_mode_normal">正常</string>
+    <string name="caution_hourly">每小时操作次数</string>
+    <string name="caution_daily">每天操作次数</string>
+    <string name="caution_delay">两次点击之间的间隔（秒）</string>
+    <string name="caution_cooldown">出现安全验证后暂停（小时）</string>
+    <string name="caution_log">操作记录</string>
+    <string name="caution_log_empty">还没有记录</string>
+    <string name="caution_other_apps">其他应用</string>
+    <string name="caution_limits">次数和间隔</string>
+    <string name="caution_save">保存</string>
+    <string name="caution_wireless">空闲时关闭无线调试</string>
+    <string name="caution_wireless_on">Mika 能在下次任务开始时自己打开无线调试，所以这项默认开着。最后一个任务结束大约一分钟后关掉。</string>
+    <string name="caution_wireless_off">普通手机上，Mika 不能自己重新打开无线调试，所以这项默认关着。如果你打开它，下次任务前需要自己去打开无线调试，除非 Mika 已经有修改系统设置的授权。</string>
+    <string name="caution_wechat">微信</string>
+    <string name="caution_xhs">小红书</string>
+</resources>

@@ -1,5 +1,10 @@
 package com.wangzan101.mika.core.action
 
+import com.wangzan101.mika.core.caution.AppCautionRuntime
+import com.wangzan101.mika.core.caution.Messages
+import com.wangzan101.mika.core.caution.SocialWrite
+import com.wangzan101.mika.core.gate.ConfirmationRequest
+import com.wangzan101.mika.core.risk.IrrevAction
 import com.wangzan101.mika.core.tool.Risk
 import com.wangzan101.mika.core.gate.ConfirmationGate
 import com.wangzan101.mika.core.gate.Irreversible
@@ -60,6 +65,10 @@ class ActionExecutor(
     autonomous: Boolean = false,
     /** 同一网站、App 里连着做对外动作(发送、提交)时两次之间的间隔(见 [OutwardPacing]);默认不等。 */
     private val pacing: OutwardPacing = OutwardPacing.Off,
+    /** 账号保护。没有时不额外限制。 */
+    private val caution: AppCautionRuntime? = null,
+    /** 写操作要问用户时,用现有的确认卡片问。返回是否同意。 */
+    private val cautionAsk: (suspend (ConfirmationRequest) -> Boolean)? = null,
 ) {
     private val decision = ConfirmDecision(tools, confirmations, approvals, recorder = recorder, provenance = provenance, selfPackage = selfPackage, autonomous = autonomous)
     private val pass = ActionPass()
@@ -134,7 +143,28 @@ class ActionExecutor(
             Decision.Denied -> return refuse("approval_unavailable", origin, before)
             Decision.Unresolved -> return refuse("target_unresolved", origin, before)
             Decision.OwnApp -> return ownApp(call, args, origin, before, followUp)
+            is Decision.CautionStop -> return cautionOutcome(call, args, origin, before, followUp, "caution_stop", d.message, d.takeover, d.app)
+            is Decision.CautionBlocked -> {
+                caution?.note(d.app, d.message.substringBefore('。').take(80))
+                return cautionOutcome(call, args, origin, before, followUp, "caution_blocked", d.message, false, d.app)
+            }
+            is Decision.CautionAsk -> {
+                val request = ConfirmationRequest(d.write.toIrrev(), d.summary, d.summary, null, d.app)
+                val approved = cautionAsk?.invoke(request) == true
+                if (!approved) {
+                    val message = Messages.declined(d.app, d.write)
+                    caution?.note(d.app, "未同意 ${d.write.phrase()}")
+                    return cautionOutcome(call, args, origin, before, followUp, "caution_blocked", message, false, null)
+                }
+                caution?.note(d.app, "已同意 ${d.write.phrase()}")
+                decision.dropGrant()
+            }
             else -> Unit
+        }
+        val pkg = if (caution != null) screenPackage() else null
+        val wait = caution?.delayBefore(pkg, verb) ?: 0L
+        if (wait > 0 && waitOrSteer { delay(wait) } == null) {
+            return ran(Step(call, args, origin, before, writing = false, offScreen, verb, null, followUp, reads, preset = failCode(SKIPPED_FOR_NEW_MESSAGE)))
         }
         // 对外动作:和同一网站、App 里的上一次隔开(等的时候任务还能取消,动作还没开始)
         val site = decision.outwardSite
@@ -154,6 +184,7 @@ class ActionExecutor(
             guards.noteAction()
             decision.noteWrite(call.name)
         }
+        if (com.wangzan101.mika.core.caution.SocialWrites.isInput(verb)) caution?.record(pkg, inputSummary(verb), verb)
         val step = Step(call, args, origin, before, writing, offScreen, verb, (d as? Decision.Traced)?.detail, followUp, reads, note = note,
             pacedMs = paced + dwelt.waitMs, idleScrolls = dwelt.idleScrolls, outward = site != null)
         // 动作一旦开始就做完并记下:脚本超时、任务取消都不能把它掐在半中间、漏掉记录
@@ -299,6 +330,50 @@ class ActionExecutor(
             recorder.result(origin.step, call.name, tools.verb(call.name), content, tools.portRecord(call.name, args), null, null, 0, origin.policy.source, call.id)
         }
         return ActionOutcome.Refused(Refusals.OWN_APP, content, before)
+    }
+
+    private fun inputSummary(verb: Verb?): String = when (verb) {
+        Verb.Tap -> "点击"
+        Verb.TypeText -> "输入"
+        Verb.Scroll -> "滚动"
+        Verb.Swipe -> "滑动"
+        Verb.PressKey -> "按键"
+        Verb.Back -> "返回"
+        Verb.ClearText -> "清空输入"
+        Verb.Interact -> "操作"
+        else -> verb?.name ?: "操作"
+    }
+
+    private suspend fun screenPackage(): String? = try {
+        tools.interfaces.peek()?.packageName
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun SocialWrite.toIrrev(): IrrevAction = when (this) {
+        SocialWrite.Send, SocialWrite.Post, SocialWrite.Comment -> IrrevAction.send
+        SocialWrite.Delete -> IrrevAction.delete
+        SocialWrite.Submit -> IrrevAction.submit
+        SocialWrite.Like, SocialWrite.Follow, SocialWrite.AddFriend -> IrrevAction.other
+    }
+
+    private fun cautionOutcome(
+        call: Part.ToolCall, args: JsonObject, origin: Origin, before: List<GuardVerdict>, followUp: FollowUp,
+        code: String, message: String, takeover: Boolean, app: String?,
+    ): ActionOutcome {
+        val content = buildJsonObject {
+            put("ok", false); put("error", code); put("message", message); put("executed", false)
+            put("recoverable", code != "caution_stop"); put("counts_as_failure", false)
+            if (takeover) put("takeover", true)
+            app?.let { put("package", it) }
+        }
+        if (origin.policy.recordsRefusal) {
+            followUp.refused(content)
+            recorder.result(origin.step, call.name, tools.verb(call.name), content, tools.portRecord(call.name, args), null, null, 0, origin.policy.source, call.id)
+        }
+        return ActionOutcome.Refused(code, content, before)
     }
 
     private fun refuse(code: String, origin: Origin, before: List<GuardVerdict>) =

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="caution_title">Account protection</string>
+    <string name="settings_caution">Account protection</string>
+    <string name="settings_caution_sub">WeChat and Xiaohongshu start read-only</string>
+    <string name="caution_intro">Read-only can open, scroll, read and summarize. It blocks sending, posting, commenting, liking, following, adding friends, deleting and submitting. Confirm each write asks you first. Normal does not add these limits.</string>
+    <string name="caution_mode_read">Read-only</string>
+    <string name="caution_mode_confirm">Confirm each write</string>
+    <string name="caution_mode_normal">Normal</string>
+    <string name="caution_hourly">Actions per hour</string>
+    <string name="caution_daily">Actions per day</string>
+    <string name="caution_delay">Pause between taps (seconds)</string>
+    <string name="caution_cooldown">Pause after a safety check (hours)</string>
+    <string name="caution_log">What Mika did</string>
+    <string name="caution_log_empty">Nothing recorded yet</string>
+    <string name="caution_other_apps">Other apps</string>
+    <string name="caution_limits">Limits</string>
+    <string name="caution_save">Save</string>
+    <string name="caution_wireless">Turn off wireless debugging when idle</string>
+    <string name="caution_wireless_on">Mika can turn wireless debugging back on when the next task starts, so this is on by default. It waits about a minute after the last task.</string>
+    <string name="caution_wireless_off">On a normal phone Mika cannot turn wireless debugging back on by itself. This stays off unless you turn it on. If you turn it on, you will need to open Wireless debugging yourself before the next task, unless Mika already has permission to change system settings.</string>
+    <string name="caution_wechat">WeChat</string>
+    <string name="caution_xhs">Xiaohongshu</string>
+</resources>

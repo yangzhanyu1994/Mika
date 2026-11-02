@@ -111,9 +111,12 @@ class BatchRunner(
                 is ActionOutcome.Refused -> {
                     val hit = out.hit
                     // 应用权限拒绝:把执行入口给的下一步说明一起交给模型,别让它只看到错误码
-                    val message = (out.content["message"] as? JsonPrimitive)?.contentOrNull?.takeIf { appAccessDenied(out.code) }
-                    stop = if (hit == null) notRun(out.code, message = message)
-                    else notRun(out.code, buildJsonObject { put("action", hit.action.name); put("matched", hit.matched) }, message)
+                    val message = (out.content["message"] as? JsonPrimitive)?.contentOrNull
+                        ?.takeIf { appAccessDenied(out.code) || out.code.startsWith("caution_") }
+                    val extra = if (out.code == "caution_stop") JsonObject(out.content.filterKeys { it == "takeover" || it == "message" || it == "package" })
+                    else if (hit != null) buildJsonObject { put("action", hit.action.name); put("matched", hit.matched) }
+                    else JsonObject(emptyMap())
+                    stop = notRun(out.code, extra, message)
                     break
                 }
                 is ActionOutcome.Cancelled -> { stop = notRun("cancelled"); break }
@@ -208,6 +211,13 @@ class BatchRunner(
                         "It was not run, and the steps after it were not run either. Payment steps never go in do_steps: " +
                         if (executor.confirms) "follow the step's message (request_confirmation, or hand_to_user for a payment), then do that step on its own as a single tool call."
                         else "do it on its own as a single tool call, not as part of a batch.")
+                    put("counts_as_failure", false)
+                }
+                "caution_stop", "caution_blocked" -> {
+                    put("error", stop.reason)
+                    stop.extra.forEach { (k, v) -> put(k, v) }
+                    val msg = (stop.entry["message"] as? JsonPrimitive)?.contentOrNull
+                    msg?.let { put("message", it) }
                     put("counts_as_failure", false)
                 }
                 NEW_MESSAGE -> {
