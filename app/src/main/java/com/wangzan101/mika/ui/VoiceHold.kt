@@ -1,12 +1,15 @@
 package com.wangzan101.mika.ui
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -24,6 +27,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +43,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +78,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -96,6 +103,7 @@ import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
+import com.wangzan101.mika.voice.MicDiagnostics
 import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.SpeechFailure
 import com.wangzan101.mika.voice.VoiceSource
@@ -616,14 +624,26 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
         }
         VoiceSheet.Permission, VoiceSheet.MicBlocked -> {
             val blocked = sheet == VoiceSheet.MicBlocked
+            val opened = blocked && MicDiagnostics.explainOpened
             title = stringResource(if (blocked) R.string.voice_mic_blocked_title else R.string.voice_permission_title)
-            body = stringResource(if (blocked) R.string.voice_mic_blocked_body else R.string.voice_permission_body)
-            action = stringResource(R.string.voice_permission_open)
-            go = {
-                context.startActivity(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
+            body = stringResource(
+                when {
+                    !blocked -> R.string.voice_permission_body
+                    opened -> R.string.voice_mic_blocked_opened
+                    else -> R.string.voice_mic_blocked_body
+                },
+            )
+            if (opened) {
+                action = stringResource(R.string.voice_go_pick)
+                go = onPickSpeech
+            } else {
+                action = stringResource(R.string.voice_permission_open)
+                go = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
             }
         }
         VoiceSheet.MicInUse -> {
@@ -645,15 +665,47 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
         containerColor = c.surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
+        val showDiag = sheet == VoiceSheet.MicBlocked || sheet == VoiceSheet.MicInUse
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 18.dp).testTag("voice-sheet")) {
             Text(title, style = MikaType.Title, color = c.ink)
             Text(body, Modifier.padding(top = 8.dp), style = SheetBody, color = c.ink2)
+            if (showDiag) MicDiagBlock()
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 MikaButton(stringResource(R.string.ok_got_it), { vh.sheet = null }, Modifier.weight(1f), kind = ButtonKind.Tonal, size = ButtonSize.Medium)
                 MikaButton(action, { vh.sheet = null; go() }, Modifier.weight(1f), size = ButtonSize.Medium)
             }
         }
     }
+}
+
+/** 「麦克风还是用不了」上那段可复制的录音诊断:试过的音源、采样率、错误码、isClientSilenced。 */
+@Composable
+private fun MicDiagBlock() {
+    val text = MicDiagnostics.text
+    if (text.isBlank()) return
+    val c = MikaTheme.colors
+    val context = LocalContext.current
+    Text(stringResource(R.string.voice_mic_diag_note), Modifier.padding(top = 10.dp), style = FootText, color = c.ink3)
+    Box(
+        Modifier.padding(top = 8.dp).fillMaxWidth().heightIn(max = 180.dp)
+            .background(c.fill, RoundedCornerShape(12.dp))
+            .verticalScroll(rememberScrollState())
+            .padding(12.dp),
+    ) {
+        SelectionContainer {
+            Text(text, Modifier.testTag("voice-mic-diag"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 16.sp, color = c.ink2)
+        }
+    }
+    MikaButton(
+        stringResource(R.string.voice_mic_diag_copy),
+        {
+            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Mika", text))
+            Toast.makeText(context, context.getString(R.string.voice_mic_diag_copied), Toast.LENGTH_SHORT).show()
+        },
+        Modifier.fillMaxWidth().padding(top = 8.dp).testTag("voice-mic-copy"),
+        kind = ButtonKind.Tonal,
+        size = ButtonSize.Medium,
+    )
 }
 
 private val BarLabel = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)

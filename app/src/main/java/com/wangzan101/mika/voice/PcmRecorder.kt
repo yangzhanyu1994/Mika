@@ -1,9 +1,8 @@
 package com.wangzan101.mika.voice
 
 import android.annotation.SuppressLint
-import android.media.AudioFormat
+import android.content.Context
 import android.media.AudioRecord
-import android.media.MediaRecorder
 import java.io.IOException
 import kotlin.math.sqrt
 import kotlinx.coroutines.CoroutineScope
@@ -19,11 +18,16 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 
 /**
- * 录 16k 单声道 16 位 PCM。start 后每约 50ms 更新一次 [level](0..1,按每块 RMS 归一化);
+ * 录 16k 单声道 16 位 PCM。打开时按 [MicPlan] 逐个试音源、采样率和声道,立体声和更高采样率先收成 16k 单声道。
+ * start 后每约 50ms 更新一次 [level](0..1,按每块 RMS 归一化);
  * stop 返回到目前为止的全部 PCM;录满 [maxMs] 自动停止,之后再 stop 仍返回已录的内容。
  * 录音权限由调用方先检查,这里拿不到麦克风就返回 false。stop 会短暂阻塞(等读循环退出),别在主线程调。
  */
-class PcmRecorder(private val maxMs: Int = 60_000, private val streaming: Boolean = false) : StreamingRecorder {
+class PcmRecorder(
+    private val maxMs: Int = 60_000,
+    private val streaming: Boolean = false,
+    private val context: Context? = null,
+) : StreamingRecorder {
     // At most five seconds while a connection is opening. Never silently drop a sample.
     private val audio = Channel<ShortArray>(100)
     override val chunks: ReceiveChannel<ShortArray> = audio
@@ -39,57 +43,26 @@ class PcmRecorder(private val maxMs: Int = 60_000, private val streaming: Boolea
 
     @SuppressLint("MissingPermission") // 权限由调用方在 start 之前检查
     override fun start(): Boolean {
-        if (tryStart()) return true
-        // 麦克风刚被上一个识别器放开时,第一次会进不了录音状态。等一下再试一次。
-        try {
-            Thread.sleep(RETRY_MS)
-        } catch (_: InterruptedException) {
-            return false
-        }
-        return tryStart()
-    }
-
-    private fun tryStart(): Boolean {
+        // 试配置(含等焦点、失败后再试)可能要一小会儿,别占着锁
+        val opened = MicOpener.open(context)
+        val rec = opened.record ?: return false
         synchronized(lock) {
-            if (record != null) return false
-            val minBuf = AudioRecord.getMinBufferSize(Wav.RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            if (minBuf <= 0) return false
-            val chunk = Wav.RATE / 20 // 50ms 一块
-            val rec = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.MIC, Wav.RATE,
-                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-                    maxOf(minBuf, chunk * 2 * 4),
-                )
-            } catch (_: SecurityException) {
-                return false
-            } catch (_: IllegalArgumentException) {
-                return false
-            }
-            if (rec.state != AudioRecord.STATE_INITIALIZED) {
-                rec.release()
-                return false
-            }
-            try {
-                rec.startRecording()
-            } catch (_: IllegalStateException) {
-                rec.release()
-                return false
-            }
-            if (rec.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                rec.release()
+            if (record != null) {
+                MicOpener.release(rec)
                 return false
             }
             pcm = ShortArray(Wav.RATE * maxMs / 1000)
             size = 0
             _level.value = 0f
             record = rec
-            job = scope.launch { readLoop(rec, chunk) }
+            val chunk = (opened.rate / 20).coerceAtLeast(1) * opened.channelCount
+            job = scope.launch { readLoop(rec, chunk, opened.channelCount, opened.rate) }
             return true
         }
     }
 
-    private fun readLoop(rec: AudioRecord, chunk: Int) {
+    private fun readLoop(rec: AudioRecord, chunk: Int, channels: Int, rate: Int) {
+        val resampler = PcmResampler(channels, rate)
         val buf = ShortArray(chunk)
         while (scope.isActive) {
             val n = rec.read(buf, 0, chunk)
@@ -99,17 +72,19 @@ class PcmRecorder(private val maxMs: Int = 60_000, private val streaming: Boolea
                 }
                 break // 读失败或已被停掉
             }
+            val samples = resampler.push(buf, n)
+            if (samples.isEmpty()) continue
             var sum = 0.0
-            for (i in 0 until n) sum += buf[i].toDouble() * buf[i]
-            val lvl = (sqrt(sum / n) / 8000.0).coerceIn(0.0, 1.0).toFloat()
+            for (s in samples) sum += s.toDouble() * s
+            val lvl = (sqrt(sum / samples.size) / 8000.0).coerceIn(0.0, 1.0).toFloat()
             val full = synchronized(lock) {
                 if (record !== rec) return // 已被 stop/cancel
                 // 在锁里、确认还没被停掉之后才写,免得 cancel 刚归零又被这一块的音量盖回去
                 _level.value = lvl
-                val take = minOf(n, pcm.size - size)
-                System.arraycopy(buf, 0, pcm, size, take)
+                val take = minOf(samples.size, pcm.size - size)
+                System.arraycopy(samples, 0, pcm, size, take)
                 size += take
-                if (streaming && audio.trySend(buf.copyOf(take)).isFailure) {
+                if (streaming && audio.trySend(samples.copyOf(take)).isFailure) {
                     audio.close(IOException("Audio stream buffer exceeded"))
                     return@synchronized true
                 }

@@ -57,6 +57,11 @@ object SystemSpeech {
         data object Retry : Outcome
         /** 这个识别服务拒绝了客户端:拆掉它,换下一个服务再听。 */
         data object SwitchService : Outcome
+        /**
+         * 识别服务报 ERROR_AUDIO:拆掉它,自己把几种音源和采样率试一遍。
+         * 试出来一组没被静音的,而且已经配了语音模型,就改走录音;否则把诊断留给那张「麦克风还是用不了」。
+         */
+        data object ProbeCapture : Outcome
         data object Finish : Outcome
         data class Fail(val why: SpeechFailure) : Outcome
     }
@@ -75,6 +80,8 @@ object SystemSpeech {
             // 手还按着就报 CLIENT:这个服务不接这次请求。还有别的服务就换;没有就说明是识别服务拒绝,不是麦被占用
             holding && code == SpeechRecognizer.ERROR_CLIENT && attemptsLeft -> Outcome.SwitchService
             holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.Fail(SpeechFailure.RecognizerRejected)
+            // 已经听到字的在上面收尾了。没听到就自己试麦克风,不再把 ERROR_AUDIO 直接当成「录不到」。
+            code == SpeechRecognizer.ERROR_AUDIO -> Outcome.ProbeCapture
             else -> Outcome.Fail(failure!!)
         }
     }
@@ -167,7 +174,7 @@ class SystemSpeechSession(
     /** 依次去试的识别服务,见 [SystemSpeech.attempts];null 是系统默认的。 */
     private val attempts: List<String?> = listOf(null),
     /**
-     * 自带识别拒绝这次请求、也没有下一个服务时,改用已经配好的语音模型录音。
+     * 自带识别拒绝这次请求,或报了录音错误(ERROR_AUDIO)、自己的录音器又能打开时,改用已经配好的语音模型录音。
      * 调用时才开始录音,好让刚才的识别器先把麦克风放开。
      */
     private val captureFallback: (() -> SpeechSession)? = null,
@@ -178,6 +185,8 @@ class SystemSpeechSession(
     private val out = SessionEvents()
     /** 已经改走录音转写时,松开和取消都交给它。 */
     private var adopted: SpeechSession? = null
+    /** 正在自己试麦克风。这段时间松开只记下来,等试完再收尾,免得超时把会话先结束掉。 */
+    private var probing = false
     private var adoptedJob: Job? = null
     private val segments = Segments()
     override val events: Flow<SpeechEvent> = out.flow
@@ -250,6 +259,7 @@ class SystemSpeechSession(
         onMain {
         if (!holding || done()) return@onMain
         holding = false
+        if (probing) return@onMain
         if (restartPending) {
             // 上一段已经结束、还没重开:没有在听的,直接按已听到的收尾
             finish(SpeechEvent.Final(segments.full()))
@@ -334,6 +344,32 @@ class SystemSpeechSession(
             return
         }
         finish(SpeechEvent.Failed(SpeechFailure.RecognizerRejected))
+    }
+
+    /**
+     * 识别服务说录不到。先拆掉它(它可能还占着麦克风),再自己试音源和采样率。
+     * 试的过程在后台:里面会等窗口焦点,也会在失败后隔一会儿再试,不能堵在主线程上。
+     */
+    private fun probeCapture() {
+        if (done() || probing) return
+        probing = true
+        teardown()
+        scope.launch(Dispatchers.IO) {
+            val opened = MicOpener.open(context)
+            opened.record?.let { MicOpener.release(it) }
+            main.post {
+                probing = false
+                if (done()) return@post
+                val next = captureFallback
+                if (holding && MicDiagnostics.opened && next != null && adopted == null) {
+                    adopt(next())
+                } else {
+                    // 录是打开了,但没有模型可交:弹层改口,别再说「还是录不到」。松开或真没打开则仍用原来的说明。
+                    MicDiagnostics.explainOpened = MicDiagnostics.opened && next == null
+                    finish(SpeechEvent.Failed(SpeechFailure.AudioError))
+                }
+            }
+        }
     }
 
     private fun adopt(session: SpeechSession) {
@@ -439,8 +475,12 @@ class SystemSpeechSession(
 
         override fun onError(error: Int) {
             if (recognizer == null || done()) return
-            // ERROR_CLIENT 不是「服务回了话」:记成回话会让下次还先试这个拒绝我们的服务
-            if (error == SpeechRecognizer.ERROR_CLIENT) main.removeCallbacks(silence) else heard()
+            // CLIENT 是服务拒绝,AUDIO 是它没录上。两者都不是「这个服务能用」,别记成回过话。
+            if (error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_AUDIO) {
+                main.removeCallbacks(silence)
+            } else {
+                heard()
+            }
             if (recognizer == null || done()) return
             if (usingOnDevice && SystemSpeech.languageMissing(error) && segments.full().isEmpty()) {
                 open(preferOnDevice = false)
@@ -454,6 +494,7 @@ class SystemSpeechSession(
             when (val o = SystemSpeech.afterError(error, holding, heard = segments.full().isNotEmpty(), attemptsLeft = attempt + 1 < attempts.size || captureFallback != null)) {
                 SystemSpeech.Outcome.Retry -> emptySegment()
                 SystemSpeech.Outcome.SwitchService -> switchOrReject()
+                SystemSpeech.Outcome.ProbeCapture -> probeCapture()
                 SystemSpeech.Outcome.Finish -> finish(SpeechEvent.Final(segments.full()))
                 is SystemSpeech.Outcome.Fail -> finish(SpeechEvent.Failed(o.why))
             }

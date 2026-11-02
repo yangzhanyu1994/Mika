@@ -41,8 +41,8 @@ sealed interface SpeechFailure {
      */
     data object RecognizerRejected : SpeechFailure
     /**
-     * 识别服务报录音出错(ERROR_AUDIO):录音权限给了也可能录不到,例如系统的麦克风使用总开关关着,
-     * 或系统权限管理里单独关掉了麦克风。界面据此说明该去哪里看。
+     * 识别服务报录音出错(ERROR_AUDIO),而且自己把音源和采样率试完仍录不上,或录得上但没有语音模型。
+     * 试过哪些配置、错误码、有没有被系统静音,在 [com.wangzan101.mika.voice.MicDiagnostics]。
      */
     data object AudioError : SpeechFailure
     data class Provider(val error: ModelError) : SpeechFailure
