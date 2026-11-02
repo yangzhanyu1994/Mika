@@ -4,12 +4,16 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
 import java.net.URLEncoder
 
-/** Mika 对外的地址都在这里:仓库、问题、作者、X 群聊、检查更新用的两个来源。换地址只改这一处。 */
+/**
+ * Mika 对外的地址都在这里。
+ * 关于页、反馈、许可仍指向原作者仓库;检查更新和安装包只认 [UPDATE_REPO]。
+ * 换更新来源只改 [UPDATE_REPO_SLUG]。
+ */
 object MikaLinks {
+    /** 原作者仓库。关于页的开源仓库、使用说明、反馈问题仍指向这里。 */
     const val REPO = "https://github.com/wangzan101/Mika"
     const val REPO_LABEL = "github.com/wangzan101/Mika"
     const val README = "$REPO#readme"
-    const val RELEASES = "$REPO/releases"
     const val NEW_ISSUE = "$REPO/issues/new"
     const val X = "https://x.com/wangzan101"
     const val X_HANDLE = "@wangzan101"
@@ -17,8 +21,16 @@ object MikaLinks {
     /** X 上的 Mika 交流群:点开即申请加入(不用微信的走这里)。 */
     const val X_GROUP = "https://x.com/i/chat/group_join/g2116926829198246025/48B52j5svL"
 
-    /** 检查更新只问 GitHub 发布页(不登录,每小时有次数限制)。 */
-    const val LATEST_RELEASE_API = "https://api.github.com/repos/wangzan101/Mika/releases/latest"
+    /** 本构建的发布仓库。检查更新、更新记录和安装包只走这里,不跟原作者的 Releases。 */
+    private const val UPDATE_REPO_SLUG = "yangzhanyu1994/Mika"
+    const val UPDATE_REPO = "https://github.com/$UPDATE_REPO_SLUG"
+    const val RELEASES = "$UPDATE_REPO/releases"
+
+    /** 检查更新只问这个仓库的 GitHub 发布页(不登录,每小时有次数限制)。 */
+    const val LATEST_RELEASE_API = "https://api.github.com/repos/$UPDATE_REPO_SLUG/releases/latest"
+
+    /** 打开 App 时是否自动检查更新。本构建默认关;关于页里仍可手动检查。 */
+    const val AUTO_CHECK_UPDATES = false
 
     /** 反馈时预先填进问题模板的设备与版本信息。 */
     data class Device(

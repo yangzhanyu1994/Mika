@@ -36,6 +36,18 @@ class MikaLinksTest {
     }
 
     @Test
+    fun updatesComeFromThisForkAndDoNotStartOnTheirOwn() {
+        assertEquals("https://github.com/yangzhanyu1994/Mika", MikaLinks.UPDATE_REPO)
+        assertEquals("https://github.com/yangzhanyu1994/Mika/releases", MikaLinks.RELEASES)
+        assertEquals("https://api.github.com/repos/yangzhanyu1994/Mika/releases/latest", MikaLinks.LATEST_RELEASE_API)
+        assertFalse(MikaLinks.AUTO_CHECK_UPDATES)
+        assertEquals("https://github.com/wangzan101/Mika", MikaLinks.REPO)
+        assertTrue(MikaLinks.NEW_ISSUE.startsWith(MikaLinks.REPO))
+        assertFalse(MikaLinks.LATEST_RELEASE_API.contains("wangzan101"))
+        assertFalse(MikaLinks.RELEASES.contains("wangzan101"))
+    }
+
+    @Test
     fun issueUrlIsEncoded() {
         val url = MikaLinks.issueUrl(device)
         assertTrue(url.startsWith("https://github.com/wangzan101/Mika/issues/new?title=&body="))
