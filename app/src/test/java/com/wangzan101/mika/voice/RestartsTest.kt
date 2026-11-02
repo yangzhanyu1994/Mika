@@ -51,5 +51,10 @@ class RestartsTest {
         assertEquals(SystemSpeech.Outcome.Fail(SpeechFailure.RecognizerRejected), SystemSpeech.afterError(client, holding = true, heard = false, attemptsLeft = false))
         assertEquals(SystemSpeech.Outcome.Finish, SystemSpeech.afterError(SpeechRecognizer.ERROR_NETWORK, holding = true, heard = true))
         assertEquals(SystemSpeech.Outcome.Fail(SpeechFailure.Network), SystemSpeech.afterError(SpeechRecognizer.ERROR_NETWORK, holding = false, heard = false))
+        val audio = SpeechRecognizer.ERROR_AUDIO
+        // 没听到字就自己试麦克风,不论手指还按着没有;已经听到的字照旧收尾
+        assertEquals(SystemSpeech.Outcome.ProbeCapture, SystemSpeech.afterError(audio, holding = true, heard = false))
+        assertEquals(SystemSpeech.Outcome.ProbeCapture, SystemSpeech.afterError(audio, holding = false, heard = false))
+        assertEquals(SystemSpeech.Outcome.Finish, SystemSpeech.afterError(audio, holding = true, heard = true))
     }
 }

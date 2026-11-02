@@ -28,6 +28,10 @@
     <string name="voice_hold_to_talk">按住说话</string>
     <string name="voice_mic_blocked_title">麦克风还是用不了</string>
     <string name="voice_mic_blocked_body">已经允许 Mika 录音，但还是录不到声音。看看快捷设置里的「麦克风使用权限」开关有没有关（安卓 12 起有），再到系统的权限管理里看 Mika 的麦克风有没有被单独关掉；也可能正被别的应用占用。</string>
+    <string name="voice_mic_blocked_opened">手机自带的语音识别录不到声音，但 Mika 用下面的配置打开了麦克风。还没有语音转文字模型，所以没法把录音变成字。到「设置 › 模型 › 语音转文字」选一个。</string>
+    <string name="voice_mic_diag_note">下面这段可以复制，里面有试过的音源、采样率、错误码和 isClientSilenced。</string>
+    <string name="voice_mic_diag_copy">复制诊断</string>
+    <string name="voice_mic_diag_copied">已复制录音诊断</string>
     <string name="voice_provider_failed">没能转成文字：%1$s</string>
     <string name="voice_unavailable_title">还不能语音输入</string>
     <string name="voice_unavailable_no_engine">这台手机没有自带的语音识别，也还没选转文字的模型。到「设置 › 模型 › 语音转文字」选一个服务商的语音模型就能用。</string>

@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import java.lang.ref.WeakReference
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -58,6 +59,7 @@ import com.wangzan101.mika.cap.phone.PhoneServices
 import com.wangzan101.mika.cap.phone.setup.DeveloperSettings
 import com.wangzan101.mika.cap.phone.setup.PairingNotifier
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
+import com.wangzan101.mika.voice.MicFocus
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.ui.theme.appearanceDark
@@ -114,7 +116,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        MicFocus.activity = WeakReference(this)
         monitor.refresh()
+    }
+
+    override fun onPause() {
+        MicFocus.hasWindowFocus = false
+        MicFocus.activity = null
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        MicFocus.hasWindowFocus = hasFocus
     }
 
     override fun onStop() {

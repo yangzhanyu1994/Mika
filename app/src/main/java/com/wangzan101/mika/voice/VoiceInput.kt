@@ -37,6 +37,7 @@ class VoiceInput(
      * 没有录音权限、引擎用不了时,给出只发一个 Failed 的会话,界面按同一套处理。
      */
     override fun start(language: String?): SpeechSession {
+        MicDiagnostics.clear()
         val spec = spec()
         if (spec is SpeechEngineSpec.Unavailable) return FailedSession(SpeechFailure.Unavailable(spec.why))
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -48,7 +49,7 @@ class VoiceInput(
             is SpeechEngineSpec.Doubao -> {
                 val credentials = settings.doubaoCredentials()
                     ?: return FailedSession(SpeechFailure.Unavailable(SpeechEngineSpec.Why.DoubaoNotConfigured)).also { live = it }
-                DoubaoSpeech(PcmRecorder(streaming = true), { DoubaoTransport().connect(credentials, spec.resourceId) })
+                DoubaoSpeech(PcmRecorder(streaming = true, context = context), { DoubaoTransport().connect(credentials, spec.resourceId) })
             }
             is SpeechEngineSpec.System -> SystemSpeechSession(
                 context, spec.onDevice, tag,
@@ -73,7 +74,7 @@ class VoiceInput(
         val p = spec.provider
         val t = transcriber(p)
         val iso = SystemSpeech.isoCode(tag)
-        return ProviderSpeech(PcmRecorder(), { wav ->
+        return ProviderSpeech(PcmRecorder(context = context), { wav ->
             t.transcribe(p, providers.providerKey(p.id), spec.model, spec.method, wav, iso)
         })
     }
