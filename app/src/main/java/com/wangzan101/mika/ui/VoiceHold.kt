@@ -129,6 +129,10 @@ internal sealed interface VoiceSheet {
     data object Permission : VoiceSheet
     /** 已经允许录音,识别服务仍说没有权限或录音出错:说明系统的麦克风总开关和权限管理,或被别的应用占用。 */
     data object MicBlocked : VoiceSheet
+    /** 自己的录音器没能打开:可能真有别的应用占着麦克风。 */
+    data object MicInUse : VoiceSheet
+    /** 手机自带识别拒绝了请求。三星上常见,不是麦克风被占用。 */
+    data object RecognizerRejected : VoiceSheet
     data class Unavailable(val why: SpeechEngineSpec.Why) : VoiceSheet
 }
 
@@ -146,7 +150,9 @@ internal object VoiceCopy {
     fun failure(why: SpeechFailure): String = when (why) {
         SpeechFailure.Busy -> tr(R.string.voice_busy)
         SpeechFailure.Network -> tr(R.string.voice_network)
-        SpeechFailure.MicUnavailable, SpeechFailure.AudioError -> tr(R.string.voice_mic_unavailable)
+        SpeechFailure.MicUnavailable -> tr(R.string.voice_mic_unavailable)
+        SpeechFailure.RecognizerRejected -> tr(R.string.voice_recognizer_rejected_title)
+        SpeechFailure.AudioError -> tr(R.string.voice_mic_unavailable)
         // 服务商的错沿用模型出错时的说法(额度、Key、找不到模型……)
         is SpeechFailure.Provider -> tr(R.string.voice_provider_failed, why.error.message.orEmpty())
         SpeechFailure.NoPermission -> tr(R.string.voice_permission_title)
@@ -294,6 +300,8 @@ internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit): V
                     // 另弹说明(系统的麦克风总开关、权限管理)。麦克风起不来的其他情况照旧提示可能被占用
                     SpeechFailure.NoPermission -> if (vh.ensureMic()) vh.sheet = VoiceSheet.MicBlocked
                     SpeechFailure.AudioError -> vh.sheet = VoiceSheet.MicBlocked
+                    SpeechFailure.MicUnavailable -> vh.sheet = VoiceSheet.MicInUse
+                    SpeechFailure.RecognizerRejected -> vh.sheet = VoiceSheet.RecognizerRejected
                     else -> vh.toast = VoiceCopy.failure(why)
                 }
                 vh.hold.reset()
@@ -617,6 +625,18 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }
+        }
+        VoiceSheet.MicInUse -> {
+            title = stringResource(R.string.voice_mic_in_use_title)
+            body = stringResource(R.string.voice_mic_in_use_body)
+            action = stringResource(R.string.ok_got_it)
+            go = {}
+        }
+        VoiceSheet.RecognizerRejected -> {
+            title = stringResource(R.string.voice_recognizer_rejected_title)
+            body = stringResource(R.string.voice_recognizer_rejected_body)
+            action = stringResource(R.string.voice_go_pick)
+            go = onPickSpeech
         }
     }
     ModalBottomSheet(

@@ -20,7 +20,11 @@
     <string name="voice_no_match">没听清，再按住说一次</string>
     <string name="voice_busy">识别服务正忙，稍后再按住说</string>
     <string name="voice_network">网络断了，没能转成文字</string>
-    <string name="voice_mic_unavailable">麦克风用不了，可能正被别的 App 占着</string>
+    <string name="voice_mic_unavailable">麦克风没有打开</string>
+    <string name="voice_mic_in_use_title">麦克风没有打开</string>
+    <string name="voice_mic_in_use_body">Mika 已放开自己的录音并重试了一次，还是录不到。如果状态栏的麦克风圆点属于别的应用，关掉那段录音再按住说。三星手机还要看：快捷开关里的「麦克风使用权限」要开着，并关掉 Bixby 语音唤醒（「嗨，Bixby」）。折叠屏的内外屏不会各自占着麦克风。</string>
+    <string name="voice_recognizer_rejected_title">手机自带的语音识别拒绝了</string>
+    <string name="voice_recognizer_rejected_body">这不是麦克风被别的应用占用。自带识别服务拒绝了这次请求。三星国行（例如 W25）上通常是三星自己的语音服务，不是 Google，而且经常不给别的应用听写，Bixby 语音唤醒开着时更常见。Mika 会换下一个识别服务；如果已经配了语音转文字模型，就改为录音后交给那个模型。也可以到「设置 › 模型 › 语音转文字」自己选一个。折叠屏的内外屏不影响这件事。</string>
     <string name="voice_hold_to_talk">按住说话</string>
     <string name="voice_mic_blocked_title">麦克风还是用不了</string>
     <string name="voice_mic_blocked_body">已经允许 Mika 录音，但还是录不到声音。看看快捷设置里的「麦克风使用权限」开关有没有关（安卓 12 起有），再到系统的权限管理里看 Mika 的麦克风有没有被单独关掉；也可能正被别的应用占用。</string>

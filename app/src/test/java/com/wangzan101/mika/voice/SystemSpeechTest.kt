@@ -15,7 +15,7 @@ class SystemSpeechTest {
         assertEquals(SpeechFailure.Network, SystemSpeech.failureOf(SpeechRecognizer.ERROR_NETWORK_TIMEOUT))
         assertEquals(SpeechFailure.NoPermission, SystemSpeech.failureOf(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS))
         assertEquals(SpeechFailure.AudioError, SystemSpeech.failureOf(SpeechRecognizer.ERROR_AUDIO))
-        assertEquals(SpeechFailure.MicUnavailable, SystemSpeech.failureOf(SpeechRecognizer.ERROR_CLIENT))
+        assertEquals(SpeechFailure.RecognizerRejected, SystemSpeech.failureOf(SpeechRecognizer.ERROR_CLIENT))
     }
 
     @Test

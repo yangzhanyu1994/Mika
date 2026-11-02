@@ -1,8 +1,10 @@
 package com.wangzan101.mika.voice
 
+import com.wangzan101.mika.core.model.ListedModel
 import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SpeechResolverTest {
@@ -53,6 +55,16 @@ class SpeechResolverTest {
         assertEquals(
             SpeechEngineSpec.Provider(p1, "whisper-1", TranscribeMethod.AudioTranscriptions),
             SpeechResolver.resolve(choice, none, listOf(p1)),
+        )
+    }
+
+    @Test fun captureFallbackUsesASpeechModelAndSkipsChatModels() {
+        val chat = p1.copy(models = listOf(ListedModel("gpt-4o")))
+        assertNull(SpeechResolver.captureFallback(listOf(chat)))
+        val speech = p1.copy(models = listOf(ListedModel("gpt-4o"), ListedModel("whisper-1")))
+        assertEquals(
+            SpeechEngineSpec.Provider(speech, "whisper-1", TranscribeMethod.AudioTranscriptions),
+            SpeechResolver.captureFallback(listOf(speech)),
         )
     }
 

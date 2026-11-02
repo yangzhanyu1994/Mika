@@ -30,8 +30,16 @@ sealed interface SpeechFailure {
     data object NoPermission : SpeechFailure
     data object Busy : SpeechFailure
     data object Network : SpeechFailure
-    /** 麦克风起不来(识别服务报客户端出错、开始听时抛错、服务商那条路的录音起不来):多半是被别的应用占着。 */
+    /**
+     * 自己的录音器重试后仍进不了录音状态:麦克风没打开。
+     * 可能是别的应用占着,也可能是系统的麦克风开关关着。不是识别服务的客户端错误。
+     */
     data object MicUnavailable : SpeechFailure
+    /**
+     * 识别服务立刻拒绝了这次请求(ERROR_CLIENT)。这是客户端/服务不配合,不是麦克风被占用。
+     * 三星国行上常见:自带的是三星语音服务,不给第三方听写,或 Bixby 语音唤醒占着这次会话。
+     */
+    data object RecognizerRejected : SpeechFailure
     /**
      * 识别服务报录音出错(ERROR_AUDIO):录音权限给了也可能录不到,例如系统的麦克风使用总开关关着,
      * 或系统权限管理里单独关掉了麦克风。界面据此说明该去哪里看。
