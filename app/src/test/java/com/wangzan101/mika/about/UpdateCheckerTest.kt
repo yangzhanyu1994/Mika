@@ -46,8 +46,12 @@ class UpdateCheckerTest {
         now = { clock },
     )
 
-    private fun release(tag: String) =
-        MockResponse().setBody("""{"tag_name":"$tag","name":"Mika $tag","body":"- 新东西","html_url":"https://github.com/wangzan101/Mika/releases/tag/$tag","assets":[]}""")
+    private fun release(tag: String, pageUrl: String = "${MikaLinks.RELEASES}/tag/$tag", apkUrl: String? = null) =
+        MockResponse().setBody(buildString {
+            append("""{"tag_name":"$tag","name":"Mika $tag","body":"- 新东西","html_url":"$pageUrl","assets":[""")
+            if (apkUrl != null) append("""{"name":"Mika.apk","browser_download_url":"$apkUrl"}""")
+            append("]}")
+        })
 
     @Test
     fun newerReleaseFromGitHubShowsUpdate() = runTest {
@@ -142,6 +146,31 @@ class UpdateCheckerTest {
         clock += 10 * 60 * 1000L
         assertTrue(c.autoCheck())
         assertEquals(2, hits.size)
+    }
+
+    /** 打开 App 不访问发布接口。上游地址(包括以前存下来的)不算可安装的更新。 */
+    @Test
+    fun doesNotFetchOrOfferUpstreamReleases() = runTest {
+        github = release(
+            "v0.2.0",
+            pageUrl = "https://github.com/wangzan101/Mika/releases/tag/v0.2.0",
+            apkUrl = "https://github.com/wangzan101/Mika/releases/download/v0.2.0/Mika.apk",
+        )
+        val c = UpdateChecker(
+            tmp.root.resolve("update.json"), "0.1.0",
+            releaseApi = server.url("/api").toString(),
+            now = { clock },
+            scope = this,
+        )
+        c.autoCheckInBackground()
+        assertTrue(hits.isEmpty())
+        assertNull(c.state.value.update)
+
+        c.check(manual = true)
+        assertEquals(listOf("/api"), hits)
+        assertEquals(CheckStatus.Done, c.state.value.status)
+        assertNull(c.state.value.update)
+        assertNull(c.state.value.latest)
     }
 
     @Test

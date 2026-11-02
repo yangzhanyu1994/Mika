@@ -41,7 +41,8 @@ data class UpdateState(
 }
 
 /**
- * 每次打开 App 都自动查一次,只挡住连着来的:离上次自动检查不到 [MIN_GAP_MS](来回切几下、旋转屏幕)不再查。
+ * 自动检查打开时,每次打开 App 都查一次,只挡住连着来的:离上次自动检查不到 [MIN_GAP_MS](来回切几下、旋转屏幕)不再查。
+ * 本构建默认关掉自动检查,见 [MikaLinks.AUTO_CHECK_UPDATES]。
  * 上次时间比现在还晚(改过系统时间)也算到期。
  */
 object UpdateSchedule {
@@ -72,8 +73,9 @@ class UpdateChecker(
     private var lastAttempt: Long? = null
     private var loaded = false
 
-    /** 每次打开 App 时调:到期就在后台查一次,失败不吭声。 */
+    /** 每次打开 App 时调。本构建默认不查([MikaLinks.AUTO_CHECK_UPDATES]);打开后到期才在后台查一次,失败不吭声。 */
     fun autoCheckInBackground() {
+        if (!MikaLinks.AUTO_CHECK_UPDATES) return
         scope.launch { autoCheck() }
     }
 
@@ -126,8 +128,18 @@ class UpdateChecker(
         }
     }
 
-    private fun UpdateState.withLatest(r: ReleaseInfo?): UpdateState =
-        copy(latest = r, update = r?.takeIf { AppVersion.isNewer(it.version, currentVersion) })
+    private fun UpdateState.withLatest(r: ReleaseInfo?): UpdateState {
+        // 丢掉不是本构建发布仓库的结果(例如官方包留下的更新记录),避免再提供上游安装包。
+        val trusted = r?.takeIf { it.isFromUpdateRepo() }
+        return copy(latest = trusted, update = trusted?.takeIf { AppVersion.isNewer(it.version, currentVersion) })
+    }
+
+    private fun ReleaseInfo.isFromUpdateRepo(): Boolean {
+        val pageOk = pageUrl == MikaLinks.RELEASES || pageUrl.startsWith("${MikaLinks.RELEASES}/")
+        val apk = apkUrl
+        val apkOk = apk == null || runCatching { ApkIntegrity.requireOfficialUrl(apk) }.isSuccess
+        return pageOk && apkOk
+    }
 
     private fun loadLocked() {
         if (loaded) return

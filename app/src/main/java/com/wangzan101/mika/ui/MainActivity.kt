@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         monitor.start()
-        // 每次打开都悄悄查一次新版本(两分钟内连着打开的只查一次),失败不吭声
+        // 默认不自动检查(MikaLinks.AUTO_CHECK_UPDATES)。打开后每次进前台悄悄查一次,两分钟内连着打开的只查一次。
         (application as MikaApp).updates.autoCheckInBackground()
         // 电脑连接开着、服务却不在(被系统停过、从后台没能起来):界面在前台时补起来
         (application as MikaApp).mcp.ensureRunning()
