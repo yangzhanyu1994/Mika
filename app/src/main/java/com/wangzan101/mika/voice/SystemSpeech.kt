@@ -77,11 +77,10 @@ object SystemSpeech {
             failure == null || heard -> Outcome.Finish
             // 松开后有的服务在 stopListening 之后报 CLIENT:没听到字就是没听清,不是麦克风坏了
             !holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.Finish
-            // 手还按着就报 CLIENT:这个服务不接这次请求。还有别的服务就换;没有就说明是识别服务拒绝,不是麦被占用
-            holding && code == SpeechRecognizer.ERROR_CLIENT && attemptsLeft -> Outcome.SwitchService
-            holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.Fail(SpeechFailure.RecognizerRejected)
-            // 已经听到字的在上面收尾了。没听到就自己试麦克风,不再把 ERROR_AUDIO 直接当成「录不到」。
-            code == SpeechRecognizer.ERROR_AUDIO -> Outcome.ProbeCapture
+            // 手还按着就报 CLIENT,或服务说没权限/录音出错:拆掉识别器,自己把音源和采样率试一遍。
+            // 不再停在「识别被拒绝」或「麦克风还是用不了」上,那些说明以前没打开过自己的录音器。
+            holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.ProbeCapture
+            code == SpeechRecognizer.ERROR_AUDIO || code == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> Outcome.ProbeCapture
             else -> Outcome.Fail(failure!!)
         }
     }
@@ -343,7 +342,7 @@ class SystemSpeechSession(
             adopt(next())
             return
         }
-        finish(SpeechEvent.Failed(SpeechFailure.RecognizerRejected))
+        probeCapture()
     }
 
     /**
@@ -355,18 +354,23 @@ class SystemSpeechSession(
         probing = true
         teardown()
         scope.launch(Dispatchers.IO) {
-            val opened = MicOpener.open(context)
+            val opened = MicOpener.open(context, requireAudible = true)
             opened.record?.let { MicOpener.release(it) }
             main.post {
                 probing = false
                 if (done()) return@post
                 val next = captureFallback
-                if (holding && MicDiagnostics.opened && next != null && adopted == null) {
-                    adopt(next())
-                } else {
-                    // 录是打开了,但没有模型可交:弹层改口,别再说「还是录不到」。松开或真没打开则仍用原来的说明。
-                    MicDiagnostics.explainOpened = MicDiagnostics.opened && next == null
-                    finish(SpeechEvent.Failed(SpeechFailure.AudioError))
+                val heardMic = MicDiagnostics.opened
+                when {
+                    holding && heardMic && next != null && adopted == null -> adopt(next())
+                    heardMic && next == null -> {
+                        MicDiagnostics.explainOpened = true
+                        finish(SpeechEvent.Failed(SpeechFailure.NeedsSpeechModel))
+                    }
+                    else -> {
+                        MicDiagnostics.explainOpened = false
+                        finish(SpeechEvent.Failed(SpeechFailure.AudioError))
+                    }
                 }
             }
         }
@@ -476,7 +480,9 @@ class SystemSpeechSession(
         override fun onError(error: Int) {
             if (recognizer == null || done()) return
             // CLIENT 是服务拒绝,AUDIO 是它没录上。两者都不是「这个服务能用」,别记成回过话。
-            if (error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_AUDIO) {
+            if (error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_AUDIO ||
+                error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS
+            ) {
                 main.removeCallbacks(silence)
             } else {
                 heard()

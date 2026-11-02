@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewConfiguration
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -145,6 +146,9 @@ class CapsuleController(
     private var note by mutableStateOf<CapsuleNote?>(null)
     private var noteJob: Job? = null
     private var noteCount = 0
+    /** 悬浮窗上的录音诊断:说明 + 可复制的尝试记录。 */
+    private var voiceDiag by mutableStateOf<Pair<String, String>?>(null)
+    private var diagJob: Job? = null
 
     /**
      * 对话卡片的来回:[threadOf] 那个对话记下的全部轮次([past],后台从 [ConversationStore] 读,和对话页同一份;还没读到为 null),
@@ -1041,6 +1045,8 @@ class CapsuleController(
                     null -> showNote(VoiceCopy.NO_MATCH, CapsuleKind.Failed, opensMika = false, NOTE_SHORT_MS)
                     SpeechFailure.NoPermission -> showNote(tr(R.string.capsule_voice_need_mic), CapsuleKind.Failed, opensMika = true, NOTE_LONG_MS)
                     is SpeechFailure.Unavailable -> showNote(tr(R.string.capsule_voice_not_ready), CapsuleKind.Failed, opensMika = true, NOTE_LONG_MS)
+                    SpeechFailure.NeedsSpeechModel, SpeechFailure.RecognizerRejected, SpeechFailure.AudioError, SpeechFailure.MicUnavailable ->
+                        showVoiceFailure(VoiceCopy.failure(why))
                     else -> showNote(VoiceCopy.failure(why), CapsuleKind.Failed, opensMika = false, NOTE_LONG_MS)
                 }
             }
@@ -1074,6 +1080,21 @@ class CapsuleController(
         if (card?.let(CapsuleCards::input) != null) openInput()
     }
 
+    /** 悬浮窗上的失败:一句说明,加上可复制的录音诊断。DeepSeek 不能转写时,说明里写明要去哪配置。 */
+    private fun showVoiceFailure(message: String) {
+        val log = com.wangzan101.mika.voice.MicDiagnostics.text.ifBlank { tr(R.string.voice_mic_diag_empty) }
+        voiceDiag = message to log
+        note = CapsuleNote(message, CapsuleKind.Failed, false, ++noteCount)
+        wake()
+        noteJob?.cancel()
+        diagJob?.cancel()
+        diagJob = scope.launch {
+            delay(12_000)
+            voiceDiag = null
+            if (note?.text == message) note = null
+        }
+    }
+
     private fun showNote(text: String, kind: CapsuleKind, opensMika: Boolean, ms: Long) {
         note = CapsuleNote(text, kind, opensMika, ++noteCount)
         wake()
@@ -1086,7 +1107,9 @@ class CapsuleController(
 
     private fun clearNote() {
         noteJob?.cancel()
+        diagJob?.cancel()
         note = null
+        voiceDiag = null
     }
 
     /** 胶囊上闪着一句时点它:那句说要打开 Mika 就打开,否则收掉那句、照常点按。 */
@@ -1249,7 +1272,11 @@ class CapsuleController(
             else shown.copy(kind = n.kind, text = n.text, detail = null, count = 0, needCount = 0, pill = true, widthEpoch = -n.id)
         val talking = talk.active && !talk.released
         MikaTheme(reduceMotion = animationsOff(context)) {
-            OverlayMotion(open = true, origin = { TransformOrigin(if (dock.side == DockSide.Right) 1f else 0f, 0.5f) }, onClosed = {}) {
+            Column {
+                voiceDiag?.let { (message, log) ->
+                    CapsuleVoiceDiag(message, log) { clearNote() }
+                }
+                OverlayMotion(open = true, origin = { TransformOrigin(if (dock.side == DockSide.Right) 1f else 0f, 0.5f) }, onClosed = {}) {
                 CapsuleContent(
                     v,
                     onTap = ::tapCapsule,
@@ -1269,6 +1296,7 @@ class CapsuleController(
                     onTalk = if (canTalk()) ::toggleTalk else null,
                     talkLabel = tr(if (talking && !talk.byTouch) R.string.capsule_voice_send else R.string.capsule_voice_talk),
                 )
+                }
             }
         }
     }

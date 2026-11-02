@@ -12,15 +12,17 @@ class MicCaptureTest {
     @Test
     fun triesRecognitionThenMicThenCommunicationAtThreeRates() {
         val attempts = MicPlan.attempts { _, _ -> 640 }
-        assertEquals(18, attempts.size)
+        assertEquals(30, attempts.size)
         assertEquals(MediaRecorder.AudioSource.VOICE_RECOGNITION, attempts[0].source)
         assertEquals("VOICE_RECOGNITION", attempts[0].sourceName)
-        assertEquals(16_000, attempts[0].rate)
+        assertEquals(48_000, attempts[0].rate)
         assertEquals("MONO", attempts[0].channelName)
         assertEquals("STEREO", attempts[1].channelName)
-        assertEquals(listOf(16_000, 16_000, 48_000, 48_000, 44_100, 44_100), attempts.take(6).map { it.rate })
+        assertEquals(listOf(48_000, 48_000, 44_100, 44_100, 16_000, 16_000), attempts.take(6).map { it.rate })
         assertEquals(MediaRecorder.AudioSource.MIC, attempts[6].source)
-        assertEquals(MediaRecorder.AudioSource.VOICE_COMMUNICATION, attempts[12].source)
+        assertEquals(MediaRecorder.AudioSource.CAMCORDER, attempts[12].source)
+        assertEquals(MediaRecorder.AudioSource.VOICE_COMMUNICATION, attempts[18].source)
+        assertEquals(MediaRecorder.AudioSource.DEFAULT, attempts[24].source)
         assertEquals(AudioFormat.CHANNEL_IN_MONO, attempts[0].channel)
         assertEquals(AudioFormat.CHANNEL_IN_STEREO, attempts[1].channel)
     }
@@ -30,7 +32,7 @@ class MicCaptureTest {
         val attempts = MicPlan.attempts { rate, channel ->
             if (rate == 16_000 && channel == AudioFormat.CHANNEL_IN_MONO) AudioRecord.ERROR_BAD_VALUE else 2048
         }
-        val rejected = attempts.first()
+        val rejected = attempts.first { it.rate == 16_000 && it.channelName == "MONO" }
         assertEquals(AudioRecord.ERROR_BAD_VALUE, rejected.minBuf)
         assertEquals("MONO", rejected.channelName)
         assertEquals("BAD_VALUE(${AudioRecord.ERROR_BAD_VALUE})", minBufError(rejected.minBuf))
@@ -57,8 +59,12 @@ class MicCaptureTest {
         assertTrue(text.contains("fgsMicrophone=not declared"))
         assertTrue(text.contains("retried=true"))
         assertTrue(text.contains("activeRecording=session=4 source=6 silenced=true"))
-        assertTrue(text.contains("try source=VOICE_RECOGNITION(6) rate=16000 ch=MONO minBuf=-2 state=- recState=- err=BAD_VALUE(-2) isClientSilenced=unknown"))
-        assertTrue(text.contains("try source=MIC(1) rate=48000 ch=MONO minBuf=3840 state=1 recState=3 err=silenced isClientSilenced=true"))
+        assertTrue(text.contains("try source=VOICE_RECOGNITION(6) rate=16000 ch=MONO minBuf=-2 state=- recState=- err=BAD_VALUE(-2) isClientSilenced=unknown peak=-"))
+        assertTrue(text.contains("try source=MIC(1) rate=48000 ch=MONO minBuf=3840 state=1 recState=3 err=silenced isClientSilenced=true peak=-"))
+        assertEquals("zeroAmplitude", captureVerdict(read = 0, silenced = false, peak = 0, requireAudible = true))
+        assertEquals(null, captureVerdict(read = 0, silenced = false, peak = 40, requireAudible = true))
+        assertEquals("silenced", captureVerdict(read = 0, silenced = true, peak = 0, requireAudible = true))
+        assertEquals("read(-3)", captureVerdict(read = -3, silenced = false, peak = 0, requireAudible = true))
         assertTrue(text.contains("chosen=none"))
     }
 

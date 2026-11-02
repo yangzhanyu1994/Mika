@@ -64,18 +64,24 @@ class VoiceInput(
         return session
     }
 
-    /** 自带识别拒绝时,用已经配好的语音模型接着录。没有这样的模型就没有退路。 */
+    /** 自带识别拒绝时,先用设置里的语音服务,否则用已经配好的语音模型。都没有就没有退路。 */
     private fun captureFallback(tag: String): (() -> SpeechSession)? {
+        settings.fallbackService()?.let { choice ->
+            val spec = SpeechEngineSpec.Provider(SpeechServices.provider(choice), choice.model, TranscribeMethod.AudioTranscriptions)
+            return { providerSession(spec, tag) }
+        }
         val spec = SpeechResolver.captureFallback(providers.providers.value) ?: return null
         return { providerSession(spec, tag) }
     }
 
     private fun providerSession(spec: SpeechEngineSpec.Provider, tag: String): SpeechSession {
         val p = spec.provider
+        val key = if (SpeechServices.isSpeechProvider(p.id)) settings.serviceKey(SpeechServices.kindOf(p.id))
+            else providers.providerKey(p.id)
         val t = transcriber(p)
         val iso = SystemSpeech.isoCode(tag)
         return ProviderSpeech(PcmRecorder(context = context), { wav ->
-            t.transcribe(p, providers.providerKey(p.id), spec.model, spec.method, wav, iso)
+            t.transcribe(p, key, spec.model, spec.method, wav, iso)
         })
     }
 }
