@@ -1,5 +1,9 @@
 package com.wangzan101.mika.core.action
 
+import com.wangzan101.mika.core.caution.AppCautionRuntime
+import com.wangzan101.mika.core.caution.CautionTarget
+import com.wangzan101.mika.core.caution.CautionVerdict
+import com.wangzan101.mika.core.caution.SocialWrite
 import com.wangzan101.mika.core.gate.ConfirmationGate
 import com.wangzan101.mika.core.risk.IrrevAction
 import com.wangzan101.mika.core.gate.Irreversible
@@ -10,6 +14,7 @@ import com.wangzan101.mika.core.uistate.interfaces
 import com.wangzan101.mika.core.tool.ToolDispatcher
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import com.wangzan101.mika.core.tool.Verb
 import com.wangzan101.mika.core.run.RunProvenance
@@ -30,6 +35,12 @@ sealed interface Decision {
     data object Denied : Decision
     /** 作用在 Mika 自己身上,不做。 */
     data object OwnApp : Decision
+    /** 账号保护拦住了这一步(只读或不被同意)。任务可以继续读。 */
+    data class CautionBlocked(val message: String, val app: String?) : Decision
+    /** 这一步是写操作,要先问用户。 */
+    data class CautionAsk(val write: SocialWrite, val summary: String, val app: String) : Decision
+    /** 次数用完、冷却中或屏幕上出现风控提示:停掉整个任务。 */
+    data class CautionStop(val message: String, val takeover: Boolean, val app: String) : Decision
 }
 
 /**
@@ -47,6 +58,8 @@ class ConfirmDecision(
     private val autonomous: Boolean = false,
     /** Mika 自己的包名:作用在它上面的写操作一律不做(不自己给自己点同意、改设置)。 */
     private val selfPackage: String? = null,
+    /** 微信、小红书等账号保护。没有时不额外限制。 */
+    private val caution: AppCautionRuntime? = null,
 ) {
     /**
      * 刚判过的这一步是对外动作(发送、提交:判定命中、放行后要做的)时它所在的网站或 App(见 [OutwardPacing.siteOf]),
@@ -58,6 +71,7 @@ class ConfirmDecision(
     /** 判定放在锁屏等待之后:按此刻重新读的一屏判。 */
     suspend fun judge(tool: String, args: JsonObject, origin: Origin): Decision {
         outwardSite = null
+        cautionVerdict(tool, args)?.let { return it }
         if (autonomous || approvals.autonomous()) {
             val target = tools.gateTarget(tool)
             if (IrreversibleDetector.needsCheck(target, args)) {
@@ -93,6 +107,53 @@ class ConfirmDecision(
         return if (policy.refuseUnresolved) Decision.Unresolved else Decision.Traced(unresolvedDetail(args, aim.readAgeMs, fresh != null))
     }
 
+    /**
+     * 账号保护:风控提示、冷却、次数、只读和每次确认。自主模式也不跳过。
+     * 放行为 null,交给原来的付款判断。
+     */
+    private suspend fun cautionVerdict(tool: String, args: JsonObject): Decision? {
+        val runtime = caution ?: return null
+        val screen = try {
+            tools.interfaces.peek()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        val verb = tools.verb(tool)
+        val label = CautionTarget.label(screen, args)
+        val typed = if (verb == com.wangzan101.mika.core.tool.Verb.TypeText) (args["text"] as? JsonPrimitive)?.contentOrNull else null
+        val search = CautionTarget.searchField(screen, args)
+        val pressEnter = bool(args, "pressEnter") || (verb == com.wangzan101.mika.core.tool.Verb.PressKey && keyActivates(args))
+        val pkg = screen?.packageName
+        return when (val v = runtime.assess(pkg, verb, label, typed, search, pressEnter, screen)) {
+            CautionVerdict.Allow -> null
+            is CautionVerdict.Blocked -> Decision.CautionBlocked(v.message, pkg)
+            is CautionVerdict.Ask -> {
+                val app = pkg ?: ""
+                val canAsk = confirmations != null && !autonomous && !approvals.autonomous() &&
+                    provenance.attendance != com.wangzan101.mika.core.run.Attendance.Unattended &&
+                    provenance.origin == com.wangzan101.mika.core.run.RunOrigin.Ui
+                when (ApprovalPolicy.decideWrite(com.wangzan101.mika.core.caution.AppCautionMode.ConfirmWrites, canAsk)) {
+                    Approval.Ask -> Decision.CautionAsk(v.write, v.summary, app)
+                    else -> Decision.CautionBlocked(com.wangzan101.mika.core.caution.Messages.needsSomeone(app, v.write), app)
+                }
+            }
+            is CautionVerdict.Stop -> Decision.CautionStop(v.message, v.takeover, v.packageName)
+        }
+    }
+
+    private fun bool(args: JsonObject, key: String): Boolean {
+        val value = args[key] as? JsonPrimitive ?: return false
+        return value.booleanOrNull == true || value.contentOrNull == "true"
+    }
+
+    private fun keyActivates(args: JsonObject): Boolean {
+        val key = (args["keyCode"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+            ?: (args["key"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+        return key == 66 || key == 160
+    }
+
     /** 命中的是发送、提交时这一屏的网站或 App。 */
     private fun outward(hit: Irreversible?, screen: ScreenSnapshot?): String? =
         if (hit?.action == IrrevAction.send || hit?.action == IrrevAction.submit) OutwardPacing.siteOf(screen?.packageName, screen?.web != null) else null
@@ -121,6 +182,7 @@ class ConfirmDecision(
         when (ApprovalPolicy.decide(risk, provenance)) {
             Approval.Allow -> return null.also { audit("allowed") }
             Approval.Deny -> return Decision.Denied.also { audit("denied") }
+            Approval.Refuse -> return null.also { audit("allowed") }
             Approval.Ask -> Unit
         }
         val required = Decision.Required(asked)
@@ -135,6 +197,11 @@ class ConfirmDecision(
     /** 执行了一个写操作:同意按它的规则作废或保留。 */
     fun noteWrite(tool: String) {
         confirmations?.noteWrite(tools.verb(tool))
+    }
+
+    /** 账号保护已经问过并马上执行:不要把这次同意留给下一步。 */
+    fun dropGrant() {
+        confirmations?.noteWrite(Verb.Tap)
     }
 
     /** 留痕:点的是哪个编号、那次读屏多久以前,或点的坐标。 */

@@ -158,6 +158,7 @@ internal class ScreenSession(
     suspend fun observe(withImage: Boolean, adaptiveImage: Boolean = false, recordFrame: Boolean = true): ToolExecution {
         val s = snapshot()
         val (tree, ocr, ocrStatus) = readTree(s)
+        com.wangzan101.mika.core.caution.CautionScreenText.sink?.invoke(s.packageName, ocr.orEmpty().joinToString("\n") { it.text })
         val imageReason = if (adaptiveImage && tree.poor) tree.reason else null
         val sendImage = withImage || imageReason != null
         stabilizer?.latest?.let { shown = it; chain.clear(); chain += it.snapshotId }

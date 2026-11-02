@@ -173,7 +173,7 @@ internal class UserExchange(
             put("ok", false); put("error", code); put("message", message)
             put("recoverable", recoverable); put("counts_as_failure", false)
         })
-        when (g.declare(r, o.foregroundApp)) {
+        when (g.declare(r, o.foregroundApp, again = o.again)) {
             DeclareResult.Mismatch -> {
                 emit(event("mismatch"))
                 return ToolExecution(buildJsonObject {

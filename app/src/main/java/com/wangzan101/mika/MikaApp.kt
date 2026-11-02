@@ -291,6 +291,11 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         )
     }
 
+    val cautionStore: com.wangzan101.mika.settings.CautionStore by lazy {
+        com.wangzan101.mika.settings.CautionStore(java.io.File(filesDir, "caution.json"))
+    }
+    val caution: com.wangzan101.mika.core.caution.AppCautionRuntime get() = cautionStore.runtime
+
     override fun onCreate() {
         super.onCreate()
         // 界面以外的文字(通知、服务、悬浮胶囊)按 App 语言取
@@ -307,6 +312,15 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         phone.shellManager.start()
         // 连接一可用就补上默认打开的几项能力
         phone.recovery.start()
+        com.wangzan101.mika.core.caution.CautionScreenText.sink = { pkg, text -> caution.noteOcr(pkg, text) }
+        com.wangzan101.mika.caution.WirelessIdleWatcher(
+            cautionStore, taskState.busy,
+            canWrite = { checkSelfPermission(com.wangzan101.mika.core.shell.PermissionCommands.WRITE_SECURE_SETTINGS) == android.content.pm.PackageManager.PERMISSION_GRANTED },
+            isOn = { com.wangzan101.mika.cap.phone.setup.DeveloperSettings.wirelessDebugging(contentResolver) },
+            turnOn = { com.wangzan101.mika.cap.phone.setup.DeveloperSettings.turnOnWirelessDebugging(contentResolver) },
+            turnOff = { com.wangzan101.mika.cap.phone.setup.DeveloperSettings.turnOffWirelessDebugging(contentResolver) },
+            scope = scope,
+        ).start()
         // 告诉内置助手:Mika 被杀后要不要把它拉起来(胶囊一直显示或有任务在跑时才要)
         com.wangzan101.mika.cap.phone.setup.RestoreWishSync(
             phone.hub, FeatureFlags.get(this).capsuleModeChanges(), taskState.busy, phone.recoverySettings.consent, phone.recovery.accessibility,

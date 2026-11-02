@@ -1,5 +1,6 @@
 package com.wangzan101.mika.core.action
 
+import com.wangzan101.mika.core.caution.AppCautionMode
 import com.wangzan101.mika.core.run.Attendance
 import com.wangzan101.mika.core.run.RunOrigin
 import com.wangzan101.mika.core.run.RunProvenance
@@ -41,6 +42,8 @@ sealed interface Approval {
     data object Ask : Approval
     /** 本次运行不能向用户要同意，动作必须停下。 */
     data object Deny : Approval
+    /** 这一步不做,并把原因告诉用户。不是「问不到人」。 */
+    data object Refuse : Approval
 }
 
 /** 审批判定:纯函数。只有付款要问;问不到人(无人值守、子任务)或不在手机上(渠道、定时、MCP 发起的)时付款不做。 */
@@ -49,5 +52,15 @@ object ApprovalPolicy {
         !risk.payment -> Approval.Allow
         run.attendance == Attendance.Unattended || run.origin != RunOrigin.Ui -> Approval.Deny
         else -> Approval.Ask
+    }
+
+    /**
+     * 账号保护里的写操作。只读直接拒绝;每次确认走和付款一样的询问(问不到人就不做);
+     * 正常模式不额外问。自主模式也不悄悄做这些写操作。
+     */
+    fun decideWrite(mode: AppCautionMode, canAsk: Boolean): Approval = when (mode) {
+        AppCautionMode.Normal -> Approval.Allow
+        AppCautionMode.ReadOnly -> Approval.Refuse
+        AppCautionMode.ConfirmWrites -> if (canAsk) Approval.Ask else Approval.Deny
     }
 }

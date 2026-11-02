@@ -45,9 +45,13 @@ class ConfirmationGate {
     private var grant: Grant? = null
     private val declined = mutableSetOf<Pair<IrrevAction, String>>()
 
-    @Synchronized fun declare(req: ConfirmationRequest, foregroundApp: String?): DeclareResult {
+    @Synchronized fun declare(req: ConfirmationRequest, foregroundApp: String?): DeclareResult =
+        declare(req, foregroundApp, again = false)
+
+    /** [again] 为 true 时,同一类操作被拒绝过也再问一次(账号保护的每次确认)。 */
+    @Synchronized fun declare(req: ConfirmationRequest, foregroundApp: String?, again: Boolean): DeclareResult {
         if (req.action == IrrevAction.pay) return DeclareResult.Unsupported
-        if (req.action to req.app in declined) return DeclareResult.Declined
+        if (!again && req.action to req.app in declined) return DeclareResult.Declined
         if (foregroundApp == null || foregroundApp != req.app) return DeclareResult.Mismatch
         pending = req
         return DeclareResult.Pending

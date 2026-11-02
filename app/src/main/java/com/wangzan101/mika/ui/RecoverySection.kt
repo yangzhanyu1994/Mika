@@ -57,7 +57,7 @@ object RecoveryCopy {
         )
         RecoveryCapability.RestoreAfterReboot -> SwitchCopy(
             tr(R.string.rec_boot),
-            tr(R.string.rec_default_on),
+            tr(R.string.rec_default_off),
             tr(R.string.rec_boot_body),
         )
         RecoveryCapability.AutoWirelessDebugging -> SwitchCopy(
