@@ -44,4 +44,17 @@ object SpeechResolver {
             else SpeechEngineSpec.Provider(p, choice.model, choice.method)
         }
     }
+
+    /**
+     * 手机自带识别拒绝第三方时,改用已经配好的语音模型录音转写。
+     * 没有名字像语音模型的服务商就没有这条退路,不拿对话模型去猜。
+     */
+    fun captureFallback(providers: List<Provider>): SpeechEngineSpec.Provider? {
+        for (p in providers) {
+            if (!Transcriber.supports(p)) continue
+            val model = p.models.orEmpty().firstOrNull(Transcriber::looksLikeSpeech) ?: continue
+            return SpeechEngineSpec.Provider(p, model.id, TranscribeMethod.AudioTranscriptions)
+        }
+        return null
+    }
 }

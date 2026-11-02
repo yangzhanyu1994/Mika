@@ -21,7 +21,11 @@
     <string name="voice_no_match">Didn’t catch that. Hold and say it again</string>
     <string name="voice_busy">Speech recognition is busy. Try again in a moment</string>
     <string name="voice_network">No network, couldn’t turn it into text</string>
-    <string name="voice_mic_unavailable">The microphone isn’t available. Another app may be using it</string>
+    <string name="voice_mic_unavailable">The microphone didn’t open</string>
+    <string name="voice_mic_in_use_title">The microphone didn’t open</string>
+    <string name="voice_mic_in_use_body">Mika let go of its own recorder and tried once more. It still couldn’t record. If the microphone dot in the status bar belongs to another app, close that recording and hold to talk again. On a Samsung phone, also turn on Microphone access in Quick Settings, and turn off Bixby voice wake (“Hi Bixby”). The inner and cover screens of a foldable don’t each hold the microphone.</string>
+    <string name="voice_recognizer_rejected_title">The phone’s speech service refused</string>
+    <string name="voice_recognizer_rejected_body">This is not another app using the microphone. The built-in recognizer rejected the request. On a China-market Samsung (such as the W25) that service is Samsung’s, not Google’s, and it often refuses other apps — especially while Bixby voice wake is on. Mika tries the next recognizer, and if a speech-to-text model is already set up it records and sends the audio there instead. You can also pick one in Settings › Models › Speech to text. The foldable’s two screens don’t change this.</string>
     <string name="voice_hold_to_talk">Hold to talk</string>
     <string name="voice_mic_blocked_title">The microphone still isn’t available</string>
     <string name="voice_mic_blocked_body">Recording is already allowed, but Mika still can’t record. Check that the microphone access switch in Quick Settings is on (Android 12 and later), and that Mika’s microphone isn’t turned off in the system’s permission manager. Another app may also be using the microphone.</string>

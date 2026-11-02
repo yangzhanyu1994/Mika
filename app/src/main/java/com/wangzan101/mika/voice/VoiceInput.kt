@@ -25,6 +25,8 @@ class VoiceInput(
     private val transcriber: (Provider) -> Transcriber = { p -> Transcriber(ProviderStore.modelHttp, providers.clientHeaders(p)) },
 ) : VoiceSource {
     private val context = context.applicationContext
+    /** 上一次还没丢掉的会话。再开一次之前先取消,避免自己占着麦克风。 */
+    private var live: SpeechSession? = null
 
     /** 界面先问一下能不能用、用的是哪个(卡片顶上那个小标签)。 */
     override fun spec(): SpeechEngineSpec =
@@ -41,26 +43,38 @@ class VoiceInput(
             return FailedSession(SpeechFailure.NoPermission)
         }
         val tag = language ?: SystemSpeech.speechTag(AppLanguage.current(context))
-        return when (spec) {
+        live?.cancel()
+        val session = when (spec) {
             is SpeechEngineSpec.Doubao -> {
                 val credentials = settings.doubaoCredentials()
-                    ?: return FailedSession(SpeechFailure.Unavailable(SpeechEngineSpec.Why.DoubaoNotConfigured))
+                    ?: return FailedSession(SpeechFailure.Unavailable(SpeechEngineSpec.Why.DoubaoNotConfigured)).also { live = it }
                 DoubaoSpeech(PcmRecorder(streaming = true), { DoubaoTransport().connect(credentials, spec.resourceId) })
             }
             is SpeechEngineSpec.System -> SystemSpeechSession(
                 context, spec.onDevice, tag,
                 onNoResponse = settings::noteSystemSilent, onAnswered = settings::noteSystemAnswered,
                 attempts = SystemSpeech.attempts(SystemSpeech.services(context), settings.systemService),
+                captureFallback = captureFallback(tag),
             )
-            is SpeechEngineSpec.Provider -> {
-                val p = spec.provider
-                val t = transcriber(p)
-                val iso = SystemSpeech.isoCode(tag)
-                ProviderSpeech(PcmRecorder(), { wav ->
-                    t.transcribe(p, providers.providerKey(p.id), spec.model, spec.method, wav, iso)
-                })
-            }
+            is SpeechEngineSpec.Provider -> providerSession(spec, tag)
             is SpeechEngineSpec.Unavailable -> FailedSession(SpeechFailure.Unavailable(spec.why))
         }
+        live = session
+        return session
+    }
+
+    /** 自带识别拒绝时,用已经配好的语音模型接着录。没有这样的模型就没有退路。 */
+    private fun captureFallback(tag: String): (() -> SpeechSession)? {
+        val spec = SpeechResolver.captureFallback(providers.providers.value) ?: return null
+        return { providerSession(spec, tag) }
+    }
+
+    private fun providerSession(spec: SpeechEngineSpec.Provider, tag: String): SpeechSession {
+        val p = spec.provider
+        val t = transcriber(p)
+        val iso = SystemSpeech.isoCode(tag)
+        return ProviderSpeech(PcmRecorder(), { wav ->
+            t.transcribe(p, providers.providerKey(p.id), spec.model, spec.method, wav, iso)
+        })
     }
 }

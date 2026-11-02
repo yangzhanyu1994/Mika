@@ -39,6 +39,17 @@ class PcmRecorder(private val maxMs: Int = 60_000, private val streaming: Boolea
 
     @SuppressLint("MissingPermission") // 权限由调用方在 start 之前检查
     override fun start(): Boolean {
+        if (tryStart()) return true
+        // 麦克风刚被上一个识别器放开时,第一次会进不了录音状态。等一下再试一次。
+        try {
+            Thread.sleep(RETRY_MS)
+        } catch (_: InterruptedException) {
+            return false
+        }
+        return tryStart()
+    }
+
+    private fun tryStart(): Boolean {
         synchronized(lock) {
             if (record != null) return false
             val minBuf = AudioRecord.getMinBufferSize(Wav.RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -154,5 +165,10 @@ class PcmRecorder(private val maxMs: Int = 60_000, private val streaming: Boolea
     private fun release(rec: AudioRecord) {
         try { rec.stop() } catch (_: IllegalStateException) {}
         rec.release()
+    }
+
+    companion object {
+        /** 上一个识别器刚放开麦克风时,隔这么久再试一次。 */
+        const val RETRY_MS = 200L
     }
 }

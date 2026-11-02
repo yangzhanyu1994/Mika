@@ -12,7 +12,12 @@ import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import com.wangzan101.mika.i18n.AppLanguage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /** 手机上登记的一个识别服务,见 [SystemSpeech.services]。[component] 是「包名/类名」的短写。 */
@@ -42,13 +47,16 @@ object SystemSpeech {
         SpeechRecognizer.ERROR_SERVER, ERROR_SERVER_DISCONNECTED -> SpeechFailure.Network
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> SpeechFailure.NoPermission
         SpeechRecognizer.ERROR_AUDIO -> SpeechFailure.AudioError
-        SpeechRecognizer.ERROR_CLIENT -> SpeechFailure.MicUnavailable
+        // 客户端错误:服务拒绝了这次请求。不是「麦克风被别的应用占用」。
+        SpeechRecognizer.ERROR_CLIENT -> SpeechFailure.RecognizerRejected
         else -> SpeechFailure.Unavailable(SpeechEngineSpec.Why.SystemGone)
     }
 
     /** 一个错误码到了之后怎么办:重开、按已听到的收尾、报失败。 */
     sealed interface Outcome {
         data object Retry : Outcome
+        /** 这个识别服务拒绝了客户端:拆掉它,换下一个服务再听。 */
+        data object SwitchService : Outcome
         data object Finish : Outcome
         data class Fail(val why: SpeechFailure) : Outcome
     }
@@ -57,13 +65,17 @@ object SystemSpeech {
      * [holding] 是手还按着,[heard] 是已经听到过字。已经听到的字不丢:松开后、或按着时中途出错,都按听到的收尾。
      * 松开后有的服务在 stopListening 之后报 ERROR_CLIENT,什么都没听到时那是没听清,不是麦克风坏了。
      */
-    fun afterError(code: Int, holding: Boolean, heard: Boolean): Outcome {
+    fun afterError(code: Int, holding: Boolean, heard: Boolean, attemptsLeft: Boolean = false): Outcome {
         val failure = failureOf(code)
         return when {
             failure == null && holding -> Outcome.Retry
             failure == null || heard -> Outcome.Finish
+            // 松开后有的服务在 stopListening 之后报 CLIENT:没听到字就是没听清,不是麦克风坏了
             !holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.Finish
-            else -> Outcome.Fail(failure)
+            // 手还按着就报 CLIENT:这个服务不接这次请求。还有别的服务就换;没有就说明是识别服务拒绝,不是麦被占用
+            holding && code == SpeechRecognizer.ERROR_CLIENT && attemptsLeft -> Outcome.SwitchService
+            holding && code == SpeechRecognizer.ERROR_CLIENT -> Outcome.Fail(SpeechFailure.RecognizerRejected)
+            else -> Outcome.Fail(failure!!)
         }
     }
 
@@ -154,10 +166,19 @@ class SystemSpeechSession(
     private val onAnswered: (String?) -> Unit = {},
     /** 依次去试的识别服务,见 [SystemSpeech.attempts];null 是系统默认的。 */
     private val attempts: List<String?> = listOf(null),
+    /**
+     * 自带识别拒绝这次请求、也没有下一个服务时,改用已经配好的语音模型录音。
+     * 调用时才开始录音,好让刚才的识别器先把麦克风放开。
+     */
+    private val captureFallback: (() -> SpeechSession)? = null,
 ) : SpeechSession {
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val out = SessionEvents()
+    /** 已经改走录音转写时,松开和取消都交给它。 */
+    private var adopted: SpeechSession? = null
+    private var adoptedJob: Job? = null
     private val segments = Segments()
     override val events: Flow<SpeechEvent> = out.flow
     override val live = true
@@ -224,7 +245,9 @@ class SystemSpeechSession(
         onNoResponse()
     }
 
-    override fun release() = onMain {
+    override fun release() {
+        adopted?.let { it.release(); return }
+        onMain {
         if (!holding || done()) return@onMain
         holding = false
         if (restartPending) {
@@ -238,9 +261,12 @@ class SystemSpeechSession(
             // stopListening 里同步回调可能已经结束会话,也可能拆掉了等待;没结束就一定再排上
             if (!done()) main.postDelayed(timeout, FINAL_WAIT_MS)
         }
+        }
     }
 
     override fun cancel() {
+        adopted?.cancel()
+        adoptedJob?.cancel()
         // 先关事件出口(任何线程都立刻生效),再到主线程收拾识别器
         if (!out.cancel()) return
         onMain {
@@ -285,9 +311,40 @@ class SystemSpeechSession(
         main.removeCallbacks(silence)
         main.postDelayed(silence, NO_RESPONSE_MS)
         try {
+            // 三星的识别服务在上一次还没 cancel 时再 startListening,会立刻回 ERROR_CLIENT
+            runCatching { recognizer?.cancel() }
             recognizer?.startListening(intent)
         } catch (e: RuntimeException) {
-            finish(SpeechEvent.Failed(SpeechFailure.MicUnavailable))
+            switchOrReject()
+        }
+    }
+
+    /** 这个服务不接第三方的请求:拆掉它,换下一个;没有了就改录音,再没有才说明是识别服务拒绝。 */
+    private fun switchOrReject() {
+        if (done()) return
+        teardown()
+        if (holding && attempt + 1 < attempts.size) {
+            attempt++
+            open(preferOnDevice = false)
+            return
+        }
+        val next = captureFallback
+        if (holding && next != null && adopted == null) {
+            adopt(next())
+            return
+        }
+        finish(SpeechEvent.Failed(SpeechFailure.RecognizerRejected))
+    }
+
+    private fun adopt(session: SpeechSession) {
+        adopted = session
+        adoptedJob = scope.launch {
+            session.events.collect { event ->
+                when (event) {
+                    is SpeechEvent.Final, is SpeechEvent.Failed -> out.finish(event)
+                    else -> out.send(event)
+                }
+            }
         }
     }
 
@@ -382,7 +439,8 @@ class SystemSpeechSession(
 
         override fun onError(error: Int) {
             if (recognizer == null || done()) return
-            heard()
+            // ERROR_CLIENT 不是「服务回了话」:记成回话会让下次还先试这个拒绝我们的服务
+            if (error == SpeechRecognizer.ERROR_CLIENT) main.removeCallbacks(silence) else heard()
             if (recognizer == null || done()) return
             if (usingOnDevice && SystemSpeech.languageMissing(error) && segments.full().isEmpty()) {
                 open(preferOnDevice = false)
@@ -393,8 +451,9 @@ class SystemSpeechSession(
                 }
                 return
             }
-            when (val o = SystemSpeech.afterError(error, holding, heard = segments.full().isNotEmpty())) {
+            when (val o = SystemSpeech.afterError(error, holding, heard = segments.full().isNotEmpty(), attemptsLeft = attempt + 1 < attempts.size || captureFallback != null)) {
                 SystemSpeech.Outcome.Retry -> emptySegment()
+                SystemSpeech.Outcome.SwitchService -> switchOrReject()
                 SystemSpeech.Outcome.Finish -> finish(SpeechEvent.Final(segments.full()))
                 is SystemSpeech.Outcome.Fail -> finish(SpeechEvent.Failed(o.why))
             }

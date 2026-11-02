@@ -131,8 +131,8 @@ class VoiceHoldTest {
         compose.onNodeWithTag("composer-field").assertTextEquals("帮我订明天的票")
     }
 
-    /** 已允许录音,识别服务仍报录音出错:弹说明(麦克风总开关、权限管理);别的麦克风起不来照旧只提示一句。 */
-    @Test fun audioErrorExplainsWhereToCheckButClientErrorKeepsTheOldHint() {
+    /** 录音器没打开、识别服务拒绝,都给出说明,不再把客户端错误说成「别的 App 占着麦克风」。 */
+    @Test fun micAndRecognizerFailuresExplainThemselves() {
         composer()
         fun failWith(why: SpeechFailure) {
             compose.onNodeWithTag("composer-field").performTouchInput { down(center) }
@@ -141,9 +141,11 @@ class VoiceHoldTest {
             compose.onNodeWithTag("composer-field").performTouchInput { up() }
         }
         failWith(SpeechFailure.MicUnavailable)
-        waitTag("voice-toast")
-        compose.onNodeWithText("麦克风用不了，可能正被别的 App 占着").assertExists()
-        assertEquals(0, compose.onAllNodesWithTag("voice-sheet").fetchSemanticsNodes().size)
+        waitTag("voice-sheet")
+        compose.onNodeWithText("麦克风没有打开").assertExists()
+        failWith(SpeechFailure.RecognizerRejected)
+        waitTag("voice-sheet")
+        compose.onNodeWithText("手机自带的语音识别拒绝了").assertExists()
         failWith(SpeechFailure.AudioError)
         waitTag("voice-sheet")
         compose.onNodeWithText("麦克风还是用不了").assertExists()
