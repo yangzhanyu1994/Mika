@@ -1,10 +1,35 @@
 package com.wangzan101.mika.voice
 
 import com.wangzan101.mika.settings.FeatureFlagsCapsuleTest.MemoryPrefs
+import com.wangzan101.mika.settings.KeyCipher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SpeechSettingsTest {
+    @Test fun savedSpeechServiceKeepsTheKeyOffTheChoice() {
+        val prefs = MemoryPrefs()
+        val cipher = object : KeyCipher {
+            override fun encrypt(plain: ByteArray) = plain
+            override fun decrypt(data: ByteArray) = data
+        }
+        val settings = SpeechSettings(prefs, cipher)
+        settings.saveService(SpeechServices.SILICON, SpeechServices.silicon.baseUrl, SpeechServices.silicon.model, "sk-test")
+        val choice = settings.choice.value as SpeechChoice.Service
+        assertEquals(SpeechServices.silicon.model, choice.model)
+        assertEquals("sk-test", settings.serviceKey(SpeechServices.SILICON))
+        assertTrue(settings.choice.value.toString().contains("sk-test").not())
+        val again = SpeechSettings(prefs, cipher)
+        assertEquals(choice, again.choice.value)
+        assertEquals("sk-test", again.serviceKey(SpeechServices.SILICON))
+        val spec = SpeechResolver.resolve(choice, SystemCapability(true, true), emptyList()) as SpeechEngineSpec.Provider
+        assertEquals(SpeechServices.silicon.baseUrl, spec.provider.baseUrl)
+        assertEquals(TranscribeMethod.AudioTranscriptions, spec.method)
+        assertTrue(SpeechServices.deepSeekOnly(listOf(
+            com.wangzan101.mika.settings.Provider("d", "DeepSeek", com.wangzan101.mika.settings.ProviderConfig.Kind.OpenAiCompat, "https://api.deepseek.com"),
+        )))
+    }
+
     @Test fun freshIsAuto() {
         assertEquals(SpeechChoice.Auto, SpeechSettings(MemoryPrefs()).choice.value)
     }
@@ -21,6 +46,7 @@ class SpeechSettingsTest {
             SpeechChoice.Provider("p3", "gemini-flash", TranscribeMethod.GeminiInline),
             SpeechChoice.Provider("p4", "asr-x", TranscribeMethod.ChatInputAudioUri),
             SpeechChoice.Provider("p5", "asr-y", TranscribeMethod.ChatInputAudioOnly),
+            SpeechChoice.Service(SpeechServices.SILICON, SpeechServices.silicon.baseUrl, SpeechServices.silicon.model),
         )
         for (c in choices) {
             val prefs = MemoryPrefs()

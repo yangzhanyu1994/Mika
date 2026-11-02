@@ -33,6 +33,9 @@
     <string name="voice_mic_diag_note">The log below can be copied. It lists each source and sample rate, the error, and isClientSilenced.</string>
     <string name="voice_mic_diag_copy">Copy log</string>
     <string name="voice_mic_diag_copied">Capture log copied</string>
+    <string name="voice_mic_diag_empty">(no capture log)</string>
+    <string name="voice_need_model_title">Set up speech to text</string>
+    <string name="voice_need_model_body">DeepSeek can’t transcribe speech. Set up a speech service in Settings › Models › Speech to text. SiliconFlow SenseVoice (FunAudioLLM/SenseVoiceSmall) works in mainland China and new accounts get free credit.</string>
     <string name="voice_provider_failed">Couldn’t turn it into text: %1$s</string>
     <string name="voice_unavailable_title">Voice input isn’t ready</string>
     <string name="voice_unavailable_no_engine">This phone has no built-in speech recognition, and no speech-to-text model has been picked. Pick a provider’s speech model in Settings › Models › Speech to text and it will work.</string>

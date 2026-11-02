@@ -32,6 +32,9 @@
     <string name="voice_mic_diag_note">下面這段可以複製，裡面有試過的音源、取樣率、錯誤碼和 isClientSilenced。</string>
     <string name="voice_mic_diag_copy">複製診斷</string>
     <string name="voice_mic_diag_copied">已複製錄音診斷</string>
+    <string name="voice_mic_diag_empty">（這次沒有寫到錄音診斷）</string>
+    <string name="voice_need_model_title">先設定語音轉文字</string>
+    <string name="voice_need_model_body">DeepSeek 不支援語音辨識，請在設定 › 模型 › 語音轉文字設定語音轉文字服務。推薦矽基流動 SenseVoice（FunAudioLLM/SenseVoiceSmall）。</string>
     <string name="voice_provider_failed">沒能轉成文字：%1$s</string>
     <string name="voice_unavailable_title">還不能語音輸入</string>
     <string name="voice_unavailable_no_engine">這臺手機沒有自帶的語音辨識，也還沒選轉文字的模型。到「設定 › 模型 › 語音轉文字」選一個服務商的語音模型就能用。</string>

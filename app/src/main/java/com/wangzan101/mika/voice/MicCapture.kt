@@ -5,8 +5,8 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 
 /**
- * 一次要试的录音配置。音源按语音识别优先:VOICE_RECOGNITION、MIC、VOICE_COMMUNICATION。
- * 采样率按 16k、48k、44.1k。每个采样率先单声道再立体声。minBuf ≤ 0 表示这个声道开不了,只记进诊断。
+ * 一次要试的录音配置。音源:VOICE_RECOGNITION、MIC、CAMCORDER、VOICE_COMMUNICATION、DEFAULT。
+ * 采样率:48k、44.1k、16k。每个采样率先单声道再立体声。minBuf ≤ 0 表示这个声道开不了,只记进诊断。
  */
 internal data class MicCandidate(
     val source: Int,
@@ -31,6 +31,7 @@ internal data class MicTryLine(
     val recordingState: Int?,
     val error: String?,
     val clientSilenced: Boolean?,
+    val peak: Int? = null,
 )
 
 internal data class MicReport(
@@ -47,9 +48,11 @@ internal object MicPlan {
     val sources = listOf(
         MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
         MediaRecorder.AudioSource.MIC to "MIC",
+        MediaRecorder.AudioSource.CAMCORDER to "CAMCORDER",
         MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
+        MediaRecorder.AudioSource.DEFAULT to "DEFAULT",
     )
-    val rates = listOf(16_000, 48_000, 44_100)
+    val rates = listOf(48_000, 44_100, 16_000)
     val channels = listOf(AudioFormat.CHANNEL_IN_MONO to "MONO", AudioFormat.CHANNEL_IN_STEREO to "STEREO")
 
     fun attempts(minBuffer: (rate: Int, channel: Int) -> Int): List<MicCandidate> {
@@ -63,6 +66,17 @@ internal object MicPlan {
         }
         return out
     }
+}
+
+/**
+ * 这组配置能不能留下。[read] 是 AudioRecord.read 的返回值(负数为错误码)。
+ * 系统把客户端静音,或要求听到声音时采样全是 0,都不算打开。
+ */
+internal fun captureVerdict(read: Int, silenced: Boolean?, peak: Int, requireAudible: Boolean): String? = when {
+    read < 0 -> "read($read)"
+    silenced == true -> "silenced"
+    requireAudible && peak <= 0 -> "zeroAmplitude"
+    else -> null
 }
 
 /** getMinBufferSize 的失败码,写进诊断。 */
@@ -95,6 +109,7 @@ internal object MicReportFormat {
             append(" recState=").append(t.recordingState?.toString() ?: "-")
             append(" err=").append(t.error ?: "none")
             append(" isClientSilenced=").append(t.clientSilenced?.toString() ?: "unknown")
+            append(" peak=").append(t.peak?.toString() ?: "-")
             append('\n')
         }
         val chosen = report.chosen

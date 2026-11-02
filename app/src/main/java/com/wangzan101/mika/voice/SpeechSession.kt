@@ -41,6 +41,11 @@ sealed interface SpeechFailure {
      */
     data object RecognizerRejected : SpeechFailure
     /**
+     * 手机自带识别用不了,自己的录音已经试过,而且读到了声音,但没有语音转文字模型可交。
+     * 界面要明确说到「设置 › 模型 › 语音转文字」去选一个。
+     */
+    data object NeedsSpeechModel : SpeechFailure
+    /**
      * 识别服务报录音出错(ERROR_AUDIO),而且自己把音源和采样率试完仍录不上,或录得上但没有语音模型。
      * 试过哪些配置、错误码、有没有被系统静音,在 [com.wangzan101.mika.voice.MicDiagnostics]。
      */

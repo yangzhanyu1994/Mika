@@ -43,6 +43,9 @@ object SpeechResolver {
             if (p == null) SpeechEngineSpec.Unavailable(SpeechEngineSpec.Why.ProviderGone)
             else SpeechEngineSpec.Provider(p, choice.model, choice.method)
         }
+        is SpeechChoice.Service -> SpeechEngineSpec.Provider(
+            SpeechServices.provider(choice), choice.model, TranscribeMethod.AudioTranscriptions,
+        )
     }
 
     /**

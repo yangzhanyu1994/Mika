@@ -174,7 +174,22 @@
     <!-- Settings > Models: speech-to-text usage and its picker page -->
     <string name="role_speech">Speech to text</string>
     <string name="role_speech_what">Used while you hold to talk</string>
-    <string name="speech_hint">Choose the phone’s built-in recognition, a live speech service, or a provider model that transcribes after you finish. Online services use your provider quota.</string>
+    <string name="speech_hint">DeepSeek cannot transcribe speech. Add a speech service below (recommended: SiliconFlow SenseVoice), or use the phone’s recognizer. Chat providers are not speech services.</string>
+    <string name="speech_deepseek_card">DeepSeek can’t transcribe speech</string>
+    <string name="speech_svc_group">Speech service</string>
+    <string name="speech_svc_silicon">SiliconFlow SenseVoice</string>
+    <string name="speech_svc_silicon_note">Works in mainland China. Free credit for new accounts. Model %1$s</string>
+    <string name="speech_svc_dashscope">Alibaba DashScope Paraformer</string>
+    <string name="speech_svc_dashscope_note">Bailian API key. OpenAI-compatible transcription. Model %1$s</string>
+    <string name="speech_svc_compat">OpenAI-compatible endpoint</string>
+    <string name="speech_svc_compat_note">Any service with POST /v1/audio/transcriptions. Default model %1$s</string>
+    <string name="speech_svc_setup">The key stays on this phone and is only sent to the address below. DeepSeek’s key cannot be used here.</string>
+    <string name="speech_svc_url">Base URL</string>
+    <string name="speech_svc_model">Model</string>
+    <string name="speech_svc_key_hint">Paste the API key</string>
+    <string name="speech_svc_set">Set</string>
+    <string name="speech_svc_privacy">The key is encrypted on this phone. It is not stored in the capture log.</string>
+    <string name="speech_svc_remove">Remove this speech service</string>
     <string name="speech_system">Built into the phone</string>
     <string name="speech_system_offline">Works offline</string>
     <string name="speech_system_online">Needs internet</string>

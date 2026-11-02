@@ -104,14 +104,17 @@ import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.MicDiagnostics
+import com.wangzan101.mika.voice.MicOpener
 import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.SpeechFailure
 import com.wangzan101.mika.voice.VoiceSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 对话输入栏的按住说话:输入框上的手势([holdToTalk])、按住时整条变蓝的输入栏([VoiceBarCover])、
@@ -141,6 +144,8 @@ internal sealed interface VoiceSheet {
     data object MicInUse : VoiceSheet
     /** 手机自带识别拒绝了请求。三星上常见,不是麦克风被占用。 */
     data object RecognizerRejected : VoiceSheet
+    /** 自己的录音听到了声音,但还没选语音转文字模型。 */
+    data object NeedsModel : VoiceSheet
     data class Unavailable(val why: SpeechEngineSpec.Why) : VoiceSheet
 }
 
@@ -159,8 +164,9 @@ internal object VoiceCopy {
         SpeechFailure.Busy -> tr(R.string.voice_busy)
         SpeechFailure.Network -> tr(R.string.voice_network)
         SpeechFailure.MicUnavailable -> tr(R.string.voice_mic_unavailable)
-        SpeechFailure.RecognizerRejected -> tr(R.string.voice_recognizer_rejected_title)
-        SpeechFailure.AudioError -> tr(R.string.voice_mic_unavailable)
+        SpeechFailure.RecognizerRejected -> tr(R.string.voice_need_model_body)
+        SpeechFailure.NeedsSpeechModel -> tr(R.string.voice_need_model_body)
+        SpeechFailure.AudioError -> tr(R.string.voice_mic_blocked_body)
         // 服务商的错沿用模型出错时的说法(额度、Key、找不到模型……)
         is SpeechFailure.Provider -> tr(R.string.voice_provider_failed, why.error.message.orEmpty())
         SpeechFailure.NoPermission -> tr(R.string.voice_permission_title)
@@ -306,10 +312,11 @@ internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit): V
                     is SpeechFailure.Unavailable -> vh.sheet = VoiceSheet.Unavailable(why.why)
                     // 录音权限还没给:照旧弹系统框或「去设置」。已经给了仍报没有权限,或识别服务报录音出错:
                     // 另弹说明(系统的麦克风总开关、权限管理)。麦克风起不来的其他情况照旧提示可能被占用
-                    SpeechFailure.NoPermission -> if (vh.ensureMic()) vh.sheet = VoiceSheet.MicBlocked
-                    SpeechFailure.AudioError -> vh.sheet = VoiceSheet.MicBlocked
-                    SpeechFailure.MicUnavailable -> vh.sheet = VoiceSheet.MicInUse
-                    SpeechFailure.RecognizerRejected -> vh.sheet = VoiceSheet.RecognizerRejected
+                    SpeechFailure.NoPermission -> if (vh.ensureMic()) presentCapture(context, scope, vh, VoiceSheet.MicBlocked)
+                    SpeechFailure.AudioError -> presentCapture(context, scope, vh, VoiceSheet.MicBlocked)
+                    SpeechFailure.MicUnavailable -> presentCapture(context, scope, vh, VoiceSheet.MicInUse)
+                    SpeechFailure.RecognizerRejected -> presentCapture(context, scope, vh, VoiceSheet.RecognizerRejected)
+                    SpeechFailure.NeedsSpeechModel -> presentCapture(context, scope, vh, VoiceSheet.NeedsModel)
                     else -> vh.toast = VoiceCopy.failure(why)
                 }
                 vh.hold.reset()
@@ -652,9 +659,9 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
             action = stringResource(R.string.ok_got_it)
             go = {}
         }
-        VoiceSheet.RecognizerRejected -> {
-            title = stringResource(R.string.voice_recognizer_rejected_title)
-            body = stringResource(R.string.voice_recognizer_rejected_body)
+        VoiceSheet.RecognizerRejected, VoiceSheet.NeedsModel -> {
+            title = stringResource(R.string.voice_need_model_title)
+            body = stringResource(R.string.voice_need_model_body)
             action = stringResource(R.string.voice_go_pick)
             go = onPickSpeech
         }
@@ -665,7 +672,8 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
         containerColor = c.surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
-        val showDiag = sheet == VoiceSheet.MicBlocked || sheet == VoiceSheet.MicInUse
+        val showDiag = sheet == VoiceSheet.MicBlocked || sheet == VoiceSheet.MicInUse ||
+            sheet == VoiceSheet.RecognizerRejected || sheet == VoiceSheet.NeedsModel
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 18.dp).testTag("voice-sheet")) {
             Text(title, style = MikaType.Title, color = c.ink)
             Text(body, Modifier.padding(top = 8.dp), style = SheetBody, color = c.ink2)
@@ -678,11 +686,28 @@ internal fun VoiceSheetHost(vh: VoiceHold, onPickSpeech: () -> Unit) {
     }
 }
 
+/**
+ * 说明弹层出现之前,如果这次还没写过录音诊断,先把音源和采样率试一遍。
+ * 已经给了录音权限仍报没有权限、识别服务拒绝、录音出错,都走这里,避免再弹出没有诊断的旧说明。
+ */
+private fun presentCapture(context: Context, scope: CoroutineScope, vh: VoiceHold, sheet: VoiceSheet) {
+    scope.launch {
+        if (MicDiagnostics.text.isBlank()) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val opened = MicOpener.open(context.applicationContext, requireAudible = true)
+                    opened.record?.let { MicOpener.release(it) }
+                }
+            }
+        }
+        vh.sheet = if (MicDiagnostics.explainOpened && sheet == VoiceSheet.MicBlocked) VoiceSheet.NeedsModel else sheet
+    }
+}
+
 /** 「麦克风还是用不了」上那段可复制的录音诊断:试过的音源、采样率、错误码、isClientSilenced。 */
 @Composable
 private fun MicDiagBlock() {
-    val text = MicDiagnostics.text
-    if (text.isBlank()) return
+    val text = MicDiagnostics.text.ifBlank { stringResource(R.string.voice_mic_diag_empty) }
     val c = MikaTheme.colors
     val context = LocalContext.current
     Text(stringResource(R.string.voice_mic_diag_note), Modifier.padding(top = 10.dp), style = FootText, color = c.ink3)

@@ -45,7 +45,14 @@ object SpeechOptions {
                 val p = providers.firstOrNull { it.id == choice.providerId } ?: return unset
                 Summary(choice.model, p.name, false)
             }
+            is SpeechChoice.Service -> Summary(choice.model, tr(serviceName(choice.kind)), false)
         }
+    }
+
+    private fun serviceName(kind: String) = when (kind) {
+        SpeechServices.SILICON -> R.string.speech_svc_silicon
+        SpeechServices.DASHSCOPE -> R.string.speech_svc_dashscope
+        else -> R.string.speech_svc_compat
     }
 
     private fun systemSummary(system: SystemCapability) = Summary(

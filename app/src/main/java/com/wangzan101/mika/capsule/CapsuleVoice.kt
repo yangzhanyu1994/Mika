@@ -1,9 +1,12 @@
 package com.wangzan101.mika.capsule
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -16,6 +19,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,7 +49,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -58,12 +66,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
+import com.wangzan101.mika.ui.components.ButtonKind
+import com.wangzan101.mika.ui.components.ButtonSize
+import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.ChatCopy
 import com.wangzan101.mika.ui.Spinner
 import com.wangzan101.mika.ui.VoiceCopy
 import com.wangzan101.mika.ui.VoiceWave
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.VoiceSource
@@ -459,5 +471,36 @@ private fun Panel(talk: CapsuleTalk, state: HoldToTalk.State, below: Boolean) {
             else -> stringResource(if (below) R.string.capsule_voice_foot_convert_down else R.string.capsule_voice_foot_convert_up)
         }
         Text(foot, Modifier.fillMaxWidth().padding(top = 8.dp), style = FootText, color = c.ink3, maxLines = 2)
+    }
+}
+
+/** 悬浮胶囊旁边的录音诊断:说明可以选中,下面一段记录可以复制。 */
+@Composable
+internal fun CapsuleVoiceDiag(message: String, log: String, onDismiss: () -> Unit) {
+    val c = MikaTheme.colors
+    val context = LocalContext.current
+    Column(
+        Modifier.padding(bottom = 8.dp).widthIn(max = 320.dp).background(c.surface, RoundedCornerShape(16.dp))
+            .border(0.5.dp, c.glassEdge, RoundedCornerShape(16.dp)).padding(12.dp)
+            .testTag("capsule-voice-diag"),
+    ) {
+        Text(message, style = MikaType.Caption, color = c.ink, maxLines = 6)
+        SelectionContainer {
+            Text(
+                log, Modifier.padding(top = 8.dp).heightIn(max = 140.dp).verticalScroll(rememberScrollState()).testTag("capsule-voice-log"),
+                fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 15.sp, color = c.ink2,
+            )
+        }
+        MikaButton(
+            stringResource(R.string.voice_mic_diag_copy),
+            {
+                context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Mika", "$message\n$log"))
+                Toast.makeText(context, context.getString(R.string.voice_mic_diag_copied), Toast.LENGTH_SHORT).show()
+                onDismiss()
+            },
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            kind = ButtonKind.Tonal,
+            size = ButtonSize.Small,
+        )
     }
 }

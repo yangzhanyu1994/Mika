@@ -93,6 +93,7 @@ import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.SpeechChoice
 import com.wangzan101.mika.voice.SpeechOptions
+import com.wangzan101.mika.voice.SpeechServices
 
 /** 设置 › 模型:和上手时的配置模型是同一页([ModelSetupScreen]),不在引导流程里。 */
 @Composable
@@ -810,9 +811,16 @@ object ModelsCopy {
     val SPEECH_ICON: ImageVector get() = MikaIcons.Mic
 
     fun speechLine(ui: ModelSetupUi): RoleLine {
+        if (SpeechServices.deepSeekOnly(ui.providers) && ui.speech !is SpeechChoice.Service) {
+            return RoleLine(UNSET, tr(R.string.speech_deepseek_card), unset = true)
+        }
         val s = SpeechOptions.summary(ui.speech, ui.systemSpeech, ui.providers)
         val unset = s.title == UNSET
-        return RoleLine(s.title, s.sub.orEmpty(), isModel = !unset && (ui.speech is SpeechChoice.Provider || ui.speech is SpeechChoice.Doubao), unset = unset, subtitleOk = s.subOk)
+        return RoleLine(
+            s.title, s.sub.orEmpty(),
+            isModel = !unset && (ui.speech is SpeechChoice.Provider || ui.speech is SpeechChoice.Doubao || ui.speech is SpeechChoice.Service),
+            unset = unset, subtitleOk = s.subOk,
+        )
     }
 
     fun roleIcon(role: ModelRole): ImageVector = when (role) {

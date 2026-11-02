@@ -32,6 +32,9 @@
     <string name="voice_mic_diag_note">下面这段可以复制，里面有试过的音源、采样率、错误码和 isClientSilenced。</string>
     <string name="voice_mic_diag_copy">复制诊断</string>
     <string name="voice_mic_diag_copied">已复制录音诊断</string>
+    <string name="voice_mic_diag_empty">（这次没有写到录音诊断）</string>
+    <string name="voice_need_model_title">先配置语音转文字</string>
+    <string name="voice_need_model_body">DeepSeek 不支持语音识别，请在设置 › 模型 › 语音转文字配置语音转文字服务。推荐硅基流动 SenseVoice（FunAudioLLM/SenseVoiceSmall，国内可访问，新账号有免费额度）。</string>
     <string name="voice_provider_failed">没能转成文字：%1$s</string>
     <string name="voice_unavailable_title">还不能语音输入</string>
     <string name="voice_unavailable_no_engine">这台手机没有自带的语音识别，也还没选转文字的模型。到「设置 › 模型 › 语音转文字」选一个服务商的语音模型就能用。</string>

@@ -87,12 +87,13 @@ internal class MicOpened(
 
 /**
  * 按 [MicPlan] 把音源、采样率、声道逐个试开。
- * 开起来但 [AudioRecordingConfiguration.isClientSilenced] 为 true 的不算成功,放开再试下一组。
+ * 开起来但 [AudioRecordingConfiguration.isClientSilenced] 为 true 的不算成功。
+ * [requireAudible] 时还要 read() 读到非零采样,全 0 就放开再试下一组(三星上录音状态是 RECORDING 仍可能是静音)。
  * 全部失败时隔 [PcmRecorder.RETRY_MS] 再走一遍:上一个识别器刚放开麦克风时,第一次经常进不了录音状态。
  */
 internal object MicOpener {
     @SuppressLint("MissingPermission")
-    fun open(context: Context?): MicOpened {
+    fun open(context: Context?, requireAudible: Boolean = false): MicOpened {
         val (focus, waited) = MicFocus.await()
         val am = context?.getSystemService(AudioManager::class.java)
         val active = snapshot(am)
@@ -102,7 +103,7 @@ internal object MicOpener {
         fun walk() {
             for (cand in ordered()) {
                 if (winner != null) return
-                val result = tryOne(context, am, cand)
+                val result = tryOne(context, am, cand, requireAudible)
                 tries += result.line
                 if (result.record != null) {
                     winner = result.record
@@ -145,41 +146,59 @@ internal object MicOpener {
     }
 
     @SuppressLint("MissingPermission")
-    private fun tryOne(context: Context?, am: AudioManager?, cand: MicCandidate): TryResult {
+    private fun tryOne(context: Context?, am: AudioManager?, cand: MicCandidate, requireAudible: Boolean): TryResult {
         if (cand.minBuf <= 0) {
-            return TryResult(line(cand, null, null, minBufError(cand.minBuf), null), null)
+            return TryResult(line(cand, null, null, minBufError(cand.minBuf), null, null), null)
         }
         val rec = try {
             build(context, cand)
         } catch (e: RuntimeException) {
-            return TryResult(line(cand, null, null, e.javaClass.simpleName, null), null)
+            return TryResult(line(cand, null, null, e.javaClass.simpleName, null, null), null)
         }
         if (rec.state != AudioRecord.STATE_INITIALIZED) {
             val state = rec.state
             rec.release()
-            return TryResult(line(cand, state, null, "notInitialized", null), null)
+            return TryResult(line(cand, state, null, "notInitialized", null, null), null)
         }
         try {
             rec.startRecording()
         } catch (_: IllegalStateException) {
             val state = rec.state
             rec.release()
-            return TryResult(line(cand, state, null, "IllegalStateException", null), null)
+            return TryResult(line(cand, state, null, "IllegalStateException", null, null), null)
         }
         if (rec.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
             val state = rec.state
             val recording = rec.recordingState
             release(rec)
-            return TryResult(line(cand, state, recording, "notRecording", null), null)
+            return TryResult(line(cand, state, recording, "notRecording", null, null), null)
         }
         val silenced = ourSilenced(am, rec.audioSessionId)
-        if (silenced == true) {
+        val read = if (silenced == true) -1 else readPeak(rec, cand)
+        val peak = if (read < 0) null else read
+        val err = captureVerdict(if (silenced == true) 0 else read, silenced, peak ?: 0, requireAudible)
+        if (err != null) {
             val state = rec.state
             val recording = rec.recordingState
             release(rec)
-            return TryResult(line(cand, state, recording, "silenced", true), null)
+            return TryResult(line(cand, state, recording, err, silenced, peak), null)
         }
-        return TryResult(line(cand, rec.state, rec.recordingState, null, silenced), rec)
+        return TryResult(line(cand, rec.state, rec.recordingState, null, silenced, peak), rec)
+    }
+
+    /** 读大约 100ms。返回峰值;read() 失败时返回负的错误码。 */
+    private fun readPeak(rec: AudioRecord, cand: MicCandidate): Int {
+        val channels = if (cand.channel == AudioFormat.CHANNEL_IN_STEREO) 2 else 1
+        val frames = (cand.rate / 10).coerceAtLeast(1)
+        val buf = ShortArray(frames * channels)
+        val n = rec.read(buf, 0, buf.size)
+        if (n < 0) return n
+        var peak = 0
+        for (i in 0 until n) {
+            val a = if (buf[i] < 0) -buf[i].toInt() else buf[i].toInt()
+            if (a > peak) peak = a
+        }
+        return peak
     }
 
     private fun build(context: Context?, cand: MicCandidate): AudioRecord {
@@ -224,8 +243,8 @@ internal object MicOpener {
         return runCatching { am.activeRecordingConfigurations }.getOrDefault(emptyList())
     }
 
-    private fun line(cand: MicCandidate, state: Int?, recording: Int?, error: String?, silenced: Boolean?) =
-        MicTryLine(cand.sourceName, cand.source, cand.rate, cand.channelName, cand.minBuf, state, recording, error, silenced)
+    private fun line(cand: MicCandidate, state: Int?, recording: Int?, error: String?, silenced: Boolean?, peak: Int?) =
+        MicTryLine(cand.sourceName, cand.source, cand.rate, cand.channelName, cand.minBuf, state, recording, error, silenced, peak)
 
     private class TryResult(val line: MicTryLine, val record: AudioRecord?)
 }

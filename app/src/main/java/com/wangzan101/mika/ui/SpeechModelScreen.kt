@@ -45,6 +45,7 @@ import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.voice.SpeechChoice
 import com.wangzan101.mika.voice.SpeechOptions
+import com.wangzan101.mika.voice.SpeechServices
 import com.wangzan101.mika.voice.SystemSpeech
 import com.wangzan101.mika.voice.DoubaoCredentials
 import com.wangzan101.mika.voice.DoubaoProtocol
@@ -62,6 +63,11 @@ class SpeechPickActions(
     /** 沿用已存的凭据,换成这种计费方式并选用。 */
     val useDoubao: (String) -> Unit = {},
     val clearDoubao: () -> Unit = {},
+    /** 打开硅基流动、百炼或通用转写的 Key 页。 */
+    val openService: (String) -> Unit = {},
+    /** (种类, 地址, 模型名, API Key)。 */
+    val saveService: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    val clearService: (String) -> Unit = {},
 )
 
 /**
@@ -76,6 +82,8 @@ fun SpeechModelScreen(store: ProviderStore, onBack: () -> Unit) {
     var doubaoConfigured by remember { mutableStateOf(settings?.hasDoubaoCredentials == true) }
     // 豆包的设置页叠在这一页上面;返回键先关它
     var doubaoOpen by remember { mutableStateOf(false) }
+    var serviceOpen by remember { mutableStateOf<String?>(null) }
+    var services by remember { mutableStateOf(settings?.configuredServiceKinds() ?: emptySet()) }
     val vm = remember {
         ModelSetupViewModel(
             store, scope,
@@ -107,19 +115,40 @@ fun SpeechModelScreen(store: ProviderStore, onBack: () -> Unit) {
             settings?.let { vm.pickSpeech(it.choice.value) }
             doubaoOpen = false
         },
+        openService = { serviceOpen = it },
+        saveService = { kind, url, model, key ->
+            checkNotNull(settings).saveService(kind, url, model, key)
+            services = settings.configuredServiceKinds()
+            vm.pickSpeech(settings.choice.value)
+            serviceOpen = null
+        },
+        clearService = { kind ->
+            settings?.clearService(kind)
+            services = settings?.configuredServiceKinds() ?: emptySet()
+            settings?.let { vm.pickSpeech(it.choice.value) }
+            serviceOpen = null
+        },
     )
-    if (doubaoOpen) {
-        BackHandler { doubaoOpen = false }
-        DoubaoSetupPage(ui.speech, doubaoConfigured, actions) { doubaoOpen = false }
-    } else {
-        SpeechModelContent(ui, probe, actions, onBack, doubaoConfigured)
+    when {
+        doubaoOpen -> {
+            BackHandler { doubaoOpen = false }
+            DoubaoSetupPage(ui.speech, doubaoConfigured, actions) { doubaoOpen = false }
+        }
+        serviceOpen != null -> {
+            BackHandler { serviceOpen = null }
+            SpeechServicePage(serviceOpen!!, ui.speech, services.contains(serviceOpen), actions) { serviceOpen = null }
+        }
+        else -> SpeechModelContent(ui, probe, actions, onBack, doubaoConfigured, services)
     }
 }
 
 /** 不带状态的选择页,便于测试:顶上一段说明,「手机自带」「不用」,下面按服务商分组单选。 */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: SpeechPickActions, onBack: () -> Unit, doubaoConfigured: Boolean = false) {
+fun SpeechModelContent(
+    ui: ModelSetupUi, probe: Map<String, String>, actions: SpeechPickActions, onBack: () -> Unit,
+    doubaoConfigured: Boolean = false, services: Set<String> = emptySet(),
+) {
     val c = MikaTheme.colors
     val system = ui.systemSpeech
     val choice = ui.speech
@@ -130,6 +159,7 @@ fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: Sp
         Text(
             tr(R.string.speech_hint), Modifier.padding(top = 4.dp, bottom = 12.dp), fontSize = 14.5.sp, lineHeight = 22.sp, color = c.ink2,
         )
+        SpeechServiceSection(choice, services, actions)
         GroupCard {
             RadioRow(
                 tr(R.string.speech_system), selected = systemSelected, enabled = system.available,
@@ -223,6 +253,91 @@ private fun DoubaoRow(choice: SpeechChoice, configured: Boolean, actions: Speech
             },
         )
     }
+}
+
+/** 国内可用的语音转文字服务,Key 在本页填写,不拿聊天用的 DeepSeek Key 去转写。 */
+@Composable
+private fun SpeechServiceSection(choice: SpeechChoice, services: Set<String>, actions: SpeechPickActions) {
+    GroupLabel(tr(R.string.speech_svc_group))
+    GroupCard {
+        SpeechServices.kinds.forEachIndexed { i, kind ->
+            val configured = kind in services
+            val selected = configured && choice is SpeechChoice.Service && choice.kind == kind
+            val model = (choice as? SpeechChoice.Service)?.takeIf { it.kind == kind }?.model
+                ?: SpeechServices.preset(kind)?.model
+            RadioRow(
+                tr(serviceTitle(kind)), selected = selected, first = i == 0,
+                onClick = { actions.openService(kind) },
+                subtitle = model?.let { tr(serviceNote(kind), it) } ?: tr(serviceNote(kind), ""),
+                trailing = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusPill(tr(if (configured) R.string.speech_svc_set else R.string.settings_not_set), if (configured) PillTone.Ok else PillTone.Neutral)
+                        RowChevron()
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpeechServicePage(kind: String, choice: SpeechChoice, configured: Boolean, actions: SpeechPickActions, onBack: () -> Unit) {
+    val c = MikaTheme.colors
+    val preset = SpeechServices.preset(kind)
+    val saved = choice as? SpeechChoice.Service
+    var url by remember { mutableStateOf(if (saved?.kind == kind) saved.baseUrl else preset?.baseUrl.orEmpty()) }
+    var model by remember { mutableStateOf(if (saved?.kind == kind) saved.model else preset?.model.orEmpty()) }
+    var key by remember { mutableStateOf("") }
+    var failed by remember { mutableStateOf(false) }
+    Page(tr(serviceTitle(kind)), onBack) {
+        Text(tr(R.string.speech_svc_setup), Modifier.padding(top = 4.dp, bottom = 8.dp), fontSize = 14.5.sp, lineHeight = 22.sp, color = c.ink2)
+        GroupCard {
+            if (preset == null) {
+                InputRow(tr(R.string.speech_svc_url), url, { url = it }, "https://example.com/v1", first = true, labelWidth = 110.dp)
+            }
+            InputRow(
+                tr(R.string.speech_svc_model), model, { model = it }, preset?.model ?: "whisper-1",
+                first = preset != null, labelWidth = 110.dp,
+            )
+            InputRow("API Key", key, { key = it; failed = false }, tr(R.string.speech_svc_key_hint), secret = true, labelWidth = 110.dp)
+        }
+        if (preset != null) {
+            FooterNote(preset.baseUrl, Modifier.padding(top = 8.dp))
+        }
+        FooterNote(tr(R.string.speech_svc_privacy), Modifier.padding(top = 4.dp))
+        MikaButton(
+            tr(R.string.speech_doubao_save),
+            onClick = {
+                failed = runCatching { actions.saveService(kind, if (preset != null) preset.baseUrl else url, model, key) }.isFailure
+                key = ""
+            },
+            Modifier.fillMaxWidth().padding(top = 8.dp).testTag("speech-service-save"),
+            enabled = key.isNotBlank() && model.isNotBlank() && (preset != null || url.isNotBlank()),
+        )
+        if (failed) FooterNote(tr(R.string.speech_doubao_save_failed), Modifier.padding(top = 8.dp), color = c.bad)
+        if (configured) {
+            Box(Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    tr(R.string.speech_svc_remove),
+                    Modifier.clip(MikaShapes.Pill).clickable(onClick = { actions.clearService(kind) }).padding(horizontal = 16.dp, vertical = 12.dp)
+                        .testTag("speech-service-remove"),
+                    style = MikaType.Body, color = c.bad,
+                )
+            }
+        }
+    }
+}
+
+private fun serviceTitle(kind: String) = when (kind) {
+    SpeechServices.SILICON -> R.string.speech_svc_silicon
+    SpeechServices.DASHSCOPE -> R.string.speech_svc_dashscope
+    else -> R.string.speech_svc_compat
+}
+
+private fun serviceNote(kind: String) = when (kind) {
+    SpeechServices.SILICON -> R.string.speech_svc_silicon_note
+    SpeechServices.DASHSCOPE -> R.string.speech_svc_dashscope_note
+    else -> R.string.speech_svc_compat_note
 }
 
 private fun planName(resource: String): Int =

@@ -46,9 +46,10 @@ class RestartsTest {
         assertEquals(SystemSpeech.Outcome.Finish, SystemSpeech.afterError(no, holding = false, heard = false))
         // 松开后有的服务报 CLIENT:什么都没听到就是没听清,不是麦克风坏了
         assertEquals(SystemSpeech.Outcome.Finish, SystemSpeech.afterError(client, holding = false, heard = false))
-        // 手还按着就报 CLIENT:还有别的服务就换,没有就说明是识别服务拒绝,不是麦被占用
-        assertEquals(SystemSpeech.Outcome.SwitchService, SystemSpeech.afterError(client, holding = true, heard = false, attemptsLeft = true))
-        assertEquals(SystemSpeech.Outcome.Fail(SpeechFailure.RecognizerRejected), SystemSpeech.afterError(client, holding = true, heard = false, attemptsLeft = false))
+        // 手还按着就报 CLIENT:自己试录音,不再停在「识别被拒绝」
+        assertEquals(SystemSpeech.Outcome.ProbeCapture, SystemSpeech.afterError(client, holding = true, heard = false, attemptsLeft = true))
+        assertEquals(SystemSpeech.Outcome.ProbeCapture, SystemSpeech.afterError(client, holding = true, heard = false, attemptsLeft = false))
+        assertEquals(SystemSpeech.Outcome.ProbeCapture, SystemSpeech.afterError(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS, holding = true, heard = false))
         assertEquals(SystemSpeech.Outcome.Finish, SystemSpeech.afterError(SpeechRecognizer.ERROR_NETWORK, holding = true, heard = true))
         assertEquals(SystemSpeech.Outcome.Fail(SpeechFailure.Network), SystemSpeech.afterError(SpeechRecognizer.ERROR_NETWORK, holding = false, heard = false))
         val audio = SpeechRecognizer.ERROR_AUDIO

@@ -33,6 +33,12 @@ sealed interface SpeechChoice {
 
     /** Native streaming ASR, with credentials stored separately from this non-secret selection. */
     data class Doubao(val resourceId: String = "volc.seedasr.sauc.duration") : SpeechChoice
+
+    /**
+     * 单独的语音转文字服务(硅基流动、百炼 Paraformer,或兼容 OpenAI 的转写地址)。
+     * Key 不在这里,加密存在 [SpeechSettings]。
+     */
+    data class Service(val kind: String, val baseUrl: String, val model: String) : SpeechChoice
 }
 
 /**
@@ -83,6 +89,60 @@ class SpeechSettings(private val prefs: SharedPreferences, private val cipher: K
     fun clearDoubao() {
         prefs.edit().remove(DOUBAO_KEY).apply()
         if (_choice.value is SpeechChoice.Doubao) set(SpeechChoice.Off)
+    }
+
+    /** 存下语音服务的地址、模型名和 Key,并把它选成现在的语音转文字。Key 加密,不进日志。 */
+    fun saveService(kind: String, baseUrl: String, model: String, apiKey: String) {
+        val url = baseUrl.trim().trimEnd('/')
+        val name = model.trim()
+        val key = apiKey.trim()
+        require(kind.isNotBlank() && url.isNotBlank() && name.isNotBlank() && key.isNotBlank())
+        val choice = SpeechChoice.Service(kind, url, name)
+        val encrypted = Base64.getEncoder().encodeToString(cipher.encrypt(key.toByteArray(Charsets.UTF_8)))
+        val meta = buildJsonObject {
+            put("baseUrl", JsonPrimitive(url))
+            put("model", JsonPrimitive(name))
+        }.toString()
+        prefs.edit()
+            .putString(KEY, encode(choice).toString())
+            .putString(serviceKeyName(kind), encrypted)
+            .putString(serviceMetaName(kind), meta)
+            .apply()
+        _choice.value = choice
+    }
+
+    fun serviceKey(kind: String): String? = runCatching {
+        val raw = prefs.getString(serviceKeyName(kind), null) ?: return null
+        String(cipher.decrypt(Base64.getDecoder().decode(raw)), Charsets.UTF_8).takeIf { it.isNotBlank() }
+    }.getOrNull()
+
+    fun serviceSaved(kind: String): SpeechChoice.Service? = runCatching {
+        val raw = prefs.getString(serviceMetaName(kind), null) ?: return null
+        val obj = Json.parseToJsonElement(raw).jsonObject
+        val url = obj["baseUrl"]?.jsonPrimitive?.contentOrNull ?: return null
+        val model = obj["model"]?.jsonPrimitive?.contentOrNull ?: return null
+        SpeechChoice.Service(kind, url, model)
+    }.getOrNull()
+
+    fun configuredServiceKinds(): Set<String> = SpeechServices.kinds.filter { serviceKey(it) != null }.toSet()
+
+    /**
+     * 自带识别失败时改用已经配好的语音服务。当前选的就是它时用当前的;
+     * 选了手机自带、但以前存过 Key,也还能退回去。
+     */
+    fun fallbackService(): SpeechChoice.Service? {
+        val current = _choice.value
+        if (current is SpeechChoice.Service && !serviceKey(current.kind).isNullOrBlank()) return current
+        return SpeechServices.kinds.firstNotNullOfOrNull { kind ->
+            val saved = serviceSaved(kind) ?: return@firstNotNullOfOrNull null
+            if (serviceKey(kind).isNullOrBlank()) null else saved
+        }
+    }
+
+    fun clearService(kind: String) {
+        prefs.edit().remove(serviceKeyName(kind)).remove(serviceMetaName(kind)).apply()
+        val current = _choice.value
+        if (current is SpeechChoice.Service && current.kind == kind) set(SpeechChoice.Auto)
     }
 
     private val _systemSilent = MutableStateFlow(prefs.getBoolean(SILENT, false))
@@ -145,6 +205,12 @@ class SpeechSettings(private val prefs: SharedPreferences, private val cipher: K
                 put("model", JsonPrimitive(choice.model))
                 put("method", JsonPrimitive(choice.method.name))
             }
+            is SpeechChoice.Service -> {
+                put(TYPE, JsonPrimitive("service"))
+                put("kind", JsonPrimitive(choice.kind))
+                put("baseUrl", JsonPrimitive(choice.baseUrl))
+                put("model", JsonPrimitive(choice.model))
+            }
         }
     }
 
@@ -161,6 +227,12 @@ class SpeechSettings(private val prefs: SharedPreferences, private val cipher: K
             val method = TranscribeMethod.entries.firstOrNull { it.name == obj["method"]?.jsonPrimitive?.contentOrNull }
             if (id == null || model == null || method == null) null else SpeechChoice.Provider(id, model, method)
         }
+        "service" -> {
+            val kind = obj["kind"]?.jsonPrimitive?.contentOrNull
+            val url = obj["baseUrl"]?.jsonPrimitive?.contentOrNull
+            val model = obj["model"]?.jsonPrimitive?.contentOrNull
+            if (kind == null || url == null || model == null) null else SpeechChoice.Service(kind, url, model)
+        }
         else -> null
     }
 
@@ -171,6 +243,9 @@ class SpeechSettings(private val prefs: SharedPreferences, private val cipher: K
         private const val SILENT = "speech_system_silent"
         private const val STRIKES = "speech_system_silent_strikes"
         private const val SERVICE = "speech_system_service"
+
+        private fun serviceKeyName(kind: String) = "speech_service_key_$kind"
+        private fun serviceMetaName(kind: String) = "speech_service_meta_$kind"
 
         /** 连着这么多次不响应才记下。 */
         const val SILENT_STRIKES = 2

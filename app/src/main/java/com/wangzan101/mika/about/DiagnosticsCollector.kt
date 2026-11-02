@@ -169,6 +169,7 @@ object DiagnosticsCollector {
             SpeechChoice.Off -> "off"
             is SpeechChoice.Doubao -> "doubao-asr-2.0 / ${c.resourceId}"
             is SpeechChoice.Provider -> c.model + (app.providers.providers.value.firstOrNull { it.id == c.providerId }?.let { " @ ${Diagnostics.host(it.baseUrl)}" } ?: " (provider removed)")
+            is SpeechChoice.Service -> "${c.model} @ ${Diagnostics.host(c.baseUrl)}"
         }
         DiagnosticsSnapshot.Speech(
             choice = choice,

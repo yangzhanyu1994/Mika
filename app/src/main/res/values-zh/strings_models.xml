@@ -171,7 +171,22 @@
     <!-- 设置 › 模型:语音转文字这个用途和它的选择页 -->
     <string name="role_speech">语音转文字</string>
     <string name="role_speech_what">按住说话时用</string>
-    <string name="speech_hint">可使用手机自带识别、边说边转的语音服务，或说完再转的服务商模型；在线服务使用你的服务商额度。</string>
+    <string name="speech_hint">DeepSeek 不支持语音识别。请在下面配置语音转文字服务（推荐硅基流动 SenseVoice，国内可访问，新账号有免费额度），或用手机自带识别。聊天用的服务商不能拿来转写。</string>
+    <string name="speech_deepseek_card">DeepSeek 不支持语音识别</string>
+    <string name="speech_svc_group">语音转文字服务</string>
+    <string name="speech_svc_silicon">硅基流动 SenseVoice</string>
+    <string name="speech_svc_silicon_note">国内可直接访问，新账号有免费额度。模型 %1$s</string>
+    <string name="speech_svc_dashscope">阿里云百炼 Paraformer</string>
+    <string name="speech_svc_dashscope_note">填百炼 API Key，走兼容转写接口。模型 %1$s</string>
+    <string name="speech_svc_compat">兼容 OpenAI 的转写接口</string>
+    <string name="speech_svc_compat_note">任何提供 POST /v1/audio/transcriptions 的地址。默认模型 %1$s</string>
+    <string name="speech_svc_setup">Key 只存在这台手机上，只发给下面这个地址。DeepSeek 的 Key 不能用在这里。</string>
+    <string name="speech_svc_url">接口地址</string>
+    <string name="speech_svc_model">模型</string>
+    <string name="speech_svc_key_hint">粘贴 API Key</string>
+    <string name="speech_svc_set">已设置</string>
+    <string name="speech_svc_privacy">Key 在本机加密保存，不会写进录音诊断。</string>
+    <string name="speech_svc_remove">移除这项语音服务</string>
     <string name="speech_system">手机自带</string>
     <string name="speech_system_offline">可离线</string>
     <string name="speech_system_online">需联网</string>

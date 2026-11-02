@@ -518,16 +518,17 @@ private fun RolesSection(ui: ModelSetupUi, onPick: (ModelRole) -> Unit, onReason
 ) {
     GroupLabel(ModelsCopy.ROLES)
     GroupCard {
+        // 语音转文字放在最上面:聊天服务商(例如只有 DeepSeek)没有这项,用户要一眼能看见
+        if (onSpeech != null) {
+            RoleCard(ModelsCopy.SPEECH_ICON, ModelsCopy.SPEECH_LABEL, ModelsCopy.speechLine(ui), first = true, tag = "role-speech", onClick = onSpeech)
+        }
         ModelRole.entries.forEachIndexed { i, role ->
-            RoleCard(ModelsCopy.roleIcon(role), ModelsCopy.roleLabel(role), ModelsCopy.roleLine(ui, role), first = i == 0, tag = "role-${role.name.lowercase()}") {
-                onPick(role)
-            }
+            RoleCard(
+                ModelsCopy.roleIcon(role), ModelsCopy.roleLabel(role), ModelsCopy.roleLine(ui, role),
+                first = onSpeech == null && i == 0, tag = "role-${role.name.lowercase()}",
+            ) { onPick(role) }
             ReasoningControl(ui, role) { onReasoning(role, it) }
             if (onContext != null) ModelContextControl(ui, role, onContext)
-        }
-        // 第四个用途:语音转文字(不是对话模型,点开是单独的选择页)
-        if (onSpeech != null) {
-            RoleCard(ModelsCopy.SPEECH_ICON, ModelsCopy.SPEECH_LABEL, ModelsCopy.speechLine(ui), tag = "role-speech", onClick = onSpeech)
         }
     }
 }
