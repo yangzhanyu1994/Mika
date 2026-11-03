@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="caution_title">降低風控</string>
+    <string name="settings_caution">降低風控</string>
+    <string name="settings_caution_sub">放慢操作，限制次數，寫操作先問你</string>
+    <string name="caution_switch">降低風控</string>
+    <string name="caution_switch_sub">預設開著。關掉後不再額外停頓、限次，也不再為這些 App 的寫操作徵求確認。</string>
+    <string name="caution_intro">開著時，每一步之間隨機停幾秒，每個 App 有每小時和每天的次數。看到「操作頻繁」、滑塊、拼圖或人臉驗證就馬上停下，並暫停這個 App 24 小時，不會去通過驗證。微信、小紅書、淘寶、閒魚、京東裡的發送、發佈、評論、點讚、關注、下單、付款和改價，都要你先點頭。閒魚擦亮也要確認。淘寶、閒魚、京東還會限制搜尋、翻頁和打開詳情；小紅書的瀏覽次數更少。</string>
+    <string name="caution_mode_read">只讀</string>
+    <string name="caution_mode_confirm">每次確認</string>
+    <string name="caution_mode_normal">正常</string>
+    <string name="caution_pace">每步間隔</string>
+    <string name="caution_hourly">每小時操作次數</string>
+    <string name="caution_daily">每天操作次數</string>
+    <string name="caution_delay">每步間隔（秒，最小-最大）</string>
+    <string name="caution_delay_hint">每次在這兩個數之間隨機取，不是固定的秒數。</string>
+    <string name="caution_cooldown">出現安全驗證後暫停（小時）</string>
+    <string name="caution_search_hour">每小時搜尋次數</string>
+    <string name="caution_search_day">每天搜尋次數</string>
+    <string name="caution_page_hour">每小時翻頁次數</string>
+    <string name="caution_page_day">每天翻頁次數</string>
+    <string name="caution_detail_hour">每小時打開詳情次數</string>
+    <string name="caution_detail_day">每天打開詳情次數</string>
+    <string name="caution_log">操作記錄</string>
+    <string name="caution_log_empty">還沒有記錄</string>
+    <string name="caution_other_apps">其他應用</string>
+    <string name="caution_limits">次數和間隔</string>
+    <string name="caution_save">儲存</string>
+    <string name="caution_foot">安全驗證包括「操作頻繁」、滑塊、拼圖和人臉驗證。Mika 會停下並通知你，這個 App 暫停 24 小時。不會去拖滑塊，也不會嘗試通過驗證。</string>
+    <string name="caution_wechat">微信</string>
+    <string name="caution_xhs">小紅書</string>
+    <string name="caution_taobao">淘寶</string>
+    <string name="caution_xianyu">閒魚</string>
+    <string name="caution_jd">京東</string>
+</resources>

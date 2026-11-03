@@ -92,6 +92,8 @@ Then try saying: "Set alarms for 9:40 and 10:00 tomorrow morning" or "Check the 
 
 By default Mika runs in **Ask mode**: it checks with you only before spending money (placing orders, paying) and just does everything else. You can switch to **Autonomous mode** instead. See [Ask and Autonomous](docs/modes.en.md).
 
+**Reduce risk** is on by default in Settings and can be turned off. It spaces steps by a random few seconds, caps actions per app, stops when a safety check appears, and asks before writes in WeChat, Xiaohongshu, Taobao, Xianyu and JD. It does not try to pass those checks.
+
 For how each of these works and the finer details, see [features in detail](docs/features.en.md).
 
 <details>

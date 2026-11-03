@@ -52,6 +52,7 @@ Any app installed on your phone works, with no per-app integration: Mika looks a
 ## Ask / Autonomous
 
 - The default is **Ask**: only spending money (placing orders, paying) is confirmed with you first; sending messages, submitting and deleting are done directly. You can switch to **Autonomous**, which does not ask even before paying. See [Ask and Autonomous](modes.en.md).
+- **Reduce risk** is a settings switch, on by default, and you can turn it off. While it is on, steps wait a random few seconds, and each app has an hourly and a daily cap. A verification prompt or “too many actions” stops the task and pauses that app for a day; Mika does not try to pass the check. WeChat, Xiaohongshu, Taobao, Xianyu and JD ask before sending, posting, commenting, liking, following, ordering, paying, changing a price, or refreshing an Xianyu listing. Taobao, Xianyu and JD also cap searches, page turns and item opens, and Xiaohongshu browses less. The pause and the caps can be changed.
 
 ## Memory
 

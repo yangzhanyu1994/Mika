@@ -155,7 +155,7 @@ class AgentLoop(
     /** 同一网站、App 里连着做对外动作(发送、提交)时两次之间的间隔;默认不等。 */
     private val outwardPacing: OutwardPacing = OutwardPacing.Off,
     private val trace: RunTrace? = null,
-    /** 微信、小红书等账号保护。没有时不额外限制。 */
+    /** 降低风控。没有时不额外限制。 */
     private val caution: com.wangzan101.mika.core.caution.AppCautionRuntime? = null,
 ) {
     init {

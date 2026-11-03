@@ -48,6 +48,7 @@ import com.wangzan101.mika.ui.components.GroupCard
 import com.wangzan101.mika.ui.components.GroupLabel
 import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.MikaButton
+import com.wangzan101.mika.ui.components.MikaSwitch
 import com.wangzan101.mika.ui.components.PageScaffold
 import com.wangzan101.mika.ui.components.PillTone
 import com.wangzan101.mika.ui.components.RowChevron
@@ -130,6 +131,9 @@ fun SettingsScreen(
     val mcpNetworkOn by mcp.settings.enabled.collectAsState()
     val mcpUsbOn by mcp.usb.enabled.collectAsState()
     val mcpOn = mcpNetworkOn || mcpUsbOn
+    val cautionStore = (context.applicationContext as com.wangzan101.mika.MikaApp).cautionStore
+    val cautionRevision by cautionStore.revision.collectAsState()
+    val reduceRisk = remember(cautionRevision) { cautionStore.reduceRisk }
     // 「Token 用量」一行的值:近 7 天的合计,账本每记一笔就重算
     val usage = remember { (context.applicationContext as com.wangzan101.mika.MikaApp).usage }
     val usageVersion by usage.version.collectAsState()
@@ -173,6 +177,7 @@ fun SettingsScreen(
             onOpenPhoneOps = { page = SettingsPage.PhoneOps },
             onOpenAppAccess = { page = SettingsPage.AppAccess },
             onOpenCaution = { page = SettingsPage.Caution },
+            reduceRisk = reduceRisk, onReduceRisk = { (context.applicationContext as com.wangzan101.mika.MikaApp).cautionStore.setReduceRisk(it) },
             onOpenDuringWork = { page = SettingsPage.DuringWork },
             capsuleMode = capsuleMode, onOpenCapsule = { page = SettingsPage.Capsule },
             onOpenNotifications = { notificationsFrom = SettingsPage.Home; page = SettingsPage.Notifications },
@@ -279,6 +284,9 @@ fun SettingsContent(
     onOpenPhoneOps: () -> Unit = {},
     onOpenAppAccess: () -> Unit = {},
     onOpenCaution: () -> Unit = {},
+    /** 「降低风控」开着没有。首页上就能拨,点进行再改间隔和每个 App 的上限。 */
+    reduceRisk: Boolean = true,
+    onReduceRisk: (Boolean) -> Unit = {},
     onOpenDuringWork: () -> Unit = {},
     /** 悬浮胶囊此刻的选择,写在「悬浮胶囊」一行的右边。 */
     capsuleMode: CapsuleMode = CapsuleMode.DEFAULT,
@@ -333,7 +341,10 @@ fun SettingsContent(
                 RowChevron()
             }
             ListRow(MikaIcons.Phone, stringResource(R.string.appaccess_title), stringResource(R.string.appaccess_row_sub), onClick = onOpenAppAccess) { RowChevron() }
-            ListRow(MikaIcons.Shield, stringResource(R.string.settings_caution), stringResource(R.string.settings_caution_sub), onClick = onOpenCaution) { RowChevron() }
+            ListRow(MikaIcons.Shield, stringResource(R.string.settings_caution), stringResource(R.string.settings_caution_sub), onClick = onOpenCaution) {
+                MikaSwitch(reduceRisk, onReduceRisk, Modifier.testTag("settings-reduce-risk"))
+                RowChevron()
+            }
             ListRow(MikaIcons.Moon, stringResource(R.string.settings_during_work), stringResource(R.string.settings_during_work_sub), onClick = onOpenDuringWork) { RowChevron() }
             ListRow(MikaIcons.Message, CapsuleSettingsCopy.TITLE, CapsuleSettingsCopy.SUBTITLE, onClick = onOpenCapsule) {
                 RowValue(CapsuleSettingsCopy.label(capsuleMode))

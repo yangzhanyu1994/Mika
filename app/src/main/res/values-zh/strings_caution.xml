@@ -1,24 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="caution_title">账号保护</string>
-    <string name="settings_caution">账号保护</string>
-    <string name="settings_caution_sub">微信和小红书默认只读</string>
-    <string name="caution_intro">只读可以打开、滚动、阅读和总结，不能发送、发布、评论、点赞、关注、加好友、删除或提交。每次确认会先问你。正常不再额外限制。</string>
+    <string name="caution_title">降低风控</string>
+    <string name="settings_caution">降低风控</string>
+    <string name="settings_caution_sub">放慢操作，限制次数，写操作先问你</string>
+    <string name="caution_switch">降低风控</string>
+    <string name="caution_switch_sub">默认开着。关掉后不再额外停顿、限次，也不再为这些 App 的写操作征求确认。</string>
+    <string name="caution_intro">开着时，每一步之间随机停几秒，每个 App 有每小时和每天的次数。看到「操作频繁」、滑块、拼图或人脸验证就马上停下，并暂停这个 App 24 小时，不会去通过验证。微信、小红书、淘宝、闲鱼、京东里的发送、发布、评论、点赞、关注、下单、付款和改价，都要你先点头。闲鱼擦亮也要确认。淘宝、闲鱼、京东还会限制搜索、翻页和打开详情；小红书的浏览次数更少。</string>
     <string name="caution_mode_read">只读</string>
     <string name="caution_mode_confirm">每次确认</string>
     <string name="caution_mode_normal">正常</string>
+    <string name="caution_pace">每步间隔</string>
     <string name="caution_hourly">每小时操作次数</string>
     <string name="caution_daily">每天操作次数</string>
-    <string name="caution_delay">两次点击之间的间隔（秒）</string>
+    <string name="caution_delay">每步间隔（秒，最小-最大）</string>
+    <string name="caution_delay_hint">每次在这两个数之间随机取，不是固定的秒数。</string>
     <string name="caution_cooldown">出现安全验证后暂停（小时）</string>
+    <string name="caution_search_hour">每小时搜索次数</string>
+    <string name="caution_search_day">每天搜索次数</string>
+    <string name="caution_page_hour">每小时翻页次数</string>
+    <string name="caution_page_day">每天翻页次数</string>
+    <string name="caution_detail_hour">每小时打开详情次数</string>
+    <string name="caution_detail_day">每天打开详情次数</string>
     <string name="caution_log">操作记录</string>
     <string name="caution_log_empty">还没有记录</string>
     <string name="caution_other_apps">其他应用</string>
     <string name="caution_limits">次数和间隔</string>
     <string name="caution_save">保存</string>
-    <string name="caution_wireless">空闲时关闭无线调试</string>
-    <string name="caution_wireless_on">Mika 能在下次任务开始时自己打开无线调试，所以这项默认开着。最后一个任务结束大约一分钟后关掉。</string>
-    <string name="caution_wireless_off">普通手机上，Mika 不能自己重新打开无线调试，所以这项默认关着。如果你打开它，下次任务前需要自己去打开无线调试，除非 Mika 已经有修改系统设置的授权。</string>
+    <string name="caution_foot">安全验证包括「操作频繁」、滑块、拼图和人脸验证。Mika 会停下并通知你，这个 App 暂停 24 小时。不会去拖滑块，也不会尝试通过验证。</string>
     <string name="caution_wechat">微信</string>
     <string name="caution_xhs">小红书</string>
+    <string name="caution_taobao">淘宝</string>
+    <string name="caution_xianyu">闲鱼</string>
+    <string name="caution_jd">京东</string>
 </resources>

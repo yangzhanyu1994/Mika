@@ -55,7 +55,7 @@ object ApprovalPolicy {
     }
 
     /**
-     * 账号保护里的写操作。只读直接拒绝;每次确认走和付款一样的询问(问不到人就不做);
+     * 降低风控里的写操作。只读直接拒绝;每次确认走和付款一样的询问(问不到人就不做);
      * 正常模式不额外问。自主模式也不悄悄做这些写操作。
      */
     fun decideWrite(mode: AppCautionMode, canAsk: Boolean): Approval = when (mode) {

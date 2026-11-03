@@ -58,7 +58,7 @@ class ConfirmDecision(
     private val autonomous: Boolean = false,
     /** Mika 自己的包名:作用在它上面的写操作一律不做(不自己给自己点同意、改设置)。 */
     private val selfPackage: String? = null,
-    /** 微信、小红书等账号保护。没有时不额外限制。 */
+    /** 降低风控:微信、小红书、淘宝、闲鱼、京东等。没有时不额外限制。 */
     private val caution: AppCautionRuntime? = null,
 ) {
     /**
@@ -108,7 +108,7 @@ class ConfirmDecision(
     }
 
     /**
-     * 账号保护:风控提示、冷却、次数、只读和每次确认。自主模式也不跳过。
+     * 降低风控:风控提示、冷却、次数、只读和每次确认。自主模式也不跳过,也不去通过验证。
      * 放行为 null,交给原来的付款判断。
      */
     private suspend fun cautionVerdict(tool: String, args: JsonObject): Decision? {

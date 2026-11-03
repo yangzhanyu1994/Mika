@@ -65,7 +65,7 @@ class ActionExecutor(
     autonomous: Boolean = false,
     /** 同一网站、App 里连着做对外动作(发送、提交)时两次之间的间隔(见 [OutwardPacing]);默认不等。 */
     private val pacing: OutwardPacing = OutwardPacing.Off,
-    /** 账号保护。没有时不额外限制。 */
+    /** 降低风控。没有时不额外限制。 */
     private val caution: AppCautionRuntime? = null,
     /** 写操作要问用户时,用现有的确认卡片问。返回是否同意。 */
     private val cautionAsk: (suspend (ConfirmationRequest) -> Boolean)? = null,
@@ -356,7 +356,9 @@ class ActionExecutor(
         SocialWrite.Send, SocialWrite.Post, SocialWrite.Comment -> IrrevAction.send
         SocialWrite.Delete -> IrrevAction.delete
         SocialWrite.Submit -> IrrevAction.submit
-        SocialWrite.Like, SocialWrite.Follow, SocialWrite.AddFriend -> IrrevAction.other
+        SocialWrite.Order -> IrrevAction.order
+        SocialWrite.Pay -> IrrevAction.pay
+        SocialWrite.Like, SocialWrite.Follow, SocialWrite.AddFriend, SocialWrite.Refresh, SocialWrite.Price -> IrrevAction.other
     }
 
     private fun cautionOutcome(
