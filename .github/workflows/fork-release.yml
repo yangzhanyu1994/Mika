@@ -1,6 +1,9 @@
 name: Mika Fork Release
 on:
   create:
+  push:
+    branches:
+      - "release/v*"
   workflow_dispatch:
     inputs:
       version:
@@ -67,8 +70,8 @@ jobs:
             fi
           done
           printf '%s' "$MIKA_FORK_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mika-fork-release.p12"
-          chmod 600 "$RUNNER_TEMP/mika-fork-release.jks"
-          echo "MIKA_FORK_KEYSTORE=$RUNNER_TEMP/mika-fork-release.jks" >> "$GITHUB_ENV"
+          chmod 600 "$RUNNER_TEMP/mika-fork-release.p12"
+          echo "MIKA_FORK_KEYSTORE=$RUNNER_TEMP/mika-fork-release.p12" >> "$GITHUB_ENV"
           echo "MIKA_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "MIKA_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "MIKA_RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
