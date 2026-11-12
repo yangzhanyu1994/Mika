@@ -6,8 +6,15 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.wangzan101.mika.R
 import com.wangzan101.mika.core.trigger.ConditionNotify
 import com.wangzan101.mika.core.trigger.PlanDraft
@@ -66,6 +74,7 @@ fun PlanEditorDialog(
     onSave: (TriggerDefinition) -> Unit,
     voice: com.wangzan101.mika.voice.VoiceSource? = null,
     onParse: (suspend (String, PlanDraft) -> PlanDraft?)? = null,
+    onPickSpeech: () -> Unit = {},
 ) {
     val newId = remember(original?.id) { original?.id ?: UUID.randomUUID().toString() }
     var draft by remember(original?.id) {
@@ -80,34 +89,21 @@ fun PlanEditorDialog(
     }
     val preview = candidate.getOrNull()
 
+    DialogFollowsIme()
     MikaDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.windowInsetsPadding(
+            WindowInsets.statusBars.union(WindowInsets.displayCutout)
+                .union(WindowInsets.navigationBars).union(WindowInsets.ime),
+        ),
+        properties = DialogProperties(decorFitsSystemWindows = false),
         title = { Text(tr(if (original == null) R.string.plans_create_title else R.string.plans_edit_title)) },
         text = {
-            KeyboardDismissArea {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    if (voice != null || onParse != null) {
-                        UtteranceCapture(
-                            voice,
-                            tr(R.string.plans_voice_hold),
-                            tr(R.string.plans_voice_example),
-                            parsing,
-                            onUtterance = { words ->
-                                val parse = onParse ?: return@UtteranceCapture
-                                parsing = true
-                                parseNote = null
-                                scope.launch {
-                                    val next = runCatching { parse(words, draft) }.getOrNull()
-                                    parsing = false
-                                    if (next == null) parseNote = tr(R.string.plans_parse_failed)
-                                    else {
-                                        draft = next
-                                        parseNote = tr(R.string.plans_parsed_note)
-                                    }
-                                }
-                            },
-                        )
-                        parseNote?.let { Text(it, style = MikaType.Caption, color = MikaTheme.colors.ink3) }
+            Column(Modifier.fillMaxWidth()) {
+                KeyboardDismissArea(Modifier.weight(1f, fill = false)) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                    parseNote?.let {
+                        Text(it, style = MikaType.Caption, color = MikaTheme.colors.ink3)
                         Spacer(Modifier.height(10.dp))
                     }
                     SegmentedControl(
@@ -243,6 +239,30 @@ fun PlanEditorDialog(
                             color = MikaTheme.colors.bad,
                         )
                     }
+                }
+            }
+                if (voice != null || onParse != null) {
+                    UtteranceBar(
+                        voice,
+                        InputHints.plan,
+                        parsing,
+                        onUtterance = { words ->
+                            val parse = onParse ?: return@UtteranceBar
+                            parsing = true
+                            parseNote = null
+                            scope.launch {
+                                val next = runCatching { parse(words, draft) }.getOrNull()
+                                parsing = false
+                                if (next == null) parseNote = tr(R.string.plans_parse_failed)
+                                else {
+                                    draft = next
+                                    parseNote = tr(R.string.plans_parsed_note)
+                                }
+                            }
+                        },
+                        onPickSpeech = onPickSpeech,
+                        dockInsets = false,
+                    )
                 }
             }
         },

@@ -1,11 +1,23 @@
 package com.wangzan101.mika.calls
 
 enum class CallAudioMode { DIRECT, REDIRECT }
+enum class IncomingAiPlan { Immediate, AfterRingTimeout, Never }
 enum class CallPhase { IDLE, DIALING, RINGING, CONNECTING, ACTIVE, HOLDING, DISCONNECTING, UNKNOWN }
 enum class CallDirection { INCOMING, OUTGOING }
 enum class CallAutoAnswerStage { OFF, BLOCKED, PAUSED, STANDBY, COUNTDOWN, PREPARING, ANSWERING, BUSY }
 
 data class CallSim(val id: String, val label: String, val isDefault: Boolean)
+
+/** Whether the address book can be read, and whether one number is already saved there. */
+data class ContactLookup(
+    val readable: Boolean,
+    val matches: (String) -> Boolean = { false },
+) {
+    companion object {
+        val ReadableNone = ContactLookup(readable = true)
+        val Unreadable = ContactLookup(readable = false)
+    }
+}
 
 data class CallConfig(
     val enabled: Boolean = false,
@@ -29,6 +41,10 @@ data class CallConfig(
     val autoAnswerDelaySeconds: Int = MIN_AUTO_ANSWER_DELAY_SECONDS,
     val defaultOutgoingSimId: String? = null,
     val bypassIncomingNumbers: Set<String> = emptySet(),
+    /** AI answers only numbers that are not saved in the phone's contacts. */
+    val answerStrangersOnly: Boolean = false,
+    /** After [CallPolicy.RING_TIMEOUT_MS] of unanswered ringing, hand manual calls to AI. */
+    val answerOnRingTimeout: Boolean = false,
     val autoAnswerPausedUntilMs: Long? = null,
     internal val backgroundStandbyAuthorized: Boolean = false,
 ) {
@@ -54,6 +70,7 @@ internal object CallPolicy {
     const val MAX_SPEAKER_CHARS = 100
     const val AUTO_START_WINDOW_MS = 8_000L
     const val AUTO_ANSWER_WINDOW_MS = 28_000L
+    const val RING_TIMEOUT_MS = 10_000L
     const val DIAL_TIMEOUT_MS = 10_000L
     const val CONTROL_TIMEOUT_MS = 5_000L
 
@@ -90,13 +107,61 @@ internal object CallPolicy {
     fun autoAnswerPauseRemainingMs(config: CallConfig, nowMs: Long): Long =
         config.autoAnswerPausedUntilMs?.takeIf { it > nowMs }?.minus(nowMs) ?: 0L
 
-    fun callerAllowed(config: CallConfig, number: String?, nowMs: Long = System.currentTimeMillis()): Boolean {
-        if (!config.enabled || !config.autoAnswer || !config.credentialsConfigured || !config.audioVerified) return false
-        if (autoAnswerPauseRemainingMs(config, nowMs) > 0L || isBypassed(config, number)) return false
-        if (number == null) return config.allowAllIncoming // Explicit all includes unavailable caller ID.
-        val key = incomingMatchKey(number) ?: return false
-        return config.allowAllIncoming || config.allowedIncomingNumbers.any { incomingMatchKey(it) == key }
+    /**
+     * Who may be handed to AI, and when.
+     *
+     * 1. Not ready or paused: never.
+     * 2. Personal-answer list, or a saved contact while "strangers only" is on: the person rings first.
+     *    The ring-timeout switch can hand that call to AI after [RING_TIMEOUT_MS], and not sooner.
+     * 3. "Strangers only" without a readable address book: never, so contacts are not treated as strangers.
+     * 4. Allow-all is off and the number is not allowlisted: never. The timeout does not override the allowlist.
+     *    A hidden number needs allow-all.
+     * 5. Otherwise AI answers on the normal delay when auto-answer is on. If auto-answer is off, the
+     *    ring-timeout switch can still take over after [RING_TIMEOUT_MS].
+     */
+    fun incomingAiPlan(
+        config: CallConfig,
+        number: String?,
+        nowMs: Long = System.currentTimeMillis(),
+        contacts: ContactLookup = ContactLookup.ReadableNone,
+    ): IncomingAiPlan {
+        if (!config.enabled || !config.credentialsConfigured || !config.audioVerified) return IncomingAiPlan.Never
+        if (autoAnswerPauseRemainingMs(config, nowMs) > 0L) return IncomingAiPlan.Never
+        val knownContact = config.answerStrangersOnly && contacts.readable && number != null && contacts.matches(number)
+        if (isBypassed(config, number) || knownContact) {
+            return if (config.answerOnRingTimeout) IncomingAiPlan.AfterRingTimeout else IncomingAiPlan.Never
+        }
+        if (config.answerStrangersOnly && !contacts.readable) return IncomingAiPlan.Never
+        val listed = when (number) {
+            null -> config.allowAllIncoming
+            else -> {
+                val key = incomingMatchKey(number) ?: return IncomingAiPlan.Never
+                config.allowAllIncoming || config.allowedIncomingNumbers.any { incomingMatchKey(it) == key }
+            }
+        }
+        if (!listed) return IncomingAiPlan.Never
+        return if (config.autoAnswer) IncomingAiPlan.Immediate
+        else if (config.answerOnRingTimeout) IncomingAiPlan.AfterRingTimeout
+        else IncomingAiPlan.Never
     }
+
+    fun callerAllowed(
+        config: CallConfig,
+        number: String?,
+        nowMs: Long = System.currentTimeMillis(),
+        contacts: ContactLookup = ContactLookup.ReadableNone,
+    ): Boolean = incomingAiPlan(config, number, nowMs, contacts) == IncomingAiPlan.Immediate
+
+    /** Unanswered ring of at least [RING_TIMEOUT_MS], and only when the plan is [IncomingAiPlan.AfterRingTimeout]. */
+    fun shouldStartRingTimeout(
+        config: CallConfig,
+        number: String?,
+        ringMs: Long,
+        answered: Boolean,
+        nowMs: Long = System.currentTimeMillis(),
+        contacts: ContactLookup = ContactLookup.ReadableNone,
+    ): Boolean = !answered && ringMs in RING_TIMEOUT_MS..AUTO_ANSWER_WINDOW_MS &&
+        incomingAiPlan(config, number, nowMs, contacts) == IncomingAiPlan.AfterRingTimeout
 
     fun canStartAutoAnswer(
         initial: CallConfig,
@@ -105,9 +170,11 @@ internal object CallPolicy {
         ringingForMs: Long,
         nowMs: Long = System.currentTimeMillis(),
         ringObservedWallMs: Long = nowMs - ringingForMs,
+        contacts: ContactLookup = ContactLookup.ReadableNone,
     ): Boolean =
         ringingForMs in 0L..AUTO_START_WINDOW_MS && initial.audioMode == current.audioMode &&
-            callerAllowed(initial, number, ringObservedWallMs) && callerAllowed(current, number, nowMs)
+            callerAllowed(initial, number, ringObservedWallMs, contacts) &&
+            callerAllowed(current, number, nowMs, contacts)
 
     fun chooseSim(sims: List<CallSim>, requested: String?): CallSim? = when {
         requested == "default" -> sims.singleOrNull { it.isDefault } ?: sims.singleOrNull()

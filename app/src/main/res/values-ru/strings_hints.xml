@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">Создать автоматизацию</string>
+    <string name="home_chip_call">Создать задачу звонка с ИИ</string>
+    <string name="home_chip_assistant">Личный помощник</string>
+    <string name="hint_home_remind">Напомни о встрече завтра в 8</string>
+    <string name="hint_home_courier">Если позвонит курьер, пусть оставит у двери</string>
+    <string name="hint_home_property">Позвони в управляющую и спроси про парковку</string>
+    <string name="hint_home_ask">Спроси что угодно</string>
+    <string name="hint_plan_morning">Напомни о встрече завтра в 8</string>
+    <string name="hint_plan_rain">Каждое утро в 8 напомни, если будет дождь</string>
+    <string name="hint_plan_friday">В пятницу днём напомни сдать отчёт</string>
+    <string name="hint_call_courier">Если позвонит курьер, пусть оставит у двери</string>
+    <string name="hint_call_property">Позвони в управляющую и спроси про парковку</string>
+    <string name="hint_call_delivery">Если приедет доставка, пусть оставят у двери</string>
+    <string name="hint_brief_busy">Скажи, что я занят, и запиши сообщение</string>
+    <string name="hint_brief_courier">Если позвонит курьер, пусть оставит у двери</string>
+    <string name="hint_brief_unknown">Если номер незнаком, сначала спроси, кто это</string>
+</resources>

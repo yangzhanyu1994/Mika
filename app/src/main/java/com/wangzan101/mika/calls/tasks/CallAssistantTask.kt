@@ -131,7 +131,7 @@ object CallTaskTexts {
         }
         if (active.isEmpty()) return ""
         return buildString {
-            append("机主为本通来电准备的通话任务。只在来电者符合对象、且仍在生效时间内时使用；与默认交代冲突时，以更严格的一项为准。")
+            append("机主为本通来电准备的通话任务。只在来电者符合对象、且仍在生效时间内时使用；与通用应答冲突时，以更严格的一项为准。")
             append("未写明的地址、门禁、金额、时间和承诺不得猜测。\n")
             active.forEachIndexed { index, task ->
                 append(index + 1).append(". ").append(task.title.ifBlank { task.target }).append('\n')

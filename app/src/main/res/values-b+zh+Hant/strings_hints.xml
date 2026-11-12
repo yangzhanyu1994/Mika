@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">建立自動化任務</string>
+    <string name="home_chip_call">建立 AI 電話業務</string>
+    <string name="home_chip_assistant">個人助手</string>
+    <string name="hint_home_remind">明早 8 點提醒我開會</string>
+    <string name="hint_home_courier">快遞來電就讓他放門口</string>
+    <string name="hint_home_property">幫我打電話給物業問停車</string>
+    <string name="hint_home_ask">隨便問點什麼</string>
+    <string name="hint_plan_morning">明早 8 點提醒我開會</string>
+    <string name="hint_plan_rain">每天早上 8 點如果會下雨就提醒我</string>
+    <string name="hint_plan_friday">週五下午提醒我交週報</string>
+    <string name="hint_call_courier">快遞來電就讓他放門口</string>
+    <string name="hint_call_property">幫我打電話給物業問停車</string>
+    <string name="hint_call_delivery">外送到了就讓他放門口</string>
+    <string name="hint_brief_busy">就說我在忙，幫我記下留言</string>
+    <string name="hint_brief_courier">快遞來電就讓他放門口</string>
+    <string name="hint_brief_unknown">不認識的號碼先問清是誰</string>
+</resources>

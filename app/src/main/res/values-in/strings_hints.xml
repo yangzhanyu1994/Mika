@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">Buat tugas otomatis</string>
+    <string name="home_chip_call">Buat tugas panggilan AI</string>
+    <string name="home_chip_assistant">Asisten pribadi</string>
+    <string name="hint_home_remind">Ingatkan rapat jam 8 besok pagi</string>
+    <string name="hint_home_courier">Kalau kurir menelepon, minta ditaruh di pintu</string>
+    <string name="hint_home_property">Telepon pengelola dan tanyakan parkir</string>
+    <string name="hint_home_ask">Tanyakan apa saja</string>
+    <string name="hint_plan_morning">Ingatkan rapat jam 8 besok pagi</string>
+    <string name="hint_plan_rain">Ingatkan jam 8 tiap pagi kalau akan hujan</string>
+    <string name="hint_plan_friday">Ingatkan Jumat sore untuk kirim laporan</string>
+    <string name="hint_call_courier">Kalau kurir menelepon, minta ditaruh di pintu</string>
+    <string name="hint_call_property">Telepon pengelola dan tanyakan parkir</string>
+    <string name="hint_call_delivery">Kalau makanan datang, minta ditaruh di pintu</string>
+    <string name="hint_brief_busy">Bilang saya sibuk dan catat pesannya</string>
+    <string name="hint_brief_courier">Kalau kurir menelepon, minta ditaruh di pintu</string>
+    <string name="hint_brief_unknown">Kalau nomornya tidak dikenal, tanyakan siapa</string>
+</resources>

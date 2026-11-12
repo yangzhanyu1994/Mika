@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">Ainda não</string>
     <string name="calls_task_kind_dial">Ligação da IA</string>
     <string name="calls_task_kind_incoming">Recado da chamada</string>
-    <string name="calls_task_kind_default">Instruções padrão</string>
+    <string name="calls_task_kind_default">Resposta geral</string>
     <string name="calls_task_type">Tipo</string>
     <string name="calls_task_hold">Mantém premido para falar e criar a tarefa</string>
     <string name="calls_task_hold_example">Por exemplo: se o estafeta ligar, pede para deixar à porta</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">A analisar…</string>
     <string name="calls_task_parse_failed">Não foi possível criar a tarefa. Edita os campos e guarda.</string>
     <string name="calls_task_need_model">Escolhe primeiro um modelo nas Definições</string>
-    <string name="calls_default_brief">Instruções padrão</string>
+    <string name="calls_default_brief">Resposta geral</string>
     <string name="calls_default_brief_sub">Como a IA responde quando não há tarefa de chamada</string>
     <string name="calls_default_brief_hint">Por exemplo: diz que estou ocupado e anota o recado</string>
     <string name="calls_audio_channel">Caminho de áudio</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">Procurar nome ou número</string>
     <string name="calls_contacts_empty">Sem contactos correspondentes</string>
     <string name="calls_rules_section">Regras de atendimento</string>
+    <string name="calls_stranger_only">A IA só atende números desconhecidos</string>
+    <string name="calls_stranger_only_sub">Os contactos ficas tu a atender</string>
+    <string name="calls_stranger_only_denied">Os contactos foram recusados, por isso fica desligado</string>
+    <string name="calls_stranger_ready_on">Ligado · os contactos tocam para ti</string>
+    <string name="calls_stranger_ready_off">Desligado</string>
+    <string name="calls_stranger_ready_blocked">Ligado, mas sem contactos a IA não atende sozinha</string>
+    <string name="calls_ring_timeout">Passar à IA se continuar a tocar</string>
+    <string name="calls_ring_timeout_sub">Se tocar 10 segundos sem resposta, a IA atende</string>
+    <string name="calls_ring_timeout_on">Ligado · aos 10 segundos passa à IA</string>
+    <string name="calls_ring_timeout_off">Desligado</string>
 </resources>

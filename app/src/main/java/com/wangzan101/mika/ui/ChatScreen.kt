@@ -155,7 +155,10 @@ import com.wangzan101.mika.ui.viewer.FileViewer
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.VoiceSource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.LifecycleStartEffect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -164,7 +167,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalTime
 
 /**
- * 对话页:顶栏(左边打开侧栏、中间对话标题和此刻在做什么、右边新对话),对话在顶栏和玻璃输入栏之间滚动。
+ * 对话页:顶栏(左边打开侧栏、中间标题 Mika),对话在顶栏和玻璃输入栏之间滚动。
  * 进行中是一行状态加一条竖线步骤,不套卡片;要你处理时停在当前步,下面一张白卡;完成后过程收成一行,回答直接排在背景上。
  * Agent 的虚拟屏以悬浮小窗([AgentPip])盖在对话上,不占布局。
  */
@@ -181,7 +184,6 @@ fun ChatScreen(
     reduceMotion: Boolean,
     /** 左上角菜单:打开侧栏。 */
     onOpenDrawer: () -> Unit,
-    onOpenFiles: () -> Unit = {},
     /** 被拦下的提示里的「去设置」。 */
     openSettings: () -> Unit,
     openRun: (String) -> Unit = {},
@@ -197,16 +199,14 @@ fun ChatScreen(
     openSpeechModel: () -> Unit = {},
     /** 输入框里还没发出的字，交给「教 Mika」预填，不会自己开始。 */
     onOpenTeach: (String) -> Unit = {},
-    /** 首页推荐任务。不传时用本机保存的那一份;测试传入单独的存储,避免改到用户的数据。 */
+    /** 保留参数，避免旧的调用点编译失败。首页不再展示这份写死的推荐。 */
     recommendations: RecommendedTaskStore? = null,
+    onCreatePlan: () -> Unit = {},
+    onCreateCall: () -> Unit = {},
+    /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
+    habitSuggestions: List<String>? = null,
 ) {
-    val recommendationStore = recommendations
-        ?: (LocalContext.current.applicationContext as? MikaApp)?.recommendedTasks
-    val recommendedTasksFlow = remember(recommendationStore) {
-        recommendationStore?.also { it.ensureLoaded { ChatCopy.recommendationSeeds() } }?.tasks
-            ?: MutableStateFlow<List<RecommendedTask>>(emptyList())
-    }
-    val recommendedTasks by recommendedTasksFlow.collectAsState()
+    if (recommendations != null) Unit
     val ui by vm.ui.collectAsState()
     val pendingJump by vm.jump.collectAsState()
     val others by vm.otherRunning.collectAsState()
@@ -239,6 +239,15 @@ fun ChatScreen(
     var retryFailures by remember { mutableStateOf<Pair<String, String>?>(null) }
     var voiceHolding by remember { mutableStateOf(false) }
     var editRequest by remember { mutableIntStateOf(0) }
+    var focusRequest by remember { mutableIntStateOf(0) }
+    var shortcutsDismissed by remember { mutableStateOf(false) }
+    var deviceHabits by remember { mutableStateOf<List<String>>(emptyList()) }
+    val habits = habitSuggestions ?: deviceHabits
+    LaunchedEffect(ui.conversationId) { shortcutsDismissed = false }
+    LifecycleStartEffect(Unit) {
+        focusRequest += 1
+        onStopOrDispose {}
+    }
     var composerHeight by rememberSaveable { mutableIntStateOf(0) }
     var topHeight by rememberSaveable { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -333,6 +342,10 @@ fun ChatScreen(
     val c = MikaTheme.colors
     val backdrop = rememberGlassBackdrop()
     val context = LocalContext.current
+    LaunchedEffect(habitSuggestions, ui.exchanges.isEmpty()) {
+        if (habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
+        deviceHabits = withContext(Dispatchers.IO) { HabitSuggestions.fromDevice(context) }
+    }
     /** 长按了的那条消息;菜单开着(收起的动画放完才清掉)。 */
     var menu by remember { mutableStateOf<MessageTarget?>(null) }
     /** 选了「选择文字」的那条:它换回系统的长按选中;换对话时清掉。 */
@@ -376,7 +389,7 @@ fun ChatScreen(
             ) {
                 if (ui.exchanges.isEmpty() && ui.blocked == null) {
                     item("empty") {
-                        EmptyState(ui.conversationId, recommendedTasks) { prompt ->
+                        EmptyState(ui.conversationId, habits) { prompt ->
                             if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
                         }
                     }
@@ -419,10 +432,6 @@ fun ChatScreen(
                 left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
                 // 别的对话里还有任务在跑(并行时):菜单上一个小圆点,侧栏「进行中」里能切过去
                 leftBadge = others.isNotEmpty(),
-                right = {
-                    BarIconButton(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onOpenFiles)
-                    BarIconButton(MikaIcons.New, stringResource(R.string.chat_new), { vm.newConversation() }, enabled = vm.canSwitch())
-                },
                 subtitle = sub?.first,
                 subtitleColor = when (sub?.second) {
                     ChatCopy.Tone.Accent -> c.accent
@@ -433,8 +442,17 @@ fun ChatScreen(
             )
         }
 
-        Composer(
+        val showShortcuts = ui.exchanges.isEmpty() && ui.blocked == null && input.isBlank() && !shortcutsDismissed
+        Column(
             Modifier.align(Alignment.BottomCenter).behindMenu(menuOpen) { lift.value }.onSizeChanged { composerHeight = it.height },
+        ) {
+        if (showShortcuts) HomeShortcuts(
+            onPlan = onCreatePlan,
+            onCall = onCreateCall,
+            onChat = { shortcutsDismissed = true; focusRequest += 1 },
+        )
+        Composer(
+            Modifier,
             backdrop = backdrop,
             text = input,
             draftKey = ui.conversationId,
@@ -483,7 +501,10 @@ fun ChatScreen(
             steerTarget = if (ui.followUpMode == FollowUpMode.Steer) last?.goal?.let(ChatCopy::plainTitle) else null,
             onVoiceHolding = { voiceHolding = it },
             editRequest = editRequest,
+            focusRequest = focusRequest,
+            rotatingHintIds = if (ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
         )
+        }
 
         AgentPip(
             pip = ui.pip,
@@ -641,9 +662,9 @@ private fun LazyListState.nearTail(thresholdPx: Int): Boolean {
 
 // ---------- 空对话 ----------
 
-/** 问候、一句「想让 Mika 做什么？」和推荐任务。点一条把提示词填进输入框,改好了再发;一条都没有时不显示列表。 */
+/** 问候和副标题保留。下面只放本机用过的建议；没有记录就不显示卡片。点一条填进输入框，不直接发送。 */
 @Composable
-private fun EmptyState(conversation: String?, tasks: List<RecommendedTask>, onPick: (String) -> Unit) {
+private fun EmptyState(conversation: String?, habits: List<String>, onPick: (String) -> Unit) {
     val c = MikaTheme.colors
     val hour = remember(conversation) { LocalTime.now().hour }
     Column(Modifier.fillMaxWidth()) {
@@ -651,13 +672,43 @@ private fun EmptyState(conversation: String?, tasks: List<RecommendedTask>, onPi
             Text(ChatCopy.greeting(hour), style = MikaType.LargeTitle, color = c.ink)
             Text(ChatCopy.EMPTY_PROMPT, Modifier.padding(top = 6.dp), style = EmptyLead, color = c.ink2)
         }
-        if (tasks.isNotEmpty()) {
-            MikaCard(Modifier.padding(top = 28.dp)) {
-                tasks.forEachIndexed { i, task ->
-                    ExampleRow(MikaIcons.Message, task.title, first = i == 0) { onPick(task.prompt) }
+        if (habits.isNotEmpty()) {
+            MikaCard(Modifier.padding(top = 28.dp).testTag("home-habits")) {
+                habits.forEachIndexed { i, text ->
+                    ExampleRow(MikaIcons.Message, text, first = i == 0) { onPick(text) }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeShortcuts(onPlan: () -> Unit, onCall: () -> Unit, onChat: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 32.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.Start,
+    ) {
+        HomeChip(MikaIcons.Clock, stringResource(R.string.home_chip_plan), "home-chip-plan", onPlan)
+        HomeChip(MikaIcons.Phone, stringResource(R.string.home_chip_call), "home-chip-call", onCall)
+        HomeChip(MikaIcons.Chats, stringResource(R.string.home_chip_assistant), "home-chip-assistant", onChat)
+    }
+}
+
+@Composable
+private fun HomeChip(icon: ImageVector, label: String, tag: String, onClick: () -> Unit) {
+    val c = MikaTheme.colors
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier.clip(shape).background(c.surface).border(0.5.dp, c.edge, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(icon, null, Modifier.size(16.dp), tint = c.ink2)
+        Text(label, style = MikaType.Body, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1384,6 +1435,8 @@ internal fun Composer(
     quote: QuoteMessage.Quote? = null,
     onRemoveQuote: () -> Unit = {},
     editRequest: Int = 0,
+    focusRequest: Int = 0,
+    rotatingHintIds: List<Int> = emptyList(),
     /** 输入栏后面那层内容的画面;为 null 时输入栏不做模糊、用不透明底。 */
     backdrop: GlassBackdrop? = null,
     reduceMotion: Boolean = false,
@@ -1429,6 +1482,15 @@ internal fun Composer(
             keyboard?.show()
         }
     }
+    LaunchedEffect(focusRequest) {
+        if (focusRequest <= 0) return@LaunchedEffect
+        delay(120)
+        runCatching {
+            field.requestFocus()
+            keyboard?.show()
+        }
+    }
+    val rotating = hintLines(rotatingHintIds)
     // 面板和键盘一样高:记下见过的键盘高度(在导航栏之上的那段),没见过时用默认高度
     var keyboardPx by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(ime, nav, density) {
@@ -1526,7 +1588,9 @@ internal fun Composer(
                 Box(Modifier.weight(1f).padding(start = if (showAttach) 2.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                     val converting = vState is HoldToTalk.State.Converting
                     if (text.isEmpty() && !converting) {
-                        if (vh != null) VoicePlaceholder(mode, followUpMode)
+                        if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
+                            RotatingPlaceholder(rotating, active = !fieldFocused, reduceMotion = reduceMotion, Modifier.fillMaxWidth())
+                        } else if (vh != null) VoicePlaceholder(mode, followUpMode)
                         else Text(ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
                     }
                     BasicTextField(

@@ -167,7 +167,7 @@ class CallRuntime(private val app: MikaApp) {
                 val active = work
                 if (active != null && (!config.enabled || !config.credentialsConfigured ||
                         config.audioMode != active.config.audioMode ||
-                        (active.automatic && !active.answerSent && !CallPolicy.callerAllowed(config, active.track?.number)))) {
+                        (active.automatic && !active.answerSent && !stillAutoAnswer(active, config)))) {
                     cancelWork("AI 电话设置已变更，电话由系统处理")
                 }
                 if (config.audioMode != previousMode || config.enabled != previousEnabled) {
@@ -826,13 +826,39 @@ class CallRuntime(private val app: MikaApp) {
                     (t.direction != CallDirection.INCOMING || !carrierCall(t.call)) ->
                     cancelWork("来电已变化，AI 未接听")
                 target === t && active.automatic && !active.answerSent &&
-                    !CallPolicy.callerAllowed(settings.state.value, t.number) -> cancelWork("来电已不符合自动接听规则")
+                    !stillAutoAnswer(active, settings.state.value) -> cancelWork("来电已不符合自动接听规则")
                 target === t && t.phase != CallPhase.ACTIVE && active.bridging ->
                     cancelWork("通话已切换，AI 音频已停止")
             }
         }
         publish()
+        armRingTimeout(t)
         maybeStartAutoAnswer()
+    }
+
+    private fun armRingTimeout(t: Tracked) {
+        if (t.timeoutArmed || t.phase != CallPhase.RINGING || t.ringObservedAt == 0L) return
+        t.timeoutArmed = true
+        val observed = t.ringObservedAt
+        scope.launch {
+            val wait = CallPolicy.RING_TIMEOUT_MS - (SystemClock.elapsedRealtime() - observed)
+            if (wait > 0) delay(wait)
+            maybeStartAutoAnswer()
+        }
+    }
+
+    private fun contactLookup(): ContactLookup {
+        val book = PhoneContacts(app)
+        return if (!book.granted()) ContactLookup.Unreadable
+        else ContactLookup(readable = true) { number -> book.lookup(number) != null }
+    }
+
+    private fun stillAutoAnswer(active: Work, config: CallConfig): Boolean {
+        val contacts = contactLookup()
+        val number = active.track?.number
+        return if (active.ringTimeout) {
+            CallPolicy.incomingAiPlan(config, number, contacts = contacts) == IncomingAiPlan.AfterRingTimeout
+        } else CallPolicy.callerAllowed(config, number, contacts = contacts)
     }
 
     private fun maybeStartAutoAnswer() {
@@ -841,12 +867,20 @@ class CallRuntime(private val app: MikaApp) {
         val initial = t.initialRingPolicy ?: return
         if (t.phase != CallPhase.RINGING || t.direction != CallDirection.INCOMING || t.suppressed || t.autoTried) return
         val config = settings.state.value
-        if (!CallPolicy.canStartAutoAnswer(initial, config, t.number,
-                SystemClock.elapsedRealtime() - t.ringObservedAt,
-                ringObservedWallMs = t.ringObservedWallMs)) return
-        if (autoAnswerBlocker(config) != null || !t.service.tracks(t.call) || !carrierCall(t.call)) return
+        val contacts = contactLookup()
+        val ringMs = SystemClock.elapsedRealtime() - t.ringObservedAt
+        val immediate = CallPolicy.canStartAutoAnswer(initial, config, t.number, ringMs,
+            ringObservedWallMs = t.ringObservedWallMs, contacts = contacts)
+        val timeout = !immediate &&
+            CallPolicy.shouldStartRingTimeout(initial, t.number, ringMs, answered = false, contacts = contacts) &&
+            CallPolicy.shouldStartRingTimeout(config, t.number, ringMs, answered = false, contacts = contacts) &&
+            initial.audioMode == config.audioMode
+        if (!immediate && !timeout) return
+        if (!t.service.tracks(t.call) || !carrierCall(t.call)) return
+        if (immediate && autoAnswerBlocker(config) != null) return
+        if (timeout && timeoutBlocker(config) != null) return
         t.autoTried = true
-        startWork(Work(CallDirection.INCOMING, config, track = t, auto = true))
+        startWork(Work(CallDirection.INCOMING, config, track = t, auto = true, ringTimeout = timeout))
     }
 
     internal fun onCallRemoved(service: MikaInCallService, call: Call) {
@@ -871,7 +905,7 @@ class CallRuntime(private val app: MikaApp) {
         detail = app.getString(
             if (attempt.automatic) R.string.calls_answer_pending else R.string.calls_notification_preparing,
         )
-        if (attempt.automatic) {
+        if (attempt.automatic && !attempt.ringTimeout) {
             attempt.autoDelayEndsAt = SystemClock.elapsedRealtime() + attempt.config.autoAnswerDelaySeconds * 1_000L
         }
         attempt.job = scope.launch(start = CoroutineStart.LAZY) { runWork(attempt) }
@@ -1417,9 +1451,15 @@ class CallRuntime(private val app: MikaApp) {
                 if (!canAutomaticallyAnswerHere()) throw CallProblem("后台待命不可用，本次来电由系统电话处理")
                 val config = settings.state.value
                 val initial = t.initialRingPolicy
-                if (autoPauseWriting || initial == null ||
-                    !CallPolicy.callerAllowed(initial, t.number, t.ringObservedWallMs) ||
-                    !CallPolicy.callerAllowed(config, t.number) || config.audioMode != w.config.audioMode ||
+                val contacts = contactLookup()
+                val still = if (initial == null) false else if (w.ringTimeout) {
+                    CallPolicy.incomingAiPlan(initial, t.number, t.ringObservedWallMs, contacts) == IncomingAiPlan.AfterRingTimeout &&
+                        CallPolicy.incomingAiPlan(config, t.number, contacts = contacts) == IncomingAiPlan.AfterRingTimeout
+                } else {
+                    CallPolicy.callerAllowed(initial, t.number, t.ringObservedWallMs, contacts) &&
+                        CallPolicy.callerAllowed(config, t.number, contacts = contacts)
+                }
+                if (autoPauseWriting || initial == null || !still || config.audioMode != w.config.audioMode ||
                     SystemClock.elapsedRealtime() - t.ringObservedAt > CallPolicy.AUTO_ANSWER_WINDOW_MS) {
                     throw CallProblem("来电已超时或不再符合自动接听规则")
                 }
@@ -1436,6 +1476,11 @@ class CallRuntime(private val app: MikaApp) {
     private fun isPendingAutoAnswer(w: Work, target: Tracked): Boolean =
         w.automatic && w.track === target && target.phase == CallPhase.RINGING && !target.suppressed &&
             !w.answerSent && w.stopReason.value == null
+
+    private fun timeoutBlocker(config: CallConfig): String? = when {
+        !config.audioVerified -> "请先确认当前模式的双向通话音频"
+        else -> prerequisite(ignoreWork = true) ?: if (!audioReady) audioDetail ?: "设备通话音频尚未准备好" else null
+    }
 
     private fun autoAnswerBlocker(config: CallConfig, notificationReady: Boolean? = null): String? = when {
         !config.audioVerified -> "请先确认当前模式的双向通话音频"
@@ -1667,6 +1712,7 @@ class CallRuntime(private val app: MikaApp) {
         var ringObservedWallMs: Long = 0L
         var autoTried = false
         var suppressed = false
+        var timeoutArmed = false
     }
     private enum class MediaStage { PREFLIGHT, VOLC_CONNECT, TELECOM_CONNECT, MUTE_ACQUIRE, SHELL_OPEN, PCM_BRIDGE, RELEASE }
 
@@ -1680,6 +1726,7 @@ class CallRuntime(private val app: MikaApp) {
         val expectedCallId: String? = null,
         val task: CallTaskBrief? = null,
         val lockedDialTicket: LockedDialGate.Ticket? = null,
+        val ringTimeout: Boolean = false,
     ) {
         val id = UUID.randomUUID().toString()
         val result = CompletableDeferred<CallActionResult>()

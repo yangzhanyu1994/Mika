@@ -163,4 +163,35 @@ class CallPolicyTest {
         assertNull(CallPolicy.previousAppOpMode("Permission denial"))
         assertNull(CallPolicy.previousAppOpMode("Uid mode: MANAGE_ONGOING_CALLS: deny\nMANAGE_ONGOING_CALLS: allow"))
     }
+
+    private val ready = CallConfig(enabled = true, autoAnswer = true, allowAllIncoming = true,
+        credentialsConfigured = true, audioVerified = true)
+    private val savedContact = ContactLookup(readable = true) { PhoneNumbers.same(it, "+65 9123-4567") }
+
+    @Test fun strangerSwitchLeavesSavedContactsForThePersonAndAnswersUnknownNumbers() {
+        val strangers = ready.copy(answerStrangersOnly = true)
+        assertFalse(CallPolicy.callerAllowed(strangers, "91234567", contacts = savedContact))
+        assertTrue(CallPolicy.callerAllowed(strangers, "+86 138-0013-8000", contacts = savedContact))
+        assertEquals(IncomingAiPlan.Never, CallPolicy.incomingAiPlan(strangers, "91234567", contacts = ContactLookup.Unreadable))
+    }
+
+    @Test fun allowlistStillSkipsNumbersTheStrangerSwitchDoesNotRecognize() {
+        val listed = ready.copy(answerStrangersOnly = true, allowAllIncoming = false, allowedIncomingNumbers = setOf("13800138000"))
+        assertFalse(CallPolicy.callerAllowed(listed, "13900000000", contacts = savedContact))
+        assertTrue(CallPolicy.callerAllowed(listed, "13800138000", contacts = savedContact))
+    }
+
+    @Test fun ringTimeoutHandsAnUnansweredManualCallToAiAfterTenSeconds() {
+        val manual = ready.copy(answerOnRingTimeout = true, bypassIncomingNumbers = setOf("13800138000"))
+        assertTrue(CallPolicy.shouldStartRingTimeout(manual, "13800138000", CallPolicy.RING_TIMEOUT_MS, answered = false))
+        assertFalse(CallPolicy.shouldStartRingTimeout(manual, "13800138000", CallPolicy.RING_TIMEOUT_MS - 1, answered = false))
+        assertFalse(CallPolicy.shouldStartRingTimeout(manual, "13800138000", CallPolicy.RING_TIMEOUT_MS, answered = true))
+        assertFalse(CallPolicy.shouldStartRingTimeout(manual.copy(answerOnRingTimeout = false), "13800138000",
+            CallPolicy.RING_TIMEOUT_MS, answered = false))
+        val contact = ready.copy(answerStrangersOnly = true, answerOnRingTimeout = true)
+        assertTrue(CallPolicy.shouldStartRingTimeout(contact, "+6591234567", 10_000, answered = false, contacts = savedContact))
+        assertFalse(CallPolicy.callerAllowed(contact, "+6591234567", contacts = savedContact))
+        assertFalse(CallPolicy.shouldStartRingTimeout(ready.copy(answerOnRingTimeout = true, allowAllIncoming = false),
+            "13900000000", 10_000, answered = false))
+    }
 }

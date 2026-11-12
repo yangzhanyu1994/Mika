@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">Ещё не началась</string>
     <string name="calls_task_kind_dial">Звонок ИИ</string>
     <string name="calls_task_kind_incoming">Указание для входящего</string>
-    <string name="calls_task_kind_default">Обычные указания</string>
+    <string name="calls_task_kind_default">Общий ответ</string>
     <string name="calls_task_type">Тип</string>
     <string name="calls_task_hold">Удерживайте и говорите, чтобы создать задачу</string>
     <string name="calls_task_hold_example">Например: если позвонит курьер, пусть оставит у двери</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">Разбираем…</string>
     <string name="calls_task_parse_failed">Не удалось сделать задачу. Поправьте поля и сохраните.</string>
     <string name="calls_task_need_model">Сначала выберите модель в настройках</string>
-    <string name="calls_default_brief">Обычные указания</string>
+    <string name="calls_default_brief">Общий ответ</string>
     <string name="calls_default_brief_sub">Как ИИ отвечает, если нет задачи звонка</string>
     <string name="calls_default_brief_hint">Например: скажи, что я занят, и запиши сообщение</string>
     <string name="calls_audio_channel">Аудиоканал</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">Имя или номер</string>
     <string name="calls_contacts_empty">Нет подходящих контактов</string>
     <string name="calls_rules_section">Правила ответа</string>
+    <string name="calls_stranger_only">ИИ отвечает только на незнакомые номера</string>
+    <string name="calls_stranger_only_sub">Контакты вы отвечаете сами</string>
+    <string name="calls_stranger_only_denied">Доступ к контактам отклонён, переключатель остаётся выключенным</string>
+    <string name="calls_stranger_ready_on">Включено · контакты звонят вам</string>
+    <string name="calls_stranger_ready_off">Выключено</string>
+    <string name="calls_stranger_ready_blocked">Включено, но контакты недоступны, поэтому ИИ не отвечает сам</string>
+    <string name="calls_ring_timeout">Передать ИИ, если долго звонит</string>
+    <string name="calls_ring_timeout_sub">Если звонок звонит 10 секунд и никто не ответил, его берёт ИИ</string>
+    <string name="calls_ring_timeout_on">Включено · через 10 секунд берёт ИИ</string>
+    <string name="calls_ring_timeout_off">Выключено</string>
 </resources>

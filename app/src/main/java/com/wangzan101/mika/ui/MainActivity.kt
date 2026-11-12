@@ -380,6 +380,8 @@ private fun MikaRoot(
     val personalStart = remember { FeatureFlags.get(context).personalStart() }
     val nav = rememberNavStack(if (personalStart && requestedConversation == null) Route.Personal else Route.Chat)
     var filesFromDrawer by rememberSaveable { mutableStateOf(false) }
+    var openPlanCreator by rememberSaveable { mutableStateOf(false) }
+    var openCallComposer by rememberSaveable { mutableStateOf(false) }
     var filesConversation by rememberSaveable { mutableStateOf<String?>(null) }
     // 从设置页「重新配对」进来时先回到配对一步
     var setupRepair by rememberSaveable { mutableStateOf(false) }
@@ -569,8 +571,9 @@ private fun MikaRoot(
                             pipOperateEnabled = FeatureFlags.get(context).pipOperate(),
                             reduceMotion = MikaTheme.reduceMotion,
                             onOpenDrawer = openDrawer,
-                            onOpenFiles = { filesFromDrawer = false; filesConversation = app.chat.ui.value.conversationId; nav.push(Route.Files) },
                             openSettings = { nav.push(Route.Settings) },
+                            onCreatePlan = { openPlanCreator = true; nav.push(Route.Plans) },
+                            onCreateCall = { openCallComposer = true; nav.push(Route.Calls) },
                             openRun = { runId = it; nav.push(Route.Run) },
                             phoneSetupNeeded = phoneSetupNeeded && status.builtinShell != BuiltinShellStatus.Running,
                             openPhoneSetup = { onFix(Fix.OpenPhoneSetup) },
@@ -614,7 +617,7 @@ private fun MikaRoot(
         Route.Settings -> {
             val autonomous by app.approvals.autonomous.collectAsState()
             SettingsScreen(store, status, release, onFix, onBack = back, onOpenMemory = { nav.push(Route.Memory) },
-                onOpenModels = { nav.push(Route.Models) },
+                onOpenModels = { nav.push(Route.Models) }, onOpenSpeech = { nav.push(Route.SpeechModel) },
                 autonomous = autonomous, onAutonomous = app.approvalControl::setAutonomous,
                 updateVersion = updateState.update?.version, onOpenAbout = { nav.push(Route.About) },
                 mcpServers = app.mcpServers)
@@ -718,7 +721,7 @@ private fun MikaRoot(
         Route.Plans -> PlansScreen(context, onBack = back, onOpenConversation = {
             app.chat.openConversation(it)
             nav.reset()
-        })
+        }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false })
         Route.Teach -> TeachScreen(
             app.teach,
             onBack = { nav.back() },
@@ -731,7 +734,7 @@ private fun MikaRoot(
             app.chat.openConversation(it)
             nav.reset()
         })
-        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice)
+        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer, onTaskComposerOpened = { openCallComposer = false })
     }
 }
 
