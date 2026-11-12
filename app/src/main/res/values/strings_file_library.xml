@@ -1,5 +1,5 @@
 <resources>
-    <string name="file_library_title">Files</string>
+    <string name="file_library_title">File manager</string>
     <string name="file_library_search">Search file names</string>
     <string name="file_library_all">All conversations</string>
     <string name="file_library_current">Current conversation</string>

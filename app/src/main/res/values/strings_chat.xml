@@ -13,7 +13,7 @@
     <string name="chat_example_replace_title">Replace current draft?</string>
     <string name="chat_example_replace_body">This recommendation will replace what you’ve already typed.</string>
     <string name="chat_example_replace_action">Replace draft</string>
-    <string name="recommendations_title">Recommended tasks</string>
+    <string name="recommendations_title">Home suggestions</string>
     <string name="recommendations_drag">Drag to reorder</string>
     <string name="recommendations_drag_hint">Drag the handle to change the order.</string>
     <string name="recommendations_move_up">Move up</string>
@@ -86,8 +86,8 @@
     <string name="all_ready">All set</string>
     <string name="drawer_plans">Scheduled tasks</string>
     <string name="memory_and_skills">Memory &amp; skills</string>
-    <string name="drawer_browser">Browser</string>
-    <string name="drawer_recent">Recent</string>
+    <string name="drawer_browser">Web browsing</string>
+    <string name="drawer_recent">Recent chats</string>
     <string name="drawer_busy">A task is running. You can switch chats when it ends.</string>
     <string name="drawer_delete_title">Delete this chat?</string>
     <string name="drawer_delete_body">“%1$s” and the files in it will be deleted.</string>
@@ -137,7 +137,7 @@
     <string name="drawer_searching">Searching…</string>
     <string name="drawer_search_clear">Clear search</string>
     <string name="drawer_search_truncated">Showing the first %1$d results</string>
-    <string name="settings_title">Settings</string>
+    <string name="settings_title">App settings</string>
     <string name="chat_unconfirmed">Couldn’t confirm: %1$s</string>
     <string name="chat_unverified">Done, but couldn’t verify</string>
     <string name="chat_unverified_because">Done, but couldn’t verify: %1$s</string>

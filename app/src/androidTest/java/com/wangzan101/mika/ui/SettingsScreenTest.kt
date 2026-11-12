@@ -57,6 +57,7 @@ class SettingsScreenTest {
                 capsuleMode = CapsuleMode.DuringTasks, onOpenCapsule = { opened += "capsule" }, onOpenNotifications = { opened += "notifications" },
                 onOpenLanguage = { opened += "language" }, onOpenAppAccess = { opened += "access" },
                 onOpenMemory = { opened += "memory" }, onOpenAdvanced = { opened += "advanced" },
+                onOpenCalls = { opened += "calls" }, onOpenRecommendations = { opened += "recommendations" },
                 versionName = "0.1.0", onOpenAbout = { opened += "about" },
             )
         }
@@ -72,7 +73,7 @@ class SettingsScreenTest {
     fun homeShowsGroupsStatusAndValues() {
         home()
         compose.onNodeWithText("一切就绪").assertIsDisplayed()
-        compose.onNodeWithText("常用").assertIsDisplayed()
+        compose.onNodeWithText("账户连接").assertIsDisplayed()
         // 首页只显示模型、手机操作、通知和版本等常用状态。
         for (v in listOf("DeepSeek", "可用", "正常", "0.1.0")) {
             scrollTo(v)
@@ -84,11 +85,11 @@ class SettingsScreenTest {
     fun homeRowsOpenTheirPages() {
         val opened = mutableListOf<String>()
         home(opened = opened)
-        for (t in listOf("模型", "手机操作", "微信", "任务运行", "悬浮胶囊", "语言与外观", "通知", "记忆与数据", "应用访问", "高级与其他", "关于 Mika")) {
+        for (t in listOf("模型用量", "来电助理", "应用连接", "辅助功能", "通知设置", "应用权限", "悬浮窗口", "执行方式", "语言外观", "首页推荐", "数据管理", "网络诊断", "关于应用")) {
             scrollTo(t)
             compose.onNodeWithText(t).performClick()
         }
-        assertEquals(listOf("models", "phone", "wechat", "work", "capsule", "language", "notifications", "memory", "access", "advanced", "about"), opened)
+        assertEquals(listOf("models", "calls", "wechat", "phone", "notifications", "access", "capsule", "work", "language", "recommendations", "memory", "advanced", "about"), opened)
     }
 
     /** 高级与其他集中放连接、维护和工程入口,各行仍打开原来的子页。 */
@@ -103,7 +104,6 @@ class SettingsScreenTest {
                 computerAccess = false, onOpenComputerAccess = { opened += "computer" },
                 mcpServersCount = 0, onOpenMcpServers = { opened += "mcp" },
                 showDeveloper = true, onOpenDeveloper = { opened += "dev" },
-                onQuit = { opened += "quit" },
             )
         }
         for (t in listOf("网络代理", "文件与计算环境", "连接电脑", "MCP 服务器", "恢复与修复")) {
@@ -111,9 +111,8 @@ class SettingsScreenTest {
             compose.onNodeWithText(t).performClick()
         }
         compose.onNodeWithText("开发者选项").performScrollTo().performClick()
-        scrollTo("完全退出 Mika")
-        compose.onNodeWithText("完全退出 Mika").performClick()
-        assertEquals(listOf("proxy", "sandbox", "computer", "mcp", "recovery", "dev", "quit"), opened)
+        compose.onAllNodesWithText("退出应用").assertCountEquals(0)
+        assertEquals(listOf("proxy", "sandbox", "computer", "mcp", "recovery", "dev"), opened)
     }
 
     /** 发布版的高级与其他里没有开发者选项。 */

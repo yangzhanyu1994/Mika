@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="calls_title">AI 接打電話</string>
-    <string name="calls_entry_sub">火山即時語音 · 行動網路電話</string>
+    <string name="calls_title">來電助理</string>
+    <string name="calls_entry_sub">火山方舟 Doubao 即時語音</string>
     <string name="calls_action_failed">操作未完成，請檢查是否就緒後再試一次。</string>
     <string name="calls_permissions_required">需要電話和通知權限才能啟用。</string>
     <string name="calls_ai_active">AI 正在通話</string>
@@ -12,9 +12,9 @@
     <string name="calls_takeover">親自接手</string>
     <string name="calls_hangup">掛斷</string>
     <string name="calls_answer">由 AI 接聽</string>
-    <string name="calls_tab_call">通話</string>
-    <string name="calls_tab_settings">設定</string>
-    <string name="calls_tab_history">紀錄</string>
+    <string name="calls_tab_call">通話中心</string>
+    <string name="calls_tab_settings">接聽設定</string>
+    <string name="calls_tab_history">通話紀錄</string>
     <string name="calls_number">電話號碼</string>
     <string name="calls_sim">撥出使用的 SIM 卡</string>
     <string name="calls_default">預設</string>
@@ -35,7 +35,7 @@
     <string name="calls_all_note">包含名單外號碼及隱藏號碼的來電</string>
     <string name="calls_allowlist">允許自動接聽的來電號碼</string>
     <string name="calls_allowlist_empty">名單為空：除非啟用接聽所有來電，否則不會自動接聽</string>
-    <string name="calls_privacy_note">僅在 AI 處理通話期間將音訊傳送至火山，不儲存錄音。通話逐字稿會加密儲存在這支手機上，隨時可親自接手。</string>
+    <string name="calls_privacy_note">僅在 AI 接管期間傳送通話音訊，不保存錄音。</string>
     <string name="calls_history_empty">目前沒有 AI 通話紀錄</string>
     <string name="calls_collapse">收合</string>
     <string name="calls_transcript">顯示通話逐字稿</string>
@@ -120,7 +120,7 @@
     <string name="calls_history_no_match">沒有符合搜尋或篩選條件的記錄</string>
     <string name="calls_history_open">待處理</string>
     <string name="calls_history_reopen">標為待處理</string>
-    <string name="calls_history_search">搜尋號碼、結果或原文</string>
+    <string name="calls_history_search">搜尋號碼或內容</string>
     <string name="calls_history_write_failed">本機通話記錄儲存失敗，最近的變動可能無法保留。</string>
     <string name="calls_instructions_entry">給 AI 交代</string>
     <string name="calls_live_transcript">即時文字</string>

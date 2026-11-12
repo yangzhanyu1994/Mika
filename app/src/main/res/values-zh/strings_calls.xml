@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="calls_title">AI 接打电话</string>
-    <string name="calls_entry_sub">火山实时语音 · 运营商电话</string>
+    <string name="calls_title">来电助理</string>
+    <string name="calls_entry_sub">火山方舟 Doubao 实时语音</string>
     <string name="calls_action_failed">操作未完成，请检查就绪状态后重试</string>
     <string name="calls_permissions_required">需要电话和通知权限才能启用</string>
     <string name="calls_ai_active">AI 正在通话</string>
@@ -12,9 +12,9 @@
     <string name="calls_takeover">人工接管</string>
     <string name="calls_hangup">挂断</string>
     <string name="calls_answer">AI 接听</string>
-    <string name="calls_tab_call">通话</string>
-    <string name="calls_tab_settings">设置</string>
-    <string name="calls_tab_history">记录</string>
+    <string name="calls_tab_call">通话中心</string>
+    <string name="calls_tab_settings">接听设置</string>
+    <string name="calls_tab_history">通话记录</string>
     <string name="calls_number">电话号码</string>
     <string name="calls_sim">拨出 SIM 卡</string>
     <string name="calls_default">默认</string>
@@ -35,7 +35,7 @@
     <string name="calls_all_note">包含名单外号码及隐藏号码</string>
     <string name="calls_allowlist">允许自动接听的号码</string>
     <string name="calls_allowlist_empty">名单为空：未开启接听所有来电时不会自动接听</string>
-    <string name="calls_privacy_note">仅在 AI 接管期间向火山发送通话音频，不保存录音。文字记录加密保存在本机，可随时人工接管。</string>
+    <string name="calls_privacy_note">仅在 AI 接管期间发送通话音频，不保存录音。</string>
     <string name="calls_history_empty">暂无 AI 通话记录</string>
     <string name="calls_collapse">收起</string>
     <string name="calls_transcript">展开文字记录</string>
@@ -120,7 +120,7 @@
     <string name="calls_history_no_match">没有符合搜索或筛选条件的记录</string>
     <string name="calls_history_open">待处理</string>
     <string name="calls_history_reopen">标为待处理</string>
-    <string name="calls_history_search">搜索号码、结果或原文</string>
+    <string name="calls_history_search">搜索号码或内容</string>
     <string name="calls_history_write_failed">本机通话记录保存失败，最近的变动可能无法保留。</string>
     <string name="calls_instructions_entry">给 AI 交代</string>
     <string name="calls_live_transcript">实时文字</string>

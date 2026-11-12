@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="appaccess_title">应用访问</string>
+    <string name="appaccess_title">应用权限</string>
     <string name="appaccess_row_sub">按应用设置禁用和屏幕分享许可</string>
     <string name="appaccess_intro">选择允许 Mika 通过标准手机工具读取和操作的应用。Shell 命令、沙箱和电脑接入（MCP）不受此设置限制。</string>
     <string name="appaccess_privacy">分类会把应用名称和包名发送给 AI 模型；点「刷新应用列表」时会先征求你的同意。</string>

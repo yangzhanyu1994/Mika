@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="appaccess_title">應用程式存取</string>
+    <string name="appaccess_title">應用權限</string>
     <string name="appaccess_row_sub">按應用程式設定禁用和螢幕分享許可</string>
     <string name="appaccess_intro">選擇允許 Mika 透過標準手機工具讀取和操作的應用程式。Shell 命令、沙箱和電腦連接（MCP）不受此設定限制。</string>
     <string name="appaccess_privacy">分類會把應用程式名稱和套件名稱傳給 AI 模型；點「重新整理應用程式清單」時會先詢問你。</string>

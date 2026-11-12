@@ -3,7 +3,7 @@
     <string name="wechat_notif_title">微信已連線</string>
     <string name="wechat_notif_body">私聊訊息可以交給 Mika 執行任務</string>
     <string name="wechat_turn_off">關閉</string>
-    <string name="wechat_title">微信</string>
+    <string name="wechat_title">應用連接</string>
     <string name="wechat_settings_sub">在微信裡給 Mika 安排任務</string>
     <string name="wechat_status_disconnected">未連線</string>
     <string name="wechat_status_connecting">連線中</string>

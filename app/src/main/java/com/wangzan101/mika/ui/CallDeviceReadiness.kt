@@ -192,8 +192,22 @@ private fun readCallDeviceReadiness(context: Context): CallDeviceReadiness {
 }
 
 @Composable
-internal fun CallPermissionRows(device: CallDeviceControls, helperConnected: Boolean, enabled: Boolean, onHelperSetup: () -> Unit) {
+internal fun CallPermissionRows(
+    device: CallDeviceControls, helperConnected: Boolean, enabled: Boolean, onHelperSetup: () -> Unit,
+    first: Boolean = false,
+) {
     val checks = device.readiness
+    val helperAction = onHelperSetup.takeIf { enabled }
+    ListRow(
+        MikaIcons.Link, stringResource(R.string.calls_device_helper),
+        stringResource(if (helperConnected) R.string.calls_device_helper_connected else R.string.calls_helper_disconnected),
+        first = first,
+        tone = if (helperConnected) TileTone.Ok else TileTone.Warn,
+        detail = helperAction?.let { stringResource(if (helperConnected) R.string.calls_helper_manage else R.string.calls_helper_set_up) },
+        detailColor = MikaTheme.colors.accent,
+        onClick = helperAction,
+    ) { if (helperAction != null) RowChevron() }
+
     val phoneAction = device.phoneAction.takeIf { enabled && !checks.phoneAllowed }
     ListRow(
         MikaIcons.Phone, stringResource(R.string.calls_device_phone_permissions),
@@ -218,16 +232,6 @@ internal fun CallPermissionRows(device: CallDeviceControls, helperConnected: Boo
         detail = notificationAction?.let { stringResource(device.notificationActionLabel) }, detailColor = MikaTheme.colors.accent,
         onClick = notificationAction,
     ) { if (notificationAction != null) RowChevron() }
-
-    val helperAction = onHelperSetup.takeIf { enabled }
-    ListRow(
-        MikaIcons.Link, stringResource(R.string.calls_helper_name),
-        stringResource(if (helperConnected) R.string.calls_device_helper_connected else R.string.calls_helper_disconnected),
-        tone = if (helperConnected) TileTone.Ok else TileTone.Warn,
-        detail = helperAction?.let { stringResource(if (helperConnected) R.string.calls_helper_manage else R.string.calls_helper_set_up) },
-        detailColor = MikaTheme.colors.accent,
-        onClick = helperAction,
-    ) { if (helperAction != null) RowChevron() }
 }
 
 internal fun backgroundStandbyStatus(config: CallConfig, state: CallRuntimeState): Int = when {

@@ -16,7 +16,7 @@
     <string name="calls_task_constraints">What must not be promised</string>
     <string name="calls_task_context">Additional context</string>
     <string name="calls_task_filled">Added</string>
-    <string name="calls_task_goal">What should this call achieve? (required)</string>
+    <string name="calls_task_goal">Purpose of the call</string>
     <string name="calls_task_goal_example">For example, confirm Friday availability and note the price.</string>
     <string name="calls_task_limit">%1$d / %2$d characters</string>
     <string name="calls_task_number_hint">Enter an ordinary phone number with 7–15 digits.</string>

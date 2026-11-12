@@ -87,7 +87,7 @@ class MemoryScreenTest {
     @Test fun savedDataRowsOpenWebsiteSignInsAndRoutes() {
         val opened = mutableListOf<String>()
         show(opened)
-        compose.onNodeWithText("记忆与数据").assertExists()
+        compose.onNodeWithText("数据管理").assertExists()
         compose.onNodeWithText("网站登录").performScrollTo().performClick()
         compose.onNodeWithText("记住的操作路线").performScrollTo().performClick()
         assertEquals(listOf("web", "routes"), opened)

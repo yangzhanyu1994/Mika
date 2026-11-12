@@ -255,7 +255,7 @@ class AboutScreenTest {
         assertEquals(listOf(MikaLinks.RELEASES), calls.urls)
     }
 
-    /** 侧栏最底下一行两个:设置靠左、关于 Mika 靠右(红点在最右边);有新版时关于带红点。 */
+    /** 侧栏最底下只有应用设置;有新版时这一项带红点。关于在设置页里。 */
     @Test
     fun drawerFooterHasSettingsAndAbout() {
         val calls = mutableListOf<String>()
@@ -265,26 +265,16 @@ class AboutScreenTest {
                     Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
                     onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {},
                     onSettings = { calls += "settings" }, onOpen = {},
-                    onAbout = { calls += "about" }, aboutDot = true,
+                    aboutDot = true,
                 )
             }
         }
-        compose.onNodeWithText("设置").assertIsDisplayed()
-        compose.onNodeWithText("关于 Mika").assertIsDisplayed()
+        compose.onNodeWithText("应用设置").assertIsDisplayed()
+        compose.onNodeWithText("关于应用").assertDoesNotExist()
+        compose.onNodeWithText("退出应用").assertDoesNotExist()
         compose.onNodeWithTag("update-dot", useUnmergedTree = true).assertExists()
-        val footer = compose.onNodeWithTag("drawer-footer").getUnclippedBoundsInRoot()
-        // 量文字本身(未合并的树):合并后的可点行节点比文字宽,量它判断不了左右半边
-        val settings = compose.onNodeWithText("设置", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val about = compose.onNodeWithText("关于 Mika", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val dot = compose.onNodeWithTag("update-dot", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val mid = (footer.left + footer.right) / 2
-        assertTrue(settings.right < mid)
-        assertTrue(about.left > mid)
-        // 关于那一项贴着右边:红点离行的右边只隔两层内边距(行 12dp + 项 12dp)
-        assertTrue(footer.right - dot.right <= 25.dp)
-        compose.onNodeWithText("设置").performClick()
-        compose.onNodeWithText("关于 Mika").performClick()
-        assertEquals(listOf("settings", "about"), calls)
+        compose.onNodeWithText("应用设置").performClick()
+        assertEquals(listOf("settings"), calls)
     }
 
     @Test
@@ -297,7 +287,8 @@ class AboutScreenTest {
                 )
             }
         }
-        compose.onNodeWithText("关于 Mika").assertIsDisplayed()
+        compose.onNodeWithText("应用设置").assertIsDisplayed()
+        compose.onNodeWithText("关于应用").assertDoesNotExist()
         compose.onAllNodesWithTag("update-dot", useUnmergedTree = true).assertCountEquals(0)
     }
 

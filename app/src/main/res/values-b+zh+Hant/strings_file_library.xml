@@ -1,5 +1,5 @@
 <resources>
-    <string name="file_library_title">檔案</string>
+    <string name="file_library_title">檔案管理</string>
     <string name="file_library_search">搜尋檔案名稱</string>
     <string name="file_library_all">所有對話</string>
     <string name="file_library_current">目前對話</string>
