@@ -27,8 +27,8 @@
     <string name="calls_background_not_running">未執行 · 僅在應用程式可見且裝置解鎖時可自動接聽</string>
     <string name="calls_background_open_battery">開啟電池設定</string>
     <string name="calls_background_running">正在執行</string>
-    <string name="calls_background_service">來電背景待命</string>
-    <string name="calls_background_settings">背景與鎖定畫面</string>
+    <string name="calls_background_service">背景待命</string>
+    <string name="calls_background_settings">背景鎖定</string>
     <string name="calls_background_start">啟動背景待命</string>
     <string name="calls_background_starting">正在啟動…</string>
     <string name="calls_device_locked_dial_pending">鎖定後撥號待命</string>

@@ -27,7 +27,7 @@
     <string name="calls_background_not_running">Stopped · auto-answer works only while the app is visible and unlocked</string>
     <string name="calls_background_open_battery">Open battery settings</string>
     <string name="calls_background_running">Running now</string>
-    <string name="calls_background_service">Incoming call standby</string>
+    <string name="calls_background_service">Background standby</string>
     <string name="calls_background_settings">Background and lock screen</string>
     <string name="calls_background_start">Start background standby</string>
     <string name="calls_background_starting">Starting…</string>

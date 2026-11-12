@@ -24,8 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.cap.sandbox.SandboxState
 import com.wangzan101.mika.capsule.CapsuleMode
@@ -52,8 +50,8 @@ import com.wangzan101.mika.ui.components.GroupCard
 import com.wangzan101.mika.ui.components.GroupLabel
 import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.MikaButton
-import com.wangzan101.mika.ui.components.MikaSwitch
 import com.wangzan101.mika.ui.components.PageScaffold
+import com.wangzan101.mika.ui.components.RadioRow
 import com.wangzan101.mika.ui.components.PillTone
 import com.wangzan101.mika.ui.components.RowChevron
 import com.wangzan101.mika.ui.components.RowValue
@@ -200,6 +198,7 @@ fun SettingsScreen(
             onOpenRecommendations = { page = SettingsPage.Recommendations },
             onOpenAdvanced = { page = SettingsPage.Advanced },
             versionName = BuildConfig.VERSION_NAME, updateVersion = updateVersion, onOpenAbout = onOpenAbout,
+            onQuit = { confirmingQuit = true },
         )
         SettingsPage.Advanced -> AdvancedSettingsContent(
             proxy = proxy, proxyNote = proxy?.let { NetProxyCopy.subtitle(it, browserProxy) }, onOpenProxy = { editingProxy = true },
@@ -211,7 +210,6 @@ fun SettingsScreen(
             showRoot = rootState.suPresent, rootCommands = rootState.commands, onOpenRoot = { page = SettingsPage.Root },
             showDeveloper = showDeveloper, onOpenDeveloper = { page = SettingsPage.Developer },
             onBack = toHome,
-            onQuit = { confirmingQuit = true },
         )
         SettingsPage.AppAccess -> AppAccessScreen(onBack = toHome)
         SettingsPage.Wechat -> WechatSettingsScreen(wechat, onBack = toHome)
@@ -356,7 +354,9 @@ fun SettingsContent(
     onOpenAbout: () -> Unit = {},
     personalStart: Boolean = false,
     onPersonalStart: ((Boolean) -> Unit)? = null,
+    onQuit: () -> Unit = {},
 ) {
+    var pickingHome by remember { mutableStateOf(false) }
     val check = Prerequisites.check(status, hasMainModel = mainModel != null)
     PageScaffold(stringResource(R.string.settings_title), onBack) {
         StatusSummary(check, onProblem)
@@ -367,62 +367,89 @@ fun SettingsContent(
                 RowValue(mainModel ?: stringResource(R.string.settings_not_set))
                 RowChevron()
             }
-            ListRow(MikaIcons.Phone, stringResource(R.string.settings_phone_ops), onClick = onOpenPhoneOps) {
-                PhoneOpsPill(status)
-                RowChevron()
-            }
             ListRow(MikaIcons.Phone, stringResource(R.string.calls_title), stringResource(R.string.calls_entry_sub), onClick = onOpenCalls) { RowChevron() }
             ListRow(MikaIcons.Chats, stringResource(R.string.wechat_title), stringResource(R.string.wechat_settings_sub), onClick = onOpenWechat) {
                 WechatEntryStatus(wechatState, wechatBound)
-                RowChevron()
-            }
-            ListRow(MikaIcons.Moon, stringResource(R.string.settings_during_work), stringResource(R.string.settings_during_work_sub), onClick = onOpenDuringWork) { RowChevron() }
-            ListRow(MikaIcons.Message, CapsuleSettingsCopy.TITLE, CapsuleSettingsCopy.SUBTITLE, onClick = onOpenCapsule) {
-                RowValue(CapsuleSettingsCopy.label(capsuleMode))
-                RowChevron()
-            }
-            ListRow(MikaIcons.Globe, stringResource(R.string.settings_language_appearance), onClick = onOpenLanguage) {
-                RowValue(languageLabel(language))
-                RowChevron()
-            }
-            onPersonalStart?.let { change ->
-                val label = stringResource(R.string.settings_personal_start)
-                ListRow(MikaIcons.Spark, label, stringResource(R.string.settings_personal_start_sub)) {
-                    MikaSwitch(personalStart, change, Modifier.semantics { contentDescription = label })
-                }
-            }
-            val (notifText, notifTone) = StatusCopy.notificationSummary(status.notificationOverview().summary)
-            ListRow(MikaIcons.Bell, StatusCopy.NOTIFICATIONS, stringResource(R.string.settings_notif_sub), onClick = onOpenNotifications) {
-                RowValue(notifText, notifTone)
                 RowChevron()
             }
         }
 
         GroupLabel(stringResource(R.string.settings_privacy))
         GroupCard {
-            onOpenMemory?.let {
-                ListRow(MikaIcons.Heart, stringResource(R.string.settings_memory_data), stringResource(R.string.settings_memory_sub), first = true, onClick = it) { RowChevron() }
+            ListRow(MikaIcons.Hand, stringResource(R.string.settings_row_a11y), first = true, onClick = onOpenPhoneOps) {
+                PhoneOpsPill(status)
+                RowChevron()
+            }
+            val (notifText, notifTone) = StatusCopy.notificationSummary(status.notificationOverview().summary)
+            ListRow(MikaIcons.Bell, StatusCopy.NOTIFICATIONS, stringResource(R.string.settings_notif_sub), onClick = onOpenNotifications) {
+                RowValue(notifText, notifTone)
+                RowChevron()
+            }
+            ListRow(MikaIcons.Shield, stringResource(R.string.appaccess_title), stringResource(R.string.appaccess_row_sub), onClick = onOpenAppAccess) { RowChevron() }
+            ListRow(MikaIcons.Message, stringResource(R.string.settings_row_overlay), CapsuleSettingsCopy.SUBTITLE, onClick = onOpenCapsule) {
+                RowValue(CapsuleSettingsCopy.label(capsuleMode))
+                RowChevron()
+            }
+        }
+
+        GroupLabel(stringResource(R.string.settings_group_preferences))
+        GroupCard {
+            ListRow(MikaIcons.Moon, stringResource(R.string.settings_row_run), stringResource(R.string.settings_during_work_sub), first = true, onClick = onOpenDuringWork) { RowChevron() }
+            ListRow(MikaIcons.Globe, stringResource(R.string.settings_language_appearance), onClick = onOpenLanguage) {
+                RowValue(languageLabel(language))
+                RowChevron()
+            }
+            val homeLabel = stringResource(R.string.settings_home_title)
+            ListRow(MikaIcons.Spark, homeLabel, stringResource(R.string.settings_personal_start_sub), onClick = onPersonalStart?.let { { pickingHome = true } }) {
+                RowValue(stringResource(if (personalStart) R.string.settings_home_personal else R.string.settings_home_chat))
+                if (onPersonalStart != null) RowChevron()
             }
             ListRow(
                 MikaIcons.Message,
                 stringResource(R.string.recommendations_title),
                 stringResource(R.string.recommendations_sub),
-                first = onOpenMemory == null,
                 onClick = onOpenRecommendations,
             ) { RowChevron() }
-            ListRow(MikaIcons.Shield, stringResource(R.string.appaccess_title), stringResource(R.string.appaccess_row_sub), onClick = onOpenAppAccess) { RowChevron() }
         }
 
         GroupLabel(stringResource(R.string.settings_other))
         GroupCard {
-            ListRow(MikaIcons.Wrench, stringResource(R.string.settings_advanced), stringResource(R.string.settings_advanced_sub), first = true, onClick = onOpenAdvanced) { RowChevron() }
-        }
-        GroupCard {
-            ListRow(MikaIcons.Info, stringResource(R.string.settings_about), first = true, onClick = onOpenAbout) {
+            onOpenMemory?.let {
+                ListRow(MikaIcons.Heart, stringResource(R.string.settings_memory_data), stringResource(R.string.settings_memory_sub), first = true, onClick = it) { RowChevron() }
+            }
+            ListRow(
+                MikaIcons.Wrench, stringResource(R.string.settings_network_diagnostics), stringResource(R.string.settings_advanced_sub),
+                first = onOpenMemory == null, onClick = onOpenAdvanced,
+            ) { RowChevron() }
+            ListRow(MikaIcons.Info, stringResource(R.string.settings_about), onClick = onOpenAbout) {
                 TrailingValue(AboutCopy.settingsValue(updateVersion, versionName))
                 RowChevron()
             }
+            ListRow(
+                MikaIcons.Power, stringResource(R.string.settings_quit_row), stringResource(R.string.quit_row_sub),
+                titleColor = MikaTheme.colors.bad, onClick = onQuit,
+            ) { RowChevron() }
         }
+    }
+    if (pickingHome) {
+        val choose = onPersonalStart
+        MikaDialog(
+            onDismissRequest = { pickingHome = false },
+            title = { Text(stringResource(R.string.settings_home_title)) },
+            text = {
+                Column {
+                    RadioRow(stringResource(R.string.settings_home_chat), selected = !personalStart, first = true, onClick = {
+                        choose?.invoke(false)
+                        pickingHome = false
+                    })
+                    RadioRow(stringResource(R.string.settings_home_personal), selected = personalStart, onClick = {
+                        choose?.invoke(true)
+                        pickingHome = false
+                    })
+                }
+            },
+            confirmButton = { TextButton({ pickingHome = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }
 
@@ -448,7 +475,6 @@ fun AdvancedSettingsContent(
     onOpenRoot: () -> Unit = {},
     showDeveloper: Boolean = false,
     onOpenDeveloper: () -> Unit = {},
-    onQuit: () -> Unit = {},
 ) {
     PageScaffold(stringResource(R.string.settings_advanced), onBack) {
         val sandboxRow = sandbox?.takeIf { it !is SandboxStatus.Unsupported }
@@ -501,14 +527,6 @@ fun AdvancedSettingsContent(
             GroupCard {
                 ListRow(MikaIcons.Code, stringResource(R.string.settings_developer), first = true, onClick = onOpenDeveloper) { RowChevron() }
             }
-        }
-
-        // 完全退出:和无障碍服务不同,它只是让 Mika 安静下来;下次打开 App 就回来
-        GroupCard {
-            ListRow(
-                MikaIcons.Power, stringResource(R.string.quit_title), stringResource(R.string.quit_row_sub),
-                first = true, titleColor = MikaTheme.colors.bad, onClick = onQuit,
-            ) { RowChevron() }
         }
     }
 }

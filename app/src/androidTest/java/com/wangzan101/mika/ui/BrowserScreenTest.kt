@@ -94,7 +94,7 @@ class BrowserScreenTest {
                 )
             }
         }
-        compose.onNodeWithText("浏览器").assertIsDisplayed().performClick()
+        compose.onNodeWithText("网页浏览").assertIsDisplayed().performClick()
         assertEquals(listOf("browser"), calls)
     }
 
@@ -150,7 +150,7 @@ class BrowserScreenTest {
         compose.onNodeWithText("整理常用网站").assertIsDisplayed()
         compose.onNodeWithContentDescription("移除购物", useUnmergedTree = true).performClick()
         compose.onNodeWithText("完成").performClick()
-        compose.onNodeWithText("浏览器").assertIsDisplayed()
+        compose.onNodeWithText("网页浏览").assertIsDisplayed()
         assertEquals("remove shop.example.com", calls.first())
     }
 

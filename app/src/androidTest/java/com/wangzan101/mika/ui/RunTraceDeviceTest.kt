@@ -77,8 +77,9 @@ class RunTraceDeviceTest {
                     compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
                 }
                 compose.onNodeWithContentDescription("菜单").performClick()
-                compose.onNodeWithText("设置").performClick()
+                compose.onNodeWithText("应用设置").performClick()
                 compose.onNodeWithText("记录详细 Trace").assertDoesNotExist()
+                compose.onNodeWithText("网络诊断").performScrollTo().performClick()
                 compose.onNodeWithText("开发者选项").performScrollTo().performClick()
                 compose.onNodeWithText("Trace 存储上限").performScrollTo().performClick()
                 compose.onNode(hasSetTextAction()).performTextReplacement("0")
@@ -90,7 +91,7 @@ class RunTraceDeviceTest {
                 compose.onNodeWithText("记录详细 Trace").performScrollTo().performClick()
                 assertTrue(app.detailedTraces.enabled)
                 compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-                compose.awaitOne("设置").assertExists()
+                compose.awaitOne("高级与其他").assertExists()
                 compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
                 compose.runOnUiThread {
                     app.chat.newConversation()

@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ dbbd6498b424 -->
+<!-- translated-from: README.md @ 9040b436fbcb -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,16 @@
 <sub>"파일 전송 도우미에게 메시지 보내 줘" 한마디: 왼쪽은 Mika와의 대화, 오른쪽은 백그라운드 화면에서 진행한 모든 단계(4배속, 채팅 목록은 모자이크 처리)</sub>
 
 </div>
+
+## 필독
+
+### 2026-11-12
+
+- **날짜**：2026-11-12（UTC+8）
+- **업데이트한 사람**：Grok Build via Cursor cloud agent
+- **테스트 결과**：`python3 tools/i18n/translations.py check` 통과. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 통과（5335 tests, 0 failures, 2 skipped. debug APK와 androidTest 컴파일 성공）.
+- **출처**：owner-approved mockups, 2026-11-12 chat
+- **상태**：코드는 작성 완료, 실기기 미검증
 
 ## 한마디로 일 하나를 끝내기
 

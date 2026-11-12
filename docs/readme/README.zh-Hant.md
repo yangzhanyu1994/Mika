@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ dbbd6498b424 -->
+<!-- translated-from: README.md @ 9040b436fbcb -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,16 @@
 <sub>一句話「給文件傳輸助手發一則訊息」：左邊是 Mika 的對話，右邊是它在背景螢幕上的每一步（4 倍速播放，聊天列表已打碼）</sub>
 
 </div>
+
+## 必讀
+
+### 2026-11-12
+
+- **日期**：2026-11-12（UTC+8）
+- **更新人**：Grok Build via Cursor cloud agent
+- **測試結果**：`python3 tools/i18n/translations.py check` 通過。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 通過（5335 tests, 0 failures, 2 skipped；debug APK 與 androidTest 編譯成功）。
+- **來源**：owner-approved mockups, 2026-11-12 chat
+- **狀態**：代碼已寫完，未真機驗證
 
 ## 一句話，辦好一件事
 

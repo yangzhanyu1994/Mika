@@ -82,6 +82,7 @@ internal data class CallTaskSubmission(
 internal fun CallTaskScreen(
     draft: CallTaskDraft, config: CallConfig, state: CallRuntimeState, ready: Boolean,
     editable: Boolean, canDial: Boolean, feedback: CallActionResult?,
+    showSetup: Boolean = true,
     onSetup: () -> Unit, onConfirm: (CallTaskSubmission) -> Unit,
     onConfirmLocked: (CallTaskSubmission) -> Unit,
 ) {
@@ -173,13 +174,13 @@ internal fun CallTaskScreen(
         )
     }
 
-    if (!ready) {
+    if (!ready && showSetup) {
         OutlinedButton(onClick = onSetup, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.calls_device_and_permissions))
         }
     }
     CallPrimaryButton(
-        stringResource(R.string.calls_task_review), editable && number != null && brief != null,
+        stringResource(R.string.calls_dial), editable && number != null && brief != null,
         {
             if (number != null && brief != null) {
                 review = CallTaskSubmission(number, sim?.id, sim?.label ?: missingSim, brief)

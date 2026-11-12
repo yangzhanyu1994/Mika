@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ dbbd6498b424 -->
+<!-- translated-from: README.md @ 9040b436fbcb -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,16 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 <sub>Con la frase «Envía un mensaje a Transferencia de archivos»: a la izquierda, la conversación con Mika; a la derecha, cada paso en su pantalla en segundo plano (a velocidad 4×, con la lista de chats difuminada)</sub>
 
 </div>
+
+## Imprescindible
+
+### 2026-11-12
+
+- **Fecha**：2026-11-12 (UTC+8)
+- **Autor**：Grok Build via Cursor cloud agent
+- **Resultado de las pruebas**：`python3 tools/i18n/translations.py check` correcta. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` correcta (5335 tests, 0 failures, 2 skipped; APK de depuración y compilación de androidTest correctas).
+- **Origen**：owner-approved mockups, 2026-11-12 chat
+- **Estado**：código escrito, sin verificación en un dispositivo real
 
 ## Una frase, una tarea resuelta
 

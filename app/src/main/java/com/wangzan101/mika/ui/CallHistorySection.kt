@@ -22,6 +22,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallActionResult
 import com.wangzan101.mika.calls.CallDirection
 import com.wangzan101.mika.calls.CallTaskBrief
+import com.wangzan101.mika.calls.CallFollowUp
 import com.wangzan101.mika.calls.CallRecord
 import com.wangzan101.mika.calls.CallTranscriptLine
 import com.wangzan101.mika.calls.SummaryStatus
@@ -34,8 +35,18 @@ import java.text.DateFormat
 import java.util.Date
 
 private enum class HistoryFilter(@StringRes val label: Int) {
-    ALL(R.string.calls_history_all), OPEN(R.string.calls_history_open), DONE(R.string.calls_history_done),
+    ALL(R.string.calls_history_all),
+    INCOMING(R.string.calls_direction_in),
+    OUTGOING(R.string.calls_direction_out),
+    OPEN(R.string.calls_history_open),
+    /** 旧筛选「已处理」。芯片不再列出,恢复到这个值时仍按原来的规则滤。 */
+    DONE(R.string.calls_history_done),
 }
+
+private val historyChips = listOf(HistoryFilter.ALL, HistoryFilter.INCOMING, HistoryFilter.OUTGOING, HistoryFilter.OPEN)
+
+private fun pendingTodos(record: CallRecord): Int =
+    record.summary?.actions?.count { it.status == CallFollowUp.Status.PENDING } ?: 0
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -83,7 +94,9 @@ internal fun CallHistorySection(
         history.filter { record ->
             val matchesFilter = when (filter) {
                 HistoryFilter.ALL -> true
-                HistoryFilter.OPEN -> !record.handled
+                HistoryFilter.INCOMING -> record.direction == CallDirection.INCOMING
+                HistoryFilter.OUTGOING -> record.direction == CallDirection.OUTGOING
+                HistoryFilter.OPEN -> pendingTodos(record) > 0 || !record.handled
                 HistoryFilter.DONE -> record.handled
             }
             val direction = if (record.direction == CallDirection.INCOMING) incoming else outgoing
@@ -121,7 +134,6 @@ internal fun CallHistorySection(
         }
     }
 
-    GroupLabel(stringResource(R.string.calls_tab_history))
     if (historyWriteFailed) FooterNote(
         stringResource(R.string.calls_history_write_failed),
         color = MaterialTheme.colorScheme.error,
@@ -129,15 +141,6 @@ internal fun CallHistorySection(
     feedback?.let { result ->
         FooterNote(result.message, Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             color = if (result.ok) MikaTheme.colors.ink3 else MaterialTheme.colorScheme.error)
-    }
-    if (history.isNotEmpty() || historyWriteFailed) {
-        TextButton(
-            onClick = { pendingClear = true },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().testTag("call-history-clear"),
-        ) {
-            Text(stringResource(R.string.calls_history_clear), color = MaterialTheme.colorScheme.error)
-        }
     }
     if (history.isEmpty()) {
         GroupCard { ListRow(MikaIcons.Clock, stringResource(R.string.calls_history_empty), first = true) }
@@ -149,7 +152,7 @@ internal fun CallHistorySection(
             modifier = Modifier.fillMaxWidth().testTag("call-history-search"),
         )
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HistoryFilter.entries.forEach { choice ->
+            historyChips.forEach { choice ->
                 FilterChip(
                     selected = filter == choice, onClick = { filter = choice; showAll = false },
                     label = { Text(stringResource(choice.label)) },
@@ -186,6 +189,15 @@ internal fun CallHistorySection(
                     Text(if (showAll) stringResource(R.string.calls_history_less)
                         else stringResource(R.string.calls_history_more, results.size))
                 }
+            }
+        }
+        if (history.isNotEmpty() || historyWriteFailed) {
+            TextButton(
+                onClick = { pendingClear = true },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().testTag("call-history-clear"),
+            ) {
+                Text(stringResource(R.string.calls_history_clear), color = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -247,14 +259,24 @@ private fun CallHistoryItem(
     val start = remember(record.startedAtMs, formatter) { formatter.format(Date(record.startedAtMs)) }
     val end = remember(record.endedAtMs, formatter) { formatter.format(Date(record.endedAtMs)) }
     val direction = directionLabel(record.direction)
-    val status = stringResource(if (record.handled) R.string.calls_history_done else R.string.calls_history_open)
+    val pending = pendingTodos(record)
+    val status = when {
+        pending > 0 -> stringResource(R.string.calls_history_pending_count, pending)
+        record.handled -> stringResource(R.string.calls_history_done)
+        else -> stringResource(R.string.calls_summary_done)
+    }
+    val summaryLine = record.summary?.purpose?.takeIf { it.isNotBlank() }
+        ?: record.summary?.conclusion?.takeIf { it.isNotBlank() }
+        ?: record.result
     val name = record.number?.let { "\u2066$it\u2069" } ?: stringResource(R.string.calls_unknown_number)
     val expansion = stringResource(if (expanded) R.string.calls_collapse else R.string.calls_transcript)
     Column(Modifier.fillMaxWidth().semantics { stateDescription = expansion }) {
-        ListRow(MikaIcons.Clock, record.task?.goal ?: name,
-            if (record.task != null) "$name · $direction · $start" else "$direction · $start",
-            first = first, detail = "$status · ${record.result}",
-            onClick = onExpand) { CallExpandIcon(expanded) }
+        ListRow(MikaIcons.Clock, record.task?.goal ?: name, "$direction · $start",
+            first = first, detail = summaryLine,
+            onClick = onExpand) {
+            RowValue(status)
+            CallExpandIcon(expanded)
+        }
         if (expanded) {
             Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {

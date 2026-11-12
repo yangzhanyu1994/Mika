@@ -215,9 +215,9 @@ class ChatScreenDeviceTest {
         compose.waitForIdle()
         compose.onNodeWithTag("drawer").assertIsDisplayed()
         compose.onNodeWithText("定时任务").assertIsDisplayed()
-        compose.onNodeWithText("记忆与技能").assertIsDisplayed()
-        compose.onNodeWithText("浏览器").assertIsDisplayed()
-        compose.onNodeWithText("最近").assertIsDisplayed()
+        compose.onNodeWithText("记忆技能").assertIsDisplayed()
+        compose.onNodeWithText("网页浏览").assertIsDisplayed()
+        compose.onNodeWithText("最近会话").assertIsDisplayed()
         shot("08-drawer")
     }
 

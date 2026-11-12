@@ -12,7 +12,7 @@
     <string name="state_off">未开启</string>
     <string name="state_not_running">未运行</string>
     <string name="stop_summarizing">正在整理已做的事…</string>
-    <string name="notifications_title">通知</string>
+    <string name="notifications_title">通知设置</string>
     <string name="channel_progress">任务进度</string>
     <string name="notif_normal">正常</string>
     <plurals name="notif_lowered">

@@ -3,7 +3,7 @@
     <string name="wechat_notif_title">WeChat connected</string>
     <string name="wechat_notif_body">Private messages can start Mika tasks</string>
     <string name="wechat_turn_off">Turn off</string>
-    <string name="wechat_title">WeChat</string>
+    <string name="wechat_title">App connections</string>
     <string name="wechat_settings_sub">Assign Mika tasks in WeChat</string>
     <string name="wechat_status_disconnected">Not connected</string>
     <string name="wechat_status_connecting">Connecting</string>

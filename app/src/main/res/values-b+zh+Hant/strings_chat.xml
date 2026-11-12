@@ -13,7 +13,7 @@
     <string name="chat_example_replace_title">取代目前草稿？</string>
     <string name="chat_example_replace_body">推薦任務會取代你已輸入的內容。</string>
     <string name="chat_example_replace_action">取代草稿</string>
-    <string name="recommendations_title">推薦任務</string>
+    <string name="recommendations_title">首頁推薦</string>
     <string name="recommendations_drag">拖曳調整順序</string>
     <string name="recommendations_drag_hint">拖曳右側把手調整顯示順序。</string>
     <string name="recommendations_move_up">上移</string>
@@ -84,9 +84,9 @@
     <string name="drawer_phone_not_ready">手機操作還沒準備好</string>
     <string name="all_ready">一切就緒</string>
     <string name="drawer_plans">定時任務</string>
-    <string name="memory_and_skills">記憶與技能</string>
-    <string name="drawer_browser">瀏覽器</string>
-    <string name="drawer_recent">最近</string>
+    <string name="memory_and_skills">記憶技能</string>
+    <string name="drawer_browser">網頁瀏覽</string>
+    <string name="drawer_recent">最近會話</string>
     <string name="drawer_busy">任務進行中,結束後才能切換對話</string>
     <string name="drawer_delete_title">刪除這個對話？</string>
     <string name="drawer_delete_body">「%1$s」和裡面的檔案都會刪掉。</string>
@@ -129,7 +129,7 @@
     <string name="drawer_searching">正在搜尋…</string>
     <string name="drawer_search_clear">清除搜尋</string>
     <string name="drawer_search_truncated">只顯示前 %1$d 筆結果</string>
-    <string name="settings_title">設定</string>
+    <string name="settings_title">應用設定</string>
     <string name="chat_unconfirmed">這幾處沒能確認:%1$s</string>
     <string name="chat_unverified">辦完了,但沒能核實</string>
     <string name="chat_unverified_because">辦完了,但沒能核實:%1$s</string>

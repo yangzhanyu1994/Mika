@@ -27,8 +27,8 @@
     <string name="calls_background_not_running">未运行 · 仅应用可见且解锁时可自动接听</string>
     <string name="calls_background_open_battery">打开电池设置</string>
     <string name="calls_background_running">正在运行</string>
-    <string name="calls_background_service">来电后台待命</string>
-    <string name="calls_background_settings">后台与锁屏</string>
+    <string name="calls_background_service">后台待命</string>
+    <string name="calls_background_settings">后台锁屏</string>
     <string name="calls_background_start">启动后台待命</string>
     <string name="calls_background_starting">正在启动…</string>
     <string name="calls_device_locked_dial_pending">锁屏拨号待命</string>

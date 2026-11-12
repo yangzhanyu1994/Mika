@@ -18,7 +18,7 @@ class AppAccessScreenTest {
 
     @Test fun appAccessLoadsWithoutModelAndRecommendedCanBeCancelled() {
         compose.setContent { com.wangzan101.mika.ui.theme.MikaTheme { AppAccessScreen(onBack = {}, classifyApps = false) } }
-        compose.onNodeWithText("应用访问").assertIsDisplayed()
+        compose.onNodeWithText("应用权限").assertIsDisplayed()
         compose.onNodeWithText("推荐禁用", substring = true).performScrollTo().performClick()
         compose.onNodeWithText("推荐禁用金融交易应用").assertIsDisplayed()
         compose.onNodeWithText("取消").performClick()

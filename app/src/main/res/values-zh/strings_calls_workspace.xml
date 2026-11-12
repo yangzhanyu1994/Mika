@@ -16,7 +16,7 @@
     <string name="calls_task_constraints">不能承诺什么</string>
     <string name="calls_task_context">补充情况</string>
     <string name="calls_task_filled">已填写</string>
-    <string name="calls_task_goal">这次要办成什么？（必填）</string>
+    <string name="calls_task_goal">通话目的</string>
     <string name="calls_task_goal_example">例如：确认周五有没有空位，并记下价格。</string>
     <string name="calls_task_limit">%1$d / %2$d 字</string>
     <string name="calls_task_number_hint">填写 7–15 位普通电话号码。</string>

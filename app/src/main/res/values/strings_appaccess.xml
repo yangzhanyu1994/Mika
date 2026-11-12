@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="appaccess_title">App access</string>
+    <string name="appaccess_title">App permissions</string>
     <string name="appaccess_row_sub">Block apps and screen sharing per app</string>
     <string name="appaccess_intro">Choose which apps Mika may read and operate with standard phone tools. Shell commands, the sandbox and computer access (MCP) are not restricted by this setting.</string>
     <string name="appaccess_privacy">Categorizing sends app names and package names to the AI model; “Refresh app list” asks you first.</string>

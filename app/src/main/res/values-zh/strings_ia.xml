@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_new_chat">新建对话</string>
+    <string name="settings_group_preferences">使用偏好</string>
+    <string name="settings_row_a11y">辅助功能</string>
+    <string name="settings_row_overlay">悬浮窗口</string>
+    <string name="settings_row_run">执行方式</string>
+    <string name="settings_home_title">默认首页</string>
+    <string name="settings_home_chat">对话</string>
+    <string name="settings_home_personal">个人助手</string>
+    <string name="settings_network_diagnostics">网络诊断</string>
+    <string name="settings_quit_row">退出应用</string>
+    <string name="calls_dial_card">拨号呼叫</string>
+    <string name="calls_readiness_title">就绪检查</string>
+    <string name="calls_status_standby">待命中</string>
+    <string name="calls_group_auto">自动接听</string>
+    <string name="calls_group_ai">AI 通话</string>
+    <string name="calls_group_summary">通话总结</string>
+    <string name="calls_summary_row_sub">通话结束后生成摘要和待办</string>
+    <string name="calls_allowlist_row">白名单号码</string>
+    <string name="calls_self_answer_row">本人接听</string>
+    <string name="calls_prompt_row">通话说明</string>
+    <string name="calls_duration_row">最长时长</string>
+    <string name="calls_duration_value">%1$d 秒</string>
+    <string name="calls_voice_row">AI 音色</string>
+    <string name="calls_credentials_row">服务凭据</string>
+    <string name="calls_history_pending_count">待处理 %1$d</string>
+    <string name="calls_count_numbers">%1$d 个</string>
+    <string name="calls_wait_row">接听等待</string>
+</resources>

@@ -17,7 +17,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.wangzan101.mika.ui.components.MikaDialog
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import com.wangzan101.mika.chat.DeleteBatch
@@ -104,6 +103,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import com.wangzan101.mika.ui.components.ButtonSize
+import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.cardSurface
 import com.wangzan101.mika.ui.components.lazyListScrollbar
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -231,7 +232,7 @@ fun readiness(check: Prerequisites.Check): Pair<String, Boolean> = when {
 private const val MAX_RECENT = 50
 
 /**
- * 侧栏:从左边滑出、右边圆角。顶部是标志和状态;四个入口;中间是进行中(段标题右边进「后台屏」页)和最近的对话;最底下设置和关于并排。
+ * 侧栏:从左边滑出、右边圆角。顶部是标志和状态;新建对话按钮和入口;中间是进行中、置顶和最近会话;最底下只有应用设置。
  * 打开和关上由外面的抽屉管,这里只摆内容,点了什么交给回调。
  */
 @Composable
@@ -251,13 +252,11 @@ fun ChatDrawer(
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
     onFiles: () -> Unit = {},
+    onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
     onOpen: (DrawerConversation) -> Unit,
-    onAbout: () -> Unit = {},
-    /** 完全退出 Mika(先问一句)。 */
-    onQuit: () -> Unit = {},
-    /** 有新版本:「关于 Mika」带小红点。 */
+    /** 有新版本:「应用设置」带小红点,关于页在设置里。 */
     aboutDot: Boolean = false,
     /** 长按一条存过的对话:在它原地弹出操作菜单(置顶、改名、删除);带上那一行在窗口里的位置和大小。 */
     onActions: (DrawerConversation, Rect) -> Unit = { _, _ -> },
@@ -310,18 +309,19 @@ fun ChatDrawer(
             }
         }
         if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
-        // 搜索、多选时把几个入口收起来，把高度让给列表;退出后原样回来
-        if (!searchActive && !selecting) Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+        // 搜索、多选时把几个入口收起来，把高度让给列表;退出后原样回来。入口本身不再分组。
+        if (!searchActive && !selecting) Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            MikaButton(
+                stringResource(R.string.drawer_new_chat), onNew,
+                Modifier.fillMaxWidth().testTag("drawer-new"),
+                size = ButtonSize.Medium, enabled = canSwitch,
+            )
             NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
-            NavEntry(MikaIcons.New, stringResource(R.string.chat_new), enabled = canSwitch, onClick = onNew)
             NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
-            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
             NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
             NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
-            // 和上面几项隔开一点:这是把 Mika 整个停下来,不是换一页
-            Box(Modifier.padding(top = 4.dp)) {
-                NavEntry(MikaIcons.Power, stringResource(R.string.quit_title), onClick = onQuit)
-            }
+            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
+            NavEntry(MikaIcons.Phone, stringResource(R.string.calls_title), onClick = onCalls)
         }
         // 侧栏关着时列表只剩末尾那一项;打开时对话插在它前面,列表会按原来那一项停在最底下。最上面一项变了就回到顶上
         val list = rememberLazyListState()
@@ -395,14 +395,12 @@ fun ChatDrawer(
         if (selecting) {
             SelectBar(selectedCount, allSelected, onSelectAll, onDeleteSelected)
         } else {
-            // 设置和关于并排固定在侧栏最底下,对话再多也不被挤走:设置靠左,关于靠右,中间留空
+            // 应用设置固定在侧栏最底下,对话再多也不被挤走。关于和退出在设置页里。
             Row(
                 Modifier.fillMaxWidth().drawBehind { drawLine(c.hair, Offset(0f, 0f), Offset(size.width, 0f), 0.5.dp.toPx()) }
                     .padding(horizontal = 12.dp, vertical = 6.dp).testTag("drawer-footer"),
-                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                NavEntry(MikaIcons.Gear, stringResource(R.string.settings_title), Modifier, onClick = onSettings)
-                NavEntry(MikaIcons.Info, AboutCopy.TITLE, Modifier, dot = aboutDot, onClick = onAbout)
+                NavEntry(MikaIcons.Gear, stringResource(R.string.settings_title), Modifier.fillMaxWidth(), dot = aboutDot, onClick = onSettings)
             }
         }
     }
@@ -727,10 +725,10 @@ fun ChatWithDrawer(
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
     onFiles: () -> Unit = {},
+    onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
-    onAbout: () -> Unit = {},
-    /** 有新版本:侧栏「关于 Mika」带小红点。 */
+    /** 有新版本:侧栏「应用设置」带小红点。关于页在设置里。 */
     updateAvailable: Boolean = false,
     /** 从侧栏进去的页面刚退回来:当场打开侧栏,回到进去之前的样子。 */
     reopen: Boolean = false,
@@ -793,7 +791,6 @@ fun ChatWithDrawer(
     // 对话页上返回(侧滑)先打开侧栏;侧栏开着时再返回才离开 App(退到后台,和桌面返回一样)。
     // 搜索时先清掉搜索,再按才离开。对话页里面板、画中画等自己的返回在内层,先于这里处理
     val activity = LocalContext.current.findActivity()
-    val context = LocalContext.current
     BackHandler {
         when {
             selecting -> {
@@ -829,8 +826,6 @@ fun ChatWithDrawer(
     var renaming by remember { mutableStateOf<DrawerConversation?>(null) }
     /** 要删的那条和删它会连带什么;确认弹窗开着。 */
     var confirming by remember { mutableStateOf<Pair<DrawerConversation, DeleteImpact>?>(null) }
-    /** 「完全退出」的确认弹窗开着。 */
-    var confirmingQuit by remember { mutableStateOf(false) }
     var lastReset by remember { mutableIntStateOf(resetKey) }
     LaunchedEffect(resetKey) {
         if (resetKey != lastReset) {
@@ -841,7 +836,6 @@ fun ChatWithDrawer(
             selecting = false
             selected = emptySet()
             confirmingMany = null
-            confirmingQuit = false
             query = ""
             searchOutcome = null
             drawer.snapTo(DrawerValue.Closed)
@@ -931,9 +925,8 @@ fun ChatWithDrawer(
                     onSettings = { leave(onSettings) },
                     onBrowser = { leave(onBrowser) },
                     onFiles = { leave(onFiles) },
+                    onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },
-                    onAbout = { leave(onAbout) },
-                    onQuit = { leave { confirmingQuit = true } },
                     aboutDot = updateAvailable,
                     onActions = { item, bounds -> if (item.id != null) acting = item to bounds },
                     onOpen = { item ->
@@ -1023,19 +1016,6 @@ fun ChatWithDrawer(
                 vm.deleteConversations(ids)
             },
             onDismiss = { confirmingMany = null },
-        )
-    }
-    if (confirmingQuit) {
-        AlertDialog(
-            onDismissRequest = { confirmingQuit = false },
-            title = { Text(stringResource(R.string.quit_title)) },
-            text = { Text(stringResource(R.string.quit_confirm_body)) },
-            confirmButton = {
-                TextButton({ confirmingQuit = false; com.wangzan101.mika.quit.MikaQuit.quit(context) }) {
-                    Text(stringResource(R.string.quit_confirm_action), color = MikaTheme.colors.bad)
-                }
-            },
-            dismissButton = { TextButton({ confirmingQuit = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
