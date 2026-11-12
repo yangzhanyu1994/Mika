@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ dbbd6498b424 -->
+<!-- translated-from: README.md @ 9040b436fbcb -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,16 @@
 <sub>「ファイル転送アシスタントにメッセージを送って」のひと言で：左は Mika とのチャット、右はバックグラウンド画面での一つひとつの操作（4 倍速、チャット一覧はぼかし処理済み）</sub>
 
 </div>
+
+## 必読
+
+### 2026-11-12
+
+- **日付**：2026-11-12（UTC+8）
+- **更新者**：Grok Build via Cursor cloud agent
+- **テスト結果**：`python3 tools/i18n/translations.py check` は成功。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` は成功（5335 tests, 0 failures, 2 skipped。debug APK と androidTest のコンパイルも成功）。
+- **出典**：owner-approved mockups, 2026-11-12 chat
+- **状態**：コードは書き終えています。実機では未検証
 
 ## ひと言で、用事がひとつ片づく
 
