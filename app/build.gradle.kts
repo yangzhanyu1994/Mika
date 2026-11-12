@@ -18,12 +18,13 @@ android {
         applicationId = "com.wangzan101.mika"
         minSdk = 30
         targetSdk = 35
-        versionCode = 35
-        versionName = "0.1.34"
+        versionCode = providers.gradleProperty("mikaVersionCode").orNull?.toInt() ?: 35
+        versionName = providers.gradleProperty("mikaVersionName").orNull ?: "0.1.34"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         // 关于页版本号后的 Beta 标记;出正式版时改成 false
-        buildConfigField("boolean", "BETA", "true")
+        val beta = providers.gradleProperty("mikaBeta").orNull ?: "true"
+        buildConfigField("boolean", "BETA", beta)
     }
 
     // 沙箱程序只有 arm64 版本(jniLibs/arm64-v8a);APK 不限 ABI,别的设备照常安装、显示「此设备不支持沙箱」。
@@ -53,6 +54,15 @@ android {
     // 评测任务集(仓库根目录 eval/tasks)打进测试包的 assets,真机评测跑器从那里读题
     sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("eval/tasks"))
 
+    signingConfigs {
+        create("forkRelease") {
+            storeFile = System.getenv("MIKA_FORK_KEYSTORE")?.let { file(it) }
+            storePassword = System.getenv("MIKA_FORK_STORE_PASSWORD")
+            keyAlias = System.getenv("MIKA_FORK_KEY_ALIAS")
+            keyPassword = System.getenv("MIKA_FORK_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         // 真机验收时并排安装,保留发行版和用户数据;默认构建标识不变。
         if (providers.gradleProperty("devInstall").isPresent) getByName("debug") {
@@ -65,6 +75,14 @@ android {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             isProfileable = true
+            matchingFallbacks += "release"
+        }
+        // 独立包名和固定签名,首次安装后可由本仓库的 Releases 持续原位更新。
+        create("forkRelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".fork"
+            resValue("string", "app_name", "Mika Fork")
+            signingConfig = signingConfigs.getByName("forkRelease")
             matchingFallbacks += "release"
         }
     }
