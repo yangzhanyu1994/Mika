@@ -1,8 +1,5 @@
 name: Mika Fork Release
 on:
-  push:
-    tags:
-      - "v*"
   create:
   workflow_dispatch:
     inputs:
