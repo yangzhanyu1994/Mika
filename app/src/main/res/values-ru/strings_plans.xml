@@ -80,4 +80,8 @@
     <string name="plans_running_now">Выполняется</string>
     <string name="trigger_deleted">Задача по расписанию удалена</string>
     <string name="trigger_busy">Эта задача ещё выполняется</string>
+    <string name="plans_voice_hold">Удерживайте и опишите задачу</string>
+    <string name="plans_voice_example">Например: каждое утро в 8 напомни, если будет дождь</string>
+    <string name="plans_parse_failed">Не удалось заполнить задачу. Поля можно изменить вручную.</string>
+    <string name="plans_parsed_note">Поля заполнены. Проверьте и сохраните.</string>
 </resources>

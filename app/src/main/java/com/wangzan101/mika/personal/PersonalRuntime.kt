@@ -155,7 +155,63 @@ class PersonalRuntime(private val app: MikaApp) {
         }
     }
     private val submit = Mutex()
-    suspend fun send(text: String) = submit.withLock { withContext(Dispatchers.IO) { agent.send(text) } }
+    suspend fun send(text: String) = submit.withLock {
+        val clean = text.trim()
+        if (clean.isEmpty()) return@withLock
+        val proposal = if (com.wangzan101.mika.calls.tasks.CallTaskTexts.looksLike(clean)) {
+            withContext(Dispatchers.IO) {
+                val model = app.providers.modelFor(ModelRole.Main, ModelSession.of("personal-call-task"))
+                val book = com.wangzan101.mika.calls.PhoneContacts(app)
+                val parsed = model?.let {
+                    com.wangzan101.mika.calls.tasks.CallTaskParser.parse(it, clean, book.names())
+                }
+                parsed?.let { com.wangzan101.mika.calls.tasks.CallTaskParser.withContacts(it, book.entries()) }
+            }
+        } else null
+        if (proposal != null) withContext(Dispatchers.IO) { recordProposal(clean, proposal) }
+        else withContext(Dispatchers.IO) { agent.send(clean) }
+    }
+
+    private fun recordProposal(text: String, proposal: com.wangzan101.mika.calls.tasks.ParsedCallTask) {
+        val now = System.currentTimeMillis()
+        store.update {
+            it.copy(messages = it.messages +
+                PersonalMessage(UUID.randomUUID().toString(), "user", text, now, handled = true) +
+                PersonalMessage(UUID.randomUUID().toString(), "call_proposal",
+                    com.wangzan101.mika.calls.tasks.CallTaskParser.encode(proposal), now + 1))
+        }
+    }
+
+    fun confirmProposal(messageId: String, proposal: com.wangzan101.mika.calls.tasks.ParsedCallTask) {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                if (proposal.kind == com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_DEFAULT) {
+                    com.wangzan101.mika.calls.CallDefaultBrief.migrate(app.calls.settings, app.calls.instructions)
+                    val current = app.calls.settings.state.value
+                    val merged = listOf(current.defaultBrief, proposal.say).filter { it.isNotBlank() }.joinToString("\n")
+                        .take(com.wangzan101.mika.calls.CallDefaultBrief.MAX_CHARS)
+                    app.calls.settings.save(current.copy(defaultBrief = merged, defaultBriefMigrated = true))
+                } else {
+                    val saved = com.wangzan101.mika.calls.tasks.CallTaskParser.toTask(proposal)
+                    app.calls.tasks.save(saved)
+                }
+                val note = app.getString(com.wangzan101.mika.R.string.calls_task_added)
+                store.update { state ->
+                    state.copy(messages = state.messages.map { message ->
+                        if (message.id == messageId) message.copy(role = "assistant", text = note) else message
+                    })
+                }
+            }.onFailure { _error.value = it.message ?: "没能保存通话任务" }
+        }
+    }
+
+    fun dismissProposal(messageId: String) {
+        store.update { state ->
+            state.copy(messages = state.messages.map { message ->
+                if (message.id == messageId) message.copy(role = "assistant", text = "未添加这条通话任务。") else message
+            })
+        }
+    }
     fun stop(id: String) {
         scope.launch {
             runCatching {

@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">接听设置</string>
     <string name="calls_tab_history">通话记录</string>
     <string name="calls_number">电话号码</string>
-    <string name="calls_sim">拨出 SIM 卡</string>
+    <string name="calls_sim">使用号卡</string>
     <string name="calls_default">默认</string>
     <string name="calls_dial">让 AI 拨打</string>
     <string name="calls_call_note">使用现有 SIM 卡；可能产生运营商通话费和火山模型用量费。拨出前可在设置填写通话目的和开场白。</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">使用旧版 App ID 与 Access Key</string>
     <string name="calls_save">保存</string>
     <string name="calls_cancel">取消</string>
-    <string name="calls_greeting">开场白</string>
+    <string name="calls_greeting">接听问候语</string>
     <string name="calls_instructions">通话目的与说明</string>
     <string name="calls_duration">AI 最长秒数（15–600）</string>
     <string name="calls_speaker">火山音色编号</string>

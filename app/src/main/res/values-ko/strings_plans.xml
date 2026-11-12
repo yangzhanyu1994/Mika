@@ -77,4 +77,8 @@
     <string name="plans_running_now">실행 중</string>
     <string name="trigger_deleted">예약 작업이 삭제되었어요</string>
     <string name="trigger_busy">이 작업이 아직 실행 중이에요</string>
+    <string name="plans_voice_hold">길게 눌러 말하면 예약 작업이 채워집니다</string>
+    <string name="plans_voice_example">예: 매일 아침 8시에 비가 오면 알려 줘</string>
+    <string name="plans_parse_failed">이 문장으로는 작업을 채우지 못했습니다. 아래 칸은 직접 고칠 수 있습니다</string>
+    <string name="plans_parsed_note">칸을 채웠습니다. 확인한 뒤 저장하세요</string>
 </resources>

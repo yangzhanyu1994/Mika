@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">الإعدادات</string>
     <string name="calls_tab_history">السجل</string>
     <string name="calls_number">رقم الهاتف</string>
-    <string name="calls_sim">شريحة SIM للمكالمات الصادرة</string>
+    <string name="calls_sim">شريحة SIM المستخدمة</string>
     <string name="calls_default">افتراضي</string>
     <string name="calls_dial">الاتصال بالذكاء الاصطناعي</string>
     <string name="calls_call_note">تستخدم المكالمات شريحة SIM الحالية. قد تترتب عليها رسوم من شركة الاتصالات ورسوم استخدام Volcengine. حدّد غرض المكالمة والتحية في الإعدادات قبل الاتصال.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">استخدام App ID وAccess Key القديمين</string>
     <string name="calls_save">حفظ</string>
     <string name="calls_cancel">إلغاء</string>
-    <string name="calls_greeting">التحية</string>
+    <string name="calls_greeting">تحية الرد</string>
     <string name="calls_instructions">الغرض والتعليمات</string>
     <string name="calls_duration">الحد الأقصى للمدة بالذكاء الاصطناعي (15–600 ثانية)</string>
     <string name="calls_speaker">معرّف الصوت في Volcengine</string>

@@ -146,7 +146,7 @@ class PersonalAgent(
                 require(batch.isNotEmpty()) { "这条消息超出了当前模型的上下文，请分成几段发送。" }
                 val history = snapshot.messages.asReversed().asSequence()
                     .take((snapshot.messages.size - snapshot.covered).coerceAtLeast(0))
-                    .filter { it.handled && it.role != "task" }
+                    .filter { it.handled && it.role != "task" && it.role != "call_proposal" }
                     .mapNotNull { m -> m.conversationText().takeIf(String::isNotBlank)?.let { m to it } }
                     .take(HISTORY_LIMIT - batch.size)
                     .takeWhile { (_, text) -> fits(text) }
@@ -206,6 +206,10 @@ class PersonalAgent(
         var covered = s.covered
         while (covered < end) {
             val message = s.messages[covered]
+            if (message.role == "call_proposal") {
+                covered++
+                continue
+            }
             val line = historyLabel(message) + message.conversationText()
             if (line.length + 1 > SUMMARY_INPUT_LIMIT - input.length) break
             input.appendLine(line)

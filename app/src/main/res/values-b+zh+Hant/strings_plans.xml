@@ -77,4 +77,8 @@
     <string name="plans_running_now">執行中</string>
     <string name="trigger_deleted">定時任務已刪除</string>
     <string name="trigger_busy">這條任務仍在執行</string>
+    <string name="plans_voice_hold">按住說話，自動產生定時任務</string>
+    <string name="plans_voice_example">例如：每天早上 8 點如果會下雨就提醒我</string>
+    <string name="plans_parse_failed">沒能從這句話整理出定時任務，仍可直接改下面的欄位</string>
+    <string name="plans_parsed_note">已填好欄位，請核對後再儲存</string>
 </resources>

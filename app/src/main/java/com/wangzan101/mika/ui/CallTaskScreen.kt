@@ -140,7 +140,7 @@ internal fun CallTaskScreen(
         )
     }
     Spacer(Modifier.height(8.dp))
-    GroupCard {
+    if (state.simOptions.size > 1) GroupCard {
         val simSummary = when {
             sim != null && draft.simOverride == null && sim.id == config.defaultOutgoingSimId ->
                 stringResource(R.string.calls_sim_preferred, sim.label)
@@ -225,7 +225,7 @@ private fun CallTaskLongField(
 }
 
 @Composable
-private fun CallTaskSimDialog(
+internal fun CallTaskSimDialog(
     options: List<CallSim>, preferred: String?, selectedOverride: String?, onChoose: (String?) -> Unit, onDismiss: () -> Unit,
 ) {
     val remembered = options.firstOrNull { it.id == preferred }

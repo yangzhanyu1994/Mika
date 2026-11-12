@@ -93,7 +93,8 @@ internal class CallNotifications(private val context: Context) {
             .putExtra(MainActivity.EXTRA_CALL_HISTORY_ID, callId)
         val pending = PendingIntent.getActivity(context, callId.hashCode(), openDetail,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val caller = number?.takeIf { it.isNotBlank() } ?: context.getString(R.string.calls_completed_notification_text)
+        val caller = number?.takeIf { it.isNotBlank() }?.let { PhoneContacts(context).label(it) }
+            ?: context.getString(R.string.calls_completed_notification_text)
         val title = "${context.getString(R.string.calls_completed_notification_title)} · $caller"
         val summaryText = summary?.let { value ->
             buildList {

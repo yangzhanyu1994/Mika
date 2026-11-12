@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">Answer settings</string>
     <string name="calls_tab_history">Call history</string>
     <string name="calls_number">Phone number</string>
-    <string name="calls_sim">Outgoing SIM</string>
+    <string name="calls_sim">SIM to use</string>
     <string name="calls_default">Default</string>
     <string name="calls_dial">Call with AI</string>
     <string name="calls_call_note">Calls use the existing SIM. Carrier and Volcengine usage charges may apply. Set the purpose and greeting in Settings before dialing.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">Use legacy App ID and Access Key</string>
     <string name="calls_save">Save</string>
     <string name="calls_cancel">Cancel</string>
-    <string name="calls_greeting">Greeting</string>
+    <string name="calls_greeting">Answer greeting</string>
     <string name="calls_instructions">Purpose and instructions</string>
     <string name="calls_duration">Maximum AI seconds (15–600)</string>
     <string name="calls_speaker">Volcengine voice id</string>

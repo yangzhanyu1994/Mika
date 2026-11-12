@@ -79,4 +79,8 @@
     <string name="plans_running_now">En ejecución</string>
     <string name="trigger_deleted">Se eliminó la tarea programada</string>
     <string name="trigger_busy">Esta tarea sigue en ejecución</string>
+    <string name="plans_voice_hold">Mantén pulsado para describir la tarea</string>
+    <string name="plans_voice_example">Por ejemplo: avísame a las 8 si va a llover</string>
+    <string name="plans_parse_failed">No se pudo rellenar la tarea. Aún puedes editar los campos.</string>
+    <string name="plans_parsed_note">Campos actualizados. Revísalos y guarda.</string>
 </resources>

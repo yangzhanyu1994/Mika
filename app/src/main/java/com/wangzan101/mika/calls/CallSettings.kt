@@ -35,6 +35,7 @@ class CallSettings(
         }.distinctBy(CallPolicy::incomingMatchKey).toSet()
         require(config.greeting.length <= CallPolicy.MAX_GREETING_CHARS) { "开场白过长" }
         require(config.systemPrompt.length <= CallPolicy.MAX_PROMPT_CHARS) { "通话说明过长" }
+        require(config.defaultBrief.length <= CallDefaultBrief.MAX_CHARS) { "默认交代过长" }
         val speaker = config.speaker.trim().ifBlank { defaults.speaker }
         require(speaker.length <= CallPolicy.MAX_SPEAKER_CHARS && speaker.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it in "_-" }) {
             "无效的火山音色编号"
@@ -53,6 +54,9 @@ class CallSettings(
             maxCallSeconds = config.maxCallSeconds.coerceIn(15, CallPolicy.MAX_SECONDS),
             greeting = config.greeting.trim(), // An explicitly empty greeting is different from a missing preference.
             systemPrompt = config.systemPrompt.trim(),
+            defaultBrief = config.defaultBrief.trim().take(CallDefaultBrief.MAX_CHARS),
+            defaultBriefMigrated = config.defaultBriefMigrated || previous.defaultBriefMigrated,
+            credentialProbeOk = config.credentialProbeOk,
             speaker = speaker,
             credentialsConfigured = previous.credentialsConfigured,
         )
@@ -72,6 +76,13 @@ class CallSettings(
             .putString("audio_verified_build", Build.FINGERPRINT.takeIf { next.audioVerified })
             .putString("greeting", next.greeting)
             .putString("prompt", next.systemPrompt)
+            .putString("default_brief", next.defaultBrief)
+            .putBoolean("default_brief_migrated", next.defaultBriefMigrated)
+            .putString("credential_probe", when (next.credentialProbeOk) {
+                true -> "ok"
+                false -> "fail"
+                null -> null
+            })
             .putString("speaker", next.speaker)
             .commit()
         // A failed write may not leave auto-answer running with a policy the user tried to change.
@@ -107,6 +118,7 @@ class CallSettings(
         val edit = prefs.edit()
         if (clear) {
             edit.remove(CREDENTIALS).putBoolean("auto_answer", false).putBoolean(BACKGROUND_AUTHORIZED, false)
+                .remove("credential_probe")
         } else {
             val bytes = "${modern}\n${legacyId}\n${legacyKey}".toByteArray()
             try {
@@ -119,11 +131,18 @@ class CallSettings(
         val committed = edit.commit()
         if (committed || clear) {
             mutable.value = mutable.value.copy(credentialsConfigured = !clear,
+                credentialProbeOk = if (clear) null else mutable.value.credentialProbeOk,
                 autoAnswer = !clear && mutable.value.autoAnswer,
                 backgroundStandbyAuthorized = !clear && mutable.value.backgroundStandbyAuthorized)
             credentialsRevision.value++
         }
         check(committed) { "无法保存火山凭据" }
+    }
+
+    @Synchronized
+    fun noteCredentialProbe(ok: Boolean) {
+        if (!prefs.edit().putString("credential_probe", if (ok) "ok" else "fail").commit()) return
+        mutable.value = mutable.value.copy(credentialProbeOk = ok)
     }
 
     @Synchronized
@@ -168,6 +187,13 @@ class CallSettings(
             greeting = CallPolicy.migrateDefaultGreeting(prefs.getString("greeting", defaults.greeting).orEmpty())
                 .take(CallPolicy.MAX_GREETING_CHARS),
             systemPrompt = prefs.getString("prompt", "").orEmpty().take(CallPolicy.MAX_PROMPT_CHARS),
+            defaultBrief = prefs.getString("default_brief", "").orEmpty().take(CallDefaultBrief.MAX_CHARS),
+            defaultBriefMigrated = prefs.getBoolean("default_brief_migrated", false),
+            credentialProbeOk = when (prefs.getString("credential_probe", null)) {
+                "ok" -> true
+                "fail" -> false
+                else -> null
+            },
             speaker = prefs.getString("speaker", defaults.speaker).orEmpty().take(CallPolicy.MAX_SPEAKER_CHARS),
         )
     }.getOrDefault(CallConfig())
