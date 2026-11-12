@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">Belum mulai</string>
     <string name="calls_task_kind_dial">Panggilan AI</string>
     <string name="calls_task_kind_incoming">Pesan panggilan masuk</string>
-    <string name="calls_task_kind_default">Instruksi bawaan</string>
+    <string name="calls_task_kind_default">Jawaban umum</string>
     <string name="calls_task_type">Jenis</string>
     <string name="calls_task_hold">Tahan untuk bicara dan membuat tugas</string>
     <string name="calls_task_hold_example">Misalnya: kalau kurir menelepon, minta ditaruh di pintu</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">Menganalisis…</string>
     <string name="calls_task_parse_failed">Tidak bisa dijadikan tugas. Ubah isian lalu simpan.</string>
     <string name="calls_task_need_model">Pilih model di Setelan dulu</string>
-    <string name="calls_default_brief">Instruksi bawaan</string>
+    <string name="calls_default_brief">Jawaban umum</string>
     <string name="calls_default_brief_sub">Cara AI menjawab kalau tidak ada tugas panggilan</string>
     <string name="calls_default_brief_hint">Misalnya: bilang saya sibuk dan catat pesannya</string>
     <string name="calls_audio_channel">Jalur audio</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">Cari nama atau nomor</string>
     <string name="calls_contacts_empty">Tidak ada kontak yang cocok</string>
     <string name="calls_rules_section">Aturan jawab</string>
+    <string name="calls_stranger_only">AI hanya menjawab nomor tak dikenal</string>
+    <string name="calls_stranger_only_sub">Kontak dijawab sendiri</string>
+    <string name="calls_stranger_only_denied">Izin kontak ditolak, jadi tetap mati</string>
+    <string name="calls_stranger_ready_on">Nyala · kontak berdering untuk Anda</string>
+    <string name="calls_stranger_ready_off">Mati</string>
+    <string name="calls_stranger_ready_blocked">Nyala, tetapi kontak tidak terbaca jadi AI tidak menjawab otomatis</string>
+    <string name="calls_ring_timeout">Alihkan ke AI setelah berdering</string>
+    <string name="calls_ring_timeout_sub">Jika berdering 10 detik tanpa dijawab, AI yang mengangkat</string>
+    <string name="calls_ring_timeout_on">Nyala · setelah 10 detik dialihkan ke AI</string>
+    <string name="calls_ring_timeout_off">Mati</string>
 </resources>

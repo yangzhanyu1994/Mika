@@ -31,6 +31,8 @@ fun PageScaffold(
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
     viewportModifier: Modifier = Modifier,
+    /** Fixed under the scrolling page. The caller pads for the navigation bar and the keyboard. */
+    footer: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PageBackground(modifier) {
@@ -39,13 +41,14 @@ fun PageScaffold(
             Column(
                 Modifier.weight(1f).fillMaxWidth().then(viewportModifier)
                     .verticalScroll(scrollState)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .then(if (footer == null) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
                     .padding(horizontal = MikaSpace.Page),
             ) {
                 Spacer(Modifier.height(MikaSpace.S4))
                 content()
-                Spacer(Modifier.height(MikaSpace.S24))
+                Spacer(Modifier.height(if (footer == null) MikaSpace.S24 else MikaSpace.S16))
             }
+            footer?.invoke()
         }
     }
 }

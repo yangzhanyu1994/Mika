@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">未开始</string>
     <string name="calls_task_kind_dial">AI 拨打</string>
     <string name="calls_task_kind_incoming">来电交代</string>
-    <string name="calls_task_kind_default">默认交代</string>
+    <string name="calls_task_kind_default">通用应答</string>
     <string name="calls_task_type">类型</string>
     <string name="calls_task_hold">按住说话，自动生成任务</string>
     <string name="calls_task_hold_example">例如：快递打电话就让他放门口</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">正在整理…</string>
     <string name="calls_task_parse_failed">没能整理成任务，请改一下字段再保存</string>
     <string name="calls_task_need_model">请先在设置里选择模型</string>
-    <string name="calls_default_brief">默认交代</string>
+    <string name="calls_default_brief">通用应答</string>
     <string name="calls_default_brief_sub">没有通话任务时 AI 的应对方式</string>
     <string name="calls_default_brief_hint">例如：就说我在忙，帮我记下留言</string>
     <string name="calls_audio_channel">音频通道</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">搜索姓名或号码</string>
     <string name="calls_contacts_empty">没有匹配的联系人</string>
     <string name="calls_rules_section">接听规则</string>
+    <string name="calls_stranger_only">仅 AI 接听陌生号码</string>
+    <string name="calls_stranger_only_sub">通讯录中的联系人由你本人接听</string>
+    <string name="calls_stranger_only_denied">没有通讯录权限，已保持关闭</string>
+    <string name="calls_stranger_ready_on">已开启 · 联系人由你接听</string>
+    <string name="calls_stranger_ready_off">未开启</string>
+    <string name="calls_stranger_ready_blocked">已开启但读不到通讯录，AI 不会自动接听</string>
+    <string name="calls_ring_timeout">响铃超时转 AI 接听</string>
+    <string name="calls_ring_timeout_sub">连续响铃 10 秒无人接听后，自动转入 AI 接听</string>
+    <string name="calls_ring_timeout_on">已开启 · 无人接听满 10 秒后转 AI</string>
+    <string name="calls_ring_timeout_off">未开启</string>
 </resources>

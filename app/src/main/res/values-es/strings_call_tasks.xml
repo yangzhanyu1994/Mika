@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">Aún no</string>
     <string name="calls_task_kind_dial">Llamada de IA</string>
     <string name="calls_task_kind_incoming">Indicación de llamada</string>
-    <string name="calls_task_kind_default">Indicaciones predeterminadas</string>
+    <string name="calls_task_kind_default">Respuesta general</string>
     <string name="calls_task_type">Tipo</string>
     <string name="calls_task_hold">Mantén pulsado para hablar y crear la tarea</string>
     <string name="calls_task_hold_example">Por ejemplo: si llama el mensajero, que lo deje en la puerta</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">Analizando…</string>
     <string name="calls_task_parse_failed">No se pudo crear la tarea. Edita los campos y guárdala.</string>
     <string name="calls_task_need_model">Elige primero un modelo en Ajustes</string>
-    <string name="calls_default_brief">Indicaciones predeterminadas</string>
+    <string name="calls_default_brief">Respuesta general</string>
     <string name="calls_default_brief_sub">Cómo responde la IA cuando no hay una tarea de llamada</string>
     <string name="calls_default_brief_hint">Por ejemplo: di que estoy ocupado y toma el recado</string>
     <string name="calls_audio_channel">Ruta de audio</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">Buscar nombre o número</string>
     <string name="calls_contacts_empty">No hay contactos coincidentes</string>
     <string name="calls_rules_section">Reglas de respuesta</string>
+    <string name="calls_stranger_only">La IA solo responde números desconocidos</string>
+    <string name="calls_stranger_only_sub">Los contactos los contestas tú</string>
+    <string name="calls_stranger_only_denied">Se denegaron los contactos, así que sigue apagado</string>
+    <string name="calls_stranger_ready_on">Activado · los contactos suenan para ti</string>
+    <string name="calls_stranger_ready_off">Apagado</string>
+    <string name="calls_stranger_ready_blocked">Activado, pero sin contactos la IA no responde sola</string>
+    <string name="calls_ring_timeout">Pasar a la IA si sigue sonando</string>
+    <string name="calls_ring_timeout_sub">Si suena 10 segundos y nadie responde, lo coge la IA</string>
+    <string name="calls_ring_timeout_on">Activado · a los 10 segundos pasa a la IA</string>
+    <string name="calls_ring_timeout_off">Apagado</string>
 </resources>

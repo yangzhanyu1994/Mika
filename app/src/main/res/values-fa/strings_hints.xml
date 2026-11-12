@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">ساختن کار خودکار</string>
+    <string name="home_chip_call">ساختن کار تماس هوش مصنوعی</string>
+    <string name="home_chip_assistant">دستیار شخصی</string>
+    <string name="hint_home_remind">فردا ساعت ۸ جلسه را یادآوری کن</string>
+    <string name="hint_home_courier">اگر پیک زنگ زد، بگو دم در بگذارد</string>
+    <string name="hint_home_property">به مدیریت زنگ بزن و پارکینگ را بپرس</string>
+    <string name="hint_home_ask">هر چه خواستی بپرس</string>
+    <string name="hint_plan_morning">فردا ساعت ۸ جلسه را یادآوری کن</string>
+    <string name="hint_plan_rain">هر روز ساعت ۸ اگر باران می‌آید یادآوری کن</string>
+    <string name="hint_plan_friday">جمعه بعدازظهر یادآوری کن گزارش را بفرستم</string>
+    <string name="hint_call_courier">اگر پیک زنگ زد، بگو دم در بگذارد</string>
+    <string name="hint_call_property">به مدیریت زنگ بزن و پارکینگ را بپرس</string>
+    <string name="hint_call_delivery">اگر غذا رسید، بگو دم در بگذارد</string>
+    <string name="hint_brief_busy">بگو سرم شلوغ است و پیام را یادداشت کن</string>
+    <string name="hint_brief_courier">اگر پیک زنگ زد، بگو دم در بگذارد</string>
+    <string name="hint_brief_unknown">اگر شماره ناشناس است، اول بپرس کیست</string>
+</resources>

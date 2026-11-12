@@ -19,7 +19,7 @@
     <string name="calls_summary_row_sub">After a call, write a summary and to-dos</string>
     <string name="calls_allowlist_row">Allowlist</string>
     <string name="calls_self_answer_row">Answer myself</string>
-    <string name="calls_prompt_row">Обычные указания</string>
+    <string name="calls_prompt_row">Общий ответ</string>
     <string name="calls_duration_row">Max length</string>
     <string name="calls_duration_value">%1$d s</string>
     <string name="calls_voice_row">AI voice</string>

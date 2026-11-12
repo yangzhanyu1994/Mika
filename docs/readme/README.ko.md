@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 131b7d737639 -->
+<!-- translated-from: README.md @ 09a12768165f -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -45,6 +45,15 @@
 - **테스트 결과**：`python3 tools/i18n/translations.py check` 통과. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 통과（5344 tests, 0 failures, 2 skipped. debug APK와 androidTest 컴파일 성공）.
 - **출처**：老板 2026-11-13 design previews
 - **상태**：코드는 작성 완료, 실기기 미검증
+
+### 2026-11-13 · 0.1.43
+
+- **날짜**：2026-11-13（UTC+8）
+- **업데이트한 사람**：Grok Build via Cursor cloud agent
+- **테스트 결과**：`python3 tools/i18n/translations.py check` 통과. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin` 통과（5352 tests, 0 failures, 2 skipped. debug APK와 androidTest 컴파일 성공）.
+- **출처**：老板 2026-11-13 06:39, 06:41, 06:43, 06:49, 06:50, 06:55, 06:56, 06:58, 06:59 실기기 피드백
+- **상태**：코드는 작성 완료, 실기기 미검증
+- **설명**：수신 설정은 항목마다 자기 편집만 연다. 오디오 채널은 한 줄. 낯선 번호만 AI가 받는 스위치는 기본 꺼짐이고, 연락처는 사람이 받는다. 연락처를 읽을 수 없으면 스위치를 켜지 않으며 연락처를 낯선 번호로 보지 않는다. 10초 벨 후 AI 전환도 기본 꺼짐. 본인 수신과 알아본 연락처는 사람이 먼저 받고, 허용 목록 제외는 시간 초과로 깨지지 않는다. AI 음성은 실시간 음성 모델 설정으로 옮기고 저장된 값은 유지한다. 통화 작업, 공통 응답, 예약 작업 입력은 홈과 같은 하단 입력줄이다. 「기본 지시」는 「공통 응답」으로 바꾸고 저장 내용은 남긴다. 홈에 돌아오면 입력칸에 초점이 가고 키보드가 뜬다. 빈 대화에서는 입력칸 위 왼쪽에 캡슐 세 개. 회색 힌트는 입구마다 바뀌고, 초점 또는 입력이 시작되면 멈춘다. 고정 예시 네 줄은 없앴다. 이 기기의 사용 기록으로 최대 4개를 만들고, 누르면 입력칸에 넣으며 바로 보내지 않는다. 기록이 없으면 카드를 숨긴다. 집계는 기기에만 둔다. 홈 오른쪽 위 첨부·새 대화 버튼은 사이드바와 겹쳐 제거했다. 저장하지 않은 초안은 사이드바의 새 대화가 유지한다.
 
 ## 한마디로 일 하나를 끝내기
 

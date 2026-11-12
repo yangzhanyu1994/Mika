@@ -221,7 +221,7 @@ private fun readCallDeviceReadiness(context: Context): CallDeviceReadiness {
 @Composable
 internal fun CallPermissionRows(
     device: CallDeviceControls, helperConnected: Boolean, enabled: Boolean, onHelperSetup: () -> Unit,
-    first: Boolean = false,
+    config: CallConfig, first: Boolean = false,
 ) {
     val checks = device.readiness
     val helperAction = onHelperSetup.takeIf { enabled }
@@ -252,6 +252,21 @@ internal fun CallPermissionRows(
         detailColor = MikaTheme.colors.accent,
         onClick = device.contactsAction.takeIf { enabled && !checks.contactsAllowed },
     ) { if (enabled && !checks.contactsAllowed) RowChevron() }
+
+    val strangerState = when {
+        config.answerStrangersOnly && !checks.contactsAllowed -> R.string.calls_stranger_ready_blocked
+        config.answerStrangersOnly -> R.string.calls_stranger_ready_on
+        else -> R.string.calls_stranger_ready_off
+    }
+    ListRow(
+        MikaIcons.Phone, stringResource(R.string.calls_stranger_only),
+        stringResource(strangerState),
+        tone = if (config.answerStrangersOnly && !checks.contactsAllowed) TileTone.Warn else TileTone.Neutral,
+    )
+    ListRow(
+        MikaIcons.Clock, stringResource(R.string.calls_ring_timeout),
+        stringResource(if (config.answerOnRingTimeout) R.string.calls_ring_timeout_on else R.string.calls_ring_timeout_off),
+    )
 
     val notificationAction = device.notificationAction.takeIf { enabled && !checks.standbyNotificationsAllowed }
     ListRow(

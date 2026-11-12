@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">Crear una automatización</string>
+    <string name="home_chip_call">Crear una tarea de llamada con IA</string>
+    <string name="home_chip_assistant">Asistente personal</string>
+    <string name="hint_home_remind">Recuérdame la reunión a las 8 de mañana</string>
+    <string name="hint_home_courier">Si llama el mensajero, que lo deje en la puerta</string>
+    <string name="hint_home_property">Llama a la administración y pregunta por el aparcamiento</string>
+    <string name="hint_home_ask">Pregunta lo que quieras</string>
+    <string name="hint_plan_morning">Recuérdame la reunión a las 8 de mañana</string>
+    <string name="hint_plan_rain">Avísame a las 8 si va a llover</string>
+    <string name="hint_plan_friday">Recuérdame el viernes por la tarde el informe semanal</string>
+    <string name="hint_call_courier">Si llama el mensajero, que lo deje en la puerta</string>
+    <string name="hint_call_property">Llama a la administración y pregunta por el aparcamiento</string>
+    <string name="hint_call_delivery">Si llega la comida, que la dejen en la puerta</string>
+    <string name="hint_brief_busy">Di que estoy ocupado y toma el recado</string>
+    <string name="hint_brief_courier">Si llama el mensajero, que lo deje en la puerta</string>
+    <string name="hint_brief_unknown">Si no conoces el número, pregunta quién es</string>
+</resources>

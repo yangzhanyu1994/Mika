@@ -2,6 +2,9 @@ package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.ui.theme.LocalSkinBackdrop
 import androidx.compose.ui.graphics.Color
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -58,6 +61,9 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
     initialHistoryCallId: String? = null,
     updateAvailable: Boolean = false, focusRequest: Int = 0,
     voice: VoiceSource? = null,
+    onPickSpeech: () -> Unit = {},
+    openTaskComposer: Boolean = false,
+    onTaskComposerOpened: () -> Unit = {},
 ) {
     var instructionsOpen by rememberSaveable { mutableStateOf(false) }
     var briefOpen by rememberSaveable { mutableStateOf(false) }
@@ -73,11 +79,21 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
             handledFocusRequest = focusRequest
         }
     }
-    when {
-        briefOpen || instructionsOpen -> DefaultBriefEditor(runtime, voice) {
-            briefOpen = false
+    LaunchedEffect(openTaskComposer) {
+        if (openTaskComposer) {
             instructionsOpen = false
+            briefOpen = false
+            creatingTask = true
+            onTaskComposerOpened()
         }
+    }
+    when {
+        briefOpen || instructionsOpen -> DefaultBriefEditor(
+            runtime, voice, onPickSpeech = onPickSpeech, onBack = {
+                briefOpen = false
+                instructionsOpen = false
+            },
+        )
         creatingTask || editingTaskId != null -> {
             val existing = taskItems.firstOrNull { it.id == editingTaskId }
             val callState by runtime.state.collectAsState()
@@ -85,7 +101,7 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
             CallTaskComposer(runtime, callState, voice, existing, onBack = {
                 creatingTask = false
                 editingTaskId = null
-            }, onDial = { number, sim, brief, id ->
+            }, onPickSpeech = onPickSpeech, onDial = { number, sim, brief, id ->
                 creatingTask = false
                 editingTaskId = null
                 dialScope.launch {
@@ -137,7 +153,7 @@ private fun CallSettingsWorkspace(
     var deviceNavigation by rememberSaveable { mutableIntStateOf(0) }
     var handledDeviceNavigation by rememberSaveable { mutableIntStateOf(0) }
     var pendingReuse by remember { mutableStateOf<Pair<String, CallTaskBrief>?>(null) }
-    var dialog by rememberSaveable { mutableStateOf<CallDialog?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<AnswerSettingEditor?>(null) }
     val idle = state.phase == CallPhase.IDLE
     val pendingLockedDial = state.lockedDialRequestId
     val failureText = stringResource(R.string.calls_action_failed)
@@ -313,7 +329,7 @@ private fun CallSettingsWorkspace(
                             onStartStandby = startStandby,
                             onSetup = ::openDeviceSettings,
                             onPrepare = prepare,
-                            onCredentials = { dialog = CallDialog.Credentials },
+                            onCredentials = { dialog = AnswerSettingEditor.Credentials },
                             onCreateTask = onCreateTask,
                             onEditTask = onEditTask,
                         )
@@ -333,20 +349,16 @@ private fun CallSettingsWorkspace(
                             stopBusy = controlBusy || settingsBusy, device = device, canStartStandby = canStartStandby,
                             onStop = { perform(priority = true) { runtime.stop() } },
                             onStartStandby = startStandby,
-                            onCredentials = { dialog = CallDialog.Credentials }, onProfile = { dialog = CallDialog.Profile },
-                            onVerifyAudio = { verified ->
-                                scope.launch { save { it.copy(audioVerified = verified, autoAnswer = verified && it.autoAnswer) } }
-                            },
-                            onSummaryEnabled = { enabled -> scope.launch { save { it.copy(summaryEnabled = enabled) } } },
-                            onToggleAuto = { checked ->
-                                scope.launch {
-                                    if (save { it.copy(autoAnswer = checked) } && checked &&
-                                        device.readiness.standbyNotificationsAllowed) startStandby()
+                            onOpen = { editor ->
+                                when (editor) {
+                                    AnswerSettingEditor.DefaultBrief -> onInstructions()
+                                    AnswerSettingEditor.None, AnswerSettingEditor.StrangerOnly, AnswerSettingEditor.RingTimeout -> Unit
+                                    else -> dialog = editor
                                 }
                             },
-                            onRules = { dialog = CallDialog.Rules },
-                            onBypass = { dialog = CallDialog.Bypass },
-                            onInstructions = onInstructions,
+                            onStrangerOnly = { enabled -> scope.launch { save { it.copy(answerStrangersOnly = enabled) } } },
+                            onRingTimeout = { enabled -> scope.launch { save { it.copy(answerOnRingTimeout = enabled) } } },
+                            onSummaryEnabled = { enabled -> scope.launch { save { it.copy(summaryEnabled = enabled) } } },
                         )
                     }
                 }
@@ -369,29 +381,42 @@ private fun CallSettingsWorkspace(
     }
 
     when (dialog) {
-        CallDialog.Rules -> CallRulesDialog(config, onDismiss = { dialog = null }, onSave = { all, numbers, delay ->
-            save { it.copy(allowAllIncoming = all, allowedIncomingNumbers = numbers, autoAnswerDelaySeconds = delay) }
-        })
-        CallDialog.Bypass -> CallBypassDialog(config.bypassIncomingNumbers, onDismiss = { dialog = null }) { numbers ->
+        AnswerSettingEditor.AnswerScope -> CallScopeDialog(config.allowAllIncoming, onDismiss = { dialog = null }) { all ->
+            save { it.copy(allowAllIncoming = all) }
+        }
+        AnswerSettingEditor.AnswerDelay -> CallDelayDialog(config.autoAnswerDelaySeconds, onDismiss = { dialog = null }) { seconds ->
+            save { it.copy(autoAnswerDelaySeconds = seconds) }
+        }
+        AnswerSettingEditor.Allowlist -> CallAllowlistDialog(config.allowedIncomingNumbers, onDismiss = { dialog = null }) { numbers ->
+            save { it.copy(allowedIncomingNumbers = numbers) }
+        }
+        AnswerSettingEditor.SelfAnswer -> CallBypassDialog(config.bypassIncomingNumbers, onDismiss = { dialog = null }) { numbers ->
             save { it.copy(bypassIncomingNumbers = numbers) }
         }
-        CallDialog.Credentials -> CallCredentialsDialog(runtime, onDismiss = { dialog = null }) {
+        AnswerSettingEditor.Credentials -> CallCredentialsDialog(runtime, onDismiss = { dialog = null }) {
             lastActionWasLockedDial = false
             feedback = CallActionResult(true, it)
             scope.launch { runCatching { runtime.probeCredentials() } }
         }
-        CallDialog.Profile -> CallProfileDialog(config, onDismiss = { dialog = null }, onSave = { edits ->
-            save { latest ->
-                require(canEditCallSpeaker(edits.speaker, latest.speaker))
-                latest.copy(greeting = edits.greeting, systemPrompt = edits.systemPrompt,
-                    speaker = edits.speaker, audioMode = edits.audioMode, maxCallSeconds = edits.maxCallSeconds)
-            }
-        })
-        null -> Unit
+        AnswerSettingEditor.Greeting -> CallGreetingDialog(config.greeting, onDismiss = { dialog = null }) { greeting ->
+            save { it.copy(greeting = greeting) }
+        }
+        AnswerSettingEditor.Duration -> CallDurationDialog(config.maxCallSeconds, onDismiss = { dialog = null }) { seconds ->
+            save { it.copy(maxCallSeconds = seconds) }
+        }
+        AnswerSettingEditor.AudioChannel -> CallAudioDialog(
+            config, canVerify = idle && pendingLockedDial == null && !busy && !controlBusy && !settingsBusy &&
+                (ready || config.audioVerified),
+            onVerify = { verified ->
+                scope.launch { save { it.copy(audioVerified = verified, autoAnswer = verified && it.autoAnswer) } }
+            },
+            onDismiss = { dialog = null },
+            onMode = { mode -> scope.launch { save { it.copy(audioMode = mode) } } },
+        )
+        AnswerSettingEditor.DefaultBrief, AnswerSettingEditor.BackgroundLock, AnswerSettingEditor.None,
+        AnswerSettingEditor.StrangerOnly, AnswerSettingEditor.RingTimeout, null -> Unit
     }
 }
-
-private enum class CallDialog { Rules, Bypass, Credentials, Profile }
 
 private enum class CallWorkspaceTab(val label: Int) {
     Receive(R.string.calls_tab_call), Task(R.string.calls_nav_task),
@@ -589,7 +614,7 @@ private fun CallCenterPage(
     }
     GroupLabel(stringResource(R.string.calls_readiness_title))
     GroupCard {
-        CallPermissionRows(device, state.shellConnected, canConfigure, onHelperSetup, first = true)
+        CallPermissionRows(device, state.shellConnected, canConfigure, onHelperSetup, config, first = true)
         CallBackgroundStandbyRow(config, state, canStartStandby, onStartStandby, onSetup.takeIf { standbyNeedsSetup })
     }
     CallReadinessActions(
@@ -651,17 +676,15 @@ private fun CallPreferencesPage(
     runtime: CallRuntime,
     config: CallConfig, state: CallRuntimeState, ready: Boolean, openDeviceRequest: Int,
     canConfigure: Boolean, controlsEnabled: Boolean, stopBusy: Boolean, device: CallDeviceControls, canStartStandby: Boolean,
-    onStop: () -> Unit, onCredentials: () -> Unit, onProfile: () -> Unit,
-    onVerifyAudio: (Boolean) -> Unit,
+    onStop: () -> Unit, onOpen: (AnswerSettingEditor) -> Unit,
+    onStrangerOnly: (Boolean) -> Unit,
+    onRingTimeout: (Boolean) -> Unit,
     onSummaryEnabled: (Boolean) -> Unit,
-    onToggleAuto: (Boolean) -> Unit, onRules: () -> Unit, onBypass: () -> Unit, onInstructions: () -> Unit,
     onStartStandby: () -> Unit,
 ) {
     var backgroundOpen by rememberSaveable { mutableStateOf(false) }
-    var audioOpen by rememberSaveable { mutableStateOf(false) }
     var lastDeviceRequest by rememberSaveable { mutableIntStateOf(0) }
     var probing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     LaunchedEffect(config.credentialsConfigured, config.credentialProbeOk) {
         if (config.credentialsConfigured && config.credentialProbeOk == null && !probing) {
             probing = true
@@ -682,23 +705,18 @@ private fun CallPreferencesPage(
         ListRow(
             MikaIcons.Message, stringResource(R.string.calls_greeting),
             greeting.ifBlank { stringResource(R.string.calls_key_missing) },
-            first = true, onClick = onProfile.takeIf { canConfigure },
+            first = true, onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Greeting)) }.takeIf { canConfigure },
         ) { RowChevron() }
         ListRow(
             MikaIcons.Doc, stringResource(R.string.calls_default_brief),
             stringResource(R.string.calls_default_brief_sub),
             detail = brief.lineSequence().firstOrNull()?.take(80),
-            onClick = onInstructions.takeIf { canConfigure },
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.DefaultBrief)) }.takeIf { canConfigure },
         ) { RowChevron() }
         ListRow(
             MikaIcons.Clock, stringResource(R.string.calls_duration_row),
             stringResource(R.string.calls_duration_value, config.maxCallSeconds),
-            onClick = onProfile.takeIf { canConfigure },
-        ) { RowChevron() }
-        ListRow(
-            MikaIcons.Mic, stringResource(R.string.calls_voice_row),
-            callVoiceLabel(config.speaker),
-            onClick = onProfile.takeIf { canConfigure },
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Duration)) }.takeIf { canConfigure },
         ) { RowChevron() }
     }
 
@@ -737,7 +755,7 @@ private fun CallPreferencesPage(
                 else -> null
             },
             detailColor = if (credentialBad) MaterialTheme.colorScheme.error else MikaTheme.colors.ink3,
-            onClick = onCredentials.takeIf { canConfigure },
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Credentials)) }.takeIf { canConfigure },
         ) {
             if (configured && probe != false) RowValue(stringResource(R.string.calls_configured_badge), ValueTone.Ok)
             RowChevron()
@@ -747,7 +765,7 @@ private fun CallPreferencesPage(
         ListRow(
             MikaIcons.Mic, stringResource(R.string.calls_audio_channel),
             stringResource(R.string.calls_audio_summary, modeLabel, verifiedLabel),
-            onClick = { audioOpen = true }.takeIf { canConfigure },
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.AudioChannel)) }.takeIf { canConfigure },
         ) { RowChevron() }
         state.audioDetail?.let { FooterNote(it) }
         CallFoldRow(MikaIcons.Bell, stringResource(R.string.calls_background_settings), backgroundOpen, "call-settings-background",
@@ -768,18 +786,19 @@ private fun CallPreferencesPage(
     }
     GroupLabel(stringResource(R.string.calls_rules_section))
     GroupCard(Modifier.testTag("call-incoming-rules")) {
-        ListRow(MikaIcons.Phone, stringResource(R.string.calls_rule_scope), rulesSummary(config), first = true, onClick = onRules) { RowChevron() }
+        StrangerAndTimeoutRows(config, canConfigure, onStrangerOnly, onRingTimeout)
+        ListRow(MikaIcons.Phone, stringResource(R.string.calls_rule_scope), rulesSummary(config), first = false,
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.AnswerScope)) }.takeIf { canConfigure }) { RowChevron() }
         ListRow(MikaIcons.Clock, stringResource(R.string.calls_wait_row),
-            stringResource(R.string.calls_rule_delay_summary, config.autoAnswerDelaySeconds), onClick = onRules) { RowChevron() }
+            stringResource(R.string.calls_rule_delay_summary, config.autoAnswerDelaySeconds),
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.AnswerDelay)) }.takeIf { canConfigure }) { RowChevron() }
         ListRow(MikaIcons.Doc, stringResource(R.string.calls_allowlist_row),
-            stringResource(R.string.calls_count_numbers, config.allowedIncomingNumbers.size), onClick = onRules) { RowChevron() }
+            stringResource(R.string.calls_count_numbers, config.allowedIncomingNumbers.size),
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Allowlist)) }.takeIf { canConfigure }) { RowChevron() }
         ListRow(MikaIcons.Heart, stringResource(R.string.calls_self_answer_row),
             if (config.bypassIncomingNumbers.isEmpty()) stringResource(R.string.calls_bypass_empty)
             else stringResource(R.string.calls_count_numbers, config.bypassIncomingNumbers.size),
-            onClick = onBypass) { RowChevron() }
-    }
-    if (audioOpen) CallAudioDialog(config, canConfigure && (ready || config.audioVerified), onVerifyAudio, { audioOpen = false }) { mode ->
-        scope.launch { runtime.settings.save(runtime.settings.state.value.copy(audioMode = mode)) }
+            onClick = { onOpen(answerSettingEditor(AnswerSettingRow.SelfAnswer)) }.takeIf { canConfigure }) { RowChevron() }
     }
     if (config.enabled) {
         TextButton(onClick = onStop, enabled = !stopBusy, modifier = Modifier.fillMaxWidth().testTag("call-disable")) {
@@ -951,73 +970,120 @@ private fun CallAudioDialog(
 }
 
 @Composable
-private fun CallRulesDialog(
-    config: CallConfig, onDismiss: () -> Unit, onSave: suspend (Boolean, Set<String>, Int) -> Boolean,
+private fun StrangerAndTimeoutRows(
+    config: CallConfig, enabled: Boolean, onStrangerOnly: (Boolean) -> Unit, onRingTimeout: (Boolean) -> Unit,
 ) {
-    var all by rememberSaveable { mutableStateOf(config.allowAllIncoming) }
-    var numbers by rememberSaveable { mutableStateOf(config.allowedIncomingNumbers.sorted().joinToString("\n")) }
-    var picking by remember { mutableStateOf(false) }
-    var delay by rememberSaveable { mutableStateOf(config.autoAnswerDelaySeconds.toString()) }
+    val context = LocalContext.current
+    var denied by remember { mutableStateOf(false) }
+    val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        PhoneContacts.clearCache()
+        if (granted) {
+            denied = false
+            onStrangerOnly(true)
+        } else denied = true
+    }
+    SettingSwitch(
+        stringResource(R.string.calls_stranger_only),
+        stringResource(R.string.calls_stranger_only_sub),
+        config.answerStrangersOnly, enabled, "call-stranger-only",
+    ) { on ->
+        if (!on) {
+            denied = false
+            onStrangerOnly(false)
+        } else if (PhoneContacts(context).granted()) {
+            denied = false
+            onStrangerOnly(true)
+        } else request.launch(Manifest.permission.READ_CONTACTS)
+    }
+    if (denied) Text(stringResource(R.string.calls_stranger_only_denied),
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodySmall)
+    SettingSwitch(
+        stringResource(R.string.calls_ring_timeout),
+        stringResource(R.string.calls_ring_timeout_sub),
+        config.answerOnRingTimeout, enabled, "call-ring-timeout",
+        onRingTimeout,
+    )
+}
+
+@Composable
+private fun SettingSwitch(
+    title: String, subtitle: String, checked: Boolean, enabled: Boolean, tag: String, onChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 16.dp, vertical = 12.dp).testTag(tag),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MikaTheme.colors.ink3)
+        }
+        Switch(checked, onCheckedChange = null, enabled = enabled)
+    }
+}
+
+@Composable
+private fun CallScopeDialog(all: Boolean, onDismiss: () -> Unit, onSave: suspend (Boolean) -> Boolean) {
+    var chosen by rememberSaveable { mutableStateOf(all) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val normalized = parseCallNumberList(numbers)
-    val validNumbers = normalized != null
-    val minDelay = CallConfig.MIN_AUTO_ANSWER_DELAY_SECONDS
-    val maxDelay = CallConfig.MAX_AUTO_ANSWER_DELAY_SECONDS
-    val seconds = delay.toIntOrNull()?.takeIf { it in minDelay..maxDelay }
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(stringResource(R.string.calls_rules)) },
+        title = { Text(stringResource(R.string.calls_rule_scope)) },
         text = {
-            Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                RadioRow(stringResource(R.string.calls_only_list), !all, { all = false }, first = true, enabled = !busy)
-                RadioRow(stringResource(R.string.calls_all_incoming), all, { all = true },
+            Column {
+                RadioRow(stringResource(R.string.calls_only_list), !chosen, { chosen = false }, first = true, enabled = !busy)
+                RadioRow(stringResource(R.string.calls_all_incoming), chosen, { chosen = true },
                     subtitle = stringResource(R.string.calls_all_note), enabled = !busy)
-                ContactChoiceSummary(numbers)
-                TextButton(onClick = { picking = true }, enabled = !busy) { Text(stringResource(R.string.calls_contacts_pick)) }
-                OutlinedTextField(
-                    numbers, { numbers = it; error = false },
-                    modifier = Modifier.fillMaxWidth().testTag("call-allowlist"),
-                    label = { Text(stringResource(R.string.calls_allowlist)) },
-                    supportingText = {
-                        Text(
-                            if (validNumbers) stringResource(R.string.calls_allowlist_hint)
-                            else stringResource(R.string.calls_allowlist_invalid, CallPolicy.MAX_ALLOWED_NUMBERS),
-                        )
-                    },
-                    textStyle = TextStyle(textDirection = TextDirection.Ltr),
-                    isError = !validNumbers, minLines = 2, maxLines = 5, enabled = !busy,
-                )
-                OutlinedTextField(
-                    delay, { delay = it.filter(Char::isDigit).take(2); error = false },
-                    modifier = Modifier.fillMaxWidth().testTag("call-answer-delay"),
-                    label = { Text(stringResource(R.string.calls_delay_field, minDelay, maxDelay)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true,
-                    isError = delay.isNotEmpty() && seconds == null, enabled = !busy,
-                )
                 if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy && validNumbers && seconds != null, onClick = {
-                val duration = seconds ?: return@TextButton
+            TextButton(enabled = !busy, onClick = {
                 busy = true
                 scope.launch {
-                    try {
-                        if (onSave(all, normalized ?: return@launch, duration)) onDismiss() else error = true
-                    } finally { busy = false }
+                    try { if (onSave(chosen)) onDismiss() else error = true } finally { busy = false }
                 }
             }) { Text(stringResource(R.string.calls_save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
     )
-    if (picking) ContactMultiPicker(parseCallNumberList(numbers).orEmpty(), { picking = false }) { chosen ->
-        val added = chosen.mapNotNull { CallPolicy.incomingNumber(it.number) }
-        numbers = (parseCallNumberList(numbers).orEmpty() + added).joinToString("\n")
-        picking = false
-    }
+}
+
+@Composable
+private fun CallDelayDialog(seconds0: Int, onDismiss: () -> Unit, onSave: suspend (Int) -> Boolean) {
+    var delay by rememberSaveable { mutableStateOf(seconds0.toString()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val minDelay = CallConfig.MIN_AUTO_ANSWER_DELAY_SECONDS
+    val maxDelay = CallConfig.MAX_AUTO_ANSWER_DELAY_SECONDS
+    val seconds = delay.toIntOrNull()?.takeIf { it in minDelay..maxDelay }
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.calls_wait_row)) },
+        text = {
+            Column {
+                OutlinedTextField(delay, { delay = it.filter(Char::isDigit).take(2) },
+                    modifier = Modifier.fillMaxWidth().testTag("call-answer-delay"),
+                    label = { Text(stringResource(R.string.calls_delay_field, minDelay, maxDelay)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, enabled = !busy)
+                if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && seconds != null, onClick = {
+                val value = seconds ?: return@TextButton
+                busy = true
+                scope.launch {
+                    try { if (onSave(value)) onDismiss() else error = true } finally { busy = false }
+                }
+            }) { Text(stringResource(R.string.calls_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
+    )
 }
 
 @Composable
@@ -1030,21 +1096,136 @@ private fun ContactChoiceSummary(raw: String) {
 }
 
 @Composable
+private fun CallAllowlistDialog(existing: Set<String>, onDismiss: () -> Unit, onSave: suspend (Set<String>) -> Boolean) {
+    var numbers by rememberSaveable { mutableStateOf(existing.sorted().joinToString("\n")) }
+    var picking by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val normalized = parseCallNumberList(numbers)
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.calls_allowlist_row)) },
+        text = {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ContactChoiceSummary(numbers)
+                TextButton(onClick = { picking = true }, enabled = !busy) { Text(stringResource(R.string.calls_contacts_pick)) }
+                OutlinedTextField(numbers, { numbers = it }, modifier = Modifier.fillMaxWidth().testTag("call-allowlist"),
+                    label = { Text(stringResource(R.string.calls_allowlist)) }, minLines = 2, maxLines = 5, enabled = !busy,
+                    textStyle = TextStyle(textDirection = TextDirection.Ltr), isError = normalized == null)
+                if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && normalized != null, onClick = {
+                val next = normalized ?: return@TextButton
+                busy = true
+                scope.launch {
+                    try { if (onSave(next)) onDismiss() else error = true } finally { busy = false }
+                }
+            }) { Text(stringResource(R.string.calls_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
+    )
+    if (picking) ContactMultiPicker(normalized.orEmpty(), { picking = false }) { chosen ->
+        val added = chosen.mapNotNull { CallPolicy.incomingNumber(it.number) }
+        numbers = (parseCallNumberList(numbers).orEmpty() + added).joinToString("\n")
+        picking = false
+    }
+}
+
+@Composable
+private fun CallGreetingDialog(initial: String, onDismiss: () -> Unit, onSave: suspend (String) -> Boolean) {
+    var greeting by rememberSaveable { mutableStateOf(initial) }
+    SimpleTextDialog(stringResource(R.string.calls_greeting), greeting, { greeting = it.take(CallPolicy.MAX_GREETING_CHARS) },
+        stringResource(R.string.calls_greeting_hint), onDismiss, { onSave(greeting) })
+}
+
+@Composable
+private fun CallDurationDialog(initial: Int, onDismiss: () -> Unit, onSave: suspend (Int) -> Boolean) {
+    var seconds by rememberSaveable { mutableStateOf(initial.toString()) }
+    val value = seconds.toIntOrNull()?.takeIf { it in 15..CallPolicy.MAX_SECONDS }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(stringResource(R.string.calls_duration_row)) },
+        text = {
+            Column {
+                OutlinedTextField(seconds, { seconds = it.filter(Char::isDigit).take(3) }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.calls_duration)) }, singleLine = true, enabled = !busy,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && value != null, onClick = {
+                val next = value ?: return@TextButton
+                busy = true
+                scope.launch { try { if (onSave(next)) onDismiss() else error = true } finally { busy = false } }
+            }) { Text(stringResource(R.string.calls_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
+    )
+}
+
+@Composable
+private fun SimpleTextDialog(
+    title: String, value: String, onValue: (String) -> Unit, hint: String,
+    onDismiss: () -> Unit, onSave: suspend () -> Boolean,
+) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text(title) },
+        text = {
+            Column {
+                OutlinedTextField(value, onValue, modifier = Modifier.fillMaxWidth(), label = { Text(title) },
+                    supportingText = { Text(hint) }, maxLines = 3, enabled = !busy)
+                if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                busy = true
+                scope.launch { try { if (onSave()) onDismiss() else error = true } finally { busy = false } }
+            }) { Text(stringResource(R.string.calls_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
+    )
+}
+
+
+@Composable
 private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, onResult: (String) -> Unit) {
     var legacy by remember { mutableStateOf(false) }
-    // Sensitive fields never enter saved instance state.
     var key by remember { mutableStateOf("") }
     var appId by remember { mutableStateOf("") }
+    var speaker by rememberSaveable { mutableStateOf(runtime.settings.state.value.speaker) }
     var error by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val saved = stringResource(R.string.calls_key_saved)
+    val voiceOk = canEditCallSpeaker(speaker, runtime.settings.state.value.speaker)
+    val keyReady = key.isBlank() || (!legacy || appId.isNotBlank())
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text(stringResource(R.string.calls_credentials)) },
         text = {
-            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.calls_voice_row), style = MaterialTheme.typography.titleSmall)
+                Text(callVoiceLabel(speaker), color = MikaTheme.colors.ink3, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    speaker, { speaker = it; error = false }, modifier = Modifier.fillMaxWidth().testTag("call-voice-field"),
+                    label = { Text(stringResource(R.string.calls_speaker)) }, singleLine = true, enabled = !busy,
+                    isError = !voiceOk, supportingText = { Text(stringResource(R.string.calls_speaker_edit_note)) },
+                )
+                HorizontalDivider()
                 Text(stringResource(R.string.calls_credentials_note))
                 Row(
                     Modifier.fillMaxWidth()
@@ -1071,12 +1252,15 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy && key.isNotBlank() && (!legacy || appId.isNotBlank()), onClick = {
+            TextButton(enabled = !busy && voiceOk && keyReady && (key.isNotBlank() || speaker.trim() != runtime.settings.state.value.speaker), onClick = {
                 busy = true
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
-                            runtime.settings.saveCredentials(if (legacy) appId else "", if (legacy) key else "", if (legacy) "" else key)
+                            if (key.isNotBlank()) {
+                                runtime.settings.saveCredentials(if (legacy) appId else "", if (legacy) key else "", if (legacy) "" else key)
+                            }
+                            runtime.settings.save(runtime.settings.state.value.copy(speaker = speaker))
                         }
                         key = ""; appId = ""
                         onResult(saved)
@@ -1084,64 +1268,6 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
                     } catch (e: CancellationException) { throw e }
                     catch (_: Exception) { error = true }
                     finally { busy = false }
-                }
-            }) { Text(stringResource(R.string.calls_save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.calls_cancel)) } },
-    )
-}
-
-@Composable
-private fun CallProfileDialog(config: CallConfig, onDismiss: () -> Unit, onSave: suspend (CallConfig) -> Boolean) {
-    var greeting by rememberSaveable { mutableStateOf(config.greeting) }
-    var prompt by rememberSaveable { mutableStateOf(config.systemPrompt) }
-    var seconds by rememberSaveable { mutableStateOf(config.maxCallSeconds.toString()) }
-    var speaker by rememberSaveable { mutableStateOf(config.speaker) }
-    var mode by rememberSaveable { mutableStateOf(config.audioMode) }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val duration = seconds.toIntOrNull()?.takeIf { it in 15..CallPolicy.MAX_SECONDS }
-    val allowedVoice = canEditCallSpeaker(speaker, config.speaker)
-    AlertDialog(
-        onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(stringResource(R.string.calls_profile)) },
-        text = {
-            Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.calls_greeting), style = MaterialTheme.typography.titleSmall)
-                OutlinedTextField(greeting, { greeting = it }, modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.calls_greeting)) }, maxLines = 3, enabled = !busy,
-                    supportingText = { Text(stringResource(R.string.calls_greeting_hint)) })
-                HorizontalDivider()
-                Text(stringResource(R.string.calls_profile), style = MaterialTheme.typography.titleSmall)
-                OutlinedTextField(prompt, { prompt = it }, modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.calls_instructions)) }, maxLines = 5, enabled = !busy)
-                OutlinedTextField(seconds, { seconds = it.filter(Char::isDigit).take(3) }, modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.calls_duration)) }, singleLine = true, enabled = !busy,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(speaker, { speaker = it; error = false }, modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.calls_speaker)) }, singleLine = true, enabled = !busy,
-                    isError = !allowedVoice, supportingText = { Text(stringResource(R.string.calls_speaker_edit_note)) })
-                Text(stringResource(R.string.calls_audio_route))
-                CallAudioMode.entries.forEachIndexed { i, option ->
-                    RadioRow(
-                        stringResource(if (option == CallAudioMode.DIRECT) R.string.calls_audio_direct else R.string.calls_audio_redirect),
-                        selected = mode == option, onClick = { mode = option }, first = i == 0, enabled = !busy,
-                    )
-                }
-                if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        confirmButton = {
-            TextButton(enabled = duration != null && allowedVoice && !busy, onClick = {
-                val maxSeconds = duration ?: return@TextButton
-                busy = true
-                scope.launch {
-                    try {
-                        if (onSave(config.copy(greeting = greeting, systemPrompt = prompt, speaker = speaker,
-                                audioMode = mode, maxCallSeconds = maxSeconds))) onDismiss() else error = true
-                    } finally { busy = false }
                 }
             }) { Text(stringResource(R.string.calls_save)) }
         },

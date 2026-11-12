@@ -11,6 +11,7 @@ import com.wangzan101.mika.ui.components.MikaDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +60,14 @@ import java.time.format.DateTimeFormatter
  * 点一行升起操作面板(看对话、立即执行、编辑、删除)。右上角可手动新建；保存后让调度器重新布置系统闹钟。
  */
 @Composable
-fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (String) -> Unit) {
+fun PlansScreen(
+    context: Context,
+    onBack: () -> Unit,
+    onOpenConversation: (String) -> Unit,
+    onPickSpeech: () -> Unit = {},
+    startCreating: Boolean = false,
+    onCreateConsumed: () -> Unit = {},
+) {
     BackHandler(onBack = onBack)
     var snapshot by remember { mutableStateOf(TriggerRuntime.snapshot(context)) }
     var creating by remember { mutableStateOf<String?>(null) }
@@ -75,6 +83,12 @@ fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (Strin
         onPauseOrDispose {}
     }
     fun refresh() { snapshot = TriggerRuntime.snapshot(context) }
+    LaunchedEffect(startCreating) {
+        if (startCreating) {
+            creating = ConversationStore.shared(context).newConversation()
+            onCreateConsumed()
+        }
+    }
     fun act(block: () -> Unit): Boolean =
         runCatching { block(); refresh(); error = null }
             .onFailure { error = it.message ?: tr(R.string.op_failed) }
@@ -147,6 +161,7 @@ fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (Strin
                 val model = app?.providers?.modelFor(com.wangzan101.mika.core.model.ModelRole.Main)
                 if (model == null) null else com.wangzan101.mika.plans.PlanUtterance.parse(model, words, base)
             },
+            onPickSpeech = onPickSpeech,
         )
     }
 
@@ -164,6 +179,7 @@ fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (Strin
                 val model = app?.providers?.modelFor(com.wangzan101.mika.core.model.ModelRole.Main)
                 if (model == null) null else com.wangzan101.mika.plans.PlanUtterance.parse(model, words, base)
             },
+            onPickSpeech = onPickSpeech,
         )
     }
     deleting?.let { plan ->

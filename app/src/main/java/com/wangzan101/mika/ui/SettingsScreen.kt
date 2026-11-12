@@ -91,6 +91,7 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit = {},
     /** 外部 MCP server 设置(outbound);为空时不显示入口。 */
     mcpServers: com.wangzan101.mika.settings.McpServerStore? = null,
+    onOpenSpeech: () -> Unit = {},
 ) {
     val configs by store.configs.collectAsState()
     val roles by store.roles.collectAsState()
@@ -219,7 +220,7 @@ fun SettingsScreen(
         )
         SettingsPage.Calls -> {
             val app = context.applicationContext as com.wangzan101.mika.MikaApp
-            CallSettingsScreen(app.calls, onBack = toHome, voice = app.voice)
+            CallSettingsScreen(app.calls, onBack = toHome, voice = app.voice, onPickSpeech = onOpenSpeech)
         }
         SettingsPage.Notifications -> NotificationsScreen(status, onFix = ::fix, onBack = back)
         SettingsPage.DuringWork -> DuringWorkScreen(

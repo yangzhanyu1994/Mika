@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">자동화 작업 만들기</string>
+    <string name="home_chip_call">AI 통화 작업 만들기</string>
+    <string name="home_chip_assistant">개인 비서</string>
+    <string name="hint_home_remind">내일 아침 8시에 회의 알려 줘</string>
+    <string name="hint_home_courier">택배 전화가 오면 문 앞에 두라고 하기</string>
+    <string name="hint_home_property">관리사무소에 전화해서 주차를 물어봐</string>
+    <string name="hint_home_ask">무엇이든 물어봐</string>
+    <string name="hint_plan_morning">내일 아침 8시에 회의 알려 줘</string>
+    <string name="hint_plan_rain">매일 아침 8시에 비가 오면 알려 줘</string>
+    <string name="hint_plan_friday">금요일 오후에 주간 보고를 내라고 알려 줘</string>
+    <string name="hint_call_courier">택배 전화가 오면 문 앞에 두라고 하기</string>
+    <string name="hint_call_property">관리사무소에 전화해서 주차를 물어봐</string>
+    <string name="hint_call_delivery">배달이 오면 문 앞에 두라고 하기</string>
+    <string name="hint_brief_busy">바쁘다고 하고 메모를 받아 두기</string>
+    <string name="hint_brief_courier">택배 전화가 오면 문 앞에 두라고 하기</string>
+    <string name="hint_brief_unknown">모르는 번호는 먼저 누구인지 묻기</string>
+</resources>

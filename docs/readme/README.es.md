@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 131b7d737639 -->
+<!-- translated-from: README.md @ 09a12768165f -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -45,6 +45,15 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 - **Resultado de las pruebas**：`python3 tools/i18n/translations.py check` correcta. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` correcta (5344 tests, 0 failures, 2 skipped; APK de depuración y compilación de androidTest correctas).
 - **Origen**：老板 2026-11-13 design previews
 - **Estado**：código escrito, sin verificación en un dispositivo real
+
+### 2026-11-13 · 0.1.43
+
+- **Fecha**：2026-11-13 (UTC+8)
+- **Autor**：Grok Build via Cursor cloud agent
+- **Resultado de las pruebas**：`python3 tools/i18n/translations.py check` correcta. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin` correcta (5352 tests, 0 failures, 2 skipped; APK de depuración y compilación de androidTest correctas).
+- **Origen**：comentarios del jefe en un teléfono real el 2026-11-13 a las 06:39, 06:41, 06:43, 06:49, 06:50, 06:55, 06:56, 06:58 y 06:59
+- **Estado**：código escrito, sin verificación en un dispositivo real
+- **Notas**：cada ajuste de respuesta abre solo su editor; el canal de audio es una fila. «Solo IA para números desconocidos» está apagado por defecto y los contactos los atiende la persona; sin permiso de contactos el interruptor no se enciende. «Pasar a IA tras el timbre» está apagado por defecto y espera 10 segundos seguidos. La lista de exclusión no la anula el tiempo. La voz de IA vive en la configuración del modelo de voz en tiempo real y el valor guardado se conserva. Las tareas de llamada, la respuesta general y las tareas programadas usan la barra inferior de la página de inicio. «Indicaciones predeterminadas» pasa a llamarse respuesta general y el texto guardado se conserva. Al volver al inicio el campo se enfoca y aparece el teclado; en un chat vacío hay tres cápsulas a la izquierda. El texto gris rota y se detiene al enfocar o escribir. Se quitan los cuatro ejemplos fijos; con historial local se muestran hasta 4 sugerencias y un toque las escribe en el campo sin enviarlas. El recuento no sale del teléfono. Se quitan los botones de adjuntar y de chat nuevo de la esquina superior derecha porque el menú lateral ya los tiene; el borrador sin enviar lo conserva «chat nuevo» del menú.
 
 ## Una frase, una tarea resuelta
 

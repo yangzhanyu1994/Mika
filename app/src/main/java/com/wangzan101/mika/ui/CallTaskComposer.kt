@@ -58,6 +58,7 @@ internal fun CallTaskComposer(
     voice: VoiceSource?,
     existing: CallAssistantTask?,
     onBack: () -> Unit,
+    onPickSpeech: () -> Unit = {},
     onDial: (String, String?, CallTaskBrief, String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -104,8 +105,15 @@ internal fun CallTaskComposer(
         }
     }
 
-    PageScaffold(stringResource(if (existing == null) R.string.calls_task_new_row else R.string.calls_edit_rule), onBack,
-        Modifier.testTag("call-task-composer")) {
+    PageScaffold(
+        stringResource(if (existing == null) R.string.calls_task_new_row else R.string.calls_edit_rule), onBack,
+        Modifier.testTag("call-task-composer"),
+        footer = {
+            UtteranceBar(
+                voice, InputHints.call, busy, ::analyze, onPickSpeech = onPickSpeech,
+            )
+        },
+    ) {
         TabRow(selectedTabIndex = kind) {
             Tab(kind == 0, { kind = 0 }, modifier = Modifier.testTag("call-task-tab-dial")) {
                 Text(stringResource(R.string.calls_task_kind_dial), Modifier.padding(vertical = 12.dp), textAlign = TextAlign.Center)
@@ -114,10 +122,6 @@ internal fun CallTaskComposer(
                 Text(stringResource(R.string.calls_task_kind_incoming), Modifier.padding(vertical = 12.dp), textAlign = TextAlign.Center)
             }
         }
-        UtteranceCapture(
-            voice, stringResource(R.string.calls_task_hold), stringResource(R.string.calls_task_hold_example),
-            busy, ::analyze, Modifier.padding(vertical = 12.dp),
-        )
         GroupLabel(stringResource(R.string.calls_task_parsed))
         GroupCard {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -205,7 +209,9 @@ internal fun CallTaskComposer(
 }
 
 @Composable
-internal fun DefaultBriefEditor(runtime: CallRuntime, voice: VoiceSource?, onBack: () -> Unit) {
+internal fun DefaultBriefEditor(
+    runtime: CallRuntime, voice: VoiceSource?, onBack: () -> Unit, onPickSpeech: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val book = rememberPhoneContacts()
     var text by remember { mutableStateOf("") }
@@ -224,23 +230,27 @@ internal fun DefaultBriefEditor(runtime: CallRuntime, voice: VoiceSource?, onBac
         }
         ready = true
     }
-    PageScaffold(stringResource(R.string.calls_default_brief), onBack, Modifier.testTag("call-default-brief")) {
-        Text(stringResource(R.string.calls_default_brief_sub), color = MikaTheme.colors.ink3)
-        UtteranceCapture(
-            voice, stringResource(R.string.calls_task_hold), stringResource(R.string.calls_default_brief_hint),
-            busy, { words ->
-                busy = true
-                scope.launch {
-                    val next = withContext(Dispatchers.IO) {
-                        val model = runtime.mainModel()
-                        val parsed = model?.let { CallTaskParser.parse(it, words, book.names(), required = true) }
-                        parsed?.say?.takeIf { it.isNotBlank() }
+    PageScaffold(
+        stringResource(R.string.calls_default_brief), onBack, Modifier.testTag("call-default-brief"),
+        footer = {
+            UtteranceBar(
+                voice, InputHints.brief, busy, { words ->
+                    busy = true
+                    scope.launch {
+                        val next = withContext(Dispatchers.IO) {
+                            val model = runtime.mainModel()
+                            val parsed = model?.let { CallTaskParser.parse(it, words, book.names(), required = true) }
+                            parsed?.say?.takeIf { it.isNotBlank() }
+                        }
+                        busy = false
+                        text = (next ?: words).take(com.wangzan101.mika.calls.CallDefaultBrief.MAX_CHARS)
                     }
-                    busy = false
-                    text = (next ?: words).take(com.wangzan101.mika.calls.CallDefaultBrief.MAX_CHARS)
-                }
-            },
-        )
+                },
+                onPickSpeech = onPickSpeech,
+            )
+        },
+    ) {
+        Text(stringResource(R.string.calls_default_brief_sub), color = MikaTheme.colors.ink3)
         if (ready) {
             OutlinedTextField(text, { text = it.take(com.wangzan101.mika.calls.CallDefaultBrief.MAX_CHARS) },
                 modifier = Modifier.fillMaxWidth().testTag("call-default-brief-field"),

@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">هنوز شروع نشده</string>
     <string name="calls_task_kind_dial">تماس هوش مصنوعی</string>
     <string name="calls_task_kind_incoming">دستور تماس ورودی</string>
-    <string name="calls_task_kind_default">دستور پیش‌فرض</string>
+    <string name="calls_task_kind_default">پاسخ کلی</string>
     <string name="calls_task_type">نوع</string>
     <string name="calls_task_hold">نگه دارید و حرف بزنید تا کار ساخته شود</string>
     <string name="calls_task_hold_example">مثلاً: اگر پیک زنگ زد، بگو دم در بگذارد</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">در حال تحلیل…</string>
     <string name="calls_task_parse_failed">کار ساخته نشد. فیلدها را اصلاح و ذخیره کنید.</string>
     <string name="calls_task_need_model">ابتدا در تنظیمات یک مدل انتخاب کنید</string>
-    <string name="calls_default_brief">دستور پیش‌فرض</string>
+    <string name="calls_default_brief">پاسخ کلی</string>
     <string name="calls_default_brief_sub">وقتی کار تماسی نیست هوش مصنوعی چه می‌گوید</string>
     <string name="calls_default_brief_hint">مثلاً: بگو سرم شلوغ است و پیام را یادداشت کن</string>
     <string name="calls_audio_channel">مسیر صدا</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">جستجوی نام یا شماره</string>
     <string name="calls_contacts_empty">مخاطب منطبقی نیست</string>
     <string name="calls_rules_section">قاعده‌های پاسخ</string>
+    <string name="calls_stranger_only">هوش مصنوعی فقط شماره‌های ناآشنا را جواب می‌دهد</string>
+    <string name="calls_stranger_only_sub">مخاطبان را خودتان جواب می‌دهید</string>
+    <string name="calls_stranger_only_denied">اجازه مخاطبان داده نشد، پس خاموش می‌ماند</string>
+    <string name="calls_stranger_ready_on">روشن · مخاطبان برای شما زنگ می‌خورند</string>
+    <string name="calls_stranger_ready_off">خاموش</string>
+    <string name="calls_stranger_ready_blocked">روشن است، اما چون مخاطبان خوانده نمی‌شوند هوش مصنوعی خودکار جواب نمی‌دهد</string>
+    <string name="calls_ring_timeout">پس از زنگ طولانی به هوش مصنوعی بسپار</string>
+    <string name="calls_ring_timeout_sub">اگر ۱۰ ثانیه زنگ بخورد و کسی جواب ندهد، هوش مصنوعی برمی‌دارد</string>
+    <string name="calls_ring_timeout_on">روشن · پس از ۱۰ ثانیه به هوش مصنوعی می‌رسد</string>
+    <string name="calls_ring_timeout_off">خاموش</string>
 </resources>

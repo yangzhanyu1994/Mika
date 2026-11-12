@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">إنشاء مهمة تلقائية</string>
+    <string name="home_chip_call">إنشاء مهمة اتصال بالذكاء الاصطناعي</string>
+    <string name="home_chip_assistant">المساعد الشخصي</string>
+    <string name="hint_home_remind">ذكّرني بالاجتماع غدًا الساعة 8</string>
+    <string name="hint_home_courier">إذا اتصل المندوب، اطلب منه تركها عند الباب</string>
+    <string name="hint_home_property">اتصل بالإدارة واسأل عن موقف السيارات</string>
+    <string name="hint_home_ask">اسأل ما تشاء</string>
+    <string name="hint_plan_morning">ذكّرني بالاجتماع غدًا الساعة 8</string>
+    <string name="hint_plan_rain">ذكّرني الساعة 8 إذا كان المطر متوقعًا</string>
+    <string name="hint_plan_friday">ذكّرني عصر الجمعة بتسليم التقرير</string>
+    <string name="hint_call_courier">إذا اتصل المندوب، اطلب منه تركها عند الباب</string>
+    <string name="hint_call_property">اتصل بالإدارة واسأل عن موقف السيارات</string>
+    <string name="hint_call_delivery">إذا وصل الطعام، اطلب تركه عند الباب</string>
+    <string name="hint_brief_busy">قل إنني مشغول وسجّل الرسالة</string>
+    <string name="hint_brief_courier">إذا اتصل المندوب، اطلب منه تركها عند الباب</string>
+    <string name="hint_brief_unknown">إذا كان الرقم مجهولًا، اسأل من المتصل</string>
+</resources>

@@ -2,6 +2,7 @@ package com.wangzan101.mika.ui
 
 import android.graphics.Bitmap
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -13,7 +14,6 @@ import com.wangzan101.mika.ChineseUi
 import com.wangzan101.mika.chat.ConversationStore
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.settings.Prerequisites
-import com.wangzan101.mika.settings.RecommendedTaskStore
 import com.wangzan101.mika.takeover.Takeover
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,8 +48,6 @@ class ChatRecommendationTest {
     private fun show() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = ConversationStore(File(context.cacheDir, "chat-recommendation-test-" + UUID.randomUUID()))
-        val recommendations = RecommendedTaskStore(File(context.cacheDir, "recommendations-" + UUID.randomUUID()))
-        recommendations.ensureLoaded { ChatCopy.recommendationSeeds() }
         val vm = ChatViewModel(
             CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             MutableStateFlow(TaskState.Idle), MutableStateFlow(Takeover.Stage.None), actions, store,
@@ -57,7 +55,8 @@ class ChatRecommendationTest {
         compose.setContent {
             ChatScreen(
                 vm, Prerequisites.Check(emptyList()), MutableStateFlow<Bitmap?>(null), MutableStateFlow(false),
-                reduceMotion = true, onOpenDrawer = {}, openSettings = {}, recommendations = recommendations,
+                reduceMotion = true, onOpenDrawer = {}, openSettings = {},
+                habitSuggestions = listOf("记下门禁密码"),
             )
         }
         compose.waitForIdle()
@@ -65,7 +64,8 @@ class ChatRecommendationTest {
 
     @Test fun emptyDraftIsPrefilledDirectly() {
         show()
-        val recommendation = ChatCopy.examples.first().text
+        val recommendation = "记下门禁密码"
+        org.junit.Assert.assertTrue(compose.onAllNodesWithText("github.com/wangzan101/mika", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText(recommendation).performClick()
         compose.onNodeWithTag("composer-field").assertTextEquals(recommendation)
         compose.onNodeWithText("替换当前草稿？").assertDoesNotExist()
@@ -74,7 +74,7 @@ class ChatRecommendationTest {
     @Test fun nonemptyDraftIsReplacedOnlyAfterConfirmation() {
         show()
         val original = "已经写好、还没发送的长草稿"
-        val recommendation = ChatCopy.examples.first().text
+        val recommendation = "记下门禁密码"
         compose.onNodeWithTag("composer-field").performTextInput(original)
 
         compose.onNodeWithText(recommendation).performClick()

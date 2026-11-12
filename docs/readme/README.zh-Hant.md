@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 131b7d737639 -->
+<!-- translated-from: README.md @ 09a12768165f -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -45,6 +45,15 @@
 - **測試結果**：`python3 tools/i18n/translations.py check` 通過。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 通過（5344 tests, 0 failures, 2 skipped；debug APK 與 androidTest 編譯成功）。
 - **來源**：老闆 2026-11-13 design previews
 - **狀態**：代碼已寫完，未真機驗證
+
+### 2026-11-13 · 0.1.43
+
+- **日期**：2026-11-13（UTC+8）
+- **更新人**：Grok Build via Cursor cloud agent
+- **測試結果**：`python3 tools/i18n/translations.py check` 通過。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin` 通過（5352 tests, 0 failures, 2 skipped；debug APK 與 androidTest 編譯成功）。
+- **來源**：老闆 2026-11-13 06:39、06:41、06:43、06:49、06:50、06:55、06:56、06:58、06:59 真機反饋
+- **狀態**：代碼已寫完，未真機驗證
+- **說明**：接聽設定每一項只編輯自己，音訊通道只留一行。僅 AI 接聽陌生號碼預設關閉，通訊錄聯絡人由本人接；沒有通訊錄權限時不打開該開關，也不把聯絡人當成陌生人。響鈴逾時轉 AI 預設關閉，連續響鈴 10 秒無人接聽後轉入 AI；本人接聽和已識別的聯絡人先由人接，白名單排除不會被逾時打破。AI 音色放進即時語音模型設定，顯示「溫柔女聲」這類名稱，已儲存的音色保留。新建和編輯通話任務、通用應答、定時任務的語音輸入改成和主頁一樣的底部輸入欄：點按打字，長按說話，鍵盤彈起時輸入欄上移，儲存按鈕不被擋住。「預設交代」改名為「通用應答」，副標題不變，已儲存內容保留。回到首頁時輸入框自動聚焦並彈出鍵盤；空對話在輸入框上方靠左顯示「建立自動化任務」「建立 AI 電話業務」「個人助手」。輸入框裡的灰色提示按入口輪換，聚焦或開始輸入後停止。首頁去掉寫死的四條示例；有本機使用記錄時按頻率和最近使用生成最多 4 條，點一下填入輸入框、不直接發送，沒有記錄則不顯示這張卡片。統計只存在本機，不上傳。首頁右上角與側欄重複的附件和新建對話按鈕已去掉；未儲存草稿仍由側欄「新對話」留住。
 
 ## 一句話，辦好一件事
 

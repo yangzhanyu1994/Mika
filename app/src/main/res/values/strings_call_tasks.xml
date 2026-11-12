@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">Not yet</string>
     <string name="calls_task_kind_dial">AI call</string>
     <string name="calls_task_kind_incoming">Incoming note</string>
-    <string name="calls_task_kind_default">Default instructions</string>
+    <string name="calls_task_kind_default">General reply</string>
     <string name="calls_task_type">Type</string>
     <string name="calls_task_hold">Hold to speak and create a task</string>
     <string name="calls_task_hold_example">For example: if a courier calls, ask them to leave it at the door</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">Analyzing…</string>
     <string name="calls_task_parse_failed">Couldn\'t turn that into a task. Edit the fields and save.</string>
     <string name="calls_task_need_model">Choose a model in Settings first</string>
-    <string name="calls_default_brief">Default instructions</string>
+    <string name="calls_default_brief">General reply</string>
     <string name="calls_default_brief_sub">How the AI responds when there is no call task</string>
     <string name="calls_default_brief_hint">For example: say I\'m busy and take a message</string>
     <string name="calls_audio_channel">Audio path</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">Search name or number</string>
     <string name="calls_contacts_empty">No matching contacts</string>
     <string name="calls_rules_section">Answer rules</string>
+    <string name="calls_stranger_only">AI answers unknown numbers only</string>
+    <string name="calls_stranger_only_sub">People in your contacts are left for you</string>
+    <string name="calls_stranger_only_denied">Contacts permission was denied, so this stays off</string>
+    <string name="calls_stranger_ready_on">On · contacts ring for you</string>
+    <string name="calls_stranger_ready_off">Off</string>
+    <string name="calls_stranger_ready_blocked">On, but contacts can\'t be read, so AI will not auto-answer</string>
+    <string name="calls_ring_timeout">Hand to AI after ringing</string>
+    <string name="calls_ring_timeout_sub">After 10 seconds of ringing with no answer, AI takes the call</string>
+    <string name="calls_ring_timeout_on">On · unanswered calls go to AI after 10 seconds</string>
+    <string name="calls_ring_timeout_off">Off</string>
 </resources>

@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">開始前</string>
     <string name="calls_task_kind_dial">AI 発信</string>
     <string name="calls_task_kind_incoming">着信の指示</string>
-    <string name="calls_task_kind_default">既定の指示</string>
+    <string name="calls_task_kind_default">共通の応答</string>
     <string name="calls_task_type">種類</string>
     <string name="calls_task_hold">押しながら話すとタスクになります</string>
     <string name="calls_task_hold_example">例：宅配便が電話したら玄関に置いてもらう</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">整理しています…</string>
     <string name="calls_task_parse_failed">タスクにできませんでした。項目を直して保存してください</string>
     <string name="calls_task_need_model">先に設定でモデルを選んでください</string>
-    <string name="calls_default_brief">既定の指示</string>
+    <string name="calls_default_brief">共通の応答</string>
     <string name="calls_default_brief_sub">通話タスクがないときの AI の対応</string>
     <string name="calls_default_brief_hint">例：取り込み中だと伝えて伝言を残す</string>
     <string name="calls_audio_channel">音声経路</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">名前か番号を検索</string>
     <string name="calls_contacts_empty">一致する連絡先がありません</string>
     <string name="calls_rules_section">応答ルール</string>
+    <string name="calls_stranger_only">知らない番号だけ AI が応答</string>
+    <string name="calls_stranger_only_sub">連絡先に登録された相手は自分で出ます</string>
+    <string name="calls_stranger_only_denied">連絡先が許可されていないため、オフのままです</string>
+    <string name="calls_stranger_ready_on">オン · 連絡先は自分で出る</string>
+    <string name="calls_stranger_ready_off">オフ</string>
+    <string name="calls_stranger_ready_blocked">オンですが連絡先を読めないため、AI は自動応答しません</string>
+    <string name="calls_ring_timeout">呼び出しタイムアウトで AI が応答</string>
+    <string name="calls_ring_timeout_sub">10 秒鳴り続けて誰も出ないとき、AI が代わりに出ます</string>
+    <string name="calls_ring_timeout_on">オン · 10 秒出なければ AI</string>
+    <string name="calls_ring_timeout_off">オフ</string>
 </resources>

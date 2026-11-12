@@ -19,7 +19,7 @@
     <string name="calls_summary_row_sub">通話結束後產生摘要和待辦</string>
     <string name="calls_allowlist_row">白名單號碼</string>
     <string name="calls_self_answer_row">本人接聽</string>
-    <string name="calls_prompt_row">預設交代</string>
+    <string name="calls_prompt_row">通用應答</string>
     <string name="calls_duration_row">最長時長</string>
     <string name="calls_duration_value">%1$d 秒</string>
     <string name="calls_voice_row">AI 音色</string>

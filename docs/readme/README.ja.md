@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 131b7d737639 -->
+<!-- translated-from: README.md @ 09a12768165f -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -45,6 +45,15 @@
 - **テスト結果**：`python3 tools/i18n/translations.py check` は成功。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` は成功（5344 tests, 0 failures, 2 skipped。debug APK と androidTest のコンパイルも成功）。
 - **出典**：老板 2026-11-13 design previews
 - **状態**：コードは書き終えています。実機では未検証
+
+### 2026-11-13 · 0.1.43
+
+- **日付**：2026-11-13（UTC+8）
+- **更新者**：Grok Build via Cursor cloud agent
+- **テスト結果**：`python3 tools/i18n/translations.py check` は成功。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin` は成功（5352 tests, 0 failures, 2 skipped。debug APK と androidTest のコンパイルも成功）。
+- **出典**：老板 2026-11-13 06:39、06:41、06:43、06:49、06:50、06:55、06:56、06:58、06:59 の実機フィードバック
+- **状態**：コードは書き終えています。実機では未検証
+- **説明**：応答設定は項目ごとに別の編集画面。音声チャンネルは 1 行。見知らぬ番号だけ AI が応答するスイッチは既定オフで、連絡先は本人が受ける。連絡先を読めないときはスイッチを入れず、連絡先を見知らぬ番号として扱わない。呼び出し 10 秒で AI に渡すスイッチも既定オフ。本人応答と判別済みの連絡先は先に人が受け、許可リストの除外はタイムアウトで上書きしない。AI の声はリアルタイム音声モデルの設定に移し、保存済みの声はそのまま。通話タスク、汎用応答、タイマーの入力はホームと同じ下部バー（タップで文字、長押しで音声）。「既定の指示」は「汎用応答」に改名し、保存内容は残す。ホームを開くと入力欄にフォーカスしキーボードが出る。空の会話では入力欄の上左に 3 つのカプセル。灰色のヒントは入口ごとに切り替わり、フォーカスまたは入力開始で止まる。固定の 4 例は削除。端末内の利用記録から最大 4 件を作り、タップで入力欄に入れる（送信しない）。記録がなければカードは出さない。集計は端末内のみ。ホーム右上の添付と新規会話ボタンは削除。未送信の下書きはサイドバーの新規会話が保持する。
 
 ## ひと言で、用事がひとつ片づく
 

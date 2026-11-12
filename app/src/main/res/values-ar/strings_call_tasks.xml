@@ -12,7 +12,7 @@
     <string name="calls_task_status_later">لم تبدأ</string>
     <string name="calls_task_kind_dial">اتصال بالذكاء الاصطناعي</string>
     <string name="calls_task_kind_incoming">تعليمات المكالمة الواردة</string>
-    <string name="calls_task_kind_default">التعليمات الافتراضية</string>
+    <string name="calls_task_kind_default">الرد العام</string>
     <string name="calls_task_type">النوع</string>
     <string name="calls_task_hold">اضغط مطولاً وتحدث لإنشاء المهمة</string>
     <string name="calls_task_hold_example">مثال: إذا اتصل المندوب، اطلب منه تركها عند الباب</string>
@@ -37,7 +37,7 @@
     <string name="calls_task_analyzing">جارٍ التحليل…</string>
     <string name="calls_task_parse_failed">تعذر إنشاء المهمة. عدّل الحقول ثم احفظ.</string>
     <string name="calls_task_need_model">اختر نموذجًا من الإعدادات أولاً</string>
-    <string name="calls_default_brief">التعليمات الافتراضية</string>
+    <string name="calls_default_brief">الرد العام</string>
     <string name="calls_default_brief_sub">كيف يرد الذكاء الاصطناعي عند عدم وجود مهمة مكالمة</string>
     <string name="calls_default_brief_hint">مثال: قل إنني مشغول وسجّل الرسالة</string>
     <string name="calls_audio_channel">مسار الصوت</string>
@@ -61,4 +61,14 @@
     <string name="calls_contacts_search">ابحث عن الاسم أو الرقم</string>
     <string name="calls_contacts_empty">لا توجد جهات مطابقة</string>
     <string name="calls_rules_section">قواعد الرد</string>
+    <string name="calls_stranger_only">يرد الذكاء الاصطناعي على الأرقام غير المعروفة فقط</string>
+    <string name="calls_stranger_only_sub">جهات الاتصال ترد عليها بنفسك</string>
+    <string name="calls_stranger_only_denied">رُفضت جهات الاتصال، لذا يبقى هذا مغلقًا</string>
+    <string name="calls_stranger_ready_on">يعمل · جهات الاتصال ترن لك</string>
+    <string name="calls_stranger_ready_off">متوقف</string>
+    <string name="calls_stranger_ready_blocked">يعمل، لكن دون جهات الاتصال لن يرد الذكاء الاصطناعي تلقائيًا</string>
+    <string name="calls_ring_timeout">تحويل إلى الذكاء الاصطناعي بعد الرنين</string>
+    <string name="calls_ring_timeout_sub">إذا رن 10 ثوانٍ دون رد، يتولى الذكاء الاصطناعي المكالمة</string>
+    <string name="calls_ring_timeout_on">يعمل · بعد 10 ثوانٍ ينتقل إلى الذكاء الاصطناعي</string>
+    <string name="calls_ring_timeout_off">متوقف</string>
 </resources>

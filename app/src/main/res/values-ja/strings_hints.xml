@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_chip_plan">自動化タスクを作る</string>
+    <string name="home_chip_call">AI 通話タスクを作る</string>
+    <string name="home_chip_assistant">パーソナルアシスタント</string>
+    <string name="hint_home_remind">明日の朝 8 時に会議を知らせて</string>
+    <string name="hint_home_courier">宅配便が電話したら玄関に置いてもらう</string>
+    <string name="hint_home_property">管理会社に電話して駐車を聞いて</string>
+    <string name="hint_home_ask">なんでも聞いて</string>
+    <string name="hint_plan_morning">明日の朝 8 時に会議を知らせて</string>
+    <string name="hint_plan_rain">毎朝 8 時に雨なら知らせて</string>
+    <string name="hint_plan_friday">金曜の午後に週報を出すよう知らせて</string>
+    <string name="hint_call_courier">宅配便が電話したら玄関に置いてもらう</string>
+    <string name="hint_call_property">管理会社に電話して駐車を聞いて</string>
+    <string name="hint_call_delivery">出前が来たら玄関に置いてもらう</string>
+    <string name="hint_brief_busy">取り込み中だと伝えて伝言を残す</string>
+    <string name="hint_brief_courier">宅配便が電話したら玄関に置いてもらう</string>
+    <string name="hint_brief_unknown">知らない番号は先に誰かを聞いて</string>
+</resources>

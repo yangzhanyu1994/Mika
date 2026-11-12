@@ -35,7 +35,7 @@ class CallSettings(
         }.distinctBy(CallPolicy::incomingMatchKey).toSet()
         require(config.greeting.length <= CallPolicy.MAX_GREETING_CHARS) { "开场白过长" }
         require(config.systemPrompt.length <= CallPolicy.MAX_PROMPT_CHARS) { "通话说明过长" }
-        require(config.defaultBrief.length <= CallDefaultBrief.MAX_CHARS) { "默认交代过长" }
+        require(config.defaultBrief.length <= CallDefaultBrief.MAX_CHARS) { "通用应答过长" }
         val speaker = config.speaker.trim().ifBlank { defaults.speaker }
         require(speaker.length <= CallPolicy.MAX_SPEAKER_CHARS && speaker.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it in "_-" }) {
             "无效的火山音色编号"
@@ -57,6 +57,8 @@ class CallSettings(
             defaultBrief = config.defaultBrief.trim().take(CallDefaultBrief.MAX_CHARS),
             defaultBriefMigrated = config.defaultBriefMigrated || previous.defaultBriefMigrated,
             credentialProbeOk = config.credentialProbeOk,
+            answerStrangersOnly = config.answerStrangersOnly,
+            answerOnRingTimeout = config.answerOnRingTimeout,
             speaker = speaker,
             credentialsConfigured = previous.credentialsConfigured,
         )
@@ -83,6 +85,8 @@ class CallSettings(
                 false -> "fail"
                 null -> null
             })
+            .putBoolean("answer_strangers_only", next.answerStrangersOnly)
+            .putBoolean("answer_on_ring_timeout", next.answerOnRingTimeout)
             .putString("speaker", next.speaker)
             .commit()
         // A failed write may not leave auto-answer running with a policy the user tried to change.
@@ -194,6 +198,8 @@ class CallSettings(
                 "fail" -> false
                 else -> null
             },
+            answerStrangersOnly = prefs.getBoolean("answer_strangers_only", false),
+            answerOnRingTimeout = prefs.getBoolean("answer_on_ring_timeout", false),
             speaker = prefs.getString("speaker", defaults.speaker).orEmpty().take(CallPolicy.MAX_SPEAKER_CHARS),
         )
     }.getOrDefault(CallConfig())
