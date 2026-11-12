@@ -9,7 +9,7 @@ import org.junit.rules.TemporaryFolder
 class ApkIntegrityTest {
     @get:Rule val temp = TemporaryFolder()
 
-    @Test fun acceptsOfficialApk() {
+    @Test fun acceptsForkReleaseApk() {
         ApkIntegrity.requireOfficialUrl("https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.0/Mika.apk")
     }
 
