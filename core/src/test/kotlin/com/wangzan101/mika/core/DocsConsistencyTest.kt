@@ -65,6 +65,17 @@ class DocsConsistencyTest {
     private val toolNames: Set<String> by lazy { knownToolNames() }
     private val toolPrefixes: Set<String> by lazy { toolNames.map { it.substringBefore('_') }.toSet() }
 
+    /**
+     * 电脑/远程 API 的名字,不是发给模型的工具名。`mika_` 现在是自身工具的前缀,文档里这些
+     * 远程调用名不能再靠「前缀不认识」自动放过,逐个列出来。
+     */
+    private val remoteApiNames = setOf(
+        "mika_run_task", "mika_task_status", "mika_wait_task", "mika_answer", "mika_steer_task",
+        "mika_cancel_task", "mika_list_tasks", "mika_device_state", "mika_wake_device", "mika_unlock_device",
+        // 电脑侧控制 API 的名字(不是发给模型的工具);`task_` 因 task_memory_* 成了工具前缀后也要逐个列出。
+        "task_steer", "task_id", "task_recovery", "task_files", "task_interrupted", "task_result_v2",
+    )
+
     private fun isPath(s: String): Boolean =
         !s.startsWith("/") && !s.startsWith("~") && "://" !in s &&
             ('/' in s || s.substringAfterLast('.', "").let { it in pathExtensions && s.length > it.length + 1 })
@@ -72,6 +83,8 @@ class DocsConsistencyTest {
     /** 文档里写的是 App 运行时才有的东西(设备上的目录和文件),不在仓库里;逐个写明为什么。 */
     private val runtimeOnly = mapOf(
         "eval/logged-in.txt" to "评测的人工登录标记,放在设备上 App 的外部文件目录,不进仓库",
+        "usb-start.sh" to "手机助手启动脚本由 App 写到设备外部文件目录,不进仓库",
+        "connect-computer.sh" to "电脑连接脚本由 App 写到设备外部文件目录,不进仓库",
     )
 
     /** 只有仓库根下确有的一级目录或文件开头的路径、以及代码类的短文件名,才是在指仓库里的东西;其余是运行时产物或相对写法。 */
@@ -112,7 +125,7 @@ class DocsConsistencyTest {
             if (notIdentifier.containsMatchIn(s)) return@mapNotNull null
             when {
                 isPath(s) -> if (pathExists(s)) null else "$rel: 路径 `$s` 在仓库里找不到"
-                tool.matches(s) -> if (s.substringBefore('_') !in toolPrefixes || s in toolNames) null else "$rel: 工具名 `$s` 不在现有工具里"
+                tool.matches(s) -> if (s in remoteApiNames || s.substringBefore('_') !in toolPrefixes || s in toolNames) null else "$rel: 工具名 `$s` 不在现有工具里"
                 classLike.matches(s) && s.count { it.isUpperCase() } >= 2 && s.any { it.isLowerCase() } ->
                     if (classExists(s) || importedFromOutside(s)) null else "$rel: 类名 `$s` 在 core/app 的源码里找不到"
                 else -> null

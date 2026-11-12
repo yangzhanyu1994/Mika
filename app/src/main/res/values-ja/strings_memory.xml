@@ -27,6 +27,9 @@
     <string name="memory_auto_sub">タスクのあとに、あなた自身の言葉から整理します</string>
     <string name="memory_learn">過去のタスクから学ぶ(スキルとアプリのメモ)</string>
     <string name="memory_learn_sub">Mika が学んだ内容は、あなたが承認してから使われます</string>
+    <string name="memory_tasks">過去のタスクを覚える</string>
+    <string name="memory_tasks_sub">終わったタスクごとに短いまとめを残し、次回思い出せるようにする</string>
+    <string name="memory_tasks_title">過去のタスク</string>
     <string name="memory_clear_sub">すべてのメモリと学習したスキルを削除</string>
     <string name="edit_it">編集</string>
     <string name="unpin">ピン留めを解除</string>
@@ -78,4 +81,14 @@
     <string name="skills_archived">アーカイブ済み</string>
     <string name="skills_archive">アーカイブ</string>
     <string name="skills_changed_lines">変更した行:</string>
+    <string name="skills_get">スキルを取得</string>
+    <string name="skills_share">スキルを共有</string>
+    <string name="skills_import">スキルをインポート</string>
+    <string name="skills_import_sub">共有してもらったスキルの全文を貼り付けます</string>
+    <string name="skills_import_hint">まず「確認待ち」に入り、内容を見て受け入れるまでは使われません。</string>
+    <string name="skills_import_confirm">インポート</string>
+    <string name="skill_imported">インポートしました。「確認待ち」で確認してください。</string>
+    <string name="skills_imported">インポート済み</string>
+    <string name="skill_builtin_name">同じ名前の組み込みスキルがあります。名前を変えてもう一度試してください。</string>
+    <string name="skill_draft_pending">同じ名前の下書きが確認待ちです。先にそちらを処理してください。</string>
 </resources>

@@ -46,6 +46,19 @@ object CapsuleDocking {
     /** 高为 [h] 的窗口按 [fraction] 摆时的上边。 */
     fun y(fraction: Float, area: DockArea, h: Int): Int = area.top + (fraction.coerceIn(0f, 1f) * range(area, h)).roundToInt()
 
+    /**
+     * 这一轮输入法弹出期间摆卡片用的上边:上边越小,键盘越高(拼音候选行、工具栏多出来一行)。
+     * 变高时马上跟,卡片下沿不会被输入法盖住;变矮时只有一下矮过 [jump](换了表情面板这类)才跟,
+     * 候选行多一行少一行不跟,卡片就不跟着反复变高矮。输入法收起([top] 为 null)时清掉,下次重新记。
+     */
+    fun tallestImeTop(seen: Int?, top: Int?, jump: Int): Int? = when {
+        top == null -> null
+        seen == null -> top
+        top <= seen -> top
+        top - seen > jump -> top
+        else -> seen
+    }
+
     /** 上边在 [y] 时的高度比例。 */
     fun fraction(y: Int, area: DockArea, h: Int): Float {
         val r = range(area, h)
@@ -65,11 +78,13 @@ object CapsuleDocking {
     fun edgeOffset(side: DockSide, area: DockArea): Int = if (side == DockSide.Left) area.left else area.width - area.right
 
     /**
-     * 松手:[x] 是窗口左边,[y] 是窗口上边。中线在屏幕左半边贴左边,否则贴右边;高度按比例记下。
+     * 松手:[x] 是窗口左边,[y] 是窗口上边。中线在屏幕左半边贴左边,否则贴右边。
+     * 高度比例始终按没让输入法的 [fractionArea] 记下;[area] 是此刻实际可拖的范围(可能已收到输入法上面)。
+     * 这样后续 place 也按完整区域还原时,先得到的正是这次松手高度,再按当前输入法范围夹住,不会二次偏移。
      */
-    fun release(x: Int, y: Int, w: Int, h: Int, area: DockArea): CapsuleDock {
+    fun release(x: Int, y: Int, w: Int, h: Int, area: DockArea, fractionArea: DockArea = area): CapsuleDock {
         val side = if (x + w / 2 < area.width / 2) DockSide.Left else DockSide.Right
-        return CapsuleDock(side, fraction(fitY(y, area, h), area, h))
+        return CapsuleDock(side, fraction(fitY(y, area, h), fractionArea, h))
     }
 
     private fun range(area: DockArea, h: Int) = maxOf(0, area.bottom - area.top - h)

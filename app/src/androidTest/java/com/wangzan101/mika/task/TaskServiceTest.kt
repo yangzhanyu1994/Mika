@@ -3,7 +3,11 @@ package com.wangzan101.mika.task
 import org.junit.Rule
 import com.wangzan101.mika.ChineseUi
 import com.wangzan101.mika.DeviceTaskState
+import android.app.Notification
+import android.app.NotificationManager
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.os.PowerManager
 import android.view.Display
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -11,6 +15,8 @@ import com.wangzan101.mika.cap.phone.a11y.DeviceSupport
 import com.wangzan101.mika.cap.phone.a11y.DeviceSupport.SETTINGS
 import com.wangzan101.mika.cap.phone.a11y.DeviceSupport.pollUntil
 import com.wangzan101.mika.cap.phone.a11y.DeviceSupport.sh
+import com.wangzan101.mika.MikaApp
+import com.wangzan101.mika.core.agent.FailKind
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.model.Capabilities
 import com.wangzan101.mika.core.model.ChatModel
@@ -19,6 +25,7 @@ import com.wangzan101.mika.core.model.ModelReply
 import com.wangzan101.mika.core.model.Part
 import com.wangzan101.mika.core.model.StopReason
 import com.wangzan101.mika.core.model.ToolSpec
+import com.wangzan101.mika.core.personal.PersonalTask
 import com.wangzan101.mika.core.verify.Verifier
 import com.wangzan101.mika.shell.IMikaShell
 import org.junit.After
@@ -31,6 +38,8 @@ import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.UUID
+import kotlinx.coroutines.runBlocking
 
 /**
  * 真机测试:用脚本模型驱动 TaskService,在虚拟屏上打开系统设置,检验常亮、静音、被挪走暂停与锁屏等待。
@@ -161,6 +170,7 @@ class TaskServiceTest {
         assertTrue(third.messages.last().toString(), "no_app_open" in third.messages.last().toString())
         assertEquals(-1, testTasks.agentDisplayId.value)
         assertEquals(null, DeviceTaskState.frames.value)
+        assertEquals(null, DeviceTaskState.runs.value.single().phoneFrames.value)
         finishAndAwait(appOpened = false)
         assertEquals(-1, testTasks.agentDisplayId.value)
 
@@ -177,8 +187,35 @@ class TaskServiceTest {
         assertEquals(3, model.awaitCall().number)
         assertEquals(first, testTasks.agentDisplayId.value)
         assertNotNull(pollUntil(5_000) { DeviceTaskState.frames.value })
+        val run = DeviceTaskState.runs.value.single()
+        assertNotNull(pollUntil(5_000) { run.phoneFrames.value })
         finishAndAwait()
         assertEquals(-1, testTasks.agentDisplayId.value)
+        assertEquals(null, run.phoneFrames.value)
+    }
+
+    @Test
+    fun personalReplayKeepsAFrameFromTheTaskDisplay() {
+        val personal = (context.applicationContext as MikaApp).personal
+        val id = UUID.randomUUID().toString()
+        val task = PersonalTask(id, id, "打开设置", "打开设置", "test", System.currentTimeMillis())
+        personal.store.update { it.copy(tasks = it.tasks + task) }
+        try {
+            started++
+            TaskService.start(context, task.goal, task.conversationId)
+            assertEquals(1, model.awaitCall().number)
+            model.feed("phone_launch_app", """{"package":"$SETTINGS"}""")
+            assertEquals(2, model.awaitCall().number)
+            val replay = pollUntil(8_000) { runBlocking { personal.replayFrames(id).firstOrNull() } }
+            assertNotNull(replay)
+            requireNotNull(BitmapFactory.decodeFile(replay!!.file.path)).recycle()
+            finishAndAwait()
+            assertTrue(replay.file.isFile)
+        } finally {
+            personal.store.update {
+                it.copy(tasks = it.tasks.filterNot { t -> t.id == id }, messages = it.messages.filterNot { m -> m.taskId == id })
+            }
+        }
     }
 
     @Test
@@ -316,6 +353,58 @@ class TaskServiceTest {
         assertNotNull(resumed)
         assertEquals(3, model.awaitCall().number)
         finishAndAwait()
+    }
+
+    @Test
+    fun scheduledTaskFailsAndNotifiesWhenUnlockIsNotAllowed() {
+        val access = (context.applicationContext as MikaApp).deviceAccess
+        val wasEnabled = access.settings.config.value.enabled
+        val power = context.getSystemService(PowerManager::class.java)
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        val before = notifications.activeNotifications.map { it.key }.toSet()
+        val conversation = "test-scheduled-unlock-${System.nanoTime()}"
+        access.settings.setEnabled(false)
+        try {
+            TaskService.startTrigger(context, "测试定时任务", conversation, conversation, null)
+            assertEquals(1, model.awaitCall().number)
+            sh("input keyevent KEYCODE_SLEEP")
+            assertNotNull("screen did not turn off", pollUntil(5_000) { true.takeIf { !power.isInteractive } })
+
+            model.feed("phone_launch_app", """{"package":"$SETTINGS"}""")
+            val end = awaitState { it is TaskState.Failed } as TaskState.Failed
+            val expected = context.getString(com.wangzan101.mika.R.string.trigger_unlock_failed) + " [disabled]"
+            assertEquals(expected, end.reason)
+            assertEquals(FailKind.Environment, end.kind)
+
+            val posted = pollUntil(5_000) {
+                notifications.activeNotifications.firstOrNull {
+                    it.key !in before && it.notification.channelId == TaskService.CHANNEL_RESULT &&
+                        it.notification.extras.getCharSequence(Notification.EXTRA_TEXT) == expected
+                }
+            }
+            assertNotNull("missing scheduled-task failure notification", posted)
+        } finally {
+            access.settings.setEnabled(wasEnabled)
+            sh("input keyevent KEYCODE_WAKEUP")
+        }
+    }
+
+    @Test
+    fun uiTaskStillWaitsForManualUnlock() {
+        val power = context.getSystemService(PowerManager::class.java)
+        try {
+            start("测试普通任务")
+            assertEquals(1, model.awaitCall().number)
+            sh("input keyevent KEYCODE_SLEEP")
+            assertNotNull("screen did not turn off", pollUntil(5_000) { true.takeIf { !power.isInteractive } })
+
+            model.feed("phone_launch_app", """{"package":"$SETTINGS"}""")
+            assertEquals(TaskState.Held(TaskGate.LOCKED), awaitState { it == TaskState.Held(TaskGate.LOCKED) })
+            Thread.sleep(1_500)
+            assertEquals("ordinary task attempted unattended unlock", TaskState.Held(TaskGate.LOCKED), DeviceTaskState.state.value)
+        } finally {
+            sh("input keyevent KEYCODE_WAKEUP")
+        }
     }
 
     private companion object {

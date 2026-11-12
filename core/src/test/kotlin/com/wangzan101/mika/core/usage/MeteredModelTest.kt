@@ -15,6 +15,7 @@ import com.wangzan101.mika.core.model.ToolSpec
 import com.wangzan101.mika.core.model.Usage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -26,7 +27,14 @@ class MeteredModelTest {
     private val user = listOf(Message(Role.User, listOf(Part.Text("hi")), Author.User))
     private val source = UsageSource("p1", "服务商甲", "m1", UsagePurpose.of(ModelRole.Light))
     private val recorded = mutableListOf<Pair<UsageSource, Usage?>>()
-    private val sink = UsageSink { s, u -> recorded += s to u }
+    private val attempts = mutableListOf<Int>()
+    private val sink = object : UsageSink {
+        override fun record(s: UsageSource, u: Usage?) = record(s, u, 1)
+        override fun record(s: UsageSource, u: Usage?, httpAttempts: Int) {
+            recorded += s to u
+            attempts += httpAttempts
+        }
+    }
 
     private class Plain(val reply: () -> ModelReply) : ChatModel {
         override val capabilities = Capabilities(toolCalls = true, vision = false, contextTokens = 64000, reasoning = false)
@@ -36,10 +44,15 @@ class MeteredModelTest {
 
     private class Streaming(val reply: ModelReply) : StreamingChatModel {
         override val capabilities = Capabilities(toolCalls = true, vision = true, contextTokens = 8000, reasoning = true)
-        override suspend fun complete(system: String, messages: List<Message>, tools: List<ToolSpec>) = reply
+        var calls = 0
+        override suspend fun complete(system: String, messages: List<Message>, tools: List<ToolSpec>): ModelReply {
+            calls++
+            return reply
+        }
         override suspend fun completeStreaming(
             system: String, messages: List<Message>, tools: List<ToolSpec>, onText: (String) -> Unit,
         ): ModelReply {
+            calls++
             onText("一"); onText("一二")
             return reply
         }
@@ -63,12 +76,13 @@ class MeteredModelTest {
         assertTrue("没调用就不记", recorded.isEmpty())
     }
 
-    @Test fun replyWithoutUsageCountsAsMissing() = runTest {
+    @Test fun nonHttpReplyDoesNotInventARequest() = runTest {
         Plain { reply(null) }.metered(source, sink).complete("s", user, emptyList())
         assertEquals(listOf<Pair<UsageSource, Usage?>>(source to null), recorded)
+        assertEquals(listOf(0), attempts)
     }
 
-    @Test fun failureIsCountedAndRethrownUnchanged() = runTest {
+    @Test fun localFailureIsRethrownWithoutAnHttpAttempt() = runTest {
         val err = ModelError.RateLimited(1000)
         val m = Plain { throw err }.metered(source, sink)
         try {
@@ -77,9 +91,10 @@ class MeteredModelTest {
             assertSame(err, e)
         }
         assertEquals(listOf<Pair<UsageSource, Usage?>>(source to null), recorded)
+        assertEquals(listOf(0), attempts)
     }
 
-    @Test fun cancellationIsCountedAndRethrown() = runTest {
+    @Test fun cancellationBeforeHttpIsRethrownWithoutAnAttempt() = runTest {
         val m = Plain { throw CancellationException("stop") }.metered(source, sink)
         try {
             m.complete("s", user, emptyList()); fail()
@@ -87,6 +102,46 @@ class MeteredModelTest {
             assertEquals("stop", e.message)
         }
         assertEquals(listOf<Pair<UsageSource, Usage?>>(source to null), recorded)
+        assertEquals(listOf(0), attempts)
+    }
+
+    @Test fun exhaustedTaskBudgetRejectsPlainAndStreamingBeforeCallingOrRecording() = runTest {
+        val tally = RunUsageTally(tokenBudget = 5)
+        tally.add(Usage(3, 2), httpAttempts = 1)
+        var plainCalls = 0
+        val plain = Plain { plainCalls++; reply(Usage(1, 1)) }.metered(source, sink)
+        val streamingInner = Streaming(reply(Usage(1, 1)))
+        val streaming = streamingInner.metered(source, sink) as StreamingChatModel
+        withContext(tally) {
+            try {
+                plain.complete("s", user, emptyList())
+                fail("普通调用应在预算检查处停止")
+            } catch (_: ModelError.TaskBudgetExceeded) {}
+            try {
+                streaming.completeStreaming("s", user, emptyList()) {}
+                fail("流式调用应在预算检查处停止")
+            } catch (_: ModelError.TaskBudgetExceeded) {}
+        }
+        assertEquals(0, plainCalls)
+        assertEquals(0, streamingInner.calls)
+        assertTrue("拒绝的调用不写总账", recorded.isEmpty())
+        assertTrue("拒绝的调用不增加实际请求", attempts.isEmpty())
+        assertEquals("拒绝的调用不增加逻辑调用", 1, tally.event(1).calls)
+        assertEquals(5L, tally.totalTokens())
+    }
+
+    @Test fun dailyBudgetGuardRunsBeforeTheDelegateAndLedger() = runTest {
+        var calls = 0
+        val model = Plain { calls++; reply(Usage(1, 1)) }.metered(source, sink) {
+            throw ModelError.DailyBudgetExceeded("服务商甲", 10_000, 10_000)
+        }
+        try {
+            model.complete("s", user, emptyList())
+            fail("每日预算应在请求前拒绝")
+        } catch (_: ModelError.DailyBudgetExceeded) {}
+        assertEquals(0, calls)
+        assertTrue(recorded.isEmpty())
+        assertTrue(attempts.isEmpty())
     }
 
     @Test fun streamingStaysStreamingAndForwardsText() = runTest {
@@ -102,11 +157,11 @@ class MeteredModelTest {
 
     @Test fun brokenSinkDoesNotBreakTheCall() = runTest {
         val r = reply(Usage(1, 1))
-        val m = Plain { r }.metered(source) { _, _ -> error("disk full") }
+        val m = Plain { r }.metered(source, sink = { _, _ -> error("disk full") })
         assertSame(r, m.complete("s", user, emptyList()))
     }
 
-    // 在运行的上下文里调用的,另记到这次运行名下(成功、没报用量、失败都算一次);不在上下文里的不算
+    // 非 HTTP 模型仍记逻辑调用和最终用量,但不能凭空增加实际请求;不在运行上下文里的调用不算
     @Test fun callsInsideARunAreTalliedForThatRun() = runTest {
         val tally = RunUsageTally()
         val ok = Plain { reply(Usage(100, 20, 60)) }.metered(source, sink)
@@ -120,7 +175,9 @@ class MeteredModelTest {
         ok.complete("s", user, emptyList())
         val e = tally.event(7)
         assertEquals(3, e.calls)
+        assertEquals(0, e.httpCalls)
         assertEquals(2, e.unreported)
+        assertEquals(0, e.httpUnreported)
         assertEquals(100L, e.inputTokens)
         assertEquals(20L, e.outputTokens)
         assertEquals(60L, e.cachedTokens)

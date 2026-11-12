@@ -51,7 +51,7 @@ object IrreversibleDetector {
     val STATUS_SUFFIXES = listOf("成功", "记录", "售后", "明细", "方式", "列表", "中心", "入口", "码")
 
     /** 这些付款词只认按钮本身,或前面是「立即」「确认」「去」(「充值中心」「话费充值」「优惠买单」是入口,不算)。 */
-    val EXACT_PAY = listOf("收银台", "买单", "充值", "储值", "提现", "转出", "打赏", "缴费")
+    val EXACT_PAY = listOf("收银台", "买单", "充值", "储值", "提现", "转出", "打赏", "缴费", "捐赠", "捐款")
     private val EXACT_PAY_PREFIXES = listOf("", "立即", "确认", "去")
 
     /** 红包只认按钮上的这几种说法(「微信红包」一类是聊天里的气泡)。 */
@@ -98,7 +98,7 @@ object IrreversibleDetector {
     /** 英文:名字以这个词开头(按单词边界,不分大小写),不限长度,如「Send message」「Delete conversation」。 */
     val ENGLISH: Map<String, IrrevAction> = linkedMapOf(
         "send" to IrrevAction.send, "post" to IrrevAction.send, "reply" to IrrevAction.send,
-        "pay" to IrrevAction.pay,
+        "pay" to IrrevAction.pay, "donate" to IrrevAction.pay,
         "delete" to IrrevAction.delete, "remove" to IrrevAction.delete, "clear all" to IrrevAction.delete,
         "place order" to IrrevAction.order, "buy now" to IrrevAction.order, "checkout" to IrrevAction.order,
     )
@@ -296,6 +296,18 @@ object IrreversibleDetector {
         return if (amount && paySheet(shown)) "payment sheet with an amount" else null
     }
 
+    /**
+     * 这一屏有没有和动作相连的应付金额上下文:合计/实付/应付/总计,或带金额的付款页、付款面板。
+     * 单独出现的价格、待遇、区间只是页面内容;明确付款、下单动作不经过这里,始终按金额动作判。
+     */
+    fun hasPayableAmount(s: ScreenSnapshot): Boolean {
+        val shown = s.elements.filter { !it.editable && !it.hint }
+        val amount = shown.any { AMOUNT.containsMatchIn(rowText(it, shown)) }
+        if (!amount) return false
+        return shown.any { e -> TOTAL_LABELS.any { it in Hant.fold(e.name) } } ||
+            ScreenDiagnosis.paymentText(shown.map { it.name }) != null || paySheet(shown)
+    }
+
     /** 点击找不到作用在哪个元素上(读屏缺失、编号不属于这次读屏、坐标处没有元素);供运行记录留痕。 */
     fun unresolved(target: GateTarget?, args: JsonObject, snapshot: ScreenSnapshot?, fresh: ScreenSnapshot? = null): Boolean =
         target == GateTarget.Tap && tapTargets(args, snapshot, fresh).isEmpty()
@@ -414,7 +426,7 @@ object IrreversibleDetector {
 
     private fun top(e: UiElement) = if (e.bounds.size == 4) e.bounds[1] else 0
 
-    private fun matchResource(id: String): IrrevAction? = resourceWords(id).firstNotNullOfOrNull { RESOURCE_WORDS[it] }
+    internal fun matchResource(id: String): IrrevAction? = resourceWords(id).firstNotNullOfOrNull { RESOURCE_WORDS[it] }
 
     /** 资源 ID 按 _ - . 和驼峰拆成的单词。 */
     private fun resourceWords(id: String): List<String> =
@@ -426,6 +438,7 @@ object IrreversibleDetector {
      */
     internal fun editsField(e: UiElement, s: ScreenSnapshot): Boolean {
         if (e.editable) return true
+        if (NumericKeypadEditing.edits(e, s)) return true
         if (e.bounds.size != 4) return false
         val fields = s.elements.filter { it.editable && it.bounds.size == 4 && it !== e }
         val n = Hant.fold(e.name).filterNot(Char::isWhitespace).lowercase()

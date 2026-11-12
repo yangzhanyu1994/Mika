@@ -6,6 +6,10 @@ plugins {
 }
 
 // 关于页上的构建编号:当前提交的短哈希;没有 git(如从源码包编译)时写 dev
+val mikaVersionName = providers.gradleProperty("mikaVersionName").orNull ?: "0.1.40"
+val mikaVersionCode = providers.gradleProperty("mikaVersionCode").orNull?.toIntOrNull() ?: 41
+val mikaBeta = providers.gradleProperty("mikaBeta").orNull?.toBooleanStrictOrNull() ?: true
+
 val gitHash: String = runCatching {
     providers.exec { commandLine("git", "rev-parse", "--short=7", "HEAD") }.standardOutput.asText.get().trim()
 }.getOrNull()?.takeIf { it.isNotEmpty() } ?: "dev"
@@ -18,12 +22,25 @@ android {
         applicationId = "com.wangzan101.mika"
         minSdk = 30
         targetSdk = 35
-        versionCode = 35
-        versionName = "0.1.34"
+        versionCode = mikaVersionCode
+        versionName = mikaVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         // 关于页版本号后的 Beta 标记;出正式版时改成 false
-        buildConfigField("boolean", "BETA", "true")
+        buildConfigField("boolean", "BETA", mikaBeta.toString())
+        buildConfigField("boolean", "ADB_LOGS", "false")
+    }
+
+    signingConfigs {
+        create("forkRelease") {
+            val storePath = providers.environmentVariable("MIKA_FORK_KEYSTORE").orNull
+            if (!storePath.isNullOrBlank()) {
+                storeFile = file(storePath)
+                storePassword = providers.environmentVariable("MIKA_FORK_STORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("MIKA_FORK_KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("MIKA_FORK_KEY_PASSWORD").orNull
+            }
+        }
     }
 
     // 沙箱程序只有 arm64 版本(jniLibs/arm64-v8a);APK 不限 ABI,别的设备照常安装、显示「此设备不支持沙箱」。
@@ -59,12 +76,32 @@ android {
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Mika Dev")
         }
+        // 用户 Fork 的正式发布包:独立包名,可与原版并装;更新使用稳定的 Fork 签名密钥。
+        create("forkRelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".fork"
+            resValue("string", "app_name", "Mika Fork")
+            signingConfig = signingConfigs.getByName("forkRelease")
+            matchingFallbacks += "release"
+        }
+
         // 看流畅度用的包:和发布版一样不可调试(调试包不做预先编译,界面慢好几倍,手感不作数),
         // 用本机调试签名,能直接覆盖调试包、保留数据;可被性能工具采样。./gradlew :app:assemblePerf
         create("perf") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             isProfileable = true
+            matchingFallbacks += "release"
+        }
+        // 本地日志检查包：并排安装，允许 adb run-as，首次启动即记录详细 Trace。
+        create("logs") {
+            initWith(getByName("perf"))
+            applicationIdSuffix = ".logs"
+            versionNameSuffix = "-logs"
+            isDebuggable = true
+            isProfileable = false
+            resValue("string", "app_name", "Mika Logs")
+            buildConfigField("boolean", "ADB_LOGS", "true")
             matchingFallbacks += "release"
         }
     }
@@ -98,6 +135,8 @@ dependencies {
     // 两种识别模型都随 APK 安装；首次使用不依赖 Play 服务下载。
     implementation(libs.mlkit.text.recognition)
     implementation(libs.mlkit.text.recognition.chinese)
+    // 微信绑定二维码只在本机编码，不调用在线图片服务。
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

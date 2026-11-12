@@ -17,7 +17,7 @@ class ApkRejected(val reason: Reason) : Exception(reason.name) {
 }
 
 /**
- * 下载地址只接受官方仓库的 HTTPS 发布附件。之后的跳转(到 GitHub 的附件存储)由系统下载服务处理、我们管不到,
+ * 下载地址只接受本仓库的 HTTPS 发布附件。之后的跳转(到 GitHub 的附件存储)由系统下载服务处理、我们管不到,
  * 所以下载完的文件一律再验:大小与 SHA-256(发布元数据给了才验)、包名、版本号、签名证书。
  */
 internal object ApkIntegrity {

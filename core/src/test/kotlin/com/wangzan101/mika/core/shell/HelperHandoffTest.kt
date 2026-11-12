@@ -68,6 +68,29 @@ class HelperHandoffTest {
     }
 
     @Test
+    fun rejectionDiagnosticsAreScopedAndClassifyTheCallerWithoutNumericUids() {
+        val diagnostics = HandoffDiagnostics()
+        diagnostics.reject(Reject.NotShell, callingUid = 0)
+        assertEquals("NotShell(caller=Root)", diagnostics.lastRejection)
+
+        diagnostics.launchStarted()
+        assertNull(diagnostics.lastRejection)
+        diagnostics.reject(Reject.NotShell, callingUid = 102_000)
+        assertEquals("NotShell(caller=ShellOtherUser)", diagnostics.lastRejection)
+        diagnostics.reject(Reject.NotShell, callingUid = 10_123)
+        assertEquals("NotShell(caller=OrdinaryApp)", diagnostics.lastRejection)
+        assertFalse(diagnostics.lastRejection!!.contains("10123"))
+        diagnostics.reject(Reject.NotShell, callingUid = 1_000)
+        assertEquals("NotShell(caller=Other)", diagnostics.lastRejection)
+        diagnostics.reject(Reject.StaleApk, callingUid = 0)
+        assertEquals("StaleApk", diagnostics.lastRejection)
+
+        diagnostics.clear()
+        assertNull(diagnostics.lastRejection)
+        assertEquals(HelperHandoff.CallerClass.Shell, HelperHandoff.callerClass(2_000))
+    }
+
+    @Test
     fun launchNonceIsSingleUseAndRotates() {
         val g = nonces()
         val launch = g.issueLaunch()
@@ -218,6 +241,17 @@ class HelperHandoffTest {
         assertTrue(script.contains("Mika helper starting... Open Mika to confirm"))
         assertTrue(script.contains("adb shell sh /sdcard/Android/data/com.wangzan101.mika/files/usb-start.sh"))
         assertTrue(script.endsWith("fi\n"))
+    }
+
+    @Test
+    fun usbScriptDoesNotPromiseThatTheHelperSurvivesUnplugging() {
+        val script = HelperHandoff.usbScript(apk, "com.wangzan101.mika", 10234, "pin", "f00d", scriptPath)
+        assertTrue(script.contains("On most phones it keeps running after you unplug the cable"))
+        assertTrue(script.contains("if phone control stopped after unplugging, plug in and run this command again"))
+        assertFalse(script.contains("It keeps running after you unplug the cable."))
+        // 新提示不换启动机制,口令仍只出现一次
+        assertTrue(script.contains("nohup setsid app_process"))
+        assertEquals(1, script.split("f00d").size - 1)
     }
 
     @Test

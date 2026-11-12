@@ -42,6 +42,7 @@ class SystemSpeechTest {
         assertEquals("zh-CN", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.SimplifiedChinese, java.util.Locale.US))
         assertEquals("zh-TW", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.TraditionalChinese, java.util.Locale.US))
         assertEquals("en-US", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.English, java.util.Locale.CHINA))
+        assertEquals("ar-MA", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.Arabic, java.util.Locale.US))
         assertEquals("fr-FR", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.System, java.util.Locale.FRANCE))
         // 选的语言和系统不同时用这种语言最常见的地区;相同时沿用系统的地区
         assertEquals("ja-JP", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.Japanese, java.util.Locale.US))
@@ -53,6 +54,30 @@ class SystemSpeechTest {
         assertEquals("zh-CN", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.SimplifiedChinese, java.util.Locale.TAIWAN))
         assertEquals("zh", SystemSpeech.isoCode("zh-TW"))
         assertEquals("en", SystemSpeech.isoCode("en-US"))
+    }
+
+    @Test
+    fun appLanguageWithoutRegionFallsBackToItsUsualRegion() {
+        // 在 App 里选了英语后进程默认语言是不带地区的 en:没有地区可沿用,不能只送 en
+        assertEquals("en-US", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.English, java.util.Locale.forLanguageTag("en")))
+        assertEquals("ja-JP", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.Japanese, java.util.Locale.forLanguageTag("ja")))
+        assertEquals("en-GB", SystemSpeech.speechTag(com.wangzan101.mika.i18n.AppLanguage.English, java.util.Locale.UK))
+    }
+
+    @Test
+    fun installedTagMatchesTheSameLanguageWrittenDifferently() {
+        // Pixel 10 Pro 的本机识别实际报的:装了台湾中文,但登记的写法带文字子标签
+        val pixel = listOf("en-US", "zh-Hant-TW", "cmn-Hant-TW")
+        assertEquals("zh-Hant-TW", SystemSpeech.installedTag("zh-TW", pixel))
+        assertEquals("en-US", SystemSpeech.installedTag("en-US", pixel))
+        assertEquals("en-US", SystemSpeech.installedTag("en", pixel))
+        assertEquals("cmn-Hans-CN", SystemSpeech.installedTag("zh-CN", listOf("en-US", "cmn-Hans-CN")))
+        assertEquals("id-ID", SystemSpeech.installedTag("in-ID", listOf("id-ID")))
+        // 地区不同、语言不同的不算
+        assertNull(SystemSpeech.installedTag("zh-CN", pixel))
+        assertNull(SystemSpeech.installedTag("en-GB", pixel))
+        assertNull(SystemSpeech.installedTag("ja-JP", pixel))
+        assertNull(SystemSpeech.installedTag("zh-TW", emptyList()))
     }
 
     @Test

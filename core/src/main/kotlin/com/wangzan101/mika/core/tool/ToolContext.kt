@@ -44,6 +44,16 @@ internal class ToolConfig(
     val selfConfig: com.wangzan101.mika.core.settings.SelfConfig? = null,
     /** 存下的运行记录;给了、而这个对话之前有记过运行的轮次时提供 history_read。 */
     val runRecords: com.wangzan101.mika.core.record.RunRecords? = null,
+    /** 用户配置并启用的网页搜索;为空时不提供 web_search。 */
+    val webSearch: com.wangzan101.mika.core.search.WebSearch? = null,
+    /** 读 Mika 自己的状态;只对手机上、有用户的 UI 主任务给。 */
+    val self: com.wangzan101.mika.core.self.SelfPort? = null,
+    /** 操作 Mika 自己的界面/文件/通知/剪贴板;用户打开「允许 Mika 操作自己的界面」时才给。 */
+    val selfOperate: com.wangzan101.mika.core.self.SelfPort? = null,
+    /** Save a captured PNG in this task's workspace; screen tools do not depend on the sandbox capability. */
+    val saveScreenshot: (suspend (String, ByteArray) -> String)? = null,
+    /** 跨会话任务摘要;给了才提供 task_memory_search / task_memory_timeline / task_memory_step。 */
+    val taskMemory: com.wangzan101.mika.core.memory.TaskMemoryStore? = null,
 )
 
 /**
@@ -75,6 +85,12 @@ internal class ToolContext(
     var callId = ""
     /** 自己不动界面的工具(页面脚本)里的动作经它回到执行入口;只读调用、测试里不给时里面的动作一律不做。 */
     var sub: SubActions? = null
+    /** 自身工具的当次同意;由 AgentLoop 把等用户回答的那条路接进来,测试里换成假实现。 */
+    var ask: AskPort? = null
+    /** 本任务已经发过几条自身通知(每任务限 3 条)。 */
+    var selfNotifies = 0
+    /** 本任务已经做过几次用户浏览器动作(打开/搜索/代登录,每任务限 5 次)。 */
+    var selfBrowserOps = 0
     /** 本次调用所在的轮次(循环的「第 N 步」)。 */
     var currentStep: Int
         get() = shots.step
@@ -86,6 +102,11 @@ internal class ToolContext(
     private val saved = mutableListOf<Change>()
     val savedChanges: List<Change> get() = synchronized(saved) { saved.toList() }
     fun noteSaved(c: Change) = synchronized(saved) { saved += c }
+
+    /** 最近一次 memory_search 返回的稳定编号;null 表示本任务还没搜过,空列表表示最近搜不到。 */
+    @Volatile private var memoryCandidates: List<String>? = null
+    fun noteMemorySearch(ids: List<String>) { memoryCandidates = ids }
+    fun memorySearchCandidates(): List<String>? = memoryCandidates
 
     /** 这次调用的工具会由分发器报实际效果(effect):「没变化」由效果来说,这里不另提示。 */
     var reportsEffect = false

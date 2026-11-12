@@ -14,6 +14,9 @@ import java.security.SecureRandom
  */
 object HelperHandoff {
     const val SHELL_UID = 2000
+    private const val PER_USER_RANGE = 100_000
+    private const val FIRST_APP_UID = 10_000
+    private const val LAST_APP_UID = 19_999
     const val METHOD_ATTACH = "attach"
     const val HELPER_CLASS = "com.wangzan101.mika.shell.HelperMain"
 
@@ -55,6 +58,13 @@ object HelperHandoff {
 
     fun stdinLine(nonce: String): ByteArray = "$nonce\n".toByteArray(Charsets.UTF_8)
 
+    /**
+     * 经 su 起助手时交给 `su 2000 -c` 的命令:先打一行 `id -u`,App 读到 2000(su 答应了、也切到了 shell 身份)才写口令;
+     * 之后和 [command] 一样(口令走标准输入,App 收到交接后关流)。su 没答应时一行也没有,口令就不写出去。
+     */
+    fun rootCommand(apkPath: String, packageName: String, appUid: Int, certPin: String): String =
+        "id -u; " + command(apkPath, packageName, appUid, certPin)
+
     /** 「用电脑启动」的脚本文件名,放在 App 的外部文件目录里(电脑经 USB 调试以 shell 身份读它)。 */
     const val USB_SCRIPT = "usb-start.sh"
 
@@ -70,6 +80,7 @@ object HelperHandoff {
      * adb shell 的会话一结束(命令跑完、拔线),adbd 就把它那一组进程杀掉:助手用 nohup 忽略挂断信号,再用 setsid 另起会话,放到后台的子 shell 里起
      * (子 shell 退出后它归 init 管),标准输出和错误丢掉,不再连着 adb 的流;脚本再等一会儿让 setsid 生效,
      * 看助手进程还在就说一句「正在启动」,不在(多半是口令过期或 Mika 不认)就请用户打开 Mika 再跑一次。
+     * 多数手机这样起助手后拔线也能继续用;部分系统会在拔线时停止助手,这时插回数据线再跑一次本命令即可恢复,脚本不保证拔线后一定能用。
      * 只用安卓原版 sh 和 toybox 里有的命令。不是 shell 身份(没经 adb 跑)时不起:Mika 只收 shell 交来的助手。
      */
     fun usbScript(apkPath: String, packageName: String, appUid: Int, certPin: String, nonce: String, scriptPath: String): String {
@@ -91,7 +102,7 @@ object HelperHandoff {
             |sleep 2
             |if pidof $name >/dev/null 2>&1; then
             |  echo "Mika helper starting... Open Mika to confirm phone control is ready."
-            |  echo "It keeps running after you unplug the cable. After a phone restart, run this command again."
+            |  echo "On most phones it keeps running after you unplug the cable. After a phone restart, or if phone control stopped after unplugging, plug in and run this command again."
             |else
             |  echo "Mika helper did not start. Open Mika once, then run this command again."
             |  exit 1
@@ -139,6 +150,20 @@ object HelperHandoff {
 
     private fun quote(s: String) = "'" + s.replace("'", "'\\''") + "'"
 
+    enum class CallerClass { Root, Shell, ShellOtherUser, OrdinaryApp, Other }
+
+    /** 只保留排查交接所需的调用方类别,不把具体 UID 写进诊断。 */
+    fun callerClass(uid: Int): CallerClass {
+        val appId = uid % PER_USER_RANGE
+        return when {
+            uid == 0 -> CallerClass.Root
+            uid == SHELL_UID -> CallerClass.Shell
+            appId == SHELL_UID -> CallerClass.ShellOtherUser
+            appId in FIRST_APP_UID..LAST_APP_UID -> CallerClass.OrdinaryApp
+            else -> CallerClass.Other
+        }
+    }
+
     enum class Reject {
         /** 调用方不是 shell(uid 2000)。 */
         NotShell,
@@ -162,6 +187,22 @@ object HelperHandoff {
         helperApk != appApk -> Reject.StaleApk
         !hasBinder -> Reject.NoBinder
         else -> null
+    }
+}
+
+/** 当前启动尝试的交接拒绝;新启动、成功交接或解除配对后不再展示上一次的原因。 */
+class HandoffDiagnostics {
+    @Volatile var lastRejection: String? = null
+        private set
+
+    @Synchronized fun launchStarted() { lastRejection = null }
+
+    @Synchronized fun clear() { lastRejection = null }
+
+    @Synchronized fun reject(why: HelperHandoff.Reject, callingUid: Int) {
+        lastRejection = if (why == HelperHandoff.Reject.NotShell) {
+            "${why.name}(caller=${HelperHandoff.callerClass(callingUid).name})"
+        } else why.name
     }
 }
 

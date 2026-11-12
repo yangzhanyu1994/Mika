@@ -2,12 +2,15 @@ package com.wangzan101.mika.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.wangzan101.mika.capsule.CapsuleCardScale
 import com.wangzan101.mika.capsule.CapsuleDock
 import com.wangzan101.mika.capsule.CardDocking
+import com.wangzan101.mika.capsule.CapsuleIdleOpacity
 import com.wangzan101.mika.capsule.CapsuleMode
 import com.wangzan101.mika.capsule.DockSide
 import com.wangzan101.mika.core.agent.SpeedFlags
 import com.wangzan101.mika.core.cap.phone.OperatingPace
+import com.wangzan101.mika.core.usage.TokenBudgetLimits
 import com.wangzan101.mika.task.ParallelCapability
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +19,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** 功能开关。提速开关存成 [SpeedFlags.describe] 的格式,评测跑器可用参数覆盖。 */
 class FeatureFlags(private val prefs: SharedPreferences) {
+    fun personalStart(): Boolean = prefs.getBoolean(PERSONAL_START, false)
+
+    fun setPersonalStart(on: Boolean) {
+        prefs.edit().putBoolean(PERSONAL_START, on).apply()
+    }
+
     /** 还没做过的默认值升级(见 [SPEED_UPGRADES])各做一次;升级之后用户手动关掉就保持关闭。 */
     fun speedFlags(): SpeedFlags {
         val flags = prefs.getString(SPEED_FLAGS, null)?.let { runCatching { SpeedFlags.parse(it) }.getOrNull() } ?: SpeedFlags.OFF
@@ -44,6 +53,13 @@ class FeatureFlags(private val prefs: SharedPreferences) {
 
     fun setTaskStepLimit(limit: Int?) {
         prefs.edit().putInt(TASK_STEP_LIMIT, (limit ?: 0).coerceIn(0, MAX_TASK_STEP_LIMIT)).commit()
+    }
+
+    /** 每个任务允许已报告的输入加输出 Token 总量;null 表示不限制,下次任务起生效。 */
+    fun taskTokenBudget(): Long? = prefs.getLong(TASK_TOKEN_BUDGET, 0L).takeIf(TokenBudgetLimits::valid)
+
+    fun setTaskTokenBudget(limit: Long?) {
+        prefs.edit().putLong(TASK_TOKEN_BUDGET, limit?.takeIf(TokenBudgetLimits::valid) ?: 0L).commit()
     }
 
     /** 干活时屏幕保持常亮;默认开,用户可以关。 */
@@ -84,6 +100,53 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         prefs.edit().putString(THEME_MODE, mode.name).commit()
     }
 
+    /** 强调色(见 [ThemeAccent]),默认蓝色。和外观一样跟着 [themeAccentChanges] 当场换,不用重建。 */
+    fun themeAccent(): ThemeAccent = ThemeAccent.parse(prefs.getString(THEME_ACCENT, null))
+
+    /** 强调色的当前值,之后每次改动再发一次。 */
+    fun themeAccentChanges(): Flow<ThemeAccent> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == THEME_ACCENT) trySend(themeAccent())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(themeAccent())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
+    fun setThemeAccent(accent: ThemeAccent) {
+        prefs.edit().putString(THEME_ACCENT, accent.name).commit()
+    }
+
+    /** 背景图片怎么显示(见 [SkinSpec]);存的值超出范围时拉回范围内。跟着 [skinChanges] 当场换,不用重建。 */
+    fun skin(): SkinSpec = SkinSpec(
+        version = prefs.getLong(SKIN_VERSION, 0L),
+        scrim = prefs.getInt(SKIN_SCRIM, SkinSpec.DEFAULT_SCRIM).coerceIn(SkinSpec.MIN_SCRIM, SkinSpec.MAX_SCRIM),
+        blur = SkinBlur.parse(prefs.getString(SKIN_BLUR, null)),
+        focus = prefs.getFloat(SKIN_FOCUS, 0f).coerceIn(-1f, 1f),
+        accentFromImage = prefs.getBoolean(SKIN_ACCENT_FOLLOW, true),
+        hue = if (prefs.contains(SKIN_HUE)) prefs.getFloat(SKIN_HUE, 0f) else null,
+    )
+
+    fun skinChanges(): Flow<SkinSpec> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key in SKIN_KEYS) trySend(skin())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(skin())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
+    fun setSkin(spec: SkinSpec) {
+        prefs.edit()
+            .putLong(SKIN_VERSION, spec.version)
+            .putInt(SKIN_SCRIM, spec.scrim.coerceIn(SkinSpec.MIN_SCRIM, SkinSpec.MAX_SCRIM))
+            .putString(SKIN_BLUR, spec.blur.name)
+            .putFloat(SKIN_FOCUS, spec.focus.coerceIn(-1f, 1f))
+            .putBoolean(SKIN_ACCENT_FOLLOW, spec.accentFromImage)
+            .also { e -> if (spec.hue == null) e.remove(SKIN_HUE) else e.putFloat(SKIN_HUE, spec.hue) }
+            .commit()
+    }
+
     /**
      * 允许 Mika 改自己的设置(见 core 的 SelfConfig):模型与 Key、删数据不在允许之列。
      * 默认关;开着的时候任务里才有 settings_list、settings_set 这两件工具。
@@ -92,6 +155,36 @@ class FeatureFlags(private val prefs: SharedPreferences) {
 
     fun setSelfConfig(on: Boolean) {
         prefs.edit().putBoolean(SELF_CONFIG, on).commit()
+    }
+
+    /**
+     * 允许 Mika 操作自己的界面(见 core 的 SelfPort):打开 Mika 的页、把工作区文件用 App 内查看器打开、
+     * 发通知、写剪贴板。默认关;模型改不了这个开关。
+     */
+    fun selfOperate(): Boolean = prefs.getBoolean(SELF_OPERATE, false)
+
+    fun setSelfOperate(on: Boolean) {
+        prefs.edit().putBoolean(SELF_OPERATE, on).commit()
+    }
+
+    /**
+     * 允许用户在对话里的虚拟屏小窗直接操作(点 / 滑 / 返回),不用把 App 整个挪到主屏。
+     * 默认关:开着时小窗展开后点画面会真实注入到虚拟屏,手滑一下可能点歪 AI 正在跑的任务。
+     */
+    fun pipOperate(): Boolean = prefs.getBoolean(PIP_OPERATE, false)
+
+    fun setPipOperate(on: Boolean) {
+        prefs.edit().putBoolean(PIP_OPERATE, on).commit()
+    }
+
+    /**
+     * 允许外部脚本经广播(com.wangzan101.mika.SCHEDULE)建定时任务;默认关。
+     * 开着时仍受限流(每分钟几条)并标记来源为「外部脚本」,出事能追溯。
+     */
+    fun externalSchedule(): Boolean = prefs.getBoolean(EXTERNAL_SCHEDULE, false)
+
+    fun setExternalSchedule(on: Boolean) {
+        prefs.edit().putBoolean(EXTERNAL_SCHEDULE, on).commit()
     }
 
     /** 悬浮胶囊:关闭、有任务时显示(默认)、一直显示。 */
@@ -109,6 +202,58 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         send(capsuleMode())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
+    /** 胶囊静置后的不透明度;只认 20/40/70/100,默认 40。 */
+    fun capsuleIdleOpacity(): CapsuleIdleOpacity = CapsuleIdleOpacity.parse(prefs.getInt(CAPSULE_IDLE_OPACITY, CapsuleIdleOpacity.DEFAULT.percent))
+
+    fun setCapsuleIdleOpacity(opacity: CapsuleIdleOpacity) {
+        prefs.edit().putInt(CAPSULE_IDLE_OPACITY, opacity.percent).commit()
+    }
+
+    fun capsuleIdleOpacityChanges(): Flow<CapsuleIdleOpacity> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == CAPSULE_IDLE_OPACITY) trySend(capsuleIdleOpacity())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(capsuleIdleOpacity())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
+    /** 展开的胶囊卡片整体缩放的档位;只认 85/100/115/130,默认 100(标准)。 */
+    fun capsuleCardScale(): CapsuleCardScale = CapsuleCardScale.parse(prefs.getInt(CAPSULE_CARD_SCALE, CapsuleCardScale.DEFAULT.percent))
+
+    fun setCapsuleCardScale(scale: CapsuleCardScale) {
+        prefs.edit().putInt(CAPSULE_CARD_SCALE, scale.percent).commit()
+    }
+
+    fun capsuleCardScaleChanges(): Flow<CapsuleCardScale> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == CAPSULE_CARD_SCALE) trySend(capsuleCardScale())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(capsuleCardScale())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
+
+    /**
+     * 用户点了「完全退出」,要到下次打开 Mika 的界面为止([com.wangzan101.mika.quit.MikaQuit])。
+     * 在这期间进程可能被无障碍服务重新拉起:胶囊不画、后台服务不补起、自动恢复也不做,直到用户自己打开 App。
+     */
+    fun quitRequested(): Boolean = prefs.getBoolean(QUIT_REQUESTED, false)
+
+    fun setQuitRequested(on: Boolean) {
+        prefs.edit().putBoolean(QUIT_REQUESTED, on).commit()
+    }
+
+    /** 退出标记的当前值,之后每次改动再发一次。 */
+    fun quitChanges(): Flow<Boolean> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == QUIT_REQUESTED) trySend(quitRequested())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(quitRequested())
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.distinctUntilChanged()
 
@@ -147,12 +292,28 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         )
         private const val PARALLEL_MAX = "parallel_max"
         private const val TASK_STEP_LIMIT = "task_step_limit"
+        private const val TASK_TOKEN_BUDGET = "task_token_budget"
         private const val KEEP_SCREEN_ON = "keep_screen_on"
         private const val MUTE_TARGET = "mute_target"
         private const val OPERATING_PACE = "operating_pace"
         private const val SELF_CONFIG = "self_config"
+        private const val SELF_OPERATE = "self_operate"
+        private const val PIP_OPERATE = "pip_operate"
+        private const val EXTERNAL_SCHEDULE = "external_schedule"
         private const val THEME_MODE = "theme_mode"
+        private const val PERSONAL_START = "personal_start"
+        private const val THEME_ACCENT = "theme_accent"
+        private const val SKIN_VERSION = "skin_version"
+        private const val SKIN_SCRIM = "skin_scrim"
+        private const val SKIN_BLUR = "skin_blur"
+        private const val SKIN_FOCUS = "skin_focus"
+        private const val SKIN_ACCENT_FOLLOW = "skin_accent_follow"
+        private const val SKIN_HUE = "skin_hue"
+        private val SKIN_KEYS = setOf(SKIN_VERSION, SKIN_SCRIM, SKIN_BLUR, SKIN_FOCUS, SKIN_ACCENT_FOLLOW, SKIN_HUE)
         private const val CAPSULE_MODE = "capsule_mode"
+        private const val CAPSULE_IDLE_OPACITY = "capsule_idle_opacity"
+        private const val CAPSULE_CARD_SCALE = "capsule_card_scale"
+        private const val QUIT_REQUESTED = "quit_requested"
         private const val CAPSULE_SIDE = "capsule_side"
         private const val CAPSULE_HEIGHT = "capsule_height"
         private const val CAPSULE_CARD_HEIGHT = "capsule_card_height"

@@ -27,13 +27,18 @@ enum class Verb {
     Observe, ListElements, Query, Collect, PhoneRun, PhoneFind, PhoneExtract, PhoneDialog, PhoneEvent, PhoneGesture, PhoneCommand, Screenshot, ViewPastScreens, ViewUserScreen, Describe, FindVisually, Diagnose,
     Tap, TypeText, ClearText, Scroll, Swipe, Back, PressKey,
     ListApps, LaunchApp, OpenLink, ShareText, AppAfterTask,
-    SetAlarm, SetTimer, ShowAlarms, AddCalendarEvent, SetWheel,
+    SetAlarm, SetTimer, ShowAlarms, AddCalendarEvent, BulkAddCalendarEvents, SetWheel,
     Navigate, ReadPage, EvaluateJs, SiteCommand, Tabs, Downloads, Upload, SiteMode, Script, Interact, Capture, WaitFor, KeepOpen,
     RunCommand, RunBundledScript, ReadFile, WriteFile, SearchFiles, ShareFile,
+    RootCommand,
+    CallState, CallDial, CallAnswer, CallHangup, CallTakeover,
     Wait, AskUser, RequestConfirmation, HandToUser, HandleObstacle, EndNotDone,
-    KnowledgeSearch, KnowledgeRead, SkillSearch, SkillRead, SkillSave, MemorySearch, MemorySave, ProfileEdit, HistoryRead,
+    KnowledgeSearch, KnowledgeRead, SkillSearch, SkillRead, SkillSave, MemorySearch, MemorySave, MemoryEdit, ProfileEdit, HistoryRead, WebSearch,
+    TaskMemorySearch, TaskMemoryTimeline, TaskMemoryStep,
     ScheduleTask,
     SpawnAgent, SettingsList, SettingsSet,
+    SelfStatus, SelfOpenScreen, SelfOpenFile, SelfNotify, SelfCopy,
+    SelfOpenBrowser, SelfSearch, SelfSites, SelfLogin, SelfConfirmLogin, SelfFavorites, SelfUserPage,
 }
 
 /** 按名字查得到的工具声明。 */
@@ -86,8 +91,12 @@ internal interface AgentTool : ToolInfo {
     /** 不动屏幕(沙箱一类):不过锁屏关卡、不进屏幕守卫,结果里的图是文件不是屏幕画面。 */
     val offScreen: Boolean get() = false
     val risk: Risk
+    /** A read tool may have an optional write mode; that invocation must use the execution entry point. */
+    fun readOnly(args: JsonObject): Boolean = readOnly
     /** 非界面能力可直接声明审批风险；界面工具仍按目标和当前观察判。 */
     val approvalRisk: ApprovalRisk? get() = null
+    /** 按这次调用的参数声明的审批风险(同一个工具有的调用要问、有的不用,如 root 命令);默认同 [approvalRisk]。 */
+    fun approvalRisk(args: JsonObject): ApprovalRisk? = approvalRisk
     val concurrency: Concurrency get() = Concurrency.Serial
     /** 不可逆判定按什么看这次调用的目标;External 的工具必须给,其余为 null(不判)。 */
     val gateTarget: GateTarget? get() = null

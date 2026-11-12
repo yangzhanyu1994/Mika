@@ -154,7 +154,7 @@ fun RowValue(text: String, tone: ValueTone = ValueTone.Plain) {
 /** 行尾的小箭头:点进去还有一页。 */
 @Composable
 fun RowChevron() {
-    Icon(MikaIcons.Chevron, null, Modifier.size(MikaSize.SmallIcon), tint = MikaTheme.colors.ink3)
+    DirectionalIcon(MikaIcons.Chevron, null, Modifier.size(MikaSize.SmallIcon), tint = MikaTheme.colors.ink3)
 }
 
 /** 单选行:左边圆圈,选中时实心强调色。分隔线从文字处开始。 */
@@ -231,7 +231,7 @@ fun InputRow(
             if (value.isEmpty()) Text(placeholder, style = MikaType.Body, color = c.ink3, maxLines = 1)
             BasicTextField(
                 value, onChange, modifier.fillMaxWidth(), singleLine = true,
-                textStyle = MikaType.Body.copy(color = c.ink),
+                textStyle = MikaType.Body.copy(color = c.ink, textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 cursorBrush = SolidColor(c.accent),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboard, autoCorrectEnabled = false),
                 visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
