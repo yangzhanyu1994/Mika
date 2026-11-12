@@ -36,6 +36,7 @@ android {
             val storePath = providers.environmentVariable("MIKA_FORK_KEYSTORE").orNull
             if (!storePath.isNullOrBlank()) {
                 storeFile = file(storePath)
+                storeType = "PKCS12"
                 storePassword = providers.environmentVariable("MIKA_FORK_STORE_PASSWORD").orNull
                 keyAlias = providers.environmentVariable("MIKA_FORK_KEY_ALIAS").orNull
                 keyPassword = providers.environmentVariable("MIKA_FORK_KEY_PASSWORD").orNull
