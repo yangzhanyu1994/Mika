@@ -78,4 +78,8 @@
     <string name="plans_running_now">Running</string>
     <string name="trigger_deleted">The scheduled task was deleted</string>
     <string name="trigger_busy">This task is still running</string>
+    <string name="plans_voice_hold">Hold to speak and fill this task</string>
+    <string name="plans_voice_example">For example: remind me at 8 every morning if it will rain</string>
+    <string name="plans_parse_failed">Couldn\'t fill the task from that. You can still edit the fields.</string>
+    <string name="plans_parsed_note">Fields updated. Review them, then save.</string>
 </resources>

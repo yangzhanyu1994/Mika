@@ -77,4 +77,8 @@
     <string name="plans_running_now">Berjalan</string>
     <string name="trigger_deleted">Tugas terjadwal sudah dihapus</string>
     <string name="trigger_busy">Tugas ini masih berjalan</string>
+    <string name="plans_voice_hold">Tahan untuk mengisi tugas</string>
+    <string name="plans_voice_example">Misalnya: ingatkan jam 8 tiap pagi kalau akan hujan</string>
+    <string name="plans_parse_failed">Tidak bisa mengisi tugas dari kalimat itu. Isian tetap bisa diubah.</string>
+    <string name="plans_parsed_note">Isian sudah diisi. Periksa lalu simpan.</string>
 </resources>

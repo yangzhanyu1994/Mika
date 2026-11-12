@@ -77,4 +77,8 @@
     <string name="plans_running_now">実行中</string>
     <string name="trigger_deleted">スケジュールされたタスクを削除しました</string>
     <string name="trigger_busy">このタスクはまだ実行中です</string>
+    <string name="plans_voice_hold">押しながら話すと予定が入ります</string>
+    <string name="plans_voice_example">例：毎朝 8 時に雨なら知らせて</string>
+    <string name="plans_parse_failed">この文からは予定を作れませんでした。下の項目は直接編集できます</string>
+    <string name="plans_parsed_note">項目を入れました。確認してから保存してください</string>
 </resources>

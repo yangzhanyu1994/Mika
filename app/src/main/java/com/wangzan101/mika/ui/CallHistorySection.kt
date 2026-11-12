@@ -86,7 +86,8 @@ internal fun CallHistorySection(
     val unhandled = stringResource(R.string.calls_history_open)
     val incoming = directionLabel(CallDirection.INCOMING)
     val outgoing = directionLabel(CallDirection.OUTGOING)
-    val results = remember(history, filter, query, incoming, outgoing) {
+    val book = rememberPhoneContacts()
+    val results = remember(history, filter, query, incoming, outgoing, book.granted()) {
         val text = query.trim()
         val digits = text.filter(Char::isDigit).takeIf {
             it.isNotEmpty() && text.all { char -> char.isDigit() || char in "+ ().-" }
@@ -101,6 +102,7 @@ internal fun CallHistorySection(
             }
             val direction = if (record.direction == CallDirection.INCOMING) incoming else outgoing
             matchesFilter && (text.isEmpty() || record.number.orEmpty().contains(text, ignoreCase = true) ||
+                book.label(record.number).contains(text, ignoreCase = true) ||
                 (digits != null && record.number.orEmpty().filter(Char::isDigit).contains(digits)) ||
                 direction.contains(text, ignoreCase = true) || record.result.contains(text, ignoreCase = true) ||
                 record.transcript.any { it.text.contains(text, ignoreCase = true) } ||
@@ -227,7 +229,7 @@ internal fun CallHistorySection(
             val locale = LocalContext.current.resources.configuration.locales[0]
             val formatter = remember(locale) { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, locale) }
             val whenCalled = remember(toDelete.startedAtMs, formatter) { formatter.format(Date(toDelete.startedAtMs)) }
-            val number = toDelete.number?.let { "\u2066$it\u2069" } ?: stringResource(R.string.calls_unknown_number)
+            val number = toDelete.number?.let { "\u2066${book.label(it)}\u2069" } ?: stringResource(R.string.calls_unknown_number)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("$number · $whenCalled", style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(R.string.calls_history_delete_confirm))
@@ -268,7 +270,8 @@ private fun CallHistoryItem(
     val summaryLine = record.summary?.purpose?.takeIf { it.isNotBlank() }
         ?: record.summary?.conclusion?.takeIf { it.isNotBlank() }
         ?: record.result
-    val name = record.number?.let { "\u2066$it\u2069" } ?: stringResource(R.string.calls_unknown_number)
+    val book = rememberPhoneContacts()
+    val name = record.number?.let { "\u2066${book.label(it)}\u2069" } ?: stringResource(R.string.calls_unknown_number)
     val expansion = stringResource(if (expanded) R.string.calls_collapse else R.string.calls_transcript)
     Column(Modifier.fillMaxWidth().semantics { stateDescription = expansion }) {
         ListRow(MikaIcons.Clock, record.task?.goal ?: name, "$direction · $start",

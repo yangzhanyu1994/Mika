@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import com.wangzan101.mika.ui.components.keepsKeyboard
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import java.time.DayOfWeek
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.TextStyle
@@ -62,12 +64,17 @@ fun PlanEditorDialog(
     newThreadId: String,
     onDismiss: () -> Unit,
     onSave: (TriggerDefinition) -> Unit,
+    voice: com.wangzan101.mika.voice.VoiceSource? = null,
+    onParse: (suspend (String, PlanDraft) -> PlanDraft?)? = null,
 ) {
     val newId = remember(original?.id) { original?.id ?: UUID.randomUUID().toString() }
     var draft by remember(original?.id) {
         mutableStateOf(original?.toPlanDraft() ?: newPlanDraft(System.currentTimeMillis()))
     }
     var attempted by remember(original?.id) { mutableStateOf(false) }
+    var parsing by remember { mutableStateOf(false) }
+    var parseNote by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     val candidate = runCatching {
         editedTrigger(draft, original, newId, newThreadId, System.currentTimeMillis())
     }
@@ -79,6 +86,30 @@ fun PlanEditorDialog(
         text = {
             KeyboardDismissArea {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (voice != null || onParse != null) {
+                        UtteranceCapture(
+                            voice,
+                            tr(R.string.plans_voice_hold),
+                            tr(R.string.plans_voice_example),
+                            parsing,
+                            onUtterance = { words ->
+                                val parse = onParse ?: return@UtteranceCapture
+                                parsing = true
+                                parseNote = null
+                                scope.launch {
+                                    val next = runCatching { parse(words, draft) }.getOrNull()
+                                    parsing = false
+                                    if (next == null) parseNote = tr(R.string.plans_parse_failed)
+                                    else {
+                                        draft = next
+                                        parseNote = tr(R.string.plans_parsed_note)
+                                    }
+                                }
+                            },
+                        )
+                        parseNote?.let { Text(it, style = MikaType.Caption, color = MikaTheme.colors.ink3) }
+                        Spacer(Modifier.height(10.dp))
+                    }
                     SegmentedControl(
                         listOf(tr(R.string.plans_task_mode), tr(R.string.plans_reminder_mode)),
                         if (draft.reminder) 1 else 0,

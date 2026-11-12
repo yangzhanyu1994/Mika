@@ -35,12 +35,12 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 2026-11-12
+### 2026-11-13
 
-- **日期**：2026-11-12（UTC+8）
+- **日期**：2026-11-13（UTC+8）
 - **更新人**：Grok Build via Cursor cloud agent
-- **测试结果**：`python3 tools/i18n/translations.py check` 通过。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 通过（5335 tests, 0 failures, 2 skipped；debug APK 与 androidTest 编译成功）。
-- **来源**：owner-approved mockups, 2026-11-12 chat
+- **测试结果**：`python3 tools/i18n/translations.py check` 通过。`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 通过（5344 tests, 0 failures, 2 skipped；debug APK 与 androidTest 编译成功）。
+- **来源**：老板 2026-11-13 design previews
 - **状态**：代码已写完，未真机验证
 
 ## Get things done with one sentence

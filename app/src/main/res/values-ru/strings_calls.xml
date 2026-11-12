@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">Настройки</string>
     <string name="calls_tab_history">История</string>
     <string name="calls_number">Номер телефона</string>
-    <string name="calls_sim">SIM-карта для исходящих</string>
+    <string name="calls_sim">Используемая SIM</string>
     <string name="calls_default">По умолчанию</string>
     <string name="calls_dial">Позвонить с помощью ИИ</string>
     <string name="calls_call_note">Для звонков используется текущая SIM-карта. Оператор и Volcengine могут взимать плату. Перед звонком укажите его цель и приветствие в настройках.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">Использовать прежние App ID и Access Key</string>
     <string name="calls_save">Сохранить</string>
     <string name="calls_cancel">Отмена</string>
-    <string name="calls_greeting">Приветствие</string>
+    <string name="calls_greeting">Приветствие при ответе</string>
     <string name="calls_instructions">Цель и инструкции</string>
     <string name="calls_duration">Максимальное время работы ИИ (15–600 с)</string>
     <string name="calls_speaker">Идентификатор голоса Volcengine</string>

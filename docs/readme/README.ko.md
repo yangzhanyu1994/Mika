@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 9040b436fbcb -->
+<!-- translated-from: README.md @ 131b7d737639 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -38,12 +38,12 @@
 
 ## 필독
 
-### 2026-11-12
+### 2026-11-13
 
-- **날짜**：2026-11-12（UTC+8）
+- **날짜**：2026-11-13（UTC+8）
 - **업데이트한 사람**：Grok Build via Cursor cloud agent
-- **테스트 결과**：`python3 tools/i18n/translations.py check` 통과. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 통과（5335 tests, 0 failures, 2 skipped. debug APK와 androidTest 컴파일 성공）.
-- **출처**：owner-approved mockups, 2026-11-12 chat
+- **테스트 결과**：`python3 tools/i18n/translations.py check` 통과. `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 통과（5344 tests, 0 failures, 2 skipped. debug APK와 androidTest 컴파일 성공）.
+- **출처**：老板 2026-11-13 design previews
 - **상태**：코드는 작성 완료, 실기기 미검증
 
 ## 한마디로 일 하나를 끝내기

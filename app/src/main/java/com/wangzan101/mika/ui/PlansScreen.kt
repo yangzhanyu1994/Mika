@@ -141,6 +141,12 @@ fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (Strin
             onSave = { plan ->
                 if (act { TriggerRuntime.schedule(context, plan) }) creating = null
             },
+            voice = (context.applicationContext as? com.wangzan101.mika.MikaApp)?.voice,
+            onParse = { words, base ->
+                val app = context.applicationContext as? com.wangzan101.mika.MikaApp
+                val model = app?.providers?.modelFor(com.wangzan101.mika.core.model.ModelRole.Main)
+                if (model == null) null else com.wangzan101.mika.plans.PlanUtterance.parse(model, words, base)
+            },
         )
     }
 
@@ -151,6 +157,12 @@ fun PlansScreen(context: Context, onBack: () -> Unit, onOpenConversation: (Strin
             onDismiss = { editing = null },
             onSave = { updated ->
                 if (act { TriggerRuntime.schedule(context, updated, replaceExisting = true) }) editing = null
+            },
+            voice = (context.applicationContext as? com.wangzan101.mika.MikaApp)?.voice,
+            onParse = { words, base ->
+                val app = context.applicationContext as? com.wangzan101.mika.MikaApp
+                val model = app?.providers?.modelFor(com.wangzan101.mika.core.model.ModelRole.Main)
+                if (model == null) null else com.wangzan101.mika.plans.PlanUtterance.parse(model, words, base)
             },
         )
     }

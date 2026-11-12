@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">Ajustes</string>
     <string name="calls_tab_history">Historial</string>
     <string name="calls_number">Número de teléfono</string>
-    <string name="calls_sim">SIM para llamadas salientes</string>
+    <string name="calls_sim">SIM que se usa</string>
     <string name="calls_default">Predeterminada</string>
     <string name="calls_dial">Llamar con IA</string>
     <string name="calls_call_note">Las llamadas usan la SIM actual. Pueden aplicarse cargos del operador y de Volcengine. Antes de llamar, indica el propósito y el saludo en Ajustes.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">Usar App ID y Access Key anteriores</string>
     <string name="calls_save">Guardar</string>
     <string name="calls_cancel">Cancelar</string>
-    <string name="calls_greeting">Saludo</string>
+    <string name="calls_greeting">Saludo al contestar</string>
     <string name="calls_instructions">Propósito e instrucciones</string>
     <string name="calls_duration">Duración máxima de la IA (15–600 segundos)</string>
     <string name="calls_speaker">ID de voz de Volcengine</string>

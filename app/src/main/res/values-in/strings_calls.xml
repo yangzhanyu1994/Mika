@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">Setelan</string>
     <string name="calls_tab_history">Riwayat</string>
     <string name="calls_number">Nomor telepon</string>
-    <string name="calls_sim">SIM untuk panggilan keluar</string>
+    <string name="calls_sim">SIM yang dipakai</string>
     <string name="calls_default">Bawaan</string>
     <string name="calls_dial">Telepon dengan AI</string>
     <string name="calls_call_note">Panggilan memakai SIM yang ada. Biaya dari operator dan biaya penggunaan Volcengine mungkin berlaku. Atur tujuan dan salam pembuka di Setelan sebelum menelepon.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">Gunakan App ID dan Access Key lama</string>
     <string name="calls_save">Simpan</string>
     <string name="calls_cancel">Batal</string>
-    <string name="calls_greeting">Salam pembuka</string>
+    <string name="calls_greeting">Salam saat menjawab</string>
     <string name="calls_instructions">Tujuan dan petunjuk</string>
     <string name="calls_duration">Durasi maksimum AI (15–600 detik)</string>
     <string name="calls_speaker">ID suara Volcengine</string>

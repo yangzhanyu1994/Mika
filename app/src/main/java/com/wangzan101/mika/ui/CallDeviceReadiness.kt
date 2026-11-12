@@ -61,6 +61,7 @@ internal data class CallDeviceReadiness(
     val missingPhonePermissions: List<String>,
     val notificationBlock: CallNotificationBlock,
     val batteryPolicy: CallBatteryPolicy,
+    val contactsAllowed: Boolean = false,
 ) {
     val phoneAllowed: Boolean get() = missingPhonePermissions.isEmpty()
     val callNotificationsAllowed: Boolean get() = notificationBlock == CallNotificationBlock.None ||
@@ -73,6 +74,7 @@ internal data class CallDeviceControls(
     val phoneActionLabel: Int,
     val notificationActionLabel: Int,
     val phoneAction: () -> Unit,
+    val contactsAction: () -> Unit,
     val notificationAction: () -> Unit,
     val callChannelAction: () -> Unit,
     val batteryAction: () -> Unit,
@@ -87,6 +89,7 @@ internal fun rememberCallDeviceControls(runtime: CallRuntime, onSettingsError: (
     var status by remember(context) { mutableStateOf(readCallDeviceReadiness(context)) }
     var phoneDenied by rememberSaveable { mutableStateOf(false) }
     var notificationDenied by rememberSaveable { mutableStateOf(false) }
+    var explainContacts by remember { mutableStateOf(false) }
 
     fun readBack() {
         status = readCallDeviceReadiness(context)
@@ -102,6 +105,11 @@ internal fun rememberCallDeviceControls(runtime: CallRuntime, onSettingsError: (
     val requestNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         readBack()
         notificationDenied = status.notificationBlock == CallNotificationBlock.Permission
+    }
+    val requestContacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        com.wangzan101.mika.calls.PhoneContacts.clearCache()
+        readBack()
+        explainContacts = false
     }
 
     DisposableEffect(lifecycle, context, runtime) {
@@ -135,10 +143,28 @@ internal fun rememberCallDeviceControls(runtime: CallRuntime, onSettingsError: (
             .putExtra(Settings.EXTRA_CHANNEL_ID, channel), appNotifications, appDetails)
     }
     val requestNotification = status.notificationBlock == CallNotificationBlock.Permission && !notificationDenied
+    if (explainContacts) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { explainContacts = false },
+            title = { androidx.compose.material3.Text(stringResource(R.string.calls_contacts_row)) },
+            text = { androidx.compose.material3.Text(stringResource(R.string.calls_contacts_why)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { requestContacts.launch(Manifest.permission.READ_CONTACTS) }) {
+                    androidx.compose.material3.Text(stringResource(R.string.calls_contacts_allow))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { explainContacts = false }) {
+                    androidx.compose.material3.Text(stringResource(R.string.calls_cancel))
+                }
+            },
+        )
+    }
     return CallDeviceControls(
         readiness = status,
         phoneActionLabel = if (phoneDenied) R.string.calls_device_open_app_settings else R.string.calls_device_allow_phone,
         notificationActionLabel = if (requestNotification) R.string.calls_device_allow_notifications else R.string.calls_notification_settings,
+        contactsAction = { explainContacts = true },
         phoneAction = {
             val missing = readCallDeviceReadiness(context).missingPhonePermissions
             when {
@@ -188,7 +214,8 @@ private fun readCallDeviceReadiness(context: Context): CallDeviceReadiness {
             else -> CallBatteryPolicy.Managed
         }
     }.getOrDefault(CallBatteryPolicy.Unknown)
-    return CallDeviceReadiness(missing, notificationBlock, batteryPolicy)
+    val contacts = context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+    return CallDeviceReadiness(missing, notificationBlock, batteryPolicy, contacts)
 }
 
 @Composable
@@ -216,6 +243,15 @@ internal fun CallPermissionRows(
         detail = phoneAction?.let { stringResource(device.phoneActionLabel) }, detailColor = MikaTheme.colors.accent,
         onClick = phoneAction,
     ) { if (phoneAction != null) RowChevron() }
+
+    ListRow(
+        MikaIcons.Heart, stringResource(R.string.calls_contacts_row),
+        stringResource(if (checks.contactsAllowed) R.string.calls_contacts_granted else R.string.calls_contacts_missing),
+        tone = if (checks.contactsAllowed) TileTone.Ok else TileTone.Neutral,
+        detail = if (enabled && !checks.contactsAllowed) stringResource(R.string.calls_contacts_allow) else null,
+        detailColor = MikaTheme.colors.accent,
+        onClick = device.contactsAction.takeIf { enabled && !checks.contactsAllowed },
+    ) { if (enabled && !checks.contactsAllowed) RowChevron() }
 
     val notificationAction = device.notificationAction.takeIf { enabled && !checks.standbyNotificationsAllowed }
     ListRow(

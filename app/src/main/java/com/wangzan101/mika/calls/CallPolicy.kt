@@ -20,6 +20,11 @@ data class CallConfig(
     val summaryEnabled: Boolean = false,
     val greeting: String = CallPolicy.DEFAULT_GREETING,
     val systemPrompt: String = "",
+    /** Merged default instructions. Used instead of [systemPrompt] plus the old instruction list after migration. */
+    val defaultBrief: String = "",
+    val defaultBriefMigrated: Boolean = false,
+    /** null until a connection test has run. */
+    val credentialProbeOk: Boolean? = null,
     val speaker: String = "zh_female_vv_jupiter_bigtts",
     val autoAnswerDelaySeconds: Int = MIN_AUTO_ANSWER_DELAY_SECONDS,
     val defaultOutgoingSimId: String? = null,

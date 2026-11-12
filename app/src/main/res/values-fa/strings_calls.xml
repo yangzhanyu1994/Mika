@@ -16,7 +16,7 @@
     <string name="calls_tab_settings">تنظیمات</string>
     <string name="calls_tab_history">تاریخچه</string>
     <string name="calls_number">شماره تلفن</string>
-    <string name="calls_sim">سیم‌کارت تماس خروجی</string>
+    <string name="calls_sim">سیم‌کارت مورد استفاده</string>
     <string name="calls_default">پیش‌فرض</string>
     <string name="calls_dial">تماس با هوش مصنوعی</string>
     <string name="calls_call_note">تماس‌ها از سیم‌کارت موجود استفاده می‌کنند. ممکن است هزینه‌های مصرف اپراتور و Volcengine اعمال شود. پیش از شماره‌گیری، هدف و پیام خوش‌آمد را در تنظیمات تعیین کنید.</string>
@@ -50,7 +50,7 @@
     <string name="calls_legacy_credentials">استفاده از App ID و Access Key قدیمی</string>
     <string name="calls_save">ذخیره</string>
     <string name="calls_cancel">لغو</string>
-    <string name="calls_greeting">پیام خوش‌آمد</string>
+    <string name="calls_greeting">سلام هنگام پاسخ</string>
     <string name="calls_instructions">هدف و دستورالعمل‌ها</string>
     <string name="calls_duration">حداکثر ثانیه‌های هوش مصنوعی (۱۵–۶۰۰)</string>
     <string name="calls_speaker">شناسه صدای Volcengine</string>

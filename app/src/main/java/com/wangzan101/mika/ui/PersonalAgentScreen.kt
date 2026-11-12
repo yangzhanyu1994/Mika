@@ -39,6 +39,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.wangzan101.mika.R
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +69,66 @@ import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+@Composable
+private fun CallProposalCard(messageId: String, raw: String, runtime: PersonalRuntime) {
+    val parsed = remember(raw) { com.wangzan101.mika.calls.tasks.CallTaskParser.decode(raw) } ?: return
+    var editing by remember(messageId) { mutableStateOf(false) }
+    var target by remember(messageId) { mutableStateOf(parsed.target) }
+    var window by remember(messageId) { mutableStateOf(parsed.windowLabel) }
+    var say by remember(messageId) { mutableStateOf(parsed.say) }
+    var cannot by remember(messageId) { mutableStateOf(parsed.cannotPromise) }
+    val c = MikaTheme.colors
+    Column(Modifier.fillMaxWidth().testTag("call-proposal")) {
+        Text(stringResource(R.string.calls_task_generated), color = c.ink2, style = MikaType.Body)
+        Column(
+            Modifier.fillMaxWidth().padding(top = 8.dp).background(c.surface, MikaShapes.Card).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(stringResource(R.string.calls_section_tasks), style = MaterialTheme.typography.titleMedium)
+            val kind = when (parsed.kind) {
+                com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_DIAL -> stringResource(R.string.calls_task_kind_dial)
+                com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_DEFAULT -> stringResource(R.string.calls_task_kind_default)
+                else -> stringResource(R.string.calls_task_kind_incoming)
+            }
+            if (!editing) {
+                ProposalLine(stringResource(R.string.calls_task_type), kind)
+                if (target.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_target), target)
+                if (window.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_window), window)
+                ProposalLine(stringResource(R.string.calls_task_say), say)
+                if (cannot.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_cannot), cannot)
+            } else {
+                OutlinedField(stringResource(R.string.calls_task_target), target) { target = it }
+                OutlinedField(stringResource(R.string.calls_task_window), window) { window = it }
+                OutlinedField(stringResource(R.string.calls_task_say), say) { say = it }
+                OutlinedField(stringResource(R.string.calls_task_cannot), cannot) { cannot = it }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    runtime.confirmProposal(messageId, parsed.copy(target = target, windowLabel = window, say = say, cannotPromise = cannot))
+                }, modifier = Modifier.testTag("call-proposal-confirm"),
+                    colors = ButtonDefaults.buttonColors(containerColor = c.accent, contentColor = c.onAccent),
+                ) { Text(stringResource(R.string.calls_task_confirm_add)) }
+                OutlinedButton(onClick = { editing = !editing }, modifier = Modifier.testTag("call-proposal-edit")) {
+                    Text(stringResource(if (editing) R.string.calls_task_save else R.string.calls_task_edit))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProposalLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, Modifier.width(72.dp), color = MikaTheme.colors.ink3, style = MikaType.Caption)
+        Text(value, Modifier.weight(1f), style = MikaType.Body)
+    }
+}
+
+@Composable
+private fun OutlinedField(label: String, value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(value, onValue, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, minLines = 1, maxLines = 3)
+}
 
 internal fun personalStatus(task: PersonalTask): String = when (task.status) {
     "running" -> "进行中"
@@ -188,7 +250,9 @@ fun PersonalAgentScreen(
                             .wrapContentWidth(if (user) Alignment.End else Alignment.Start)
                             .background(if (user) c.accent else c.answer, if (user) MikaShapes.UserBubble else MikaShapes.AnswerBubble)
                             .padding(horizontal = 14.dp, vertical = 10.dp)
-                        if (user) {
+                        if (message.role == "call_proposal") {
+                            CallProposalCard(message.id, message.text, runtime)
+                        } else if (user) {
                             Text(message.text, bubble, style = MikaType.Body, color = c.onAccent)
                         } else {
                             MarkdownText(message.text, MikaType.Body.copy(color = if (message.error) c.bad else c.ink), bubble)

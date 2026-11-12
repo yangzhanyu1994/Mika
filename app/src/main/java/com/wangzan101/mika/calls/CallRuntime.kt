@@ -23,6 +23,7 @@ import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.instructions.CallInstructionStore
+import com.wangzan101.mika.calls.tasks.CallTaskStore
 import com.wangzan101.mika.shell.IMikaShell
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import com.wangzan101.mika.core.model.ModelRole
 import java.util.UUID
@@ -92,6 +94,12 @@ data class CallRuntimeState(
 class CallRuntime(private val app: MikaApp) {
     val settings = CallSettings.create(app)
     val instructions = CallInstructionStore.create(app)
+    val tasks = CallTaskStore.create(app)
+
+    fun mainModel() = app.providers.modelFor(
+        com.wangzan101.mika.core.model.ModelRole.Main,
+        com.wangzan101.mika.core.model.ModelSession.fresh(),
+    )
     private val access = CallTelecomAccess(app)
     private val telecom get() = app.getSystemService(TelecomManager::class.java)
     private val telephony get() = app.getSystemService(TelephonyManager::class.java)
@@ -130,6 +138,10 @@ class CallRuntime(private val app: MikaApp) {
 
 
     init {
+        scope.launch(Dispatchers.IO) {
+            runCatching { CallDefaultBrief.migrate(settings, instructions) }
+            runCatching { tasks.load() }
+        }
         scope.launch {
             app.phone.hub.shell.collect { current ->
                 if (shell != null && shell !== current) {
@@ -439,6 +451,34 @@ class CallRuntime(private val app: MikaApp) {
         maybeStartAutoAnswer()
         if (state.value.prepared) ok("系统通话管理权限可用；连接状态以实际电话回调为准")
         else fail("AI 电话尚未准备好")
+    }
+
+    /** Opens a short realtime session so the settings row can show configured or failed. */
+    suspend fun probeCredentials(): Boolean = withContext(Dispatchers.IO) {
+        val credentials = settings.credentials()
+        if (credentials == null) {
+            settings.noteCredentialProbe(false)
+            return@withContext false
+        }
+        val ok = try {
+            val session = withTimeout(8_000L) {
+                VolcRealtimeClient().connect(credentials, VolcRealtimeConfig(speaker = settings.state.value.speaker))
+            }
+            session.close()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+        settings.noteCredentialProbe(ok)
+        ok
+    }
+
+    private fun announced(message: String, number: String?): String {
+        val label = runCatching { PhoneContacts(app).label(number) }.getOrDefault(number.orEmpty())
+        if (label.isBlank() || label == number?.trim()) return message
+        return "$label · $message"
     }
 
     suspend fun prepare(): CallActionResult = onMain {
@@ -853,7 +893,7 @@ class CallRuntime(private val app: MikaApp) {
 
     private suspend fun runWork(w: Work) {
         try {
-            if (!notifications.show(w.id, detail.orEmpty(), ringing = w.direction == CallDirection.INCOMING)) {
+            if (!notifications.show(w.id, announced(detail.orEmpty(), w.track?.number ?: w.requestedNumber), ringing = w.direction == CallDirection.INCOMING)) {
                 throw CallProblem("需要打开 AI 电话通知，才能随时取消或接管")
             }
             if (!interactiveForeground()) acquireCallWakeLock(w, 20_000L)
@@ -870,13 +910,27 @@ class CallRuntime(private val app: MikaApp) {
             validateTarget(w)
             w.mediaStage = MediaStage.VOLC_CONNECT
             val ownerRules = withContext(Dispatchers.IO) {
-                runCatching { instructions.promptSnapshot() }
-                    .getOrElse { throw CallProblem("无法读取电话交代，未由 AI 操作电话") }
+                runCatching {
+                    CallDefaultBrief.migrate(settings, instructions)
+                    instructions.promptSnapshot()
+                }.getOrElse { throw CallProblem("无法读取电话交代，未由 AI 操作电话") }
+            }
+            val taskBlock = withContext(Dispatchers.IO) {
+                runCatching { tasks.incomingPrompt(System.currentTimeMillis(), w.track?.number) }.getOrDefault("")
             }
             validateTarget(w)
+            val fresh = settings.state.value
+            val notes = if (fresh.defaultBriefMigrated) fresh.defaultBrief else w.config.systemPrompt
+            val rules = buildString {
+                if (!fresh.defaultBriefMigrated && ownerRules.isNotBlank()) append(ownerRules)
+                if (w.direction == CallDirection.INCOMING && taskBlock.isNotBlank()) {
+                    if (isNotEmpty()) append('\n')
+                    append(taskBlock)
+                }
+            }
             val session = withTimeoutOrNull(5_000L) {
                 VolcRealtimeClient().connect(credentials, VolcRealtimeConfig(
-                    systemPrompt = CallPolicy.prompt(w.config.systemPrompt, w.direction, ownerRules, task = w.task),
+                    systemPrompt = CallPolicy.prompt(notes, w.direction, rules.ifBlank { null }, task = w.task),
                     speaker = w.config.speaker,
                 ))
             } ?: throw CallProblem("火山实时语音连接超时，未由 AI 接管")
