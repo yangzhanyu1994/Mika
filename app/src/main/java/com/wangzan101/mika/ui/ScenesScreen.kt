@@ -62,6 +62,9 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         })
         return
     }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (EnvironmentSceneMonitor.fineGranted(context)) refreshEnvironment() else error = true
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val action = requestedAction
         requestedAction = null
@@ -107,6 +110,9 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         }
         if (environmentRules.any { it.enabled }) {
             FooterNote(stringResource(if (environmentMonitoring) R.string.env_active else R.string.env_inactive))
+            if (!EnvironmentSceneMonitor.fineGranted(context)) TextButton(onClick = {
+                locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }) { Text(stringResource(R.string.env_request_location)) }
             if (Build.VERSION.SDK_INT >= 29 && context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 TextButton(onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))) } }) {
                     Text(stringResource(R.string.env_background_settings))
@@ -182,6 +188,9 @@ private fun BluetoothSceneEditor(context: Context, existing: BluetoothScene?, er
     var delay by remember(existing?.id) { mutableStateOf((existing?.delaySeconds ?: 60).toString()) }
     var choosing by remember { mutableStateOf(false) }
     var permissionError by remember { mutableStateOf(false) }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (EnvironmentSceneMonitor.fineGranted(context)) refreshEnvironment() else error = true
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) choosing = true else permissionError = true
     }

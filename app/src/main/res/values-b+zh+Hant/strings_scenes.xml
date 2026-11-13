@@ -68,4 +68,5 @@
     <string name="calls_schedule_dispatching">正在拨打</string>
     <string name="calls_schedule_submitted">已发起</string>
     <string name="calls_schedule_failed">未完成</string>
+    <string name="env_request_location">允许精确定位以启动监听</string>
 </resources>

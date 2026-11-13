@@ -42,6 +42,7 @@ object MikaQuit {
         runCatching { TriggerRuntime.suspendAlarms(app) }
         runCatching { com.wangzan101.mika.automation.BluetoothSceneMonitor.stop(app) }
         runCatching { com.wangzan101.mika.automation.EnvironmentSceneMonitor.stop(app) }
+        runCatching { app.stopService(Intent(app, com.wangzan101.mika.calls.tasks.ScheduledDialService::class.java)) }
         runCatching { RuntimePreparer.stop(app) }
         runCatching { app.wechat.stop() }
         runCatching { app.mcp.stopServer() }
