@@ -376,7 +376,10 @@ internal class ShellCallAudio(private val context: Context) {
                 track.setStartThresholdInFrames(minOf(PLAY_RATE / 50, track.bufferSizeInFrames).coerceAtLeast(1))
             } else track.bufferSizeInFrames
             val silence = ByteArray(initialFrames.coerceIn(1, PLAY_RATE / 4) * 2)
-            val accepted = track.write(silence, 0, silence.size, AudioTrack.WRITE_NON_BLOCKING)
+            val accepted = retryPrimeSilence(
+                write = { track.write(silence, 0, silence.size, AudioTrack.WRITE_NON_BLOCKING) },
+                pause = { SystemClock.sleep(10) },
+            )
             check(accepted > 0) {
                 "Uplink track did not accept its initial silence."
             }
@@ -511,6 +514,7 @@ internal class ShellCallAudio(private val context: Context) {
             synchronized(io) {
                 check(!closed)
                 playbackDiagnostics.endZeroStreak(SystemClock.elapsedRealtime())
+                var stage = "drain"
                 try {
                     // Remove bytes already waiting in the kernel as well as AudioTrack's queue.
                     // The app invalidates its corresponding model generation before invoking this.
@@ -523,12 +527,18 @@ internal class ShellCallAudio(private val context: Context) {
                         drained += n
                         check(drained <= MAX_FLUSH_BYTES) { "Uplink writer kept sending during the interruption." }
                     } while (n > 0)
+                    stage = "pause"
                     track.pause()
+                    stage = "flush"
                     track.flush()
                     playbackDiagnostics.recordTrackFlush()
                     txDevice = -1
+                    stage = "play"
                     track.play()
+                    stage = "prime"
                     primePlayback()
+                } catch (e: Exception) {
+                    throw IllegalStateException("stage=$stage", e)
                 } finally {
                     playbackDiagnostics.recordFlush(SystemClock.elapsedRealtime() - started)
                 }
@@ -671,6 +681,14 @@ internal class ShellCallAudio(private val context: Context) {
         private const val MAX_CAPTURE_SILENCE_POLL_GAP_MS = DEVICE_CHECK_MS * 3
         private const val MAX_UPLINK_WRITE_STALL_MS = 1_500L
         private const val MAX_FLUSH_BYTES = 256 * 1024
+        internal fun retryPrimeSilence(write: () -> Int, pause: () -> Unit): Int {
+            repeat(20) {
+                val accepted = write()
+                if (accepted != 0) return accepted
+                pause()
+            }
+            return write()
+        }
         private val PIPE_CLOSED get() = OsConstants.POLLERR or OsConstants.POLLHUP or OsConstants.POLLNVAL
 
         internal fun candidates(mode: Int, direct: Boolean, redirect: Boolean): List<Int> = when (mode) {

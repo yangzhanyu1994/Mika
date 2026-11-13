@@ -92,6 +92,8 @@ class TelecomMuteLeaseTest {
     }
 
     @Test fun shellReasonIsSpecificButNeverLeaksRawContent() {
+        assertEquals("打断后电话音频无法就绪，电话由系统处理", shellAudioStopDiagnostic("Uplink flush failed: stage=prime"))
+        assertEquals("打断时无法清空待播音频，电话由系统处理", shellAudioStopDiagnostic("Uplink flush failed: stage=drain"))
         assertEquals("设备麦克风静音已解除，AI 已交还通话",
             shellAudioStopDiagnostic("Handset microphone was unmuted."))
         assertEquals("安卓停止向 AI 提供通话声音，已交还系统",
