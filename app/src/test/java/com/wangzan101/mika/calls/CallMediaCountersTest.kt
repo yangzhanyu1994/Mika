@@ -108,6 +108,23 @@ class CallMediaCountersTest {
         assertEquals(0L, report.completeTranscripts)
     }
 
+    @Test fun copiedDiagnosticsClassifiesStopWithoutPrivateContent() {
+        val counters = CallMediaCounters()
+        counters.eventReceived(VolcRealtimeEvent.Audio(ByteArray(1920)))
+        counters.outputQueued(1920)
+        counters.outputRejected()
+        val report = checkNotNull(counters.recordReport())
+        val record = CallRecord("private-id", "private-number", CallDirection.INCOMING, 1000, 32000,
+            "通话待播音频积压超过安全上限，已交还系统 private-secret", emptyList(), audioReport = report)
+        val diagnostic = checkNotNull(record.supportDiagnostics())
+        org.junit.Assert.assertTrue(diagnostic.contains("duration_ms=31000"))
+        org.junit.Assert.assertTrue(diagnostic.contains("stop_category=audio_backpressure"))
+        org.junit.Assert.assertTrue(diagnostic.contains("playback_rejected_packets=1"))
+        assertFalse(diagnostic.contains("private"))
+        assertEquals("voice_service", callStopCategory("火山实时语音连接不可用，电话由系统处理"))
+        assertEquals("other_or_unknown", callStopCategory("arbitrary private text"))
+    }
+
     private fun pcm(vararg samples: Int): ByteArray = ByteArray(samples.size * 2) { index ->
         val sample = samples[index / 2]
         (if (index % 2 == 0) sample else sample shr 8).toByte()

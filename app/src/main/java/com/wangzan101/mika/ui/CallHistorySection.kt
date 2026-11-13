@@ -287,6 +287,8 @@ private fun CallHistoryItem(
                 HorizontalDivider()
                 Text(stringResource(R.string.calls_history_period, start, end),
                     style = MaterialTheme.typography.bodySmall, color = MikaTheme.colors.ink3)
+                if (record.result.isNotBlank()) Text(stringResource(R.string.calls_exit_reason, record.result),
+                    style = MaterialTheme.typography.bodySmall, color = MikaTheme.colors.ink3)
                 record.summary?.let { summary ->
                     summary.purpose?.let { Text("${stringResource(R.string.calls_summary_purpose)}：$it") }
                     if (summary.highlights.isNotEmpty()) {
@@ -364,13 +366,13 @@ private fun CallHistoryItem(
                         }
                     }
                 }
-                record.audioReport?.let { report ->
+                record.audioReport?.let { _ ->
                     val label = stringResource(R.string.diagnostics_copy)
                     val copied = stringResource(R.string.diagnostics_copied)
                     TextButton(onClick = {
                         val clipboard = context.getSystemService(ClipboardManager::class.java)
                         if (clipboard != null) {
-                            clipboard.setPrimaryClip(ClipData.newPlainText(label, report.supportSummary()))
+                            clipboard.setPrimaryClip(ClipData.newPlainText(label, record.supportDiagnostics().orEmpty()))
                             Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
                         }
                     }, modifier = Modifier.testTag("call-record-diagnostics-copy")) { Text(label) }

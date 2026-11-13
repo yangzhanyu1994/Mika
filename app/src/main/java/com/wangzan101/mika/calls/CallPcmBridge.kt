@@ -83,7 +83,7 @@ internal class CallPcmBridge(
                     if (count == 0) continue
                     position += count
                     if (position == frame.size) {
-                        if (!session.sendPcm16(frame)) throw CallMediaFailure("火山音频输入已中断")
+                        if (!session.sendPcm16(frame)) throw (session.terminalFailure() ?: CallMediaFailure("火山音频输入已中断"))
                         counters?.inputAccepted(frame, System.nanoTime())
                         position = 0
                     }

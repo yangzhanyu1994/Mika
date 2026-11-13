@@ -174,6 +174,9 @@ class VolcRealtimeSession internal constructor(
 
     internal suspend fun awaitReady() = ready.await()
 
+    @Synchronized internal fun terminalFailure(): VolcRealtimeException? =
+        (terminal as? VolcRealtimeEvent.Failed)?.error
+
     @Synchronized internal fun attach(webSocket: WebSocket) {
         if (phase == Phase.ENDED) webSocket.cancel() else socket = webSocket
     }
@@ -404,7 +407,7 @@ class VolcRealtimeSession internal constructor(
     }
 
     private companion object {
-        const val MAX_SEND_QUEUE_BYTES = 32 * 1024 // Well below OkHttp's 16 MiB default WebSocket queue.
+        const val MAX_SEND_QUEUE_BYTES = 96 * 1024 // Bounded buffer for brief network stalls.
         const val MAX_TRANSCRIPT_CHARS = 16_384
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }

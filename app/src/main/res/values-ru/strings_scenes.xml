@@ -70,4 +70,14 @@
     <string name="calls_schedule_failed">Not completed</string>
     <string name="env_request_location">Allow precise location to start monitoring</string>
     <string name="calls_scheduled_confirm">Once confirmed, the call will be placed at the scheduled time. Check the number and time.</string>
+    <string name="env_location_loading">Getting your location…</string>
+    <string name="env_location_failed">Could not get location. Check location settings and precise permission, or search for a place.</string>
+    <string name="env_location_found">Location selected. Check the coordinates and radius.</string>
+    <string name="env_current_place">Current location</string>
+    <string name="env_search_place">Search address or place</string>
+    <string name="env_search_button">Search for a place</string>
+    <string name="env_search_loading">Searching for places…</string>
+    <string name="env_search_failed">No place found or system geocoding is unavailable. Try another search or enter coordinates.</string>
+    <string name="env_search_choose">Choose a search result:</string>
+    <string name="calls_exit_reason">End reason: %1$s</string>
 </resources>

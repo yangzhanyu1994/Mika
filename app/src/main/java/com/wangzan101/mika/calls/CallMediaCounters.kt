@@ -167,6 +167,10 @@ internal class CallMediaCounters(private val measureInputSignal: Boolean = true)
             recognitionFailures = recognitionFailures,
             emptyRecognitions = emptyRecognitions,
             providerInputCommits = providerInputCommits,
+            playbackPeakQueuedBytes = playbackMaxQueuedBytes,
+            playbackRejectedPackets = playbackRejectedPackets,
+            providerFailedEvents = providerFailedEvents,
+            providerClosedEvents = providerClosedEvents,
         )
     }
 

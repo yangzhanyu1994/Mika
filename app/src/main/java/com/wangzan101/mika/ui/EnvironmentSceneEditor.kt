@@ -2,7 +2,6 @@ package com.wangzan101.mika.ui
 
 import android.Manifest
 import android.content.Context
-import android.location.LocationManager
 import android.net.wifi.WifiManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,6 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.wangzan101.mika.automation.SceneLocationLookup
+import com.wangzan101.mika.automation.ScenePlace
+import kotlinx.coroutines.launch
 import com.wangzan101.mika.R
 import com.wangzan101.mika.automation.EnvironmentScene
 import com.wangzan101.mika.automation.EnvironmentSceneMonitor
@@ -30,6 +32,11 @@ internal fun EnvironmentSceneEditor(context: Context, kind: String, existing: En
     var delay by remember(existing?.id, kind) { mutableStateOf((existing?.delaySeconds ?: 60).toString()) }
     var enter by remember(existing?.id, kind) { mutableStateOf(existing?.enter ?: true) }
     var permissionError by remember { mutableStateOf(false) }
+    var locationBusy by remember { mutableStateOf(false) }
+    var locationMessage by remember { mutableStateOf<Int?>(null) }
+    var searchText by remember { mutableStateOf("") }
+    var places by remember { mutableStateOf<List<ScenePlace>>(emptyList()) }
+    val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         val action = pending; pending = null
@@ -55,15 +62,37 @@ internal fun EnvironmentSceneEditor(context: Context, kind: String, existing: En
                 OutlinedTextField(latitude, { latitude = it.take(24) }, label = { Text(stringResource(R.string.env_latitude)) }, modifier = Modifier.weight(1f), singleLine = true)
                 OutlinedTextField(longitude, { longitude = it.take(24) }, label = { Text(stringResource(R.string.env_longitude)) }, modifier = Modifier.weight(1f), singleLine = true)
             }
-            TextButton(onClick = { withPermission {
-                runCatching {
-                    val lm = context.getSystemService(LocationManager::class.java)
-                    val provider = if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) LocationManager.GPS_PROVIDER else LocationManager.NETWORK_PROVIDER
-                    lm.getCurrentLocation(provider, null, context.mainExecutor) { location ->
-                        if (location == null) permissionError = true else { latitude = location.latitude.toString(); longitude = location.longitude.toString() }
+            TextButton(enabled = !locationBusy, onClick = { withPermission {
+                locationBusy = true; locationMessage = R.string.env_location_loading
+                scope.launch {
+                    val location = runCatching { SceneLocationLookup.current(context) }.getOrNull()
+                    locationBusy = false
+                    if (location == null) locationMessage = R.string.env_location_failed
+                    else {
+                        latitude = location.latitude.toString(); longitude = location.longitude.toString()
+                        if (target.isBlank()) target = context.getString(R.string.env_current_place)
+                        locationMessage = R.string.env_location_found
                     }
-                }.onFailure { permissionError = true }
+                }
             } }) { Text(stringResource(R.string.env_use_current_location)) }
+            OutlinedTextField(searchText, { searchText = it.take(120) },
+                label = { Text(stringResource(R.string.env_search_place)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            TextButton(enabled = !locationBusy && searchText.isNotBlank(), onClick = {
+                locationBusy = true; locationMessage = R.string.env_search_loading; places = emptyList()
+                scope.launch {
+                    val results = runCatching { SceneLocationLookup.search(context, searchText.trim()) }.getOrNull()
+                    locationBusy = false
+                    places = results.orEmpty()
+                    locationMessage = if (places.isEmpty()) R.string.env_search_failed else R.string.env_search_choose
+                }
+            }) { Text(stringResource(R.string.env_search_button)) }
+            locationMessage?.let { Text(stringResource(it), color = if (it == R.string.env_location_failed || it == R.string.env_search_failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+            places.forEach { place ->
+                TextButton(onClick = {
+                    target = place.label; latitude = place.latitude.toString(); longitude = place.longitude.toString()
+                    places = emptyList(); locationMessage = R.string.env_location_found
+                }, modifier = Modifier.fillMaxWidth()) { Text(place.label) }
+            }
             OutlinedTextField(radius, { radius = it.take(8) }, label = { Text(stringResource(R.string.env_radius)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             FooterNote(stringResource(R.string.env_location_hint))
         }

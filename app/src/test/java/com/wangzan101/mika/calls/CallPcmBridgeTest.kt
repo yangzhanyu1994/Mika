@@ -39,6 +39,18 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CallPcmBridgeTest {
+    @Test fun `short network backlog is tolerated but sustained backlog reports backpressure`() {
+        val session = VolcRealtimeSession(VolcRealtimeConfig(), closeTimeoutMs = 100L)
+        val socket = FakeSocket()
+        session.listener.onOpen(socket, Response.Builder().request(socket.request()).protocol(Protocol.HTTP_1_1)
+            .code(101).message("Switching Protocols").build())
+        session.listener.onMessage(socket, """{"type":"session.created"}""")
+        socket.queuedBytes = 64 * 1024L
+        assertTrue(session.sendPcm16(ByteArray(640)))
+        socket.queuedBytes = 100 * 1024L
+        assertFalse(session.sendPcm16(ByteArray(640)))
+        assertEquals(VolcRealtimeException.Kind.BACKPRESSURE, session.terminalFailure()?.kind)
+    }
     @Test fun `idle speech and duplicate interruption do not flush or stop following spoken replies`() = runBlocking {
         val session = VolcRealtimeSession(VolcRealtimeConfig(), closeTimeoutMs = 100L)
         val socket = FakeSocket()
@@ -237,8 +249,9 @@ class CallPcmBridgeTest {
     }
 
     private class FakeSocket : WebSocket {
+        var queuedBytes = 0L
         override fun request(): Request = Request.Builder().url("https://localhost/").build()
-        override fun queueSize(): Long = 0L
+        override fun queueSize(): Long = queuedBytes
         override fun send(text: String): Boolean = true
         override fun send(bytes: ByteString): Boolean = true
         override fun close(code: Int, reason: String?): Boolean = true
