@@ -497,6 +497,7 @@ fun ChatScreen(
                 vm.input(text)
                 vm.send(text, check)
             },
+            voiceAutoSend = true,
             onPickSpeech = openSpeechModel,
             steerTarget = if (ui.followUpMode == FollowUpMode.Steer) last?.goal?.let(ChatCopy::plainTitle) else null,
             onVoiceHolding = { voiceHolding = it },
@@ -757,7 +758,9 @@ private fun LazyListScope.exchange(
     recover: (Boolean) -> Unit = {},
 ) {
     if (ex.goal.isNotEmpty()) item("u$index") {
-        JumpHighlight(highlightKey == "u$index", reduceMotion) { UserBubble(ex.goal, conversationId, key = "u$index") }
+        Box(Modifier.animateItem(fadeInSpec = if (reduceMotion) null else tween(180), placementSpec = null, fadeOutSpec = null)) {
+            JumpHighlight(highlightKey == "u$index", reduceMotion) { UserBubble(ex.goal, conversationId, key = "u$index") }
+        }
     }
     val paused = ex.status is ExchangeStatus.Paused || ex.status is ExchangeStatus.WaitingUnlock ||
         ex.status is ExchangeStatus.NeedsTakeover || ex.status is ExchangeStatus.NeedsConfirmation ||
@@ -1446,6 +1449,7 @@ internal fun Composer(
     onVoiceText: (String) -> Unit = {},
     /** 松开在「在听」卡片里(「松开 发送」)说完的字:调用方接上已有的字直接发出。没给时没有「松开 发送」。 */
     onVoiceSend: ((String) -> Unit)? = null,
+    voiceAutoSend: Boolean = false,
     /** 「还不能语音输入」里的「去选」:到设置里选转文字。 */
     onPickSpeech: () -> Unit = {},
     /** 任务在跑时说的话交给谁:卡片顶上写「插话给『…』」。 */
@@ -1471,7 +1475,7 @@ internal fun Composer(
     val nav = WindowInsets.navigationBars
     var panel by rememberSaveable { mutableStateOf(Panel.Closed) }
     // 「松开 发送」和发送键一样先收起附件面板
-    val vh = androidx.compose.runtime.key(draftKey) { rememberVoiceHold(voice, onVoiceText, onVoiceSend?.let { send -> { text -> panel = Panel.Closed; send(text) } }) }
+    val vh = androidx.compose.runtime.key(draftKey) { rememberVoiceHold(voice, onVoiceText, onVoiceSend?.let { send -> { text -> panel = Panel.Closed; send(text) } }, voiceAutoSend) }
     val vState = voiceState(vh)
     val voiceHolding = vh?.holding == true
     LaunchedEffect(voiceHolding) { onVoiceHolding(voiceHolding) }
