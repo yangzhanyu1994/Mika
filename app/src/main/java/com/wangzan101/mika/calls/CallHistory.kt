@@ -157,10 +157,15 @@ internal class CallHistory(private val storage: Storage) {
             failed.value = true
             return false
         }
-        // If a previous load failed, preserve in-memory calls without overwriting the unreadable file.
+        // Once the old history is readable, persist calls buffered during the failed read.
+        // Until then, never replace the unreadable file with an incomplete history.
+        val buffered = mutable.value.isNotEmpty()
         mutable.value = (mutable.value + records).distinctBy { it.id }.take(MAX_CALLS)
         loaded = true
-        return true
+        return if (buffered) persist(mutable.value) == Result.SAVED else {
+            failed.value = false
+            true
+        }
     }
 
     private class EncryptedStorage(context: Context) : Storage {
