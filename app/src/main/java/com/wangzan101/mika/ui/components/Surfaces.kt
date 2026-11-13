@@ -86,7 +86,7 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
         if (backdrop == null && !MikaTheme.colors.isDark) {
             Box(Modifier.matchParentSize().glassSource(glassBackground)) {
                 Image(painterResource(R.drawable.mika_glass_background), contentDescription = null,
-                    modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+                    modifier = Modifier.matchParentSize().liquidBackgroundMotion(reduceMotion), contentScale = ContentScale.Crop)
                 Box(Modifier.matchParentSize().ambientGlow(ambient, reduceMotion))
             }
         }
