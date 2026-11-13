@@ -38,4 +38,20 @@
     <string name="scene_save">Save scene</string>
     <string name="scene_no_devices">No paired devices found. Pair the device in system settings first.</string>
     <string name="scene_result_instruction">When finished, report the actual outcome and any verified status. Clearly state what could not be read or verified, or was not completed. Do not claim success merely because the task was triggered or submitted.</string>
+    <string name="env_monitor_title">Smart scenes monitoring</string>
+    <string name="env_monitor_body">Monitoring enabled Wi-Fi and location scenes</string>
+    <string name="env_active">Wi-Fi or location monitoring active</string>
+    <string name="env_inactive">Wi-Fi or location monitoring is not running; check location permissions and settings.</string>
+    <string name="env_background_settings">Allow location all the time for background triggers</string>
+    <string name="env_wifi_name">Wi-Fi name</string>
+    <string name="env_use_current_wifi">Use current Wi-Fi</string>
+    <string name="env_place_name">Place name</string>
+    <string name="env_latitude">Latitude</string>
+    <string name="env_longitude">Longitude</string>
+    <string name="env_use_current_location">Use current location</string>
+    <string name="env_radius">Radius in meters (100–10000)</string>
+    <string name="env_location_hint">The initial fix and uncertain boundary readings do not trigger. Background restrictions and signal affect timing.</string>
+    <string name="env_enter">Enter area</string>
+    <string name="env_exit">Leave area</string>
+    <string name="env_permission_note">Wi-Fi names and location scenes require precise location; background triggers require allowing location all the time in system settings.</string>
 </resources>

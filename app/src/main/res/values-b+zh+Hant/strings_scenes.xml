@@ -38,4 +38,20 @@
     <string name="scene_save">Save scene</string>
     <string name="scene_no_devices">No paired devices found. Pair the device in system settings first.</string>
     <string name="scene_result_instruction">任务结束时请直接汇报实际执行结果，包括已核实的状态；无法读取、无法核实或未完成的部分必须明确说明。不要把任务已触发或已提交当作执行成功。</string>
+    <string name="env_monitor_title">智能场景监听中</string>
+    <string name="env_monitor_body">正在监听已启用的 Wi-Fi 和位置场景</string>
+    <string name="env_active">Wi-Fi 或位置监听运行中</string>
+    <string name="env_inactive">Wi-Fi 或位置监听未运行，请检查定位权限和系统定位开关。</string>
+    <string name="env_background_settings">允许始终使用位置信息，以便后台触发</string>
+    <string name="env_wifi_name">Wi-Fi 名称</string>
+    <string name="env_use_current_wifi">使用当前连接的 Wi-Fi</string>
+    <string name="env_place_name">地点名称</string>
+    <string name="env_latitude">纬度</string>
+    <string name="env_longitude">经度</string>
+    <string name="env_use_current_location">使用当前位置</string>
+    <string name="env_radius">范围半径（米，100–10000）</string>
+    <string name="env_location_hint">位置不准确或首次定位时不触发；后台、省电设置和信号会影响及时性。</string>
+    <string name="env_enter">进入范围</string>
+    <string name="env_exit">离开范围</string>
+    <string name="env_permission_note">Wi-Fi 名称和位置场景需要精确定位权限；后台触发还需在系统设置中允许始终使用位置。</string>
 </resources>

@@ -4,6 +4,10 @@ import android.Manifest
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -20,6 +24,10 @@ import com.wangzan101.mika.automation.BluetoothScene
 import com.wangzan101.mika.automation.BluetoothSceneMonitor
 import com.wangzan101.mika.automation.SceneDispatcher
 import com.wangzan101.mika.automation.SceneStore
+import com.wangzan101.mika.automation.EnvironmentScene
+import com.wangzan101.mika.automation.EnvironmentSceneStore
+import com.wangzan101.mika.automation.EnvironmentSceneMonitor
+import com.wangzan101.mika.automation.EnvironmentSceneDispatcher
 import com.wangzan101.mika.task.TriggerRuntime
 import com.wangzan101.mika.ui.components.*
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -29,6 +37,13 @@ import java.util.UUID
 fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOpenConversation: (String) -> Unit) {
     val store = remember { SceneStore.get(context).also { it.load() } }
     val rules by store.rules.collectAsState()
+    val environment = remember { EnvironmentSceneStore.get(context).also { it.load() } }
+    val environmentRules by environment.rules.collectAsState()
+    val environmentMonitoring by EnvironmentSceneMonitor.monitoring.collectAsState()
+    var environmentKind by remember { mutableStateOf<String?>(null) }
+    var environmentEdit by remember { mutableStateOf<EnvironmentScene?>(null) }
+    var environmentDelete by remember { mutableStateOf<EnvironmentScene?>(null) }
+
     val unavailable by store.unavailable.collectAsState()
     val monitoring by BluetoothSceneMonitor.monitoring.collectAsState()
     var editor by remember { mutableStateOf(false) }
@@ -36,6 +51,17 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
     var askDelete by remember { mutableStateOf<BluetoothScene?>(null) }
     var error by remember { mutableStateOf(false) }
     var requestedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun refreshEnvironment() {
+        if (environment.rules.value.any { it.enabled }) {
+            if (!EnvironmentSceneMonitor.start(context)) error = true
+        } else EnvironmentSceneMonitor.stop(context)
+    }
+    environmentKind?.let { kind ->
+        EnvironmentSceneEditor(context, kind, environmentEdit, error, onBack = { environmentKind = null; error = false }, onSave = { rule ->
+            try { environment.save(rule); refreshEnvironment(); environmentKind = null } catch (_: Exception) { error = true }
+        })
+        return
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val action = requestedAction
         requestedAction = null
@@ -76,12 +102,21 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         GroupCard {
             ListRow(MikaIcons.Clock, stringResource(R.string.scene_time), first = true, onClick = onPlans) { RowChevron() }
             ListRow(MikaIcons.Screens, stringResource(R.string.scene_bluetooth), onClick = { editing = null; editor = true }) { RowChevron() }
-            ListRow(MikaIcons.Globe, stringResource(R.string.scene_wifi), stringResource(R.string.scene_coming)) {}
-            ListRow(MikaIcons.Screens, stringResource(R.string.scene_location), stringResource(R.string.scene_coming)) {}
+            ListRow(MikaIcons.Globe, stringResource(R.string.scene_wifi), onClick = { environmentEdit = null; environmentKind = "wifi" }) { RowChevron() }
+            ListRow(MikaIcons.Screens, stringResource(R.string.scene_location), onClick = { environmentEdit = null; environmentKind = "location" }) { RowChevron() }
+        }
+        if (environmentRules.any { it.enabled }) {
+            FooterNote(stringResource(if (environmentMonitoring) R.string.env_active else R.string.env_inactive))
+            if (Build.VERSION.SDK_INT >= 29 && context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                TextButton(onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))) } }) {
+                    Text(stringResource(R.string.env_background_settings))
+                }
+            }
+            if (!environmentMonitoring && EnvironmentSceneMonitor.fineGranted(context)) TextButton(onClick = { refreshEnvironment() }) { Text(stringResource(R.string.scene_start_monitor)) }
         }
         GroupLabel(stringResource(R.string.scene_mine))
         GroupCard {
-            if (rules.isEmpty()) Text(stringResource(R.string.scene_empty), Modifier.padding(16.dp))
+            if (rules.isEmpty() && environmentRules.isEmpty()) Text(stringResource(R.string.scene_empty), Modifier.padding(16.dp))
             rules.forEachIndexed { index, rule ->
                 ListRow(MikaIcons.Screens, rule.title,
                     rule.deviceName + " · " + stringResource(if (rule.onConnect) R.string.scene_connected else R.string.scene_disconnected),
@@ -102,9 +137,30 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
                 TextButton(onClick = { askDelete = rule }) { Text(stringResource(R.string.scene_delete)) }
             }
         }
+        environmentRules.forEach { rule ->
+            GroupCard {
+                ListRow(MikaIcons.Globe, rule.title, rule.target + " · " + stringResource(
+                    if (rule.type == "wifi") { if (rule.enter) R.string.scene_connected else R.string.scene_disconnected }
+                    else { if (rule.enter) R.string.env_enter else R.string.env_exit }),
+                    first = true, detail = rule.goal.take(80), onClick = { environmentEdit = rule; environmentKind = rule.type }) {
+                    Switch(checked = rule.enabled, onCheckedChange = { enabled ->
+                        try { environment.save(rule.copy(enabled = enabled)); refreshEnvironment() } catch (_: Exception) { error = true }
+                    })
+                }
+                rule.lastThreadId?.let { thread -> TextButton(onClick = { onOpenConversation(thread) }) { Text(stringResource(R.string.scene_last_run)) } }
+                if (rule.enabled) TextButton(onClick = { try { EnvironmentSceneDispatcher.dispatch(context, rule) } catch (_: Exception) { error = true } }) { Text(stringResource(R.string.scene_test)) }
+                TextButton(onClick = { environmentDelete = rule }) { Text(stringResource(R.string.scene_delete)) }
+            }
+        }
         Button(onClick = { editing = null; editor = true }, modifier = Modifier.fillMaxWidth().testTag("scene-new")) {
             Text(stringResource(R.string.scene_new))
         }
+    }
+    environmentDelete?.let { rule ->
+        AlertDialog(onDismissRequest = { environmentDelete = null }, title = { Text(stringResource(R.string.scene_delete_confirm)) },
+            text = { Text(rule.title) }, confirmButton = {
+                TextButton(onClick = { try { environment.remove(rule.id); refreshEnvironment(); environmentDelete = null } catch (_: Exception) { error = true } }) { Text(stringResource(R.string.scene_delete)) }
+            }, dismissButton = { TextButton(onClick = { environmentDelete = null }) { Text(stringResource(R.string.scene_cancel)) } })
     }
     askDelete?.let { rule ->
         AlertDialog(onDismissRequest = { askDelete = null }, title = { Text(stringResource(R.string.scene_delete_confirm)) },

@@ -230,6 +230,15 @@ class MainActivity : ComponentActivity() {
         // 用户先前点了「完全退出」:打开 Mika 就回来,胶囊和退出时略过的启动工作在这里补上
         com.wangzan101.mika.quit.MikaQuit.resume(this)
         monitor.start()
+        lifecycleScope.launch {
+            val scenes = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this@MainActivity)
+            val enabled = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { scenes.load() && scenes.rules.value.any { it.enabled } }
+            if (enabled && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.fineGranted(this@MainActivity) &&
+                !com.wangzan101.mika.automation.EnvironmentSceneMonitor.monitoring.value) {
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.start(this@MainActivity)
+            }
+        }
         // 每次打开都悄悄查一次新版本(两分钟内连着打开的只查一次),失败不吭声
         val app = application as MikaApp
         val check = app.updates.autoCheckInBackground()
