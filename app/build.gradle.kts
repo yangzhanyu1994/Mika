@@ -6,8 +6,8 @@ plugins {
 }
 
 // 关于页上的构建编号:当前提交的短哈希;没有 git(如从源码包编译)时写 dev
-val mikaVersionName = providers.gradleProperty("mikaVersionName").orNull ?: "0.1.54"
-val mikaVersionCode = providers.gradleProperty("mikaVersionCode").orNull?.toIntOrNull() ?: 1054
+val mikaVersionName = providers.gradleProperty("mikaVersionName").orNull ?: "0.1.55"
+val mikaVersionCode = providers.gradleProperty("mikaVersionCode").orNull?.toIntOrNull() ?: 1055
 val mikaBeta = providers.gradleProperty("mikaBeta").orNull?.toBooleanStrictOrNull() ?: true
 
 val gitHash: String = runCatching {

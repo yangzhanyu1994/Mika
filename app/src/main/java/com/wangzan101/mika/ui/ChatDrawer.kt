@@ -295,7 +295,7 @@ fun ChatDrawer(
         Modifier.fillMaxHeight().widthIn(max = DrawerWidth).fillMaxWidth()
             .clip(DrawerShape).background(
                 if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.bg))
-                else Brush.verticalGradient(listOf(Color(0xFFF4F8FF), Color(0xFFDDEAFF))), DrawerShape)
+                else Brush.verticalGradient(listOf(Color(0xEAF4F8FF), Color(0xE0DDEAFF))), DrawerShape)
             .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars))
             .testTag("drawer"),
     ) {
