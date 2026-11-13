@@ -88,6 +88,14 @@ object CallTaskParser {
 
     fun encode(parsed: ParsedCallTask): String = json.encodeToString(parsed)
 
+    /** Keep an existing absolute deadline unless the user changes its time; permanence removes it. */
+    fun applyLifetime(task: CallAssistantTask, existing: CallAssistantTask?, permanent: Boolean): CallAssistantTask = when {
+        task.kind == CallTaskTexts.KIND_INCOMING && permanent -> task.copy(windowLabel = "", startMs = null, endMs = null)
+        existing != null && existing.kind == task.kind && existing.windowLabel == task.windowLabel ->
+            task.copy(startMs = existing.startMs, endMs = existing.endMs)
+        else -> task
+    }
+
     fun decode(raw: String): ParsedCallTask? = runCatching { json.decodeFromString<ParsedCallTask>(raw) }.getOrNull()
 
     fun withContacts(parsed: ParsedCallTask, entries: List<PhoneNumbers.Entry>): ParsedCallTask =

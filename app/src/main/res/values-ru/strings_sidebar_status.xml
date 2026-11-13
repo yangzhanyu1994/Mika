@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">Непрочитанные звонки</string>
+    <string name="drawer_update_available">Доступна новая версия</string>
+    <string name="calls_task_permanent">Сохранить навсегда</string>
+    <string name="drawer_calls_title">Звонки с ИИ</string>
+</resources>

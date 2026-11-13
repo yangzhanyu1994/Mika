@@ -272,7 +272,7 @@ class AboutScreenTest {
         compose.onNodeWithText("应用设置").assertIsDisplayed()
         compose.onNodeWithText("关于应用").assertDoesNotExist()
         compose.onNodeWithText("退出应用").assertDoesNotExist()
-        compose.onNodeWithTag("update-dot", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("有新版本可用").assertExists()
         compose.onNodeWithText("应用设置").performClick()
         assertEquals(listOf("settings"), calls)
     }
@@ -283,13 +283,14 @@ class AboutScreenTest {
             MikaTheme {
                 ChatDrawer(
                     Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
-                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, onOpen = {},
+                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, onOpen = {}, currentVersion = "0.1.46",
                 )
             }
         }
         compose.onNodeWithText("应用设置").assertIsDisplayed()
         compose.onNodeWithText("关于应用").assertDoesNotExist()
         compose.onAllNodesWithTag("update-dot", useUnmergedTree = true).assertCountEquals(0)
+        compose.onNodeWithText("0.1.46").assertExists()
     }
 
     /** 设置首页「关于 Mika」一行:有新版写「x 可更新」带红点。 */

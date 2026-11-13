@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">Unread calls</string>
+    <string name="drawer_update_available">Update available</string>
+    <string name="calls_task_permanent">Keep permanently</string>
+    <string name="drawer_calls_title">Call assistant</string>
+</resources>

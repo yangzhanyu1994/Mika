@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">تماس خوانده‌نشده</string>
+    <string name="drawer_update_available">نسخه جدید موجود است</string>
+    <string name="calls_task_permanent">اعمال دائمی</string>
+    <string name="drawer_calls_title">تماس‌های تلفنی هوش مصنوعی</string>
+</resources>

@@ -16,6 +16,8 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallActionResult
 import com.wangzan101.mika.calls.CallDirection
 import com.wangzan101.mika.calls.CallRecord
+import com.wangzan101.mika.calls.CallSummary
+import com.wangzan101.mika.calls.CallFollowUp
 import com.wangzan101.mika.ui.theme.MikaTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -30,6 +32,28 @@ class CallHistoryClearDeviceTest {
         startedAtMs = 1, endedAtMs = 2, result = "fixture result", transcript = emptyList(),
     )
     private val app get() = ApplicationProvider.getApplicationContext<MikaApp>()
+
+    @Test fun processedRecordLeavesPendingFilterEvenWithPendingSummary() {
+        var history by mutableStateOf(listOf(record.copy(summary = CallSummary(
+            actions = listOf(CallFollowUp("回电", CallFollowUp.Status.PENDING)),
+        ))))
+        compose.setContent {
+            MikaTheme {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    CallHistorySection(history, false, { id, handled ->
+                        history = history.map { if (it.id == id) it.copy(handled = handled) else it }
+                        CallActionResult(true, "ok")
+                    }, { CallActionResult(true, "ok") }, { CallActionResult(true, "ok") },
+                        { CallActionResult(true, "ok") }, focusRecordId = record.id)
+                }
+            }
+        }
+        compose.onNodeWithTag("call-history-mark").performScrollTo().performClick()
+        compose.onNodeWithTag("call-history-filter-open").performScrollTo().performClick()
+        compose.onNodeWithText("fixture result", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag("call-history-filter-done").performScrollTo().performClick()
+        compose.onNodeWithText("fixture result", substring = true).assertExists()
+    }
 
     @Test fun cancelDoesNotClearHistory() {
         var calls = 0

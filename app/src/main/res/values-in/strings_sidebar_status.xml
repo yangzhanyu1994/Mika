@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">Panggilan belum dibaca</string>
+    <string name="drawer_update_available">Versi baru tersedia</string>
+    <string name="calls_task_permanent">Berlaku selamanya</string>
+    <string name="drawer_calls_title">Panggilan telepon AI</string>
+</resources>

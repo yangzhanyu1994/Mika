@@ -83,6 +83,11 @@ import com.wangzan101.mika.ui.components.GlassBlurSupported
 import com.wangzan101.mika.ui.components.KeyboardDismissArea
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
@@ -258,6 +263,9 @@ fun ChatDrawer(
     onOpen: (DrawerConversation) -> Unit,
     /** 有新版本:「应用设置」带小红点,关于页在设置里。 */
     aboutDot: Boolean = false,
+    unhandledCalls: Int = 0,
+    currentVersion: String = "",
+    reduceMotion: Boolean = false,
     /** 长按一条存过的对话:在它原地弹出操作菜单(置顶、改名、删除);带上那一行在窗口里的位置和大小。 */
     onActions: (DrawerConversation, Rect) -> Unit = { _, _ -> },
     onPersonal: () -> Unit = {},
@@ -321,7 +329,9 @@ fun ChatDrawer(
             NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
             NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
             NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
-            NavEntry(MikaIcons.Phone, stringResource(R.string.calls_title), onClick = onCalls)
+            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
+                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
+                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
         }
         // 侧栏关着时列表只剩末尾那一项;打开时对话插在它前面,列表会按原来那一项停在最底下。最上面一项变了就回到顶上
         val list = rememberLazyListState()
@@ -400,7 +410,9 @@ fun ChatDrawer(
                 Modifier.fillMaxWidth().drawBehind { drawLine(c.hair, Offset(0f, 0f), Offset(size.width, 0f), 0.5.dp.toPx()) }
                     .padding(horizontal = 12.dp, vertical = 6.dp).testTag("drawer-footer"),
             ) {
-                NavEntry(MikaIcons.Gear, stringResource(R.string.settings_title), Modifier.fillMaxWidth(), dot = aboutDot, onClick = onSettings)
+                NavEntry(MikaIcons.Gear, stringResource(R.string.settings_title), Modifier.fillMaxWidth(),
+                    trailing = if (aboutDot) stringResource(R.string.drawer_update_available) else currentVersion.takeIf { it.isNotBlank() },
+                    flashing = aboutDot, reduceMotion = reduceMotion, onClick = onSettings)
             }
         }
     }
@@ -466,7 +478,8 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
 @Composable
 private fun NavEntry(
     icon: ImageVector, text: String, modifier: Modifier = Modifier.fillMaxWidth(),
-    enabled: Boolean = true, dot: Boolean = false, onClick: () -> Unit,
+    enabled: Boolean = true, dot: Boolean = false, trailing: String? = null,
+    flashing: Boolean = false, reduceMotion: Boolean = false, onClick: () -> Unit,
 ) {
     val c = MikaTheme.colors
     Row(
@@ -481,6 +494,15 @@ private fun NavEntry(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(text, style = MikaType.Body, color = c.ink, maxLines = 1, softWrap = false)
             if (dot) UpdateDot()
+        }
+        if (trailing != null) {
+            Spacer(Modifier.weight(1f))
+            val opacity = if (flashing && !reduceMotion) {
+                val transition = rememberInfiniteTransition(label = "drawer-notice")
+                transition.animateFloat(1f, 0.38f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "notice-opacity").value
+            } else 1f
+            Text(trailing, Modifier.alpha(opacity), style = MikaType.Hint,
+                color = if (flashing) c.accent else c.ink3, maxLines = 1, softWrap = false)
         }
     }
 }
@@ -730,6 +752,8 @@ fun ChatWithDrawer(
     onSettings: () -> Unit,
     /** 有新版本:侧栏「应用设置」带小红点。关于页在设置里。 */
     updateAvailable: Boolean = false,
+    unhandledCalls: Int = 0,
+    currentVersion: String = "",
     /** 从侧栏进去的页面刚退回来:当场打开侧栏,回到进去之前的样子。 */
     reopen: Boolean = false,
     onReopened: () -> Unit = {},
@@ -928,6 +952,9 @@ fun ChatWithDrawer(
                     onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },
                     aboutDot = updateAvailable,
+                    unhandledCalls = unhandledCalls,
+                    currentVersion = currentVersion,
+                    reduceMotion = reduceMotion,
                     onActions = { item, bounds -> if (item.id != null) acting = item to bounds },
                     onOpen = { item ->
                         close {
