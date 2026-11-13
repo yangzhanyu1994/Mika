@@ -3,9 +3,11 @@ package com.wangzan101.mika.ui.components
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -27,10 +29,13 @@ internal fun Modifier.ambientGlow(mode: AmbientMode, reduceMotion: Boolean): Mod
         rememberInfiniteTransition(label = "ambient-glow").animateFloat(
             0f, 6.2831855f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "ambient-phase"
         ).value
-    val strength = when (mode) { AmbientMode.Idle -> 0.10f; AmbientMode.Thinking -> 0.22f; AmbientMode.Executing -> 0.30f }
+    val strength = animateFloatAsState(
+        when (mode) { AmbientMode.Idle -> 0.10f; AmbientMode.Thinking -> 0.22f; AmbientMode.Executing -> 0.30f },
+        if (reduceMotion) snap() else tween(800), label = "ambient-strength",
+    ).value
     return drawBehind {
-        val w = size.width
-        val h = size.height
+        val w = size.width.coerceAtLeast(1f)
+        val h = size.height.coerceAtLeast(1f)
         val dx = sin(phase) * 0.08f
         val dy = cos(phase) * 0.04f
         drawRect(Brush.radialGradient(listOf(Color(0xFF66A9FF).copy(alpha = strength), Color.Transparent),
