@@ -884,7 +884,7 @@ class TaskService : Service() {
     }
 
     private suspend fun prepareResult(run: TaskRun, end: TaskState, deliveryId: String) {
-        val (title, text) = describe(end)
+        val (title, text) = describeDelivery(end, run.provenance.origin == RunOrigin.Trigger)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
         ResultDelivery.prepare(outbox, channelFor(peer), peer,
             Delivery.Result(deliveryId, run.conversationId, text, title = title), run.sharedFiles.value)
@@ -892,7 +892,7 @@ class TaskService : Service() {
 
     private suspend fun notifyResult(run: TaskRun, end: TaskState, deliveryId: String): DeliveryState {
         prepareResult(run, end, deliveryId)
-        val (title, text) = describe(end)
+        val (title, text) = describeDelivery(end, run.provenance.origin == RunOrigin.Trigger)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
         val started = SystemClock.elapsedRealtime()
         val delivered = ResultDelivery.send(outbox, channelFor(peer), peer,
@@ -1198,6 +1198,11 @@ class TaskService : Service() {
         }
 
         /** 通知的标题和正文;[appLabel] 把包名换成 App 名。 */
+        /** A trigger can finish with an answer that reports a partial result; avoid claiming success in the title. */
+        internal fun describeDelivery(state: TaskState, triggered: Boolean): Pair<String, String> =
+            if (triggered && state is TaskState.Succeeded && !state.doubtful) tr(R.string.notif_result_title) to state.answer
+            else describe(state)
+
         internal fun describe(state: TaskState, appLabel: (String) -> String = { it }): Pair<String, String> = when (state) {
             TaskState.Idle -> "Mika" to ""
             is TaskState.Running -> tr(R.string.task_running) to (state.progress?.let(StatusCopy::progress) ?: when {
