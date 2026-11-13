@@ -239,6 +239,17 @@ class MainActivity : ComponentActivity() {
         }
         // 电脑连接开着、服务却不在(被系统停过、从后台没能起来):界面在前台时补起来
         (application as MikaApp).mcp.ensureRunning()
+        lifecycleScope.launch {
+            val scenes = com.wangzan101.mika.automation.SceneStore.get(this@MainActivity)
+            val enabled = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                scenes.load() && scenes.rules.value.any { it.enabled }
+            }
+            if (enabled && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.permissionGranted(this@MainActivity) &&
+                !com.wangzan101.mika.automation.BluetoothSceneMonitor.monitoring.value) {
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.start(this@MainActivity)
+            }
+        }
     }
 
     override fun onResume() {
@@ -538,6 +549,7 @@ private fun MikaRoot(
                 conversationTitle = { ConversationStore.shared(context).title(it) },
                 search = ConversationStore.shared(context).search,
                 onPlans = { nav.pushFromDrawer(Route.Plans) },
+                onScenes = { nav.pushFromDrawer(Route.Scenes) },
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onBrowser = { nav.pushFromDrawer(Route.Browser) },
@@ -725,6 +737,10 @@ private fun MikaRoot(
             app.chat.openConversation(it)
             nav.reset()
         }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false })
+        Route.Scenes -> ScenesScreen(context, onBack = back, onPlans = { nav.push(Route.Plans) }, onOpenConversation = {
+            app.chat.openConversation(it)
+            nav.reset()
+        })
         Route.Teach -> TeachScreen(
             app.teach,
             onBack = { nav.back() },

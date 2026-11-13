@@ -17,5 +17,13 @@ class BootRestoreReceiver : BootRestoreHandler() {
         if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) TriggerRuntime.syncTimeZone(context)
         // 开机时局域网那种电脑连接开着就重新监听(USB 那种不跨重启:换了开机编号,这里已按关着算,上次的连接信息也清掉)
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) (context.applicationContext as com.wangzan101.mika.MikaApp).mcp.ensureRunning()
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED && !com.wangzan101.mika.settings.FeatureFlags.get(context).quitRequested()) {
+            val scenes = com.wangzan101.mika.automation.SceneStore.get(context)
+            if (scenes.load() && scenes.rules.value.any { it.enabled } &&
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.permissionGranted(context)) {
+                // OS may refuse background service startup; the scenes screen shows the real status.
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.start(context)
+            }
+        }
     }
 }

@@ -40,6 +40,7 @@ object MikaQuit {
         runCatching { app.capsule.stopNow() }
         // 先撤掉系统闹钟和进程内的长任务,再停前台服务;服务被系统重交启动请求时也会按退出标记拒绝工作
         runCatching { TriggerRuntime.suspendAlarms(app) }
+        runCatching { com.wangzan101.mika.automation.BluetoothSceneMonitor.stop(app) }
         runCatching { RuntimePreparer.stop(app) }
         runCatching { app.wechat.stop() }
         runCatching { app.mcp.stopServer() }

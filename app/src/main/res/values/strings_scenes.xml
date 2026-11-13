@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scene_title">Smart scenes</string>
+    <string name="scene_monitor_channel">Scene monitoring</string>
+    <string name="scene_monitor_notification">Smart scenes monitoring</string>
+    <string name="scene_monitor_notification_body">Watching the Bluetooth devices you selected</string>
+    <string name="scene_failed_title">Scene execution uncertain</string>
+    <string name="scene_failed_body">Could not confirm dispatch. Open Mika to check.</string>
+    <string name="scene_error">Could not complete this action. Check permissions and try again.</string>
+    <string name="scene_active">Bluetooth monitoring is active</string>
+    <string name="scene_inactive">Bluetooth monitoring is not active. Turn on Bluetooth and start monitoring.</string>
+    <string name="scene_start_monitor">Start monitoring</string>
+    <string name="scene_alarm_permission">Allow exact alarms for more reliable execution</string>
+    <string name="scene_trigger_types">Triggers</string>
+    <string name="scene_time">Time</string>
+    <string name="scene_bluetooth">Bluetooth</string>
+    <string name="scene_wifi">Wi-Fi</string>
+    <string name="scene_location">Location</string>
+    <string name="scene_coming">Coming later</string>
+    <string name="scene_mine">My scenes</string>
+    <string name="scene_empty">No Bluetooth scenes yet</string>
+    <string name="scene_last_run">View last run</string>
+    <string name="scene_test">Test now</string>
+    <string name="scene_delete">Delete</string>
+    <string name="scene_delete_confirm">Delete this scene?</string>
+    <string name="scene_cancel">Cancel</string>
+    <string name="scene_new">New scene</string>
+    <string name="scene_name">Scene name</string>
+    <string name="scene_trigger">When this happens</string>
+    <string name="scene_device">Bluetooth device</string>
+    <string name="scene_choose_device">Choose paired device</string>
+    <string name="scene_disconnected">Disconnected</string>
+    <string name="scene_connected">Connected</string>
+    <string name="scene_delay">Wait time (seconds)</string>
+    <string name="scene_delay_hint">If the state changes again while waiting, the pending run is canceled. 0–600 seconds.</string>
+    <string name="scene_goal">Task to execute</string>
+    <string name="scene_notification_note">Results are sent using Mika notifications.</string>
+    <string name="scene_save">Save scene</string>
+    <string name="scene_no_devices">No paired devices found. Pair the device in system settings first.</string>
+</resources>
