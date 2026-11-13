@@ -107,8 +107,6 @@ internal fun CallHistorySection(
                 (digits != null && record.number.orEmpty().filter(Char::isDigit).contains(digits)) ||
                 direction.contains(text, ignoreCase = true) || record.result.contains(text, ignoreCase = true) ||
                 record.transcript.any { it.text.contains(text, ignoreCase = true) } ||
-                if (record.result.isNotBlank()) Text(stringResource(R.string.calls_exit_reason, record.result),
-                    style = MaterialTheme.typography.bodySmall, color = MikaTheme.colors.ink3)
                 record.summary?.let { summary ->
                     listOfNotNull(summary.purpose, summary.conclusion).plus(summary.highlights)
                         .plus(summary.uncertainties).plus(summary.actions.map { it.text })
