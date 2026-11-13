@@ -141,6 +141,7 @@ import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.MikaCard
 import com.wangzan101.mika.ui.components.MikaDialog
 import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.AmbientMode
 import com.wangzan101.mika.ui.components.TopBar
 import com.wangzan101.mika.ui.components.cardSurface
 import com.wangzan101.mika.ui.components.floatShadow
@@ -376,7 +377,12 @@ fun ChatScreen(
     }
     val menuHost = remember(selecting) { MessageMenuHost(selecting) { menu = it } }
     val menuOpen = menu != null
-    PageBackground {
+    val ambient = when {
+        last?.status != ExchangeStatus.Working -> AmbientMode.Idle
+        last?.waitingForModel == true -> AmbientMode.Thinking
+        else -> AmbientMode.Executing
+    }
+    PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
         CompositionLocalProvider(LocalMessageMenu provides menuHost) {
             LazyColumn(
                 Modifier.fillMaxSize().behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion).glassSource(backdrop),

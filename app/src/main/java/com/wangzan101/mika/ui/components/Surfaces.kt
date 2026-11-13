@@ -63,7 +63,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
  * 设了背景图片时铺满图片、再盖一层同色遮罩(见 [SkinBackdrop]),卡片和文字照旧。
  */
 @Composable
-fun PageBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = AmbientMode.Idle, reduceMotion: Boolean = MikaTheme.reduceMotion, content: @Composable BoxScope.() -> Unit) {
     val backdrop = rememberSkinBackdrop()
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
@@ -71,7 +71,7 @@ fun PageBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.
             if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(
                 Brush.verticalGradient(listOf(Color(0xFFDCEAFF), Color(0xFFF8F8FC), Color(0xFFE3EDFF)))
             )
-        ).then(
+        ).then(if (backdrop == null && !MikaTheme.colors.isDark) Modifier.ambientGlow(ambient, reduceMotion) else Modifier).then(
             if (backdrop == null) Modifier else Modifier
                 .onGloballyPositioned { backdrop.pageOrigin = it.positionInRoot(); backdrop.pageSize = it.size }
                 .drawBehind { backdrop.draw(this, backdrop.pageOrigin) },
@@ -109,7 +109,7 @@ fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Mo
         shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
     } else this)
         .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
-            Brush.verticalGradient(listOf(Color(0xFFF9FCFF), Color(0xFFEFF5FF))), shape)
+            Brush.verticalGradient(listOf(Color(0xE8FFFFFF), Color(0xD5E8F1FF))), shape)
         .border(1.dp, colors.edge, shape)
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */

@@ -52,6 +52,8 @@ import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.personal.PersonalPhonePreview
 import com.wangzan101.mika.personal.PersonalRuntime
 import com.wangzan101.mika.ui.components.ActivitySizedDialog
+import com.wangzan101.mika.ui.components.AmbientMode
+import com.wangzan101.mika.ui.components.PageBackground
 import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.MikaLogo
@@ -219,7 +221,13 @@ fun PersonalAgentScreen(
         if (growth > 0 && followLatest && !list.isScrollInProgress) list.scrollBy(growth.toFloat())
     }
 
-    Column(Modifier.fillMaxSize().background(c.bg).statusBarsPadding().testTag("personal-screen")) {
+    val ambient = when {
+        active.any { it.status == "running" } -> AmbientMode.Executing
+        thinking -> AmbientMode.Thinking
+        else -> AmbientMode.Idle
+    }
+    PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().testTag("personal-screen")) {
         PersonalHeader(
             active, phonePreview, onOpenDrawer, { profile = true }, { selectedTask = it.id },
             onOpenPreview = { preview ->
@@ -298,6 +306,7 @@ fun PersonalAgentScreen(
             onVoiceHolding = { voiceHolding = it },
             sendFromIme = true,
         )
+    }
     }
     if (profile) {
         PersonalProfileDialog(
