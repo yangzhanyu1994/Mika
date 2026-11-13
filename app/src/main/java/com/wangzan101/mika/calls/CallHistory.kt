@@ -54,7 +54,23 @@ data class CallRecord(
     val summary: CallSummary? = null,
     val summaryStatus: SummaryStatus = SummaryStatus.NOT_REQUESTED,
 ) {
+    /** Deliberately exclude phone numbers, transcript text, arbitrary errors and identifiers. */
+    fun supportDiagnostics(): String? = audioReport?.supportSummary()?.plus(
+        " duration_ms=${(endedAtMs - startedAtMs).coerceAtLeast(0L)} stop_category=${callStopCategory(result)}"
+    )
     override fun toString(): String = "CallRecord(direction=$direction, result=$result)"
+}
+
+internal fun callStopCategory(reason: String): String = when {
+    reason.contains("时长上限") -> "duration_limit"
+    reason.contains("音频积压") || reason.contains("音频拥塞") -> "audio_backpressure"
+    reason.contains("音频无法及时停止") -> "interrupt_flush"
+    reason.contains("运营商音频输入") -> "capture_stalled"
+    reason.contains("静音") -> "microphone_or_mute"
+    reason.contains("火山") || reason.contains("语音连接") -> "voice_service"
+    reason.contains("电话由系统处理") || reason.contains("已交还系统") -> "handed_to_system"
+    reason.contains("挂断") || reason.contains("通话已结束") -> "call_ended"
+    else -> "other_or_unknown"
 }
 
 @Serializable
@@ -75,6 +91,10 @@ data class CallAudioReport(
     val recognitionFailures: Long? = null,
     val emptyRecognitions: Long? = null,
     val providerInputCommits: Long? = null,
+    val playbackPeakQueuedBytes: Long? = null,
+    val playbackRejectedPackets: Long? = null,
+    val providerFailedEvents: Long? = null,
+    val providerClosedEvents: Long? = null,
 ) {
     @Serializable
     enum class Turn { NONE, SPEECH_DETECTED, TRANSCRIPT_RECEIVED, REPLY_AUDIO_RECEIVED }
@@ -86,7 +106,10 @@ data class CallAudioReport(
         "input_frames_rms_gt_200_after_audio_done=${inputSignalFramesAfterLastReply ?: "unknown"} " +
         "android_silenced_max_ms=${captureSilencedMaxMs ?: "unknown"} " +
         "asr_failures=${recognitionFailures ?: "unknown"} asr_empty=${emptyRecognitions ?: "unknown"} " +
-        "provider_input_commits=${providerInputCommits ?: "unknown"}"
+        "provider_input_commits=${providerInputCommits ?: "unknown"} " +
+        "playback_peak_queued_bytes=${playbackPeakQueuedBytes ?: "unknown"} " +
+        "playback_rejected_packets=${playbackRejectedPackets ?: "unknown"} " +
+        "provider_failed_events=${providerFailedEvents ?: "unknown"} provider_closed_events=${providerClosedEvents ?: "unknown"}"
 }
 
 internal class CallHistory(private val storage: Storage) {

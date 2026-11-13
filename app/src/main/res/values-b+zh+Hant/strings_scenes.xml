@@ -70,4 +70,14 @@
     <string name="calls_schedule_failed">未完成</string>
     <string name="env_request_location">允许精确定位以启动监听</string>
     <string name="calls_scheduled_confirm">确认添加后，到指定时间会自动拨打；请核对号码和时间。</string>
+    <string name="env_location_loading">正在获取位置，请稍候…</string>
+    <string name="env_location_failed">无法获取位置，请检查手机定位开关和精确定位权限，或搜索地点。</string>
+    <string name="env_location_found">位置已选定，请核对坐标和触发范围。</string>
+    <string name="env_current_place">当前位置</string>
+    <string name="env_search_place">搜索地址或地点</string>
+    <string name="env_search_button">搜索并选择地点</string>
+    <string name="env_search_loading">正在搜索地点…</string>
+    <string name="env_search_failed">未找到地点或系统地点搜索不可用，请更换关键词，或手动填写坐标。</string>
+    <string name="env_search_choose">请选择一个搜索结果：</string>
+    <string name="calls_exit_reason">结束原因：%1$s</string>
 </resources>
