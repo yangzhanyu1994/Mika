@@ -24,6 +24,8 @@ class CallTaskTextsTest {
         assertEquals(ZonedDateTime.of(2026, 11, 14, 8, 0, 0, 0, zone).toInstant().toEpochMilli(), crossStart!!)
         assertEquals(ZonedDateTime.of(2026, 11, 15, 12, 0, 0, 0, zone).toInstant().toEpochMilli(), crossEnd!!)
         assertEquals(null to null, CallTaskTexts.resolveWindow("明天下午到后天早上", fridayMorning))
+        assertEquals(null to null, CallTaskTexts.resolveWindow("2026-11-14 13:55", fridayMorning))
+        assertEquals(null to null, CallTaskTexts.resolveWindow("明天下午1点55分", fridayMorning))
     }
 
     @Test fun convertingAnExistingTaskToPermanentPreservesInstructionAndDoesNotExpire() {

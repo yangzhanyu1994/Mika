@@ -75,6 +75,7 @@ private fun CallProposalCard(messageId: String, raw: String, runtime: PersonalRu
     val parsed = remember(raw) { com.wangzan101.mika.calls.tasks.CallTaskParser.decode(raw) } ?: return
     var editing by remember(messageId) { mutableStateOf(false) }
     var target by remember(messageId) { mutableStateOf(parsed.target) }
+    var number by remember(messageId) { mutableStateOf(parsed.number) }
     var window by remember(messageId) { mutableStateOf(parsed.windowLabel) }
     var say by remember(messageId) { mutableStateOf(parsed.say) }
     var cannot by remember(messageId) { mutableStateOf(parsed.cannotPromise) }
@@ -94,18 +95,23 @@ private fun CallProposalCard(messageId: String, raw: String, runtime: PersonalRu
             if (!editing) {
                 ProposalLine(stringResource(R.string.calls_task_type), kind)
                 if (target.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_target), target)
+                if (parsed.kind == com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_DIAL) {
+                    ProposalLine(stringResource(R.string.calls_number), number)
+                    Text(stringResource(R.string.calls_scheduled_confirm), color = c.ink2, style = MikaType.Caption)
+                }
                 if (window.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_window), window)
                 ProposalLine(stringResource(R.string.calls_task_say), say)
                 if (cannot.isNotBlank()) ProposalLine(stringResource(R.string.calls_task_cannot), cannot)
             } else {
                 OutlinedField(stringResource(R.string.calls_task_target), target) { target = it }
+                if (parsed.kind == com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_DIAL) OutlinedField(stringResource(R.string.calls_number), number) { number = it }
                 OutlinedField(stringResource(R.string.calls_task_window), window) { window = it }
                 OutlinedField(stringResource(R.string.calls_task_say), say) { say = it }
                 OutlinedField(stringResource(R.string.calls_task_cannot), cannot) { cannot = it }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    runtime.confirmProposal(messageId, parsed.copy(target = target, windowLabel = window, say = say, cannotPromise = cannot))
+                    runtime.confirmProposal(messageId, parsed.copy(target = target, windowLabel = window, say = say, cannotPromise = cannot, number = number))
                 }, modifier = Modifier.testTag("call-proposal-confirm"),
                     colors = ButtonDefaults.buttonColors(containerColor = c.accent, contentColor = c.onAccent),
                 ) { Text(stringResource(R.string.calls_task_confirm_add)) }

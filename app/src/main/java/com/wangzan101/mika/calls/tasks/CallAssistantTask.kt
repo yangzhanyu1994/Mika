@@ -67,6 +67,7 @@ object CallTaskTexts {
     private val callWords = listOf("打电话", "来电", "拨打", "打给", "接听", "去电", "来电话")
     private val sceneWords = listOf("快递", "外卖", "快递员", "放门口", "交代", "预约", "鲜奶", "门口")
     private val dateTime = Regex("""(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})""")
+    private val singleClock = Regex("""(?:\d{1,2}\s*[:点时]\s*\d{0,2})""")
     private val explicitDate = Regex("""(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})日?""")
     private val clockRange = Regex("""(\d{1,2}):(\d{2})\s*[-~～到至]\s*(\d{1,2}):(\d{2})""")
     private val weekdays = listOf(
@@ -139,6 +140,8 @@ object CallTaskTexts {
             startMin = sh * 60 + sm
             endMin = eh * 60 + em
         } else {
+            // A single clock time is not an interval; never widen it silently to the full day.
+            if (singleClock.containsMatchIn(text)) return null to null
             val pair = when {
                 text.contains("上午") || text.contains("早上") -> 8 * 60 to 12 * 60
                 text.contains("中午") -> 11 * 60 to 13 * 60

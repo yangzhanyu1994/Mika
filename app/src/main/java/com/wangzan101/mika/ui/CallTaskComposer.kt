@@ -122,7 +122,8 @@ internal fun CallTaskComposer(
                         dialAt = DialScheduleTime.resolve(parsed.windowLabel, now)?.toInstant()?.toEpochMilli()
                     } else if (parsed.kind == CallTaskTexts.KIND_INCOMING) {
                         val interval = CallTaskTexts.resolveWindow(parsed.windowLabel, now)
-                        incomingStart = interval.first; incomingEnd = interval.second
+                        incomingStart = interval.first ?: DialScheduleTime.resolve(parsed.windowLabel, now)?.toInstant()?.toEpochMilli()
+                        incomingEnd = interval.second
                     }
                 }
                 say = parsed.say

@@ -26,6 +26,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.wangzan101.mika.calls.CallPhase
@@ -104,6 +106,11 @@ class ScheduledDialService : Service() {
             try {
                 queue.withLock {
                     val calls = (application as MikaApp).calls
+                    // A cold process restores its phone permissions and helper asynchronously.
+                    // Give that restoration time before deciding the call is unavailable.
+                    if (calls.settings.state.value.enabled) withTimeoutOrNull(20_000L) {
+                        calls.state.first { it.prepared && it.shellConnected }
+                    }
                     // Keep other due tasks queued briefly while a call is active; never dial indefinitely late.
                     while (calls.state.value.phase != CallPhase.IDLE && System.currentTimeMillis() <= due + MAX_LATENESS_MS &&
                         !FeatureFlags.get(this@ScheduledDialService).quitRequested()) delay(1000L)

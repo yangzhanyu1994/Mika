@@ -198,8 +198,20 @@ class PersonalRuntime(private val app: MikaApp) {
                         val now = System.currentTimeMillis()
                         val bounded = if (task.startMs == null && task.endMs == null && task.windowLabel.isBlank())
                             task.copy(startMs = now, endMs = now + 24 * 60 * 60_000L, windowLabel = "创建后 24 小时内") else task
+                        require(bounded.startMs != null && bounded.endMs != null) { "请补全来电交代的开始和结束时间" }
                         app.calls.tasks.saveIncomingOnce(bounded)
-                    } else app.calls.tasks.save(task)
+                    } else {
+                        val due = com.wangzan101.mika.calls.tasks.DialScheduleTime.resolve(proposal.windowLabel, java.time.ZonedDateTime.now())
+                            ?.toInstant()?.toEpochMilli() ?: error("请先指定明确的未来拨号时间")
+                        require(com.wangzan101.mika.calls.CallPolicy.outgoingNumber(task.number) != null) { "请确认要拨打的电话号码" }
+                        com.wangzan101.mika.calls.CallTaskBrief(task.say, emptyList(), task.target, task.cannotPromise).validatedSnapshot()
+                        val sim = com.wangzan101.mika.calls.CallPolicy.chooseOutgoingSim(app.calls.state.value.simOptions, null,
+                            app.calls.settings.state.value.defaultOutgoingSimId) ?: error("请先选择可用的默认拨号卡")
+                        check(com.wangzan101.mika.task.TriggerRuntime.canScheduleExactly(app)) { "请先允许精确闹钟" }
+                        val saved = app.calls.tasks.save(task.copy(dialAtMs = due, dialSimId = sim.id, dialScheduleState = "scheduled"))
+                        try { com.wangzan101.mika.calls.tasks.ScheduledDial.schedule(app, saved) }
+                        catch (e: Exception) { app.calls.tasks.save(saved.copy(dialScheduleState = "failed", dialScheduleMessage = "无法设置定时拨号")); throw e }
+                    }
                 }
                 val note = app.getString(com.wangzan101.mika.R.string.calls_task_added)
                 store.update { state ->
