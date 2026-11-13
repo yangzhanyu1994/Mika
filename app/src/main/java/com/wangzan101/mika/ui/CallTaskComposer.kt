@@ -246,7 +246,7 @@ internal fun CallTaskComposer(
                             saved
                         }.getOrNull()
                     }
-                    if (saved != null) onDial(CallPolicy.outgoingNumber(number)!!, simId, brief, saved.id)
+                    if (saved != null) onDial(CallPolicy.outgoingNumber(number)!!, simId, brief, saved.id) else error = failed
                 }
             }, modifier = Modifier.fillMaxWidth().testTag("call-task-dial")) {
                 Text(stringResource(R.string.calls_task_dial_now))

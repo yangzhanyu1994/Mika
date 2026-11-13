@@ -57,8 +57,14 @@ object ScheduledDial {
         val store = (context.applicationContext as MikaApp).calls.tasks
         if (!store.load()) return
         if (store.recoverStaleScheduled() > 0) ScheduledDialService.report(context, false, "预约拨号状态未确认，请查看通话记录；不会自动重拨")
-        store.snapshot().filter { it.kind == CallTaskTexts.KIND_DIAL && it.dialScheduleState == "scheduled" && it.dialAtMs != null }
-            .forEach { runCatching { schedule(context, it) } }
+        val pending = store.snapshot().filter { it.kind == CallTaskTexts.KIND_DIAL && it.dialScheduleState == "scheduled" && it.dialAtMs != null }
+        if (pending.isNotEmpty() && !TriggerRuntime.canScheduleExactly(context)) {
+            ScheduledDialService.report(context, false, "精确闹钟权限不可用，预约拨号无法按时运行；请打开 Mika 检查权限")
+            return
+        }
+        pending.forEach { task -> runCatching { schedule(context, task) }.onFailure {
+            ScheduledDialService.report(context, false, "无法恢复预约拨号，请打开 Mika 查看任务", task.id)
+        } }
     }
     internal fun id(intent: Intent) = intent.takeIf { it.action == ACTION }?.getStringExtra(KEY_ID)
     internal fun due(intent: Intent) = intent.getLongExtra(KEY_DUE, -1L)

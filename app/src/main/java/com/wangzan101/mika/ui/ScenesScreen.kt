@@ -39,6 +39,7 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
     val rules by store.rules.collectAsState()
     val environment = remember { EnvironmentSceneStore.get(context).also { it.load() } }
     val environmentRules by environment.rules.collectAsState()
+    val environmentUnavailable by environment.unavailable.collectAsState()
     val environmentMonitoring by EnvironmentSceneMonitor.monitoring.collectAsState()
     var environmentKind by remember { mutableStateOf<String?>(null) }
     var environmentEdit by remember { mutableStateOf<EnvironmentScene?>(null) }
@@ -91,7 +92,7 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         return
     }
     PageScaffold(stringResource(R.string.scene_title), onBack) {
-        if (unavailable || error) Text(stringResource(R.string.scene_error), color = MaterialTheme.colorScheme.error)
+        if (unavailable || environmentUnavailable || error) Text(stringResource(R.string.scene_error), color = MaterialTheme.colorScheme.error)
         if (rules.any { it.enabled }) {
             FooterNote(stringResource(if (monitoring) R.string.scene_active else R.string.scene_inactive))
             if (!monitoring) TextButton(onClick = { withPermission { refreshMonitor() } }) { Text(stringResource(R.string.scene_start_monitor)) }

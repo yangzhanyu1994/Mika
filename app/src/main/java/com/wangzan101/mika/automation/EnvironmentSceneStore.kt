@@ -35,6 +35,8 @@ class EnvironmentSceneStore private constructor(context: Context) {
     private var loaded = false
     private val mutable = MutableStateFlow<List<EnvironmentScene>>(emptyList())
     val rules = mutable.asStateFlow()
+    private val failed = MutableStateFlow(false)
+    val unavailable = failed.asStateFlow()
 
     @Synchronized fun load(): Boolean {
         if (loaded) return true
@@ -50,8 +52,9 @@ class EnvironmentSceneStore private constructor(context: Context) {
             values.forEach(::validate)
             mutable.value = values
             loaded = true
+            failed.value = false
             true
-        } catch (_: Exception) { false }
+        } catch (_: Exception) { failed.value = true; false }
     }
     @Synchronized fun save(rule: EnvironmentScene) {
         check(load()); validate(rule)
