@@ -66,6 +66,31 @@ class CallTaskStore internal constructor(
         persist(mutable.value.filterNot { it.id == id })
     }
 
+    /** Do not duplicate the same active incoming instruction after a retry. */
+    @Synchronized fun saveIncomingOnce(task: CallAssistantTask): Pair<CallAssistantTask, Boolean> {
+        check(load()) { "通话任务未读入，不能覆盖" }
+        val existing = mutable.value.firstOrNull {
+            it.kind == CallTaskTexts.KIND_INCOMING && it.statusAt(now()) == CallTaskStatus.ACTIVE &&
+                it.target.trim() == task.target.trim() && it.number.trim() == task.number.trim() &&
+                it.say.trim() == task.say.trim() && it.cannotPromise.trim() == task.cannotPromise.trim()
+        }
+        return if (existing != null) existing to false else save(task) to true
+    }
+
+    @Synchronized fun snapshot(): List<CallAssistantTask> {
+        check(load()) { "通话任务无法读取" }
+        return mutable.value.toList()
+    }
+
+    /** Refuse stale or missing edits rather than silently creating/replacing a task. */
+    @Synchronized fun editIncoming(id: String, expectedSay: String, say: String?): Boolean {
+        check(load()) { "通话任务无法读取" }
+        val task = mutable.value.firstOrNull { it.id == id && it.kind == CallTaskTexts.KIND_INCOMING } ?: return false
+        if (task.say != expectedSay) return false
+        if (say == null) remove(id) else save(task.copy(say = say))
+        return true
+    }
+
     @Synchronized fun markDialed(id: String) {
         check(load()) { "通话任务未读入" }
         val row = mutable.value.firstOrNull { it.id == id } ?: return

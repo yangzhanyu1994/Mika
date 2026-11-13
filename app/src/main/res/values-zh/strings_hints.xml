@@ -2,7 +2,7 @@
 <resources>
     <string name="home_chip_plan">创建自动化任务</string>
     <string name="home_chip_call">创建AI电话业务</string>
-    <string name="home_chip_assistant">个人助手</string>
+    <string name="home_chip_assistant">主要聊天</string>
     <string name="hint_home_remind">明早 8 点提醒我开会</string>
     <string name="hint_home_courier">快递来电就让他放门口</string>
     <string name="hint_home_property">帮我打电话给物业问停车</string>

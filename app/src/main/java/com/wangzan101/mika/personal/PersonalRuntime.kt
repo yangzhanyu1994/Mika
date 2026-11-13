@@ -158,7 +158,8 @@ class PersonalRuntime(private val app: MikaApp) {
     suspend fun send(text: String) = submit.withLock {
         val clean = text.trim()
         if (clean.isEmpty()) return@withLock
-        val proposal = if (com.wangzan101.mika.calls.tasks.CallTaskTexts.looksLike(clean)) {
+        val proposal = if (!com.wangzan101.mika.calls.tasks.CallTaskTexts.isManagementRequest(clean) &&
+            com.wangzan101.mika.calls.tasks.CallTaskTexts.looksLike(clean)) {
             withContext(Dispatchers.IO) {
                 val model = app.providers.modelFor(ModelRole.Main, ModelSession.of("personal-call-task"))
                 val book = com.wangzan101.mika.calls.PhoneContacts(app)
@@ -192,8 +193,13 @@ class PersonalRuntime(private val app: MikaApp) {
                         .take(com.wangzan101.mika.calls.CallDefaultBrief.MAX_CHARS)
                     app.calls.settings.save(current.copy(defaultBrief = merged, defaultBriefMigrated = true))
                 } else {
-                    val saved = com.wangzan101.mika.calls.tasks.CallTaskParser.toTask(proposal)
-                    app.calls.tasks.save(saved)
+                    val task = com.wangzan101.mika.calls.tasks.CallTaskParser.toTask(proposal)
+                    if (proposal.kind == com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_INCOMING) {
+                        val now = System.currentTimeMillis()
+                        val bounded = if (task.startMs == null && task.endMs == null && task.windowLabel.isBlank())
+                            task.copy(startMs = now, endMs = now + 24 * 60 * 60_000L, windowLabel = "创建后 24 小时内") else task
+                        app.calls.tasks.saveIncomingOnce(bounded)
+                    } else app.calls.tasks.save(task)
                 }
                 val note = app.getString(com.wangzan101.mika.R.string.calls_task_added)
                 store.update { state ->

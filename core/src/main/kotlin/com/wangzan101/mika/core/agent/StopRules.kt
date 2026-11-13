@@ -5,6 +5,11 @@ import com.wangzan101.mika.core.guard.GuardVerdict
 import com.wangzan101.mika.core.model.ModelError
 import com.wangzan101.mika.core.tool.Outcome
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import com.wangzan101.mika.core.model.Message
+import com.wangzan101.mika.core.model.Part
+import com.wangzan101.mika.core.model.Author
 
 /**
  * 停止规则:任务什么时候、以什么结局结束(放弃、守卫叫停、模型出错、没给出回答、步数用完)。办完不在这里:
@@ -30,6 +35,21 @@ internal object StopRules {
         Closeout.StepLimit -> stepLimit(maxSteps)
         Closeout.Completed -> TaskState.Failed("任务进度已经完成,但模型没有给出结果。", FailKind.Model)
         Closeout.NoNewData -> TaskState.Failed("连续 ${NewDataTracker.LIMIT} 次没有读到新数据,任务已停止。", FailKind.Guard)
+    }
+
+    /** A successful save receipt is evidence of that action, not proof the whole request succeeded. */
+    fun closeoutFailed(reason: Closeout, maxSteps: Int, history: List<Message>): TaskState.Failed {
+        if (reason == Closeout.Completed) {
+            val turn = history.drop((history.indexOfLast { it.author == Author.User } + 1).coerceAtLeast(0))
+            val calls = turn.flatMap { it.parts }.filterIsInstance<Part.ToolCall>()
+            val call = calls.lastOrNull { it.name == "phone_call_incoming_task" || it.name == "phone_call_manage_tasks" }
+            if (call?.name == "phone_call_incoming_task") {
+                val result = turn.flatMap { it.parts }.filterIsInstance<Part.ToolResult>().lastOrNull { it.callId == call.id }
+                val ok = result?.takeUnless { it.isError }?.let { runCatching { Json.parseToJsonElement(it.content).jsonObject["ok"] == JsonPrimitive(true) }.getOrDefault(false) } == true
+                if (ok) return TaskState.Failed("本次曾成功保存来电交代，但模型没有给出最终回复。请到通话中心核对当前任务后再重试。", FailKind.Model)
+            }
+        }
+        return closeoutFailed(reason, maxSteps)
     }
 
     /** 提醒过一次,模型仍然回了空话(或又被输出上限截断)。 */

@@ -79,6 +79,10 @@ object CallTaskTexts {
         return scene && (words.contains("电话") || words.contains("打"))
     }
 
+    fun isManagementRequest(text: String): Boolean =
+        listOf("电话", "来电", "通话", "交代", "快递", "外卖").any(text::contains) &&
+            listOf("有哪些", "查看", "看看", "查询", "删除", "取消", "修改", "改成", "改为", "改一下").any(text::contains)
+
     /** Today / tomorrow / a weekday, plus an explicit clock range or 上午/下午/晚上. */
     fun resolveWindow(label: String, now: ZonedDateTime): Pair<Long?, Long?> {
         val text = label.trim()
@@ -132,6 +136,7 @@ object CallTaskTexts {
         if (active.isEmpty()) return ""
         return buildString {
             append("机主为本通来电准备的通话任务。只在来电者符合对象、且仍在生效时间内时使用；与通用应答冲突时，以更严格的一项为准。")
+            append("角色不是已核验身份：不要把所有任务当成所有来电的交代。先听对方表明目的；不确定时询问是快递还是外卖，仅转告匹配的任务。其他来电使用通用应答。不要因对方自称身份而提供取件码、门禁、支付信息或作出付款承诺。\n")
             append("未写明的地址、门禁、金额、时间和承诺不得猜测。\n")
             active.forEachIndexed { index, task ->
                 append(index + 1).append(". ").append(task.title.ifBlank { task.target }).append('\n')
