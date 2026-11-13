@@ -39,11 +39,10 @@ private enum class HistoryFilter(@StringRes val label: Int) {
     INCOMING(R.string.calls_direction_in),
     OUTGOING(R.string.calls_direction_out),
     OPEN(R.string.calls_history_open),
-    /** 旧筛选「已处理」。芯片不再列出,恢复到这个值时仍按原来的规则滤。 */
     DONE(R.string.calls_history_done),
 }
 
-private val historyChips = listOf(HistoryFilter.ALL, HistoryFilter.INCOMING, HistoryFilter.OUTGOING, HistoryFilter.OPEN)
+private val historyChips = listOf(HistoryFilter.ALL, HistoryFilter.INCOMING, HistoryFilter.OUTGOING, HistoryFilter.OPEN, HistoryFilter.DONE)
 
 private fun pendingTodos(record: CallRecord): Int =
     record.summary?.actions?.count { it.status == CallFollowUp.Status.PENDING } ?: 0
@@ -68,13 +67,15 @@ internal fun CallHistorySection(
     var pendingClear by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<CallActionResult?>(null) }
+    var focusApplied by rememberSaveable(focusRecordId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(focusRecordId, history) {
-        if (focusRecordId != null && history.any { it.id == focusRecordId }) {
+        if (!focusApplied && focusRecordId != null && history.any { it.id == focusRecordId }) {
             filter = HistoryFilter.ALL
             query = ""
             showAll = true
             expanded = focusRecordId
+            focusApplied = true
         }
     }
     val failure = stringResource(R.string.calls_action_failed)
@@ -97,7 +98,7 @@ internal fun CallHistorySection(
                 HistoryFilter.ALL -> true
                 HistoryFilter.INCOMING -> record.direction == CallDirection.INCOMING
                 HistoryFilter.OUTGOING -> record.direction == CallDirection.OUTGOING
-                HistoryFilter.OPEN -> pendingTodos(record) > 0 || !record.handled
+                HistoryFilter.OPEN -> !record.handled
                 HistoryFilter.DONE -> record.handled
             }
             val direction = if (record.direction == CallDirection.INCOMING) incoming else outgoing
@@ -263,8 +264,8 @@ private fun CallHistoryItem(
     val direction = directionLabel(record.direction)
     val pending = pendingTodos(record)
     val status = when {
-        pending > 0 -> stringResource(R.string.calls_history_pending_count, pending)
         record.handled -> stringResource(R.string.calls_history_done)
+        pending > 0 -> stringResource(R.string.calls_history_pending_count, pending)
         else -> stringResource(R.string.calls_summary_done)
     }
     val summaryLine = record.summary?.purpose?.takeIf { it.isNotBlank() }

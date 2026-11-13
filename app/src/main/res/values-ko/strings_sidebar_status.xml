@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">읽지 않은 통화</string>
+    <string name="drawer_update_available">새 버전 사용 가능</string>
+    <string name="calls_task_permanent">영구 적용</string>
+    <string name="drawer_calls_title">AI 전화</string>
+</resources>

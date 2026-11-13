@@ -15,6 +15,8 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,6 +68,8 @@ internal fun CallTaskComposer(
     var kind by remember { mutableIntStateOf(if (existing?.kind == CallTaskTexts.KIND_DIAL) 0 else 1) }
     var target by remember { mutableStateOf(existing?.target.orEmpty()) }
     var window by remember { mutableStateOf(existing?.windowLabel.orEmpty()) }
+    val wasPermanent = existing?.kind == CallTaskTexts.KIND_INCOMING && existing.endMs == null
+    var permanent by remember { mutableStateOf(wasPermanent) }
     var say by remember { mutableStateOf(existing?.say.orEmpty()) }
     var cannot by remember { mutableStateOf(existing?.cannotPromise.orEmpty()) }
     var number by remember { mutableStateOf(existing?.number.orEmpty()) }
@@ -130,7 +134,13 @@ internal fun CallTaskComposer(
                     Text(stringResource(R.string.calls_contacts_pick))
                 }
                 if (kind == 0) TaskField(stringResource(R.string.calls_number), number, { number = it }, "call-task-number")
-                TaskField(stringResource(R.string.calls_task_window), window, { window = it }, "call-task-window")
+                if (kind == 1) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.calls_task_permanent), Modifier.weight(1f))
+                        Switch(checked = permanent, onCheckedChange = { permanent = it }, modifier = Modifier.testTag("call-task-permanent"))
+                    }
+                }
+                if (kind != 1 || !permanent) TaskField(stringResource(R.string.calls_task_window), window, { window = it }, "call-task-window")
                 TaskField(stringResource(R.string.calls_task_say), say, { say = it }, "call-task-say", single = false)
                 TaskField(stringResource(R.string.calls_task_cannot), cannot, { cannot = it }, "call-task-cannot", single = false)
             }
@@ -144,13 +154,16 @@ internal fun CallTaskComposer(
                 onChoose = { simId = it; showSims = false }, onDismiss = { showSims = false })
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        CallPrimaryButton(stringResource(R.string.calls_task_save), !busy && say.isNotBlank(), {
+        CallPrimaryButton(stringResource(R.string.calls_task_save), !busy && say.isNotBlank() &&
+            !(kind == 1 && wasPermanent && !permanent && window.isBlank()), {
             busy = true
             scope.launch {
                 val ok = withContext(Dispatchers.IO) {
                     runCatching {
                         val parsed = parsedFromFields(kindName, target, window, say, cannot, number, existing?.title)
-                        runtime.tasks.save(CallTaskParser.toTask(parsed, id = existing?.id.orEmpty()).copy(
+                        val parsedTask = CallTaskParser.toTask(parsed, id = existing?.id.orEmpty())
+                        val timed = CallTaskParser.applyLifetime(parsedTask, existing, kind == 1 && permanent)
+                        runtime.tasks.save(timed.copy(
                             dialed = existing?.dialed == true,
                             createdAtMs = existing?.createdAtMs ?: 0L,
                         ))

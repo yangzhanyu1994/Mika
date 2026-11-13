@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">مكالمات غير مقروءة</string>
+    <string name="drawer_update_available">يتوفر إصدار جديد</string>
+    <string name="calls_task_permanent">ساري المفعول دائماً</string>
+    <string name="drawer_calls_title">مكالمات هاتفية بالذكاء الاصطناعي</string>
+</resources>

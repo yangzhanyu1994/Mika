@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">有未读消息</string>
+    <string name="drawer_update_available">有新版本可用</string>
+    <string name="calls_task_permanent">永久生效</string>
+    <string name="drawer_calls_title">AI电话助理</string>
+</resources>

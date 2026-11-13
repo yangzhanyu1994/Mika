@@ -16,6 +16,20 @@ class CallTaskTextsTest {
     private val zone = ZoneId.of("Asia/Shanghai")
     private val fridayMorning = ZonedDateTime.of(2026, 11, 13, 9, 0, 0, 0, zone)
 
+    @Test fun convertingAnExistingTaskToPermanentPreservesInstructionAndDoesNotExpire() {
+        val existing = CallAssistantTask("one", CallTaskTexts.KIND_INCOMING, "快递", "快递员", "今天下午",
+            startMs = 100, endMs = 200, say = "放门口")
+        val changed = existing.copy(say = "放西门", startMs = 300, endMs = 400)
+        val permanent = CallTaskParser.applyLifetime(changed, existing, true)
+        assertEquals("one", permanent.id)
+        assertEquals("放西门", permanent.say)
+        assertNull(permanent.startMs)
+        assertNull(permanent.endMs)
+        assertEquals(CallTaskStatus.ACTIVE, permanent.statusAt(Long.MAX_VALUE))
+        val unchanged = CallTaskParser.applyLifetime(changed, existing, false)
+        assertEquals(200L, unchanged.endMs!!)
+    }
+
     @Test fun courierSentenceLooksLikeACallTaskAndWeatherDoesNot() {
         assertTrue(CallTaskTexts.looksLike("我今天上午有个快递，快递员打电话来，就让他放门口鲜奶箱"))
         assertTrue(CallTaskTexts.looksLike("帮我打给餐厅，预约周六晚上的位子"))

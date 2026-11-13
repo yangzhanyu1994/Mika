@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">Chamadas não lidas</string>
+    <string name="drawer_update_available">Nova versão disponível</string>
+    <string name="calls_task_permanent">Manter permanentemente</string>
+    <string name="drawer_calls_title">Chamadas com IA</string>
+</resources>

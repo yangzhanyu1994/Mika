@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_calls_unread">未読の通話</string>
+    <string name="drawer_update_available">新しいバージョンあり</string>
+    <string name="calls_task_permanent">無期限に有効</string>
+    <string name="drawer_calls_title">AI 電話</string>
+</resources>
