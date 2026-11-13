@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="drawer_new_chat">新建对话</string>
+    <string name="drawer_new_chat">新建旁聊</string>
     <string name="settings_group_preferences">使用偏好</string>
     <string name="settings_row_a11y">辅助功能</string>
     <string name="settings_row_overlay">悬浮窗口</string>
     <string name="settings_row_run">执行方式</string>
     <string name="settings_home_title">默认首页</string>
     <string name="settings_home_chat">对话</string>
-    <string name="settings_home_personal">个人助手</string>
+    <string name="settings_home_personal">主要聊天</string>
     <string name="settings_network_diagnostics">网络诊断</string>
     <string name="settings_quit_row">退出应用</string>
     <string name="calls_dial_card">拨号呼叫</string>

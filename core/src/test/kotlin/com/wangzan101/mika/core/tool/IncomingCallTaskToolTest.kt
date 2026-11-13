@@ -10,6 +10,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class IncomingCallTaskToolTest {
+    @Test fun taskEditsRequireAReadBackAndRejectUnknownOperations() = runTest {
+        var mutations = 0
+        val port = object : PhoneCallPort {
+            override suspend fun state() = buildJsonObject { }
+            override suspend fun dial(number: String, simId: String?, task: PhoneCallTask?) = state()
+            override suspend fun answer(callId: String) = state()
+            override suspend fun hangup(callId: String) = state()
+            override suspend fun takeover() = state()
+            override suspend fun manageIncomingTask(operation: String, id: String?, expectedSay: String?, say: String?): JsonObject {
+                mutations++
+                return buildJsonObject { put("ok", true) }
+            }
+        }
+        val d = toolDispatcher(FakeScreen(), phoneCalls = port)
+        d.execute(Part.ToolCall("1", "phone_call_manage_tasks", """{"operation":"delete","id":"one"}"""))
+        d.execute(Part.ToolCall("2", "phone_call_manage_tasks", """{"operation":"clear"}"""))
+        assertEquals(0, mutations)
+        d.execute(Part.ToolCall("3", "phone_call_manage_tasks", """{"operation":"edit","id":"one","expected_say":"放门口","say":"放西门"}"""))
+        assertEquals(1, mutations)
+    }
     @Test fun savesExplicitInstructionsAndRejectsInvalidDuration() = runTest {
         var saved: Triple<String, String, Int>? = null
         val port = object : PhoneCallPort {

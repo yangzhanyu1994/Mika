@@ -54,19 +54,45 @@ class AndroidPhoneCallPort(private val runtime: CallRuntime) : PhoneCallPort {
         }
         return try {
             val now = System.currentTimeMillis()
-            val saved = runtime.tasks.save(com.wangzan101.mika.calls.tasks.CallAssistantTask(
+            val (saved, created) = runtime.tasks.saveIncomingOnce(com.wangzan101.mika.calls.tasks.CallAssistantTask(
                 id = "", kind = com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_INCOMING,
                 title = target.trim().take(64), target = target.trim(), say = say.trim(),
                 startMs = now, endMs = now + minutes * 60_000L,
                 windowLabel = "创建后 $minutes 分钟内",
             ))
             buildJsonObject {
-                put("ok", true); put("message", "已保存来电交代；请确认自动接听已开启且准备就绪")
-                put("target", saved.target); put("say", saved.say); put("expires_at_ms", saved.endMs!!)
-                put("valid_minutes", minutes); put("auto_answer", runtime.settings.state.value.autoAnswer)
+                put("ok", true); put("created", created); put("message", if (created) "已保存来电交代" else "已有相同交代，未重复创建")
+                put("id", saved.id); put("target", saved.target); put("say", saved.say); saved.endMs?.let { put("expires_at_ms", it) }
+                put("auto_answer", runtime.settings.state.value.autoAnswer)
             }
         } catch (_: Exception) {
             buildJsonObject { put("ok", false); put("message", "来电交代保存失败，请到通话中心检查") }
         }
+    }
+
+    override suspend fun manageIncomingTask(operation: String, id: String?, expectedSay: String?, say: String?): JsonObject = try {
+        when (operation) {
+            "list" -> buildJsonObject {
+                put("ok", true)
+                putJsonArray("tasks") {
+                    runtime.tasks.snapshot().filter { it.kind == com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_INCOMING }.forEach { task ->
+                        add(buildJsonObject {
+                            put("id", task.id); put("target", task.target); put("say", task.say)
+                            put("status", task.statusAt(System.currentTimeMillis()).name.lowercase())
+                            task.endMs?.let { put("expires_at_ms", it) }
+                            if (task.windowLabel.isNotBlank()) put("window", task.windowLabel)
+                        })
+                    }
+                }
+            }
+            "edit", "delete" -> {
+                val changed = id != null && expectedSay != null && (operation != "edit" || !say.isNullOrBlank()) &&
+                    runtime.tasks.editIncoming(id, expectedSay, if (operation == "delete") null else say)
+                buildJsonObject { put("ok", changed); put("message", if (changed) "任务已更新" else "任务不存在或内容已变化，请重新查看") }
+            }
+            else -> buildJsonObject { put("ok", false); put("message", "操作无效") }
+        }
+    } catch (_: Exception) {
+        buildJsonObject { put("ok", false); put("message", "无法读取或保存通话任务") }
     }
 }

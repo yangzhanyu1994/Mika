@@ -124,4 +124,32 @@ class CallTaskTextsTest {
         reopened.remove("task1")
         assertTrue(reopened.items.value.isEmpty())
     }
+
+    @Test fun retryReusesExactActiveTaskAndStaleEditDoesNotChangeIt() {
+        val memory = object : CallTaskBackend {
+            var raw: String? = null
+            override fun read() = raw
+            override fun write(value: String) = true.also { raw = value }
+        }
+        var nextId = 0
+        val store = CallTaskStore(memory, now = { 100L }, newId = { "task${++nextId}" })
+        val parcel = CallAssistantTask("", CallTaskTexts.KIND_INCOMING, "快递", "快递员", say = "放门口", endMs = 1000L)
+        val first = store.saveIncomingOnce(parcel)
+        val retry = store.saveIncomingOnce(parcel.copy(endMs = 2000L))
+        assertTrue(first.second)
+        assertFalse(retry.second)
+        assertEquals(first.first.id, retry.first.id)
+        assertEquals(1000L, retry.first.endMs!!)
+        val food = store.saveIncomingOnce(parcel.copy(title = "外卖", target = "外卖员", say = "放前台"))
+        assertTrue(food.second)
+        assertEquals(2, store.snapshot().size)
+        assertFalse(store.editIncoming(first.first.id, "过期内容", null))
+        assertEquals(2, store.snapshot().size)
+        assertTrue(store.editIncoming(first.first.id, "放门口", "放西门"))
+        assertEquals("放西门", store.snapshot().first().say)
+        assertTrue(store.editIncoming(food.first.id, "放前台", null))
+        assertEquals(1, store.snapshot().size)
+        assertTrue(CallTaskTexts.isManagementRequest("把外卖电话交代改成放前台"))
+        assertFalse(CallTaskTexts.isManagementRequest("外卖员来电时让他放前台"))
+    }
 }

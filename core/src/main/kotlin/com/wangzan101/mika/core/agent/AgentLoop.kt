@@ -1022,7 +1022,7 @@ class AgentLoop(
             } catch (e: ModelError.DailyBudgetExceeded) {
                 return StopRules.modelFailed(e)
             } catch (e: Exception) {
-                return StopRules.closeoutFailed(closeout, maxSteps)
+                return StopRules.closeoutFailed(closeout, maxSteps, history)
             }
             val text = CompletionPlanBlock.extract(reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()).text
             history += Message(Role.Assistant, cleanReplyParts(reply.parts, text), Author.Mika)
@@ -1039,7 +1039,7 @@ class AgentLoop(
             // 收尾模型也可能正在生成时收到插话。最多重答两次，其余交给下一任务。
             if (attempt < 2 && keepFinished(history, inbox)) return@repeat
             if (call == null) {
-                if (calls.isNotEmpty() || text.isEmpty() || reply.stopReason == StopReason.MaxTokens) return StopRules.closeoutFailed(closeout, maxSteps)
+                if (calls.isNotEmpty() || text.isEmpty() || reply.stopReason == StopReason.MaxTokens) return StopRules.closeoutFailed(closeout, maxSteps, history)
                 return conclude(task, text, step, facts, history = null)!!
             }
             val started = now()
@@ -1048,7 +1048,7 @@ class AgentLoop(
             recorder.result(step, call.name, tools.verb(call.name), exec.content, exec.record, null, null, now() - started, "model", call.id)
             return StopRules.afterFinalTurn(exec.outcome, maxSteps)
         }
-        return StopRules.closeoutFailed(closeout, maxSteps)
+        return StopRules.closeoutFailed(closeout, maxSteps, history)
     }
 
     companion object {

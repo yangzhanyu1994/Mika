@@ -13,6 +13,8 @@ interface PhoneCallPort {
     /** Save instructions for a future incoming call; does not change answering settings. */
     suspend fun saveIncomingTask(target: String, say: String, minutes: Int): JsonObject =
         JsonObject(mapOf("ok" to kotlinx.serialization.json.JsonPrimitive(false), "message" to kotlinx.serialization.json.JsonPrimitive("Incoming call tasks unavailable")))
+    suspend fun manageIncomingTask(operation: String, id: String?, expectedSay: String?, say: String?): JsonObject =
+        JsonObject(mapOf("ok" to kotlinx.serialization.json.JsonPrimitive(false)))
 }
 
 internal const val CALL_ID_FIELD = "call_id"
