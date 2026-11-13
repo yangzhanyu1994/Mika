@@ -1,0 +1,30 @@
+name: Evaluate selected upstream changes
+on:
+  push:
+    branches: ["test/selected-upstream-0159"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        change: [file-filter, proactive]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Inspect cherry-pick conflicts
+        env:
+          CHANGE: ${{ matrix.change }}
+        run: |
+          git config user.name "Integration Check"
+          git config user.email "integration-check@example.invalid"
+          git remote add upstream https://github.com/wangzan101/Mika.git
+          git fetch --no-tags upstream 399b4b00de3874e10ff08188becbd245b89884bb
+          if [ "$CHANGE" = file-filter ]; then commit=59c8c5aa3e1732defe79412995c3bbd8aabfe271; else commit=2153a4253e833e60808893dc73d6a73f5de607bb; fi
+          git cherry-pick --no-commit "$commit" || true
+          echo '--- CONFLICT LIST ---'
+          git diff --name-only --diff-filter=U
+          echo '--- END CONFLICT LIST ---'
+          git status --short | tail -5
