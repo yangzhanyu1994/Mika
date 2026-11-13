@@ -55,6 +55,7 @@ class CallTaskStore internal constructor(
         )
         validate(row)
         val before = mutable.value
+        check(before.none { it.id == row.id && it.dialScheduleState == "dispatching" }) { "拨号正在执行，请稍后再编辑" }
         val next = if (before.any { it.id == row.id }) before.map { if (it.id == row.id) row else it } else before + row
         require(next.size <= MAX_TASKS) { "最多保存 $MAX_TASKS 条通话任务" }
         persist(next)
@@ -63,6 +64,7 @@ class CallTaskStore internal constructor(
 
     @Synchronized fun remove(id: String) {
         check(load()) { "通话任务未读入" }
+        check(mutable.value.none { it.id == id && it.dialScheduleState == "dispatching" }) { "拨号正在执行，不能删除" }
         persist(mutable.value.filterNot { it.id == id })
     }
 
@@ -97,6 +99,35 @@ class CallTaskStore internal constructor(
         persist(mutable.value.map { if (it.id == id) row.copy(dialed = true) else it })
     }
 
+    /** Atomically claim one exact occurrence before touching Telecom. Duplicate alarms cannot dial twice. */
+    @Synchronized fun claimScheduled(id: String, dueAtMs: Long): CallAssistantTask? {
+        check(load()) { "通话任务无法读取" }
+        val row = mutable.value.firstOrNull { it.id == id && it.kind == CallTaskTexts.KIND_DIAL &&
+            it.dialScheduleState == "scheduled" && it.dialAtMs == dueAtMs && !it.dialed && now() >= dueAtMs } ?: return null
+        val claimed = row.copy(dialScheduleState = "dispatching", dialScheduleMessage = "", dialClaimedAtMs = now())
+        persist(mutable.value.map { if (it.id == id) claimed else it })
+        return claimed
+    }
+
+    /** A claim is never retried automatically, even if the process died while Telecom was responding. */
+    @Synchronized fun finishScheduled(id: String, dueAtMs: Long, submitted: Boolean, message: String) {
+        check(load()) { "通话任务无法读取" }
+        val row = mutable.value.firstOrNull { it.id == id && it.dialScheduleState == "dispatching" && it.dialAtMs == dueAtMs } ?: return
+        val next = row.copy(dialed = submitted, dialScheduleState = if (submitted) "submitted" else "failed", dialScheduleMessage = message.take(400))
+        persist(mutable.value.map { if (it.id == id) next else it })
+    }
+
+    /** A stale in-flight claim is uncertain; never issue another call automatically. */
+    @Synchronized fun recoverStaleScheduled(): Int {
+        check(load()) { "通话任务无法读取" }
+        val cutoff = now() - 5 * 60_000L
+        val stale = mutable.value.filter { it.dialScheduleState == "dispatching" && (it.dialClaimedAtMs ?: 0L) <= cutoff }
+        if (stale.isEmpty()) return 0
+        val ids = stale.map { it.id }.toSet()
+        persist(mutable.value.map { if (it.id in ids) it.copy(dialScheduleState = "failed", dialScheduleMessage = "拨号状态未确认，请先查看通话记录；不会自动重拨") else it })
+        return stale.size
+    }
+
     @Synchronized fun incomingPrompt(atMs: Long, caller: String?): String {
         check(load()) { "通话任务无法读取" }
         return CallTaskTexts.renderIncoming(mutable.value, atMs, caller)
@@ -115,6 +146,12 @@ class CallTaskStore internal constructor(
         require(row.kind == CallTaskTexts.KIND_DIAL || row.kind == CallTaskTexts.KIND_INCOMING) { "任务类型无效" }
         require(row.title.length in 1..64) { "标题需为 1–64 字" }
         require(row.target.length <= 80) { "对象过长" }
+        require(row.dialScheduleState in setOf("none", "scheduled", "dispatching", "submitted", "failed"))
+        if (row.dialScheduleState == "scheduled" || row.dialScheduleState == "dispatching") {
+            require(row.kind == CallTaskTexts.KIND_DIAL && row.dialAtMs != null && row.dialAtMs > 0)
+            require(CallPolicy.outgoingNumber(row.number) != null && !row.dialSimId.isNullOrBlank())
+        }
+        require(row.dialScheduleMessage.length <= 400 && (row.dialSimId?.length ?: 0) <= 200)
         require(row.windowLabel.length <= 80) { "生效时间过长" }
         require(row.say.length in 1..800) { "AI 要说需为 1–800 字" }
         require(row.cannotPromise.length <= 400) { "不能承诺过长" }

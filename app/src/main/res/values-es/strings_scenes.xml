@@ -54,4 +54,18 @@
     <string name="env_enter">Enter area</string>
     <string name="env_exit">Leave area</string>
     <string name="env_permission_note">Wi-Fi names and location scenes require precise location; background triggers require allowing location all the time in system settings.</string>
+    <string name="calls_scheduled_channel">Scheduled calls</string>
+    <string name="calls_scheduled_preparing">Preparing scheduled call</string>
+    <string name="calls_scheduled_submitted">Scheduled call initiated</string>
+    <string name="calls_scheduled_failed">Scheduled call not completed</string>
+    <string name="calls_scheduled_time">Call time</string>
+    <string name="calls_scheduled_choose">Choose date and time</string>
+    <string name="calls_scheduled_invalid">Choose a future call time and allow exact alarms.</string>
+    <string name="calls_incoming_start">Start time</string>
+    <string name="calls_incoming_end">End time</string>
+    <string name="calls_incoming_invalid">Choose a valid interval with the end after the start.</string>
+    <string name="calls_schedule_pending">Scheduled</string>
+    <string name="calls_schedule_dispatching">Dialing</string>
+    <string name="calls_schedule_submitted">Initiated</string>
+    <string name="calls_schedule_failed">Not completed</string>
 </resources>

@@ -21,6 +21,12 @@ data class CallAssistantTask(
     val number: String = "",
     val dialed: Boolean = false,
     val createdAtMs: Long = 0L,
+    val dialAtMs: Long? = null,
+    val dialSimId: String? = null,
+    /** scheduled, dispatching, submitted, failed or none. Dispatching after restart is uncertain. */
+    val dialScheduleState: String = "none",
+    val dialScheduleMessage: String = "",
+    val dialClaimedAtMs: Long? = null,
 ) {
     fun statusAt(now: Long): CallTaskStatus = when (kind) {
         KIND_DIAL -> if (dialed) CallTaskStatus.DONE else CallTaskStatus.PENDING

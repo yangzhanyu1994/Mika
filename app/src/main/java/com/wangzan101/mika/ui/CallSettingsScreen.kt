@@ -592,7 +592,13 @@ private fun CallCenterPage(
         }
         tasks.forEachIndexed { index, task ->
             val status = task.statusAt(System.currentTimeMillis())
-            val statusText = stringResource(when (status) {
+            val statusText = stringResource(if (task.kind == CallTaskTexts.KIND_DIAL) when (task.dialScheduleState) {
+                "scheduled" -> R.string.calls_schedule_pending
+                "dispatching" -> R.string.calls_schedule_dispatching
+                "submitted" -> R.string.calls_schedule_submitted
+                "failed" -> R.string.calls_schedule_failed
+                else -> if (task.dialed) R.string.calls_task_status_done else R.string.calls_task_status_pending
+            } else when (status) {
                 CallTaskStatus.ACTIVE -> R.string.calls_task_status_active
                 CallTaskStatus.PENDING -> R.string.calls_task_status_pending
                 CallTaskStatus.DONE -> R.string.calls_task_status_done
@@ -606,6 +612,7 @@ private fun CallCenterPage(
             ListRow(
                 if (task.kind == CallTaskTexts.KIND_DIAL) MikaIcons.Phone else MikaIcons.Doc,
                 task.title, line, first = index == 0 && tasks.isNotEmpty(),
+                detail = task.dialScheduleMessage.takeIf { it.isNotBlank() },
                 onClick = { onEditTask(task.id) },
             ) {
                 Text(statusText, style = MaterialTheme.typography.labelMedium,

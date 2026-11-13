@@ -66,6 +66,10 @@ class EnvironmentSceneMonitor : Service() {
         super.onCreate()
         val channel = NotificationChannel(CHANNEL, getString(R.string.scene_monitor_channel), NotificationManager.IMPORTANCE_LOW)
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        promote()
+    }
+
+    private fun promote() {
         val note = Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.env_monitor_title)).setContentText(getString(R.string.env_monitor_body))
             .setOngoing(true).setContentIntent(TaskService.openApp(this)).build()
@@ -81,7 +85,10 @@ class EnvironmentSceneMonitor : Service() {
         if (!store.load() || FeatureFlags.get(this).quitRequested() || store.rules.value.none { it.enabled }) {
             stopSelf(); return START_NOT_STICKY
         }
+        val promoted = runCatching { promote() }.isSuccess
+        if (!promoted) { stopSelf(); return START_NOT_STICKY }
         stopObservers()
+        backgroundAtStart.value = backgroundGranted(this)
         val rules = store.rules.value.filter { it.enabled }
         if (rules.any { it.type == "wifi" } && fineGranted(this)) startWifi()
         if (rules.any { it.type == "location" } && fineGranted(this) && backgroundGranted(this)) startLocation()
@@ -168,6 +175,8 @@ class EnvironmentSceneMonitor : Service() {
         private const val CHANNEL = "mika_environment_scenes"
         private const val ID = 81843
         private val active = MutableStateFlow(false)
+        private val backgroundAtStart = MutableStateFlow(false)
+        val registeredBackground = backgroundAtStart.asStateFlow()
         val monitoring = active.asStateFlow()
         fun fineGranted(c: Context) = c.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         fun backgroundGranted(c: Context) = Build.VERSION.SDK_INT < 29 || c.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED

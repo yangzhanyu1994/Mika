@@ -7,8 +7,8 @@ import java.time.format.DateTimeParseException
 
 /** Resolve an explicit local date and time. Ambiguous or past times are not silently scheduled. */
 internal object DialScheduleTime {
-    private val clock = Regex("""(上午|下午|晚上|中午|凌晨)?\\s*(\\d{1,2})\\s*(?::|点|时)\\s*(\\d{1,2})?\\s*分?""")
-    private val date = Regex("""(\\d{4})[-/年](\\d{1,2})[-/月](\\d{1,2})日?""")
+    private val clock = Regex("""(上午|下午|晚上|中午|凌晨)?\s*(\d{1,2})\s*(?::|点|时)\s*(\d{1,2})?\s*分?""")
+    private val date = Regex("""(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})日?""")
     fun resolve(text: String, now: ZonedDateTime): ZonedDateTime? {
         val input = text.trim()
         val match = clock.find(input) ?: return null

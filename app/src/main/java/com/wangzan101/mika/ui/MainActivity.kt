@@ -229,6 +229,9 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // 用户先前点了「完全退出」:打开 Mika 就回来,胶囊和退出时略过的启动工作在这里补上
         com.wangzan101.mika.quit.MikaQuit.resume(this)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { com.wangzan101.mika.calls.tasks.ScheduledDial.rearm(this@MainActivity.applicationContext) }
+        }
         monitor.start()
         lifecycleScope.launch {
             val scenes = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this@MainActivity)
@@ -264,6 +267,13 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         monitor.refresh()
+        val env = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this)
+        if (env.load() && env.rules.value.any { it.enabled } &&
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.fineGranted(this) &&
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.registeredBackground.value !=
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.backgroundGranted(this)) {
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.start(this)
+        }
     }
 
     override fun onStop() {

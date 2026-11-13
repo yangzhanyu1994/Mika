@@ -54,4 +54,18 @@
     <string name="env_enter">进入范围</string>
     <string name="env_exit">离开范围</string>
     <string name="env_permission_note">Wi-Fi 名称和位置场景需要精确定位权限；后台触发还需在系统设置中允许始终使用位置。</string>
+    <string name="calls_scheduled_channel">预约拨号</string>
+    <string name="calls_scheduled_preparing">正在准备预约拨号</string>
+    <string name="calls_scheduled_submitted">预约拨号已发起</string>
+    <string name="calls_scheduled_failed">预约拨号未完成</string>
+    <string name="calls_scheduled_time">拨打时间</string>
+    <string name="calls_scheduled_choose">选择日期和时间</string>
+    <string name="calls_scheduled_invalid">请选择未来的拨打时间，并允许精确闹钟。</string>
+    <string name="calls_incoming_start">生效开始</string>
+    <string name="calls_incoming_end">生效结束</string>
+    <string name="calls_incoming_invalid">请选择有效的生效时间，结束时间须晚于开始时间。</string>
+    <string name="calls_schedule_pending">已预约</string>
+    <string name="calls_schedule_dispatching">正在拨打</string>
+    <string name="calls_schedule_submitted">已发起</string>
+    <string name="calls_schedule_failed">未完成</string>
 </resources>
