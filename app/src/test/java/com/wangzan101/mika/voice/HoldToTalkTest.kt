@@ -8,6 +8,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HoldToTalkTest {
+    @Test fun autoSendAfterReleaseAndCancellationRemainDistinct() {
+        val session = pressed()
+        now = 2_000
+        hold.release(autoSend = true)
+        assertEquals(1, session.released)
+        hold.onEvent(SpeechEvent.Final("你好"))
+        assertEquals(HoldToTalk.State.Done("你好", send = true), hold.state.value)
+        val next = pressed()
+        now += 2_000
+        hold.armCancel(true)
+        hold.release(autoSend = true)
+        assertEquals(1, next.cancelled)
+        assertEquals(HoldToTalk.State.Idle, hold.state.value)
+    }
+
+    @Test fun autoSendAlsoWorksWhenRecognitionFinishesBeforeRelease() {
+        pressed()
+        now = 2_000
+        hold.onEvent(SpeechEvent.Final("你好"))
+        hold.release(autoSend = true)
+        assertEquals(HoldToTalk.State.Done("你好", send = true), hold.state.value)
+    }
     /** 假会话:只记松开、取消各被调了几次;事件由测试直接喂给 [HoldToTalk.onEvent]。 */
     private class FakeSession(override val live: Boolean = true, override val unlimited: Boolean = false) : SpeechSession {
         override val events: Flow<SpeechEvent> = emptyFlow()

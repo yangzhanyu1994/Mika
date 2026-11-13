@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -190,8 +191,8 @@ fun PersonalAgentScreen(
     val phonePreview = remember(runtime, activeIds) { runtime.phonePreview(activeIds) }
     val zone = remember { ZoneId.systemDefault() }
     val dayFormat = remember { DateTimeFormatter.ofPattern("M 月 d 日") }
-    fun send() {
-        val text = draft.trim()
+    fun send(value: String = draft) {
+        val text = value.trim()
         if (text.isEmpty()) return
         draft = ""
         keyboard?.hide()
@@ -244,7 +245,7 @@ fun PersonalAgentScreen(
                     }
                     val task = message.taskId?.let { id -> state.tasks.find { it.id == id } }
                     val user = message.role == "user"
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
+                    Column(Modifier.fillMaxWidth().animateItem(fadeInSpec = if (reduceMotion) null else tween(180), placementSpec = null, fadeOutSpec = null), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
                         if (date != priorDate) {
                             Text(dayFormat.format(date), Modifier.align(Alignment.CenterHorizontally).padding(vertical = 8.dp),
                                 color = c.ink3, fontSize = 11.sp)
@@ -279,11 +280,13 @@ fun PersonalAgentScreen(
             onText = { draft = it },
             mode = ComposerMode.Idle,
             hasHistory = messages.isNotEmpty(),
-            onSend = ::send,
+            onSend = { send() },
             onStop = {},
             reduceMotion = reduceMotion,
             voice = voice,
             onVoiceText = { draft = HoldToTalk.join(draft, it) },
+            onVoiceSend = { send(HoldToTalk.join(draft, it)) },
+            voiceAutoSend = true,
             onPickSpeech = onPickSpeech,
             onVoiceHolding = { voiceHolding = it },
             sendFromIme = true,

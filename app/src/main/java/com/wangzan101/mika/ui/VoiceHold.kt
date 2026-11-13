@@ -295,6 +295,7 @@ internal class VoiceHold(private val voice: VoiceSource, private val scope: Coro
     internal var cardAt = Rect.Zero
     /** 调用方能直接发出时才有「松开 发送」;不能时手指在卡片里也只是填进输入框。 */
     internal var canSend = false
+    internal var autoSendOnRelease = false
 
     /**
      * 长按到时:先看能不能用、有没有权限,都行才开始听。
@@ -330,7 +331,7 @@ internal class VoiceHold(private val voice: VoiceSource, private val scope: Coro
     fun end() {
         if (!holding) return
         holding = false
-        hold.release()
+        hold.release(autoSend = autoSendOnRelease && canSend)
     }
 
     /** 手势被打断、离开页面、转屏、App 到后台:这一段不要了。 */
@@ -349,7 +350,7 @@ private val IdleState = MutableStateFlow<HoldToTalk.State>(HoldToTalk.State.Idle
  * 说完的字交给 [onText];松开在「松开 发送」上时交给 [onSend],直接发出。没有 [onSend] 时没有「松开 发送」。
  */
 @Composable
-internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit, onSend: ((String) -> Unit)? = null): VoiceHold? {
+internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit, onSend: ((String) -> Unit)? = null, autoSendOnRelease: Boolean = false): VoiceHold? {
     val off = remember(voice) {
         val spec = voice?.spec()
         voice == null || (spec is SpeechEngineSpec.Unavailable && spec.why == SpeechEngineSpec.Why.Off)
@@ -363,6 +364,7 @@ internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit, on
     }
     vh.haptic = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     vh.canSend = onSend != null
+    vh.autoSendOnRelease = autoSendOnRelease
     vh.ensureMic = {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) true
         else {
@@ -482,7 +484,7 @@ internal fun VoiceBarCover(vh: VoiceHold, state: HoldToTalk.State, reduceMotion:
     val c = MikaTheme.colors
     val label = when {
         s.cancelArmed -> stringResource(R.string.voice_release_cancel)
-        s.sendArmed -> stringResource(R.string.voice_release_send)
+        s.sendArmed || vh.autoSendOnRelease -> stringResource(R.string.voice_release_send)
         s.live -> stringResource(R.string.voice_release_fill)
         else -> stringResource(R.string.voice_release_convert)
     }
@@ -544,7 +546,7 @@ internal fun VoiceFloat(vh: VoiceHold, state: HoldToTalk.State, title: String, b
                     fadeIn(tween(200)) + slideInVertically(tween(200)) { it / 12 } + scaleIn(tween(200), initialScale = 0.98f),
                 exit = fadeOut(tween(if (reduceMotion) 0 else 150)),
             ) {
-                last[0]?.let { ListenCard(it, title, vh.engine, backdrop) { at -> vh.cardAt = at } }
+                last[0]?.let { ListenCard(it, title, vh.engine, backdrop, vh.autoSendOnRelease) { at -> vh.cardAt = at } }
             }
             val toast = vh.toast
             if (toast != null && listening == null) VoiceToast(toast)
@@ -576,7 +578,7 @@ private fun CancelHint(armed: Boolean, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun ListenCard(
-    s: HoldToTalk.State.Listening, title: String, engine: String, backdrop: GlassBackdrop?, onPlaced: (Rect) -> Unit,
+    s: HoldToTalk.State.Listening, title: String, engine: String, backdrop: GlassBackdrop?, autoSend: Boolean, onPlaced: (Rect) -> Unit,
 ) {
     val c = MikaTheme.colors
     val shape = RoundedCornerShape(22.dp)
@@ -611,7 +613,7 @@ private fun ListenCard(
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Text(
-                    stringResource(if (s.live) R.string.voice_foot_live else R.string.voice_foot_convert),
+                    stringResource(if (autoSend) R.string.voice_release_send else if (s.live) R.string.voice_foot_live else R.string.voice_foot_convert),
                     Modifier.weight(1f), style = FootText, color = c.ink3, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 if (!s.unlimited) VoiceCopy.countdown(s.elapsedMs)?.let { Text(it, style = FootText, color = c.warn) }

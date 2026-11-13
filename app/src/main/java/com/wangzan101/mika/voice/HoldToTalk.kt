@@ -81,7 +81,7 @@ class HoldToTalk(private val clock: () -> Long, private val maxMs: Long = 60_000
         if (cancel != s.cancelArmed || sending != s.sendArmed) _state.value = s.copy(cancelArmed = cancel, sendArmed = sending)
     }
 
-    fun release() {
+    fun release(autoSend: Boolean = false) {
         val s = _state.value as? State.Listening ?: return
         if (released) return
         val early = pending
@@ -104,11 +104,11 @@ class HoldToTalk(private val clock: () -> Long, private val maxMs: Long = 60_000
             // 会话在手还按着时已经结束:现在才把留着的结果交出去
             early != null -> {
                 pending = null
-                _state.value = if (early is State.Done) early.copy(send = s.sendArmed) else early
+                _state.value = if (early is State.Done) early.copy(send = s.sendArmed || autoSend) else early
             }
             current != null -> {
                 released = true
-                sendOnFinal = s.sendArmed
+                sendOnFinal = s.sendArmed || autoSend
                 current.release()
                 // 服务商的:录音器停下要一小会儿,Converting 事件才到;松开当下就显示在转,免得输入框先闪回占位
                 if (!s.live) _state.value = State.Converting
