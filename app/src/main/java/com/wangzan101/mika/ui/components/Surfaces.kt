@@ -1,7 +1,6 @@
 package com.wangzan101.mika.ui.components
 
 import android.os.Build
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +42,6 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.ui.theme.MikaColors
 import com.wangzan101.mika.ui.theme.MikaShapes
@@ -61,7 +58,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import com.wangzan101.mika.R
 
 /**
  * 页面底:干净的近白(深色下近黑),不加渐变。
@@ -74,9 +70,7 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
         modifier.fillMaxSize().background(MikaTheme.colors.bg).then(
-            if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(
-                Brush.verticalGradient(listOf(Color(0xFFDCEAFF), Color(0xFFF8F8FC), Color(0xFFE3EDFF)))
-            )
+            if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(Color(0xFFE9ECF5))
         ).then(
             if (backdrop == null) Modifier else Modifier
                 .onGloballyPositioned { backdrop.pageOrigin = it.positionInRoot(); backdrop.pageSize = it.size }
@@ -84,11 +78,7 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
         ),
     ) {
         if (backdrop == null && !MikaTheme.colors.isDark) {
-            Box(Modifier.matchParentSize().glassSource(glassBackground)) {
-                Image(painterResource(R.drawable.mika_glass_background), contentDescription = null,
-                    modifier = Modifier.matchParentSize().liquidBackgroundMotion(reduceMotion), contentScale = ContentScale.Crop)
-                Box(Modifier.matchParentSize().ambientGlow(ambient, reduceMotion))
-            }
+            Box(Modifier.matchParentSize().glassSource(glassBackground).background(Color(0xFFE9ECF5)))
         }
         CompositionLocalProvider(LocalSkinBackdrop provides backdrop, LocalGlassBackground provides glassBackground) { content() }
     }
