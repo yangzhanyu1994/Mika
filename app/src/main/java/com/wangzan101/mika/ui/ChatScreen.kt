@@ -758,7 +758,7 @@ private fun LazyListScope.exchange(
     recover: (Boolean) -> Unit = {},
 ) {
     if (ex.goal.isNotEmpty()) item("u$index") {
-        Box(Modifier.animateItem(fadeInSpec = if (reduceMotion) null else tween(180), placementSpec = null, fadeOutSpec = null)) {
+        MessageRise(reduceMotion) {
             JumpHighlight(highlightKey == "u$index", reduceMotion) { UserBubble(ex.goal, conversationId, key = "u$index") }
         }
     }
@@ -778,7 +778,7 @@ private fun LazyListScope.exchange(
     fun steer(n: SteerNote) {
         n.finished?.takeIf(String::isNotBlank)?.let { done ->
             item("a$index-${n.id}") {
-                JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) { FinishedReply(done, "a$index-${n.id}") }
+                MessageRise(reduceMotion) { JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) { FinishedReply(done, "a$index-${n.id}") } }
             }
         }
         n.interrupted?.takeIf(String::isNotBlank)?.let { cut ->
@@ -794,7 +794,7 @@ private fun LazyListScope.exchange(
     }
     val (joined, waiting) = steersAroundDraft(ex.steers)
     joined.forEach(::steer)
-    ex.draft?.takeIf(String::isNotBlank)?.let { draft -> item("d$index") { DraftText(draft, ex.waitingForModel) } }
+    ex.draft?.takeIf(String::isNotBlank)?.let { draft -> item("d$index") { MessageRise(reduceMotion) { DraftText(draft, ex.waitingForModel) } } }
     waiting.forEach(::steer)
     item("r$index") {
         JumpHighlight(highlightKey == "r$index", reduceMotion) {
@@ -956,7 +956,7 @@ private fun WorkBlock(ex: Exchange, reduceMotion: Boolean, backgroundNote: Boole
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Spinner(
+            if (ex.waitingForModel && !paused) ThinkingDots(reduceMotion) else Spinner(
                 Modifier.size(16.dp), spinning = !paused && !reduceMotion,
                 track = if (paused) c.warnSoft else c.accentSoft, head = if (paused) c.warnSolid else c.accent,
             )

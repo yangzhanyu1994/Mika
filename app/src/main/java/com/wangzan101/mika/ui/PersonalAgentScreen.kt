@@ -161,6 +161,7 @@ fun PersonalAgentScreen(
     onPickSpeech: () -> Unit,
 ) {
     val state by runtime.state.collectAsState()
+    val thinking by runtime.agent.busy.collectAsState()
     val actionError by runtime.error.collectAsState()
     val c = MikaTheme.colors
     val reduceMotion = MikaTheme.reduceMotion
@@ -207,10 +208,10 @@ fun PersonalAgentScreen(
             if (scrolling) followLatest = (layout.visibleItemsInfo.lastOrNull()?.index ?: 0) >= layout.totalItemsCount - 3
         }
     }
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages.size, thinking) {
         val countChanged = previousMessageCount != messages.size
         previousMessageCount = messages.size
-        if (countChanged && followLatest) list.scrollToItem(messages.size)
+        if ((countChanged || thinking) && followLatest) list.scrollToItem(messages.size + if (thinking) 1 else 0)
     }
     LaunchedEffect(composerHeight) {
         val growth = composerHeight - previousComposerHeight
@@ -245,7 +246,7 @@ fun PersonalAgentScreen(
                     }
                     val task = message.taskId?.let { id -> state.tasks.find { it.id == id } }
                     val user = message.role == "user"
-                    Column(Modifier.fillMaxWidth().animateItem(fadeInSpec = if (reduceMotion) null else tween(180), placementSpec = null, fadeOutSpec = null), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
+                    MessageRise(reduceMotion) { Column(Modifier.fillMaxWidth(), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
                         if (date != priorDate) {
                             Text(dayFormat.format(date), Modifier.align(Alignment.CenterHorizontally).padding(vertical = 8.dp),
                                 color = c.ink3, fontSize = 11.sp)
@@ -266,6 +267,12 @@ fun PersonalAgentScreen(
                         }
                         if (!message.handled) Text("已收到", Modifier.padding(top = 4.dp, end = 5.dp), fontSize = 10.sp, color = c.ink3)
                         if (task != null) TextButton(onClick = { selectedTask = task.id }) { Text("查看任务", fontSize = 12.sp) }
+                    } }
+                }
+                if (thinking) item("thinking") {
+                    Row(Modifier.padding(start = 14.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ThinkingDots(reduceMotion)
+                        Text(stringResource(R.string.capsule_thinking), style = MikaType.Caption, color = c.ink2)
                     }
                 }
                 item("bottom") { Spacer(Modifier.height(4.dp)) }
