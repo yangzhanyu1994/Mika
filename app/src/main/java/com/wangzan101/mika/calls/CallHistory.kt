@@ -64,7 +64,7 @@ data class CallRecord(
 internal fun callStopCategory(reason: String): String = when {
     reason.contains("时长上限") -> "duration_limit"
     reason.contains("音频积压") || reason.contains("音频拥塞") -> "audio_backpressure"
-    reason.contains("音频无法及时停止") -> "interrupt_flush"
+    reason.contains("音频无法及时停止") || reason.startsWith("打断时") || reason.startsWith("打断后") -> "interrupt_flush"
     reason.contains("运营商音频输入") -> "capture_stalled"
     reason.contains("静音") -> "microphone_or_mute"
     reason.contains("火山") || reason.contains("语音连接") -> "voice_service"

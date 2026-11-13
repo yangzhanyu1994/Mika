@@ -87,6 +87,11 @@ internal fun shellAudioStopDiagnostic(reason: String?): String? = when (val code
         code == null -> null
         code.startsWith("Downlink read failed (") -> "设备无法读取运营商下行音频，电话由系统处理"
         code.startsWith("Uplink write failed (") -> "设备无法写入运营商上行音频，电话由系统处理"
+        code.startsWith("Uplink flush failed: stage=drain") -> "打断时无法清空待播音频，电话由系统处理"
+        code.startsWith("Uplink flush failed: stage=pause") -> "打断时无法暂停电话音频，电话由系统处理"
+        code.startsWith("Uplink flush failed: stage=flush") -> "打断时无法清空设备音频，电话由系统处理"
+        code.startsWith("Uplink flush failed: stage=play") -> "打断后无法恢复电话音频，电话由系统处理"
+        code.startsWith("Uplink flush failed: stage=prime") -> "打断后电话音频无法就绪，电话由系统处理"
         code.startsWith("Uplink flush failed:") -> "设备无法清空运营商上行音频，电话由系统处理"
         code.startsWith("Uplink did not route to the telephony device (") ||
             code.startsWith("Uplink unexpectedly routed to device type ") -> "设备上行未路由至运营商通话，电话由系统处理"

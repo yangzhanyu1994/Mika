@@ -6,6 +6,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShellCallAudioTest {
+    @Test fun primingRetriesTemporaryZeroButStopsOnErrorsAndTimeout() {
+        var attempts = 0
+        var sleeps = 0
+        assertEquals(480, ShellCallAudio.retryPrimeSilence({ if (++attempts < 4) 0 else 480 }, { sleeps++ }))
+        assertEquals(4, attempts)
+        assertEquals(3, sleeps)
+        attempts = 0
+        assertEquals(-3, ShellCallAudio.retryPrimeSilence({ attempts++; -3 }, { error("must not retry errors") }))
+        assertEquals(1, attempts)
+        attempts = 0
+        sleeps = 0
+        assertEquals(0, ShellCallAudio.retryPrimeSilence({ attempts++; 0 }, { sleeps++ }))
+        assertEquals(21, attempts)
+        assertEquals(20, sleeps)
+    }
     @Test
     fun explicitlySelectedBackendNeverFallsBackToAnotherRoute() {
         assertTrue(ShellCallAudio.candidates(ShellCallAudio.DIRECT, false, true).isEmpty())
