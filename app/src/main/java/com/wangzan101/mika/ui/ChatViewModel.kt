@@ -2249,6 +2249,7 @@ class ToolLabels(private val tools: ToolIndex, private val legacy: LegacyNames =
             "多点手势" to R.string.tool_gesture,
             "系统命令" to R.string.tool_shell,
             "root 命令" to R.string.tool_root,
+            "保存任务" to R.string.calls_task_save,
             "通话状态" to R.string.calls_tool_state,
             "拨打电话" to R.string.calls_tool_dial,
             "AI 接听" to R.string.calls_answer,
