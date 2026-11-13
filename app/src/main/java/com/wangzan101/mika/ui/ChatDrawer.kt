@@ -254,6 +254,7 @@ fun ChatDrawer(
     canSearch: Boolean = false,
     onNew: () -> Unit,
     onPlans: () -> Unit,
+    onScenes: () -> Unit = {},
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
     onFiles: () -> Unit = {},
@@ -326,6 +327,7 @@ fun ChatDrawer(
             )
             NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
             NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
+            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
             NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
             NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
             NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
@@ -744,6 +746,7 @@ fun ChatWithDrawer(
     /** 侧栏搜索用的索引;没有时侧栏不显示搜索框。 */
     search: ConversationSearch? = null,
     onPlans: () -> Unit,
+    onScenes: () -> Unit = {},
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
     onFiles: () -> Unit = {},
@@ -945,6 +948,7 @@ fun ChatWithDrawer(
                     onNew = { close { vm.newConversation(); onRegularChat() } },
                     onPersonal = { leave(onPersonal) },
                     onPlans = { leave(onPlans) },
+                    onScenes = { leave(onScenes) },
                     onMemory = { leave(onMemory) },
                     onSettings = { leave(onSettings) },
                     onBrowser = { leave(onBrowser) },

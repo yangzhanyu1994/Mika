@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scene_title">智能场景</string>
+    <string name="scene_monitor_channel">智能场景监听</string>
+    <string name="scene_monitor_notification">智能场景正在监听</string>
+    <string name="scene_monitor_notification_body">正在监听你选择的蓝牙设备</string>
+    <string name="scene_failed_title">场景执行状态未确认</string>
+    <string name="scene_failed_body">无法确认任务是否已提交，请打开 Mika 查看。</string>
+    <string name="scene_error">操作未完成，请检查权限后重试。</string>
+    <string name="scene_active">蓝牙监听运行中</string>
+    <string name="scene_inactive">蓝牙监听未运行，请打开蓝牙并启动监听。</string>
+    <string name="scene_start_monitor">启动监听</string>
+    <string name="scene_alarm_permission">允许精确闹钟以提高执行可靠性</string>
+    <string name="scene_trigger_types">触发方式</string>
+    <string name="scene_time">时间触发</string>
+    <string name="scene_bluetooth">蓝牙触发</string>
+    <string name="scene_wifi">Wi-Fi 触发</string>
+    <string name="scene_location">位置触发</string>
+    <string name="scene_coming">后续支持</string>
+    <string name="scene_mine">我的场景</string>
+    <string name="scene_empty">还没有蓝牙场景</string>
+    <string name="scene_last_run">查看上次执行</string>
+    <string name="scene_test">立即测试</string>
+    <string name="scene_delete">删除</string>
+    <string name="scene_delete_confirm">删除这个场景？</string>
+    <string name="scene_cancel">取消</string>
+    <string name="scene_new">新建场景</string>
+    <string name="scene_name">场景名称</string>
+    <string name="scene_trigger">当发生以下情况</string>
+    <string name="scene_device">蓝牙设备</string>
+    <string name="scene_choose_device">选择已配对设备</string>
+    <string name="scene_disconnected">断开连接</string>
+    <string name="scene_connected">连接成功</string>
+    <string name="scene_delay">等待时间（秒）</string>
+    <string name="scene_delay_hint">等待期间状态再次变化会取消本次执行，可设置 0–600 秒。</string>
+    <string name="scene_goal">执行任务</string>
+    <string name="scene_notification_note">执行结果通过 Mika 通知发送。</string>
+    <string name="scene_save">保存场景</string>
+    <string name="scene_no_devices">没有找到已配对设备，请先在系统设置中配对。</string>
+</resources>
