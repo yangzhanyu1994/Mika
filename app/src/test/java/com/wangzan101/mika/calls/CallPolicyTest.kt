@@ -128,6 +128,16 @@ class CallPolicyTest {
         }
     }
 
+    @Test fun outgoingWithTaskIsProactiveButIncomingKeepsItsOwnRules() {
+        val task = CallTaskBrief("告诉对方外卖到了")
+        val outgoing = CallPolicy.prompt("", CallDirection.OUTGOING, task = task)
+        assertTrue(outgoing.contains("开场后主动简短说明本次来意"))
+        assertTrue(outgoing.contains("涉及私人或敏感内容时先核对通话对象"))
+        assertTrue(outgoing.contains("对方说‘喂’或询问来意时，应主动接续本次任务"))
+        assertFalse(outgoing.contains("只答‘能听到，您说’"))
+        assertTrue(CallPolicy.prompt("", CallDirection.INCOMING).contains("只答‘能听到，您说’"))
+    }
+
     @Test fun dialogueDoesNotDemandAnotherIntroductionAfterTheConfiguredGreeting() {
         for (direction in CallDirection.entries) {
             val prompt = CallPolicy.prompt("你好", direction)

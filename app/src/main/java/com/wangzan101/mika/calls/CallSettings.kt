@@ -34,6 +34,7 @@ class CallSettings(
             requireNotNull(CallPolicy.incomingNumber(it)) { "本人接听名单中包含无效号码" }
         }.distinctBy(CallPolicy::incomingMatchKey).toSet()
         require(config.greeting.length <= CallPolicy.MAX_GREETING_CHARS) { "开场白过长" }
+        require(config.outgoingGreeting.length <= CallPolicy.MAX_GREETING_CHARS) { "拨出开场白过长" }
         require(config.systemPrompt.length <= CallPolicy.MAX_PROMPT_CHARS) { "通话说明过长" }
         require(config.defaultBrief.length <= CallDefaultBrief.MAX_CHARS) { "通用应答过长" }
         val speaker = config.speaker.trim().ifBlank { defaults.speaker }
@@ -53,6 +54,7 @@ class CallSettings(
             ),
             maxCallSeconds = config.maxCallSeconds.coerceIn(15, CallPolicy.MAX_SECONDS),
             greeting = config.greeting.trim(), // An explicitly empty greeting is different from a missing preference.
+            outgoingGreeting = config.outgoingGreeting.trim(),
             systemPrompt = config.systemPrompt.trim(),
             defaultBrief = config.defaultBrief.trim().take(CallDefaultBrief.MAX_CHARS),
             defaultBriefMigrated = config.defaultBriefMigrated || previous.defaultBriefMigrated,
@@ -77,6 +79,7 @@ class CallSettings(
             .putString("audio_mode", next.audioMode.name)
             .putString("audio_verified_build", Build.FINGERPRINT.takeIf { next.audioVerified })
             .putString("greeting", next.greeting)
+            .putString("outgoing_greeting", next.outgoingGreeting)
             .putString("prompt", next.systemPrompt)
             .putString("default_brief", next.defaultBrief)
             .putBoolean("default_brief_migrated", next.defaultBriefMigrated)
@@ -190,6 +193,7 @@ class CallSettings(
             summaryEnabled = prefs.getBoolean("summary_enabled", false),
             greeting = CallPolicy.migrateDefaultGreeting(prefs.getString("greeting", defaults.greeting).orEmpty())
                 .take(CallPolicy.MAX_GREETING_CHARS),
+            outgoingGreeting = prefs.getString("outgoing_greeting", defaults.outgoingGreeting).orEmpty().take(CallPolicy.MAX_GREETING_CHARS),
             systemPrompt = prefs.getString("prompt", "").orEmpty().take(CallPolicy.MAX_PROMPT_CHARS),
             defaultBrief = prefs.getString("default_brief", "").orEmpty().take(CallDefaultBrief.MAX_CHARS),
             defaultBriefMigrated = prefs.getBoolean("default_brief_migrated", false),

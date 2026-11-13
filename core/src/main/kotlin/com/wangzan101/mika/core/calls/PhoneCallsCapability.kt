@@ -73,7 +73,7 @@ private class CallAgentTool(private val action: String, override val verb: Verb)
                             if (task.context.isNotEmpty()) append("\n本次背景：").append(task.context)
                         }
                     }
-                    ConfirmationRequest(IrrevAction.other, "SIM ${simId ?: "（仅一张可用时自动选择）"}", content, null, capability)
+                    ConfirmationRequest(IrrevAction.other, "SIM ${simId ?: "（使用已配置的默认卡；无默认时需选择）"}", content, null, capability)
                 }
                 "answer", "hangup" -> ConfirmationRequest(IrrevAction.other, "通话 ${callId(a)}", label, null, capability)
                 else -> null

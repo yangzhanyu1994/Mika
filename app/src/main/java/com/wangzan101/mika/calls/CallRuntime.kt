@@ -943,18 +943,19 @@ class CallRuntime(private val app: MikaApp) {
             }
             validateTarget(w)
             w.mediaStage = MediaStage.VOLC_CONNECT
-            val ownerRules = withContext(Dispatchers.IO) {
+            val ownerRules = if (w.direction == CallDirection.INCOMING) withContext(Dispatchers.IO) {
                 runCatching {
                     CallDefaultBrief.migrate(settings, instructions)
                     instructions.promptSnapshot()
                 }.getOrElse { throw CallProblem("无法读取电话交代，未由 AI 操作电话") }
-            }
-            val taskBlock = withContext(Dispatchers.IO) {
+            } else ""
+            val taskBlock = if (w.direction == CallDirection.INCOMING) withContext(Dispatchers.IO) {
                 runCatching { tasks.incomingPrompt(System.currentTimeMillis(), w.track?.number) }.getOrDefault("")
-            }
+            } else ""
             validateTarget(w)
             val fresh = settings.state.value
-            val notes = if (fresh.defaultBriefMigrated) fresh.defaultBrief else w.config.systemPrompt
+            val notes = if (w.direction != CallDirection.INCOMING) ""
+                else if (fresh.defaultBriefMigrated) fresh.defaultBrief else w.config.systemPrompt
             val rules = buildString {
                 if (!fresh.defaultBriefMigrated && ownerRules.isNotBlank()) append(ownerRules)
                 if (w.direction == CallDirection.INCOMING && taskBlock.isNotBlank()) {
@@ -1171,7 +1172,7 @@ class CallRuntime(private val app: MikaApp) {
     }
 
     private suspend fun runAudio(w: Work, helper: IMikaShell, session: VolcRealtimeSession) {
-        val greeting = CallPolicy.spokenGreeting(w.config.greeting, hasTask = w.task != null)
+        val greeting = CallPolicy.callGreeting(w.config, w.direction)
         val notification = app.getString(
             if (greeting.isBlank()) R.string.calls_notification_connected_waiting else R.string.calls_notification_connected,
         )

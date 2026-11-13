@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calls_outgoing_group">撥出設定</string>
+    <string name="calls_incoming_greeting">接聽開場白</string>
+    <string name="calls_outgoing_greeting">撥出開場白</string>
+</resources>

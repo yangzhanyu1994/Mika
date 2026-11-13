@@ -3,6 +3,8 @@ package com.wangzan101.mika.ui
 /** One row on 接听设置. Each row opens exactly one editor, and editors do not share fields. */
 internal enum class AnswerSettingRow {
     Greeting,
+    OutgoingGreeting,
+    DefaultSim,
     DefaultBrief,
     Duration,
     Summary,
@@ -20,6 +22,8 @@ internal enum class AnswerSettingRow {
 /** The screen a row opens. [None] is an inline control, not a shared form. */
 internal enum class AnswerSettingEditor {
     Greeting,
+    OutgoingGreeting,
+    DefaultSim,
     DefaultBrief,
     Duration,
     None,
@@ -36,6 +40,8 @@ internal enum class AnswerSettingEditor {
 
 internal fun answerSettingEditor(row: AnswerSettingRow): AnswerSettingEditor = when (row) {
     AnswerSettingRow.Greeting -> AnswerSettingEditor.Greeting
+    AnswerSettingRow.OutgoingGreeting -> AnswerSettingEditor.OutgoingGreeting
+    AnswerSettingRow.DefaultSim -> AnswerSettingEditor.DefaultSim
     AnswerSettingRow.DefaultBrief -> AnswerSettingEditor.DefaultBrief
     AnswerSettingRow.Duration -> AnswerSettingEditor.Duration
     AnswerSettingRow.Summary -> AnswerSettingEditor.None
@@ -53,6 +59,8 @@ internal fun answerSettingEditor(row: AnswerSettingRow): AnswerSettingEditor = w
 /** Fields the editor is allowed to change. Used to keep editors from overlapping. */
 internal fun answerSettingFields(editor: AnswerSettingEditor): Set<String> = when (editor) {
     AnswerSettingEditor.Greeting -> setOf("greeting")
+    AnswerSettingEditor.OutgoingGreeting -> setOf("outgoingGreeting")
+    AnswerSettingEditor.DefaultSim -> setOf("defaultOutgoingSimId")
     AnswerSettingEditor.DefaultBrief -> setOf("defaultBrief")
     AnswerSettingEditor.Duration -> setOf("maxCallSeconds")
     AnswerSettingEditor.None -> emptySet()

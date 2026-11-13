@@ -27,6 +27,8 @@ class AndroidPhoneCallPort(private val runtime: CallRuntime) : PhoneCallPort {
         put("auto_answer", config.autoAnswer)
         put("auto_answer_pending", state.pendingAutoAnswer)
         put("max_call_seconds", config.maxCallSeconds)
+        config.defaultOutgoingSimId?.let { put("default_outgoing_sim_id", it) }
+        put("default_outgoing_sim_available", config.defaultOutgoingSimId?.let { id -> state.simOptions.any { it.id == id } } ?: false)
         state.direction?.let { put("direction", it.name.lowercase()) }
         state.callId?.let { put("call_id", it) }
         state.number?.let { put("number", it) }
