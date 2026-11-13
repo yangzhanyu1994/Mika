@@ -69,4 +69,5 @@
     <string name="calls_schedule_submitted">Initiated</string>
     <string name="calls_schedule_failed">Not completed</string>
     <string name="env_request_location">Allow precise location to start monitoring</string>
+    <string name="calls_scheduled_confirm">Once confirmed, the call will be placed at the scheduled time. Check the number and time.</string>
 </resources>

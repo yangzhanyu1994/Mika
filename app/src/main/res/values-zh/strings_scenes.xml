@@ -69,4 +69,5 @@
     <string name="calls_schedule_submitted">已发起</string>
     <string name="calls_schedule_failed">未完成</string>
     <string name="env_request_location">允许精确定位以启动监听</string>
+    <string name="calls_scheduled_confirm">确认添加后，到指定时间会自动拨打；请核对号码和时间。</string>
 </resources>
