@@ -13,9 +13,29 @@ class BootRestoreReceiver : BootRestoreHandler() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_TIME_CHANGED ||
             intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED ||
             intent.action == Intent.ACTION_TIMEZONE_CHANGED) TriggerRuntime.rearm(context)
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_TIME_CHANGED ||
+            intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
+            com.wangzan101.mika.calls.tasks.ScheduledDial.rearm(context)
+        }
         // 换了时区:跟随设备时区的当地时间计划立刻按新时区重算(内部会重新布置闹钟),显式钉了其他时区的不动
         if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) TriggerRuntime.syncTimeZone(context)
         // 开机时局域网那种电脑连接开着就重新监听(USB 那种不跨重启:换了开机编号,这里已按关着算,上次的连接信息也清掉)
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) (context.applicationContext as com.wangzan101.mika.MikaApp).mcp.ensureRunning()
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED && !com.wangzan101.mika.settings.FeatureFlags.get(context).quitRequested()) {
+            val env = com.wangzan101.mika.automation.EnvironmentSceneStore.get(context)
+            if (env.load() && env.rules.value.any { it.enabled } &&
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.fineGranted(context) &&
+                (android.os.Build.VERSION.SDK_INT < 29 || context.checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.start(context)
+            }
+        }
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED && !com.wangzan101.mika.settings.FeatureFlags.get(context).quitRequested()) {
+            val scenes = com.wangzan101.mika.automation.SceneStore.get(context)
+            if (scenes.load() && scenes.rules.value.any { it.enabled } &&
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.permissionGranted(context)) {
+                // OS may refuse background service startup; the scenes screen shows the real status.
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.start(context)
+            }
+        }
     }
 }

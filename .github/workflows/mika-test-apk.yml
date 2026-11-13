@@ -1,7 +1,7 @@
 name: Mika test APK
 on:
   push:
-    branches: [feature/ai-call-summary]
+    branches: [feature/ai-call-summary, feature/smart-scenes-bluetooth]
   workflow_dispatch:
 
 permissions:

@@ -121,7 +121,8 @@ object CallTaskParser {
 is_task（true）、kind（incoming 来电交代 / dial 让 AI 拨打 / default 没有具体任务时的通用应答）、
 title（短标题）、target（对象，人或角色）、window（生效时间，尽量写成“今天 08:00-12:00”这类；没有就空字符串）、
 say（AI 要说的话）、cannot_promise（不能承诺的事，没有就空字符串）、number（电话号码，没有就空字符串）。
-上午按 08:00-12:00，下午按 12:00-18:00，晚上按 18:00-22:00。不要编造号码。
+来电交代的时间范围按用户原意填写，同一天时用 yyyy-MM-dd HH:mm-HH:mm；仅说上午、下午或晚上时分别按 08:00-12:00、12:00-18:00、18:00-22:00。跨日期范围统一使用 yyyy-MM-dd HH:mm 至 yyyy-MM-dd HH:mm，不要缩成一天。
+拨打任务如果用户说了具体拨打时间，把 window 标准化为当前本地时区的 yyyy-MM-dd HH:mm；没有明确时间时不要猜，保留空字符串。不要编造号码。
 当前本地时间：$local
 通讯录里已有的姓名，只用于对照 target，不要编造名单外的人：$directory
 """.trim()

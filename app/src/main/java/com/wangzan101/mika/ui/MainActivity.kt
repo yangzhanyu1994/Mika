@@ -229,7 +229,19 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // 用户先前点了「完全退出」:打开 Mika 就回来,胶囊和退出时略过的启动工作在这里补上
         com.wangzan101.mika.quit.MikaQuit.resume(this)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { com.wangzan101.mika.calls.tasks.ScheduledDial.rearm(this@MainActivity.applicationContext) }
+        }
         monitor.start()
+        lifecycleScope.launch {
+            val scenes = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this@MainActivity)
+            val enabled = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { scenes.load() && scenes.rules.value.any { it.enabled } }
+            if (enabled && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.fineGranted(this@MainActivity) &&
+                !com.wangzan101.mika.automation.EnvironmentSceneMonitor.monitoring.value) {
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.start(this@MainActivity)
+            }
+        }
         // 每次打开都悄悄查一次新版本(两分钟内连着打开的只查一次),失败不吭声
         val app = application as MikaApp
         val check = app.updates.autoCheckInBackground()
@@ -239,11 +251,29 @@ class MainActivity : ComponentActivity() {
         }
         // 电脑连接开着、服务却不在(被系统停过、从后台没能起来):界面在前台时补起来
         (application as MikaApp).mcp.ensureRunning()
+        lifecycleScope.launch {
+            val scenes = com.wangzan101.mika.automation.SceneStore.get(this@MainActivity)
+            val enabled = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                scenes.load() && scenes.rules.value.any { it.enabled }
+            }
+            if (enabled && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) &&
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.permissionGranted(this@MainActivity) &&
+                !com.wangzan101.mika.automation.BluetoothSceneMonitor.monitoring.value) {
+                com.wangzan101.mika.automation.BluetoothSceneMonitor.start(this@MainActivity)
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         monitor.refresh()
+        val env = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this)
+        if (env.load() && env.rules.value.any { it.enabled } &&
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.fineGranted(this) &&
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.registeredBackground.value !=
+                com.wangzan101.mika.automation.EnvironmentSceneMonitor.backgroundGranted(this)) {
+            com.wangzan101.mika.automation.EnvironmentSceneMonitor.start(this)
+        }
     }
 
     override fun onStop() {
@@ -538,6 +568,7 @@ private fun MikaRoot(
                 conversationTitle = { ConversationStore.shared(context).title(it) },
                 search = ConversationStore.shared(context).search,
                 onPlans = { nav.pushFromDrawer(Route.Plans) },
+                onScenes = { nav.pushFromDrawer(Route.Scenes) },
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onBrowser = { nav.pushFromDrawer(Route.Browser) },
@@ -725,6 +756,10 @@ private fun MikaRoot(
             app.chat.openConversation(it)
             nav.reset()
         }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false })
+        Route.Scenes -> ScenesScreen(context, onBack = back, onPlans = { nav.push(Route.Plans) }, onOpenConversation = {
+            app.chat.openConversation(it)
+            nav.reset()
+        })
         Route.Teach -> TeachScreen(
             app.teach,
             onBack = { nav.back() },

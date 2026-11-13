@@ -1,5 +1,15 @@
 package com.wangzan101.mika.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import com.wangzan101.mika.calls.tasks.DialScheduleTime
+import com.wangzan101.mika.calls.tasks.ScheduledDial
+import com.wangzan101.mika.task.TriggerRuntime
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +74,7 @@ internal fun CallTaskComposer(
     onDial: (String, String?, CallTaskBrief, String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val book = rememberPhoneContacts()
     var kind by remember { mutableIntStateOf(if (existing?.kind == CallTaskTexts.KIND_DIAL) 0 else 1) }
     var target by remember { mutableStateOf(existing?.target.orEmpty()) }
@@ -73,7 +84,10 @@ internal fun CallTaskComposer(
     var say by remember { mutableStateOf(existing?.say.orEmpty()) }
     var cannot by remember { mutableStateOf(existing?.cannotPromise.orEmpty()) }
     var number by remember { mutableStateOf(existing?.number.orEmpty()) }
-    var simId by remember { mutableStateOf<String?>(null) }
+    var simId by remember { mutableStateOf(existing?.dialSimId) }
+    var dialAt by remember { mutableStateOf(existing?.dialAtMs) }
+    var incomingStart by remember { mutableStateOf(existing?.startMs) }
+    var incomingEnd by remember { mutableStateOf(existing?.endMs) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var pick by remember { mutableStateOf(false) }
@@ -101,7 +115,16 @@ internal fun CallTaskComposer(
                 if (parsed.kind == CallTaskTexts.KIND_DIAL) kind = 0
                 if (parsed.kind == CallTaskTexts.KIND_INCOMING) kind = 1
                 if (parsed.target.isNotBlank()) target = parsed.target
-                if (parsed.windowLabel.isNotBlank()) window = parsed.windowLabel
+                if (parsed.windowLabel.isNotBlank()) {
+                    window = parsed.windowLabel
+                    val now = ZonedDateTime.now()
+                    if (parsed.kind == CallTaskTexts.KIND_DIAL) {
+                        dialAt = DialScheduleTime.resolve(parsed.windowLabel, now)?.toInstant()?.toEpochMilli()
+                    } else if (parsed.kind == CallTaskTexts.KIND_INCOMING) {
+                        val interval = CallTaskTexts.resolveWindow(parsed.windowLabel, now)
+                        incomingStart = interval.first; incomingEnd = interval.second
+                    }
+                }
                 say = parsed.say
                 cannot = parsed.cannotPromise
                 if (parsed.number.isNotBlank()) number = parsed.number
@@ -140,7 +163,21 @@ internal fun CallTaskComposer(
                         Switch(checked = permanent, onCheckedChange = { permanent = it }, modifier = Modifier.testTag("call-task-permanent"))
                     }
                 }
-                if (kind != 1 || !permanent) TaskField(stringResource(R.string.calls_task_window), window, { window = it }, "call-task-window")
+                if (kind == 0) {
+                    Text(stringResource(R.string.calls_scheduled_time))
+                    TextButton(onClick = { pickCallTime(context, dialAt) { dialAt = it; window = formatCallTime(it) } }) {
+                        Text(dialAt?.let(::formatCallTime) ?: stringResource(R.string.calls_scheduled_choose))
+                    }
+                } else if (!permanent) {
+                    Text(stringResource(R.string.calls_incoming_start))
+                    TextButton(onClick = { pickCallTime(context, incomingStart) { incomingStart = it } }) {
+                        Text(incomingStart?.let(::formatCallTime) ?: stringResource(R.string.calls_scheduled_choose))
+                    }
+                    Text(stringResource(R.string.calls_incoming_end))
+                    TextButton(onClick = { pickCallTime(context, incomingEnd ?: incomingStart) { incomingEnd = it } }) {
+                        Text(incomingEnd?.let(::formatCallTime) ?: stringResource(R.string.calls_scheduled_choose))
+                    }
+                }
                 TaskField(stringResource(R.string.calls_task_say), say, { say = it }, "call-task-say", single = false)
                 TaskField(stringResource(R.string.calls_task_cannot), cannot, { cannot = it }, "call-task-cannot", single = false)
             }
@@ -153,24 +190,46 @@ internal fun CallTaskComposer(
             if (showSims) CallTaskSimDialog(state.simOptions, runtime.settings.state.value.defaultOutgoingSimId, simId,
                 onChoose = { simId = it; showSims = false }, onDismiss = { showSims = false })
         }
+        if (kind == 0 && !TriggerRuntime.canScheduleExactly(context)) {
+            TextButton(onClick = { runCatching { context.startActivity(TriggerRuntime.exactAlarmSettings(context)) } }) {
+                Text(stringResource(R.string.scene_alarm_permission))
+            }
+        }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        CallPrimaryButton(stringResource(R.string.calls_task_save), !busy && say.isNotBlank() &&
-            !(kind == 1 && wasPermanent && !permanent && window.isBlank()), {
-            busy = true
-            scope.launch {
-                val ok = withContext(Dispatchers.IO) {
-                    runCatching {
-                        val parsed = parsedFromFields(kindName, target, window, say, cannot, number, existing?.title)
-                        val parsedTask = CallTaskParser.toTask(parsed, id = existing?.id.orEmpty())
-                        val timed = CallTaskParser.applyLifetime(parsedTask, existing, kind == 1 && permanent)
-                        runtime.tasks.save(timed.copy(
-                            dialed = existing?.dialed == true,
-                            createdAtMs = existing?.createdAtMs ?: 0L,
-                        ))
-                    }.isSuccess
+        val simError = stringResource(R.string.calls_task_pick_sim)
+        val dialTimeError = stringResource(R.string.calls_scheduled_invalid)
+        val incomingTimeError = stringResource(R.string.calls_incoming_invalid)
+        CallPrimaryButton(stringResource(R.string.calls_task_save), !busy && say.isNotBlank(), {
+            val time = dialAt
+            val start = incomingStart
+            val end = incomingEnd
+            val plannedSim = CallPolicy.chooseOutgoingSim(state.simOptions, simId, runtime.settings.state.value.defaultOutgoingSimId)
+            when {
+                kind == 0 && (time == null || time <= System.currentTimeMillis() || !TriggerRuntime.canScheduleExactly(context) || CallPolicy.outgoingNumber(number) == null) -> error = dialTimeError
+                kind == 0 && plannedSim == null -> error = simError
+                kind == 1 && !permanent && (start == null || end == null || end <= start) -> error = incomingTimeError
+                else -> {
+                    busy = true
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) {
+                            runCatching {
+                                if (kind == 0) CallTaskBrief(say, emptyList(), target, cannot).validatedSnapshot()
+                                val label = if (kind == 0) formatCallTime(time!!) else if (permanent) "" else formatCallTime(start!!) + " – " + formatCallTime(end!!)
+                                val parsed = parsedFromFields(kindName, target, label, say, cannot, number, existing?.title)
+                                val parsedTask = CallTaskParser.toTask(parsed, id = existing?.id.orEmpty())
+                                val timed = if (kind == 1) parsedTask.copy(startMs = if (permanent) null else start, endMs = if (permanent) null else end)
+                                    else parsedTask.copy(dialAtMs = time, dialSimId = plannedSim?.id, dialScheduleState = "scheduled")
+                                val saved = runtime.tasks.save(timed.copy(dialed = false, createdAtMs = existing?.createdAtMs ?: 0L))
+                                if (kind == 0) {
+                                    try { ScheduledDial.schedule(context, saved) }
+                                    catch (e: Exception) { runtime.tasks.save(saved.copy(dialScheduleState = "failed", dialScheduleMessage = "无法设置定时拨号")); throw e }
+                                } else if (existing?.kind == CallTaskTexts.KIND_DIAL) ScheduledDial.cancel(context, existing.id)
+                            }.isSuccess
+                        }
+                        busy = false
+                        if (ok) onBack() else error = failed
+                    }
                 }
-                busy = false
-                if (ok) onBack() else error = failed
             }
         }, Modifier.testTag("call-task-save"))
         if (kind == 0 && CallPolicy.outgoingNumber(number) != null && say.isNotBlank()) {
@@ -182,10 +241,12 @@ internal fun CallTaskComposer(
                 scope.launch {
                     val saved = withContext(Dispatchers.IO) {
                         runCatching {
-                            runtime.tasks.save(CallTaskParser.toTask(parsed, id = existing?.id.orEmpty()))
+                            val saved = runtime.tasks.save(CallTaskParser.toTask(parsed, id = existing?.id.orEmpty()).copy(dialScheduleState = "none"))
+                            ScheduledDial.cancel(context, saved.id)
+                            saved
                         }.getOrNull()
                     }
-                    if (saved != null) onDial(CallPolicy.outgoingNumber(number)!!, simId, brief, saved.id)
+                    if (saved != null) onDial(CallPolicy.outgoingNumber(number)!!, simId, brief, saved.id) else error = failed
                 }
             }, modifier = Modifier.fillMaxWidth().testTag("call-task-dial")) {
                 Text(stringResource(R.string.calls_task_dial_now))
@@ -210,8 +271,8 @@ internal fun CallTaskComposer(
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
-                        withContext(Dispatchers.IO) { runCatching { runtime.tasks.remove(existing.id) } }
-                        onBack()
+                        val removed = withContext(Dispatchers.IO) { runCatching { runtime.tasks.remove(existing.id); ScheduledDial.cancel(context, existing.id) }.isSuccess }
+                        if (removed) onBack() else error = failed
                     }
                 }) { Text(stringResource(R.string.calls_task_delete)) }
             },
@@ -313,4 +374,20 @@ private fun TaskField(label: String, value: String, onValue: (String) -> Unit, t
         value, onValue, modifier = Modifier.fillMaxWidth().testTag(tag),
         label = { Text(label) }, singleLine = single, minLines = if (single) 1 else 2, maxLines = if (single) 1 else 4,
     )
+}
+
+private fun formatCallTime(epochMs: Long): String =
+    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+
+/** Initialize both selectors with the actual system clock or the existing setting. */
+private fun pickCallTime(context: Context, current: Long?, onPicked: (Long) -> Unit) {
+    val initial = current?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) } ?: ZonedDateTime.now()
+    DatePickerDialog(context, { _, year, month, day ->
+        TimePickerDialog(context, android.R.style.Theme_Holo_Light_Dialog_NoActionBar, { _, hour, minute ->
+            val local = java.time.LocalDateTime.of(year, month + 1, day, hour, minute)
+            val zone = ZoneId.systemDefault()
+            val offsets = zone.rules.getValidOffsets(local)
+            if (offsets.size == 1) onPicked(ZonedDateTime.ofStrict(local, offsets.single(), zone).toInstant().toEpochMilli())
+        }, initial.hour, initial.minute, true).show()
+    }, initial.year, initial.monthValue - 1, initial.dayOfMonth).show()
 }

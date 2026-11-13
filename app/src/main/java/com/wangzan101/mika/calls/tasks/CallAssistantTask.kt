@@ -21,6 +21,12 @@ data class CallAssistantTask(
     val number: String = "",
     val dialed: Boolean = false,
     val createdAtMs: Long = 0L,
+    val dialAtMs: Long? = null,
+    val dialSimId: String? = null,
+    /** scheduled, dispatching, submitted, failed or none. Dispatching after restart is uncertain. */
+    val dialScheduleState: String = "none",
+    val dialScheduleMessage: String = "",
+    val dialClaimedAtMs: Long? = null,
 ) {
     fun statusAt(now: Long): CallTaskStatus = when (kind) {
         KIND_DIAL -> if (dialed) CallTaskStatus.DONE else CallTaskStatus.PENDING
@@ -60,6 +66,8 @@ object CallTaskTexts {
 
     private val callWords = listOf("打电话", "来电", "拨打", "打给", "接听", "去电", "来电话")
     private val sceneWords = listOf("快递", "外卖", "快递员", "放门口", "交代", "预约", "鲜奶", "门口")
+    private val dateTime = Regex("""(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})""")
+    private val explicitDate = Regex("""(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})日?""")
     private val clockRange = Regex("""(\d{1,2}):(\d{2})\s*[-~～到至]\s*(\d{1,2}):(\d{2})""")
     private val weekdays = listOf(
         "周一" to DayOfWeek.MONDAY, "星期一" to DayOfWeek.MONDAY,
@@ -88,7 +96,26 @@ object CallTaskTexts {
         val text = label.trim()
         if (text.isEmpty()) return null to null
         var day = now.toLocalDate()
+        val moments = dateTime.findAll(text).toList()
+        if (moments.size == 2) {
+            fun epoch(match: MatchResult): Long? = runCatching {
+                val g = match.groupValues
+                val local = java.time.LocalDateTime.of(g[1].toInt(), g[2].toInt(), g[3].toInt(), g[4].toInt(), g[5].toInt())
+                val offsets = now.zone.rules.getValidOffsets(local)
+                require(offsets.size == 1)
+                ZonedDateTime.ofStrict(local, offsets.single(), now.zone).toInstant().toEpochMilli()
+            }.getOrNull()
+            val start = epoch(moments[0]); val end = epoch(moments[1])
+            return if (start != null && end != null && end > start) start to end else null to null
+        }
+        val dates = explicitDate.findAll(text).toList()
+        val relativeDates = listOf("今天", "明天", "后天").count(text::contains)
+        if (dates.size > 1 || relativeDates > 1) return null to null
         when {
+            dates.size == 1 -> {
+                val groups = dates.single().groupValues
+                day = runCatching { java.time.LocalDate.of(groups[1].toInt(), groups[2].toInt(), groups[3].toInt()) }.getOrNull() ?: return null to null
+            }
             text.contains("后天") -> day = day.plusDays(2)
             text.contains("明天") -> day = day.plusDays(1)
             text.contains("今天") || text.contains("今日") -> Unit
