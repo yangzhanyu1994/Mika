@@ -56,10 +56,10 @@ object MikaSize {
 
 /** 圆角。 */
 object MikaRadius {
-    val Card = 16.dp
+    val Card = 22.dp
     val Bubble = 20.dp
-    val BubbleTail = 6.dp
-    val Button = 14.dp
+    val BubbleTail = 18.dp
+    val Button = 18.dp
     val Tile = 9.dp
 }
 

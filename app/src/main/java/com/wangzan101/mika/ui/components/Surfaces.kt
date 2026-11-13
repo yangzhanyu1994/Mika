@@ -68,6 +68,10 @@ fun PageBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
         modifier.fillMaxSize().background(MikaTheme.colors.bg).then(
+            if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(
+                Brush.verticalGradient(listOf(Color(0xFFDCEAFF), Color(0xFFF8F8FC), Color(0xFFE3EDFF)))
+            )
+        ).then(
             if (backdrop == null) Modifier else Modifier
                 .onGloballyPositioned { backdrop.pageOrigin = it.positionInRoot(); backdrop.pageSize = it.size }
                 .drawBehind { backdrop.draw(this, backdrop.pageOrigin) },
@@ -104,8 +108,9 @@ fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Mo
     (if (colors.cardShadow.alpha > 0f) {
         shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
     } else this)
-        .background(colors.surface, shape)
-        .border(0.5.dp, colors.edge, shape)
+        .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
+            Brush.verticalGradient(listOf(Color(0xFFF9FCFF), Color(0xFFEFF5FF))), shape)
+        .border(1.dp, colors.edge, shape)
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */
 fun Modifier.floatShadow(colors: MikaColors, shape: Shape): Modifier =

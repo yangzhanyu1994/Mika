@@ -83,7 +83,7 @@ private fun CallProposalCard(messageId: String, raw: String, runtime: PersonalRu
     Column(Modifier.fillMaxWidth().testTag("call-proposal")) {
         Text(stringResource(R.string.calls_task_generated), color = c.ink2, style = MikaType.Body)
         Column(
-            Modifier.fillMaxWidth().padding(top = 8.dp).background(c.surface, MikaShapes.Card).padding(16.dp),
+            Modifier.fillMaxWidth().padding(top = 8.dp).cardSurface(c).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(stringResource(R.string.calls_section_tasks), style = MaterialTheme.typography.titleMedium)
