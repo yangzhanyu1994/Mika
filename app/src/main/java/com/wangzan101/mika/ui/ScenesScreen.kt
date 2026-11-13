@@ -189,9 +189,6 @@ private fun BluetoothSceneEditor(context: Context, existing: BluetoothScene?, er
     var delay by remember(existing?.id) { mutableStateOf((existing?.delaySeconds ?: 60).toString()) }
     var choosing by remember { mutableStateOf(false) }
     var permissionError by remember { mutableStateOf(false) }
-    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        if (EnvironmentSceneMonitor.fineGranted(context)) refreshEnvironment() else error = true
-    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) choosing = true else permissionError = true
     }
