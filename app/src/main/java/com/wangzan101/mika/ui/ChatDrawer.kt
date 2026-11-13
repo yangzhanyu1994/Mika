@@ -67,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -292,7 +293,9 @@ fun ChatDrawer(
     val searchActive = canSearch && !selecting && query.isNotBlank()
     Column(
         Modifier.fillMaxHeight().widthIn(max = DrawerWidth).fillMaxWidth()
-            .clip(DrawerShape).background(c.bg, DrawerShape)
+            .clip(DrawerShape).background(
+                if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.bg))
+                else Brush.verticalGradient(listOf(Color(0xFFF4F8FF), Color(0xFFDDEAFF))), DrawerShape)
             .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars))
             .testTag("drawer"),
     ) {
