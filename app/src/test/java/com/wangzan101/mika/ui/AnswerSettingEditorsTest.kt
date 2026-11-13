@@ -21,6 +21,8 @@ class AnswerSettingEditorsTest {
         }
         assertEquals(setOf("audioMode", "audioVerified"), answerSettingFields(AnswerSettingEditor.AudioChannel))
         assertEquals(setOf("greeting"), answerSettingFields(AnswerSettingEditor.Greeting))
+        assertEquals(setOf("outgoingGreeting"), answerSettingFields(AnswerSettingEditor.OutgoingGreeting))
+        assertEquals(setOf("defaultOutgoingSimId"), answerSettingFields(AnswerSettingEditor.DefaultSim))
         assertEquals(setOf("maxCallSeconds"), answerSettingFields(AnswerSettingEditor.Duration))
         assertTrue("speaker" in answerSettingFields(AnswerSettingEditor.Credentials))
         assertEquals(setOf("answerStrangersOnly"), answerSettingFields(AnswerSettingEditor.StrangerOnly))

@@ -401,6 +401,10 @@ private fun CallSettingsWorkspace(
         AnswerSettingEditor.Greeting -> CallGreetingDialog(config.greeting, onDismiss = { dialog = null }) { greeting ->
             save { it.copy(greeting = greeting) }
         }
+        AnswerSettingEditor.OutgoingGreeting -> CallGreetingDialog(config.outgoingGreeting, onDismiss = { dialog = null },
+            title = R.string.calls_outgoing_greeting) { greeting -> save { it.copy(outgoingGreeting = greeting) } }
+        AnswerSettingEditor.DefaultSim -> CallDefaultSimDialog(state.simOptions, config.defaultOutgoingSimId,
+            onDismiss = { dialog = null }, onChoose = { id -> scope.launch { if (save { it.copy(defaultOutgoingSimId = id) }) dialog = null } })
         AnswerSettingEditor.Duration -> CallDurationDialog(config.maxCallSeconds, onDismiss = { dialog = null }) { seconds ->
             save { it.copy(maxCallSeconds = seconds) }
         }
@@ -703,7 +707,7 @@ private fun CallPreferencesPage(
         val greeting = config.greeting.trim().lineSequence().firstOrNull().orEmpty()
         val brief = (if (config.defaultBriefMigrated) config.defaultBrief else config.systemPrompt).trim()
         ListRow(
-            MikaIcons.Message, stringResource(R.string.calls_greeting),
+            MikaIcons.Message, stringResource(R.string.calls_incoming_greeting),
             greeting.ifBlank { stringResource(R.string.calls_key_missing) },
             first = true, onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Greeting)) }.takeIf { canConfigure },
         ) { RowChevron() }
@@ -718,6 +722,21 @@ private fun CallPreferencesPage(
             stringResource(R.string.calls_duration_value, config.maxCallSeconds),
             onClick = { onOpen(answerSettingEditor(AnswerSettingRow.Duration)) }.takeIf { canConfigure },
         ) { RowChevron() }
+    }
+
+    GroupLabel(stringResource(R.string.calls_outgoing_group))
+    GroupCard {
+        val selected = state.simOptions.firstOrNull { it.id == config.defaultOutgoingSimId }
+        val simText = when {
+            config.defaultOutgoingSimId == null -> stringResource(R.string.calls_sim_ask_each_time)
+            selected == null -> stringResource(R.string.calls_sim_unavailable)
+            else -> selected.label
+        }
+        ListRow(MikaIcons.Phone, stringResource(R.string.calls_default_sim_settings), simText,
+            first = true, onClick = { onOpen(AnswerSettingEditor.DefaultSim) }.takeIf { canConfigure }) { RowChevron() }
+        ListRow(MikaIcons.Message, stringResource(R.string.calls_outgoing_greeting),
+            config.outgoingGreeting.lineSequence().firstOrNull().orEmpty().ifBlank { stringResource(R.string.calls_key_missing) },
+            onClick = { onOpen(AnswerSettingEditor.OutgoingGreeting) }.takeIf { canConfigure }) { RowChevron() }
     }
 
     GroupLabel(stringResource(R.string.calls_group_summary))
@@ -1136,10 +1155,22 @@ private fun CallAllowlistDialog(existing: Set<String>, onDismiss: () -> Unit, on
 }
 
 @Composable
-private fun CallGreetingDialog(initial: String, onDismiss: () -> Unit, onSave: suspend (String) -> Boolean) {
+private fun CallGreetingDialog(initial: String, onDismiss: () -> Unit, title: Int = R.string.calls_incoming_greeting, onSave: suspend (String) -> Boolean) {
     var greeting by rememberSaveable { mutableStateOf(initial) }
-    SimpleTextDialog(stringResource(R.string.calls_greeting), greeting, { greeting = it.take(CallPolicy.MAX_GREETING_CHARS) },
+    SimpleTextDialog(stringResource(title), greeting, { greeting = it.take(CallPolicy.MAX_GREETING_CHARS) },
         stringResource(R.string.calls_greeting_hint), onDismiss, { onSave(greeting) })
+}
+
+@Composable
+private fun CallDefaultSimDialog(options: List<CallSim>, selected: String?, onDismiss: () -> Unit, onChoose: (String?) -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.calls_default_sim_settings)) },
+        text = {
+            Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                RadioRow(stringResource(R.string.calls_sim_ask_each_time), selected == null, onClick = { onChoose(null) }, first = true)
+                options.forEach { sim -> RadioRow(sim.label, selected == sim.id, onClick = { onChoose(sim.id) }) }
+                if (selected != null && options.none { it.id == selected }) Text(stringResource(R.string.calls_sim_unavailable))
+            }
+        }, confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.calls_cancel)) } })
 }
 
 @Composable
