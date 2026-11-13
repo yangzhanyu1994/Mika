@@ -16,6 +16,16 @@ class CallTaskTextsTest {
     private val zone = ZoneId.of("Asia/Shanghai")
     private val fridayMorning = ZonedDateTime.of(2026, 11, 13, 9, 0, 0, 0, zone)
 
+    @Test fun incomingWindowUsesExplicitDateInsteadOfToday() {
+        val (start, end) = CallTaskTexts.resolveWindow("2026-11-14 08:00-12:00", fridayMorning)
+        assertEquals(ZonedDateTime.of(2026, 11, 14, 8, 0, 0, 0, zone).toInstant().toEpochMilli(), start!!)
+        assertEquals(ZonedDateTime.of(2026, 11, 14, 12, 0, 0, 0, zone).toInstant().toEpochMilli(), end!!)
+        val (crossStart, crossEnd) = CallTaskTexts.resolveWindow("2026-11-14 08:00 至 2026-11-15 12:00", fridayMorning)
+        assertEquals(ZonedDateTime.of(2026, 11, 14, 8, 0, 0, 0, zone).toInstant().toEpochMilli(), crossStart!!)
+        assertEquals(ZonedDateTime.of(2026, 11, 15, 12, 0, 0, 0, zone).toInstant().toEpochMilli(), crossEnd!!)
+        assertEquals(null to null, CallTaskTexts.resolveWindow("明天下午到后天早上", fridayMorning))
+    }
+
     @Test fun convertingAnExistingTaskToPermanentPreservesInstructionAndDoesNotExpire() {
         val existing = CallAssistantTask("one", CallTaskTexts.KIND_INCOMING, "快递", "快递员", "今天下午",
             startMs = 100, endMs = 200, say = "放门口")
@@ -39,8 +49,8 @@ class CallTaskTextsTest {
 
     @Test fun morningWindowIsEightToNoonOnTheNamedDay() {
         val (start, end) = CallTaskTexts.resolveWindow("今天 08:00-12:00", fridayMorning)
-        assertEquals(ZonedDateTime.of(2026, 11, 13, 8, 0, 0, 0, zone).toInstant().toEpochMilli(), start)
-        assertEquals(ZonedDateTime.of(2026, 11, 13, 12, 0, 0, 0, zone).toInstant().toEpochMilli(), end)
+        assertEquals(ZonedDateTime.of(2026, 11, 13, 8, 0, 0, 0, zone).toInstant().toEpochMilli(), start!!)
+        assertEquals(ZonedDateTime.of(2026, 11, 13, 12, 0, 0, 0, zone).toInstant().toEpochMilli(), end!!)
         val morning = CallTaskTexts.resolveWindow("今天上午", fridayMorning)
         assertEquals(start, morning.first)
         assertEquals(end, morning.second)
@@ -48,8 +58,8 @@ class CallTaskTextsTest {
 
     @Test fun saturdayDinnerLandsOnTheComingSaturdayEvening() {
         val (start, end) = CallTaskTexts.resolveWindow("周六晚上", fridayMorning)
-        assertEquals(ZonedDateTime.of(2026, 11, 14, 18, 0, 0, 0, zone).toInstant().toEpochMilli(), start)
-        assertEquals(ZonedDateTime.of(2026, 11, 14, 22, 0, 0, 0, zone).toInstant().toEpochMilli(), end)
+        assertEquals(ZonedDateTime.of(2026, 11, 14, 18, 0, 0, 0, zone).toInstant().toEpochMilli(), start!!)
+        assertEquals(ZonedDateTime.of(2026, 11, 14, 22, 0, 0, 0, zone).toInstant().toEpochMilli(), end!!)
     }
 
     @Test fun incomingTaskIsActiveOnlyInsideItsWindow() {
