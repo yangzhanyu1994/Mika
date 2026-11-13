@@ -155,7 +155,8 @@ internal object SceneDispatcher {
         val current = store.rules.value.firstOrNull { it.id == rule.id && it.enabled } ?: error("Scene disabled")
         check(current == rule)
         val thread = ConversationStore.shared(context).newConversation()
-        val trigger = TriggerDefinition(UUID.randomUUID().toString(), thread, rule.goal,
+        val trigger = TriggerDefinition(UUID.randomUUID().toString(), thread,
+            rule.goal + "\n\n" + context.getString(R.string.scene_result_instruction),
             System.currentTimeMillis() + 1000L, source = TriggerSource.User)
         TriggerRuntime.schedule(context, trigger)
         // Dispatch does not mean completion; the linked conversation carries the result.

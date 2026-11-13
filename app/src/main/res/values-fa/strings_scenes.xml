@@ -37,4 +37,5 @@
     <string name="scene_notification_note">Results are sent using Mika notifications.</string>
     <string name="scene_save">Save scene</string>
     <string name="scene_no_devices">No paired devices found. Pair the device in system settings first.</string>
+    <string name="scene_result_instruction">When finished, report the actual outcome and any verified status. Clearly state what could not be read or verified, or was not completed. Do not claim success merely because the task was triggered or submitted.</string>
 </resources>
