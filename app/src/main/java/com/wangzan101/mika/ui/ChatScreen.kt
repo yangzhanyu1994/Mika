@@ -435,7 +435,9 @@ fun ChatScreen(
         Column(Modifier.behindMenu(menuOpen) { lift.value }.onSizeChanged { topHeight = it.height }) {
             TopBar(
                 ChatCopy.APP_TITLE,
+                background = if (c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
                 left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
+                leftGlass = true,
                 // 别的对话里还有任务在跑(并行时):菜单上一个小圆点,侧栏「进行中」里能切过去
                 leftBadge = others.isNotEmpty(),
                 subtitle = sub?.first,
@@ -868,7 +870,8 @@ internal fun UserBubble(text: String, conversationId: String?, note: String? = n
                 CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(colors.accent, colors.onAccent.copy(alpha = 0.35f))) {
                     MessageArea(
                         key, QuoteMessage.From.You, words, "selectable-user",
-                        Modifier.widthIn(max = max).background(colors.accent, MikaShapes.UserBubble),
+                        Modifier.widthIn(max = max).background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.74f), colors.accent)), MikaShapes.UserBubble)
+                            .border(1.dp, Color.White.copy(alpha = if (colors.isDark) 0.18f else 0.65f), MikaShapes.UserBubble),
                         lifted = { LiftedMessage(MikaShapes.UserBubble, colors.accent) { UserBubbleText(words) } },
                     ) { UserBubbleText(words) }
                 }
@@ -943,7 +946,7 @@ private fun InterruptedReply(text: String) {
 /** Mika 回答的底:很淡的灰,左下尾角。 */
 @Composable
 private fun Modifier.answerSurface(): Modifier =
-    background(MikaTheme.colors.answer, MikaShapes.AnswerBubble).padding(horizontal = 14.dp, vertical = 12.dp)
+    cardSurface(MikaTheme.colors, MikaShapes.AnswerBubble).padding(horizontal = 14.dp, vertical = 12.dp)
 
 // ---------- 进度 ----------
 
@@ -956,7 +959,7 @@ private fun WorkBlock(ex: Exchange, reduceMotion: Boolean, backgroundNote: Boole
     val c = MikaTheme.colors
     val paused = ChatCopy.paused(ex.status)
     val elapsed = rememberElapsed(ex.startedAt)
-    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).cardSurface(c).padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 28.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1468,7 +1471,7 @@ internal fun Composer(
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
     // 底部从页面底色淡出到透明,输入栏是浮在上面的玻璃
-    val fade = remember(c) { Brush.verticalGradient(0f to c.bg.copy(alpha = 0f), 0.6f to c.bg, 1f to c.bg) }
+    val fade = remember(c) { Brush.verticalGradient(0f to c.bg.copy(alpha = 0f), 0.6f to c.bg.copy(alpha = if (c.isDark) 1f else 0.35f), 1f to c.bg.copy(alpha = if (c.isDark) 1f else 0.6f)) }
     val busy = mode == ComposerMode.Busy
     val context = LocalContext.current
     // 附件功能开着就保留「＋」;任务在跑、插话模式时点它只提示,不展开面板

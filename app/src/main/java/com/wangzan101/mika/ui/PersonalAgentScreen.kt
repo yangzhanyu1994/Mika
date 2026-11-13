@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -264,7 +265,11 @@ fun PersonalAgentScreen(
                             Modifier.padding(start = 4.dp, bottom = 6.dp), fontSize = 10.sp, color = c.ink2)
                         val bubble = Modifier.fillMaxWidth(if (user) 0.8f else 1f)
                             .wrapContentWidth(if (user) Alignment.End else Alignment.Start)
-                            .background(if (user) c.accent else c.answer, if (user) MikaShapes.UserBubble else MikaShapes.AnswerBubble)
+                            .then(if (user && !c.isDark) Modifier.background(
+                                Brush.verticalGradient(listOf(c.accent.copy(alpha = 0.78f), c.accent)), MikaShapes.UserBubble)
+                                .border(1.dp, Color.White.copy(alpha = 0.65f), MikaShapes.UserBubble)
+                            else if (user) Modifier.background(c.accent, MikaShapes.UserBubble)
+                            else Modifier.cardSurface(c, MikaShapes.AnswerBubble))
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                         if (message.role == "call_proposal") {
                             CallProposalCard(message.id, message.text, runtime)
@@ -495,7 +500,7 @@ internal fun PersonalHeader(
     val previewWidth = frame?.let { minOf(76.dp, 104.dp * (it.width.toFloat() / it.height)) } ?: 0.dp
     Box(Modifier.fillMaxWidth().padding(horizontal = MikaSpace.Page, vertical = 6.dp)) {
         Box(Modifier.align(Alignment.TopStart).padding(top = 4.dp)) {
-            BarIconButton(MikaIcons.Menu, "打开侧栏", onOpenDrawer)
+            BarIconButton(MikaIcons.Menu, "打开侧栏", onOpenDrawer, glass = true)
         }
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 250.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {

@@ -3,6 +3,7 @@ package com.wangzan101.mika.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -149,7 +151,13 @@ fun MikaButton(
     }
     Box(
         modifier
-            .then(if (kind == ButtonKind.Secondary) Modifier.cardSurface(c, shape) else Modifier.background(bg, shape))
+            .then(when {
+                kind == ButtonKind.Secondary -> Modifier.cardSurface(c, shape)
+                kind == ButtonKind.Primary && !c.isDark -> Modifier.background(
+                    Brush.verticalGradient(listOf(c.accent.copy(alpha = 0.78f), c.accent, c.accent.copy(alpha = 0.92f))), shape)
+                    .border(1.dp, Color.White.copy(alpha = 0.72f), shape)
+                else -> Modifier.background(bg, shape)
+            })
             .clip(shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.45f)
@@ -224,7 +232,7 @@ fun BarIconButton(
     val c = MikaTheme.colors
     Box(
         Modifier.size(MikaSize.IconButton)
-            .then(if (glass) Modifier.floatShadow(c, CircleShape).background(c.surface, CircleShape) else Modifier)
+            .then(if (glass) Modifier.cardSurface(c, CircleShape) else Modifier)
             .clip(CircleShape)
             .clickable(enabled = enabled, onClickLabel = label, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -251,6 +259,7 @@ fun TopBar(
     leftLabel: String = "",
     /** 左边按钮上的小圆点,见 [BarIconButton]。 */
     leftBadge: Boolean = false,
+    leftGlass: Boolean = false,
     right: (@Composable RowScope.() -> Unit)? = null,
     subtitle: String? = null,
     subtitleColor: Color = Color.Unspecified,
@@ -263,7 +272,7 @@ fun TopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (left != null) BarIconButton(left, leftLabel, onLeft, badge = leftBadge) else Spacer(Modifier.size(MikaSize.IconButton))
+            if (left != null) BarIconButton(left, leftLabel, onLeft, glass = leftGlass, badge = leftBadge) else Spacer(Modifier.size(MikaSize.IconButton))
             Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(title, style = MikaType.Title, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!subtitle.isNullOrEmpty()) {
