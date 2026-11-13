@@ -25,19 +25,21 @@ enum class AmbientMode { Idle, Thinking, Executing }
 /** A quiet, bounded background effect. The clock is absent while idle or motion is reduced. */
 @Composable
 internal fun Modifier.ambientGlow(mode: AmbientMode, reduceMotion: Boolean): Modifier {
-    val phase = if (mode == AmbientMode.Idle || reduceMotion) 0f else
+    val phaseState = if (mode == AmbientMode.Idle || reduceMotion) null else
         rememberInfiniteTransition(label = "ambient-glow").animateFloat(
-            0f, 6.2831855f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "ambient-phase"
-        ).value
-    val strength = animateFloatAsState(
-        when (mode) { AmbientMode.Idle -> 0.10f; AmbientMode.Thinking -> 0.22f; AmbientMode.Executing -> 0.30f },
+            0f, 6.2831855f, infiniteRepeatable(tween(7000, easing = LinearEasing), RepeatMode.Restart), label = "ambient-phase"
+        )
+    val strengthState = animateFloatAsState(
+        when (mode) { AmbientMode.Idle -> 0.09f; AmbientMode.Thinking -> 0.36f; AmbientMode.Executing -> 0.46f },
         if (reduceMotion) snap() else tween(800), label = "ambient-strength",
-    ).value
+    )
     return drawBehind {
+        val phase = phaseState?.value ?: 0f
+        val strength = strengthState.value
         val w = size.width.coerceAtLeast(1f)
         val h = size.height.coerceAtLeast(1f)
-        val dx = sin(phase) * 0.08f
-        val dy = cos(phase) * 0.04f
+        val dx = sin(phase) * 0.16f
+        val dy = cos(phase) * 0.08f
         drawRect(Brush.radialGradient(listOf(Color(0xFF66A9FF).copy(alpha = strength), Color.Transparent),
             center = Offset(w * (0.34f + dx), h * (0.48f + dy)), radius = w * 0.82f))
         drawRect(Brush.radialGradient(listOf(Color(0xFFBA92F4).copy(alpha = strength * 0.9f), Color.Transparent),

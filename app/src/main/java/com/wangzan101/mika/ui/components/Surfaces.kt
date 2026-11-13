@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui.components
 
 import android.os.Build
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,8 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.ui.theme.MikaColors
 import com.wangzan101.mika.ui.theme.MikaShapes
@@ -57,6 +60,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import com.wangzan101.mika.R
 
 /**
  * 页面底:干净的近白(深色下近黑),不加渐变。
@@ -71,12 +75,17 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
             if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(
                 Brush.verticalGradient(listOf(Color(0xFFDCEAFF), Color(0xFFF8F8FC), Color(0xFFE3EDFF)))
             )
-        ).then(if (backdrop == null && !MikaTheme.colors.isDark) Modifier.ambientGlow(ambient, reduceMotion) else Modifier).then(
+        ).then(
             if (backdrop == null) Modifier else Modifier
                 .onGloballyPositioned { backdrop.pageOrigin = it.positionInRoot(); backdrop.pageSize = it.size }
                 .drawBehind { backdrop.draw(this, backdrop.pageOrigin) },
         ),
     ) {
+        if (backdrop == null && !MikaTheme.colors.isDark) {
+            Image(painterResource(R.drawable.mika_glass_background), contentDescription = null,
+                modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+            Box(Modifier.matchParentSize().ambientGlow(ambient, reduceMotion))
+        }
         CompositionLocalProvider(LocalSkinBackdrop provides backdrop) { content() }
     }
 }
@@ -109,8 +118,8 @@ fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Mo
         shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
     } else this)
         .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
-            Brush.verticalGradient(listOf(Color(0xE8FFFFFF), Color(0xD5E8F1FF))), shape)
-        .border(1.dp, colors.edge, shape)
+            Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xB5D7E4FF), Color(0xC5EEF5FF))), shape)
+        .border(1.dp, if (colors.isDark) colors.edge else Color(0xDFFFFFFF), shape)
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */
 fun Modifier.floatShadow(colors: MikaColors, shape: Shape): Modifier =
@@ -219,8 +228,9 @@ fun GlassBar(
             )
         }
         Row(
-            Modifier.fillMaxWidth().background(if (backdrop != null) c.glass else c.surface)
-                .border(0.5.dp, c.glassEdge, shape)
+            Modifier.fillMaxWidth().background(if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.surface)) else
+                Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xACDAE7FF), Color(0xD4F1F5FF))))
+                .border(1.dp, if (c.isDark) c.glassEdge else Color(0xE8FFFFFF), shape)
                 .heightIn(min = MikaSize.Composer).padding(6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
