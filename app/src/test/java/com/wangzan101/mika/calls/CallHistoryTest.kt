@@ -82,6 +82,38 @@ class CallHistoryTest {
         assertFalse(history.writeFailed.value)
     }
 
+    @Test fun recoveredReadPersistsBufferedCallsAlongsideOldHistory() = runBlocking {
+        val old = record(1)
+        val recent = record(2)
+        val storage = MemoryStorage(listOf(old)).apply { failRead = true }
+        val history = CallHistory(storage)
+        assertEquals(CallHistory.Result.WRITE_FAILED, history.append(recent))
+        storage.failRead = false
+        history.load()
+        assertEquals(listOf(recent, old), storage.records)
+        assertFalse(history.writeFailed.value)
+        val reopened = CallHistory(storage)
+        reopened.load()
+        assertEquals(listOf(recent, old), reopened.state.value)
+    }
+
+    @Test fun recoveredReadReportsFailedWriteAndKeepsBufferedCallsForRetry() = runBlocking {
+        val old = record(1)
+        val recent = record(2)
+        val storage = MemoryStorage(listOf(old)).apply { failRead = true }
+        val history = CallHistory(storage)
+        assertEquals(CallHistory.Result.WRITE_FAILED, history.append(recent))
+        storage.failRead = false
+        storage.failWrite = true
+        history.load()
+        assertEquals(listOf(old), storage.records)
+        assertEquals(listOf(recent, old), history.state.value)
+        assertTrue(history.writeFailed.value)
+        storage.failWrite = false
+        assertEquals(CallHistory.Result.SAVED, history.setHandled(recent.id, true))
+        assertEquals(listOf(recent.copy(handled = true), old), storage.records)
+    }
+
     @Test fun keepsNewestFiftyCallsAndDecodesLegacyRecordsAsUnhandled() = runBlocking {
         val storage = MemoryStorage()
         val history = CallHistory(storage)
