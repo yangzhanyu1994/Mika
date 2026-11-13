@@ -47,4 +47,26 @@ class AndroidPhoneCallPort(private val runtime: CallRuntime) : PhoneCallPort {
     override suspend fun answer(callId: String) = result(runtime.answer(expectedCallId = callId))
     override suspend fun hangup(callId: String) = result(runtime.hangup(expectedCallId = callId))
     override suspend fun takeover() = result(runtime.takeover())
+
+    override suspend fun saveIncomingTask(target: String, say: String, minutes: Int): JsonObject {
+        if (target.isBlank() || target.length > 80 || say.isBlank() || say.length > 800 || minutes !in 1..1440) {
+            return buildJsonObject { put("ok", false); put("message", "来电任务参数无效") }
+        }
+        return try {
+            val now = System.currentTimeMillis()
+            val saved = runtime.tasks.save(com.wangzan101.mika.calls.tasks.CallAssistantTask(
+                id = "", kind = com.wangzan101.mika.calls.tasks.CallTaskTexts.KIND_INCOMING,
+                title = target.trim().take(64), target = target.trim(), say = say.trim(),
+                startMs = now, endMs = now + minutes * 60_000L,
+                windowLabel = "创建后 $minutes 分钟内",
+            ))
+            buildJsonObject {
+                put("ok", true); put("message", "已保存来电交代；请确认自动接听已开启且准备就绪")
+                put("target", saved.target); put("say", saved.say); put("expires_at_ms", saved.endMs!!)
+                put("valid_minutes", minutes); put("auto_answer", runtime.settings.state.value.autoAnswer)
+            }
+        } catch (_: Exception) {
+            buildJsonObject { put("ok", false); put("message", "来电交代保存失败，请到通话中心检查") }
+        }
+    }
 }
