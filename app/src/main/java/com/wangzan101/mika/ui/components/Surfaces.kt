@@ -55,6 +55,7 @@ import com.wangzan101.mika.ui.theme.LocalSkinBackdrop
 import com.wangzan101.mika.ui.theme.SkinBackdrop
 import com.wangzan101.mika.ui.theme.rememberSkinBackdrop
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -69,6 +70,7 @@ import com.wangzan101.mika.R
 @Composable
 fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = AmbientMode.Idle, reduceMotion: Boolean = MikaTheme.reduceMotion, content: @Composable BoxScope.() -> Unit) {
     val backdrop = rememberSkinBackdrop()
+    val glassBackground = if (backdrop == null && !MikaTheme.colors.isDark) rememberGlassBackdrop() else null
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
         modifier.fillMaxSize().background(MikaTheme.colors.bg).then(
@@ -82,11 +84,13 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
         ),
     ) {
         if (backdrop == null && !MikaTheme.colors.isDark) {
-            Image(painterResource(R.drawable.mika_glass_background), contentDescription = null,
-                modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
-            Box(Modifier.matchParentSize().ambientGlow(ambient, reduceMotion))
+            Box(Modifier.matchParentSize().glassSource(glassBackground)) {
+                Image(painterResource(R.drawable.mika_glass_background), contentDescription = null,
+                    modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+                Box(Modifier.matchParentSize().ambientGlow(ambient, reduceMotion))
+            }
         }
-        CompositionLocalProvider(LocalSkinBackdrop provides backdrop) { content() }
+        CompositionLocalProvider(LocalSkinBackdrop provides backdrop, LocalGlassBackground provides glassBackground) { content() }
     }
 }
 
@@ -113,13 +117,28 @@ fun Modifier.pageBackground(color: Color, fade: Brush? = null): Modifier = compo
 }
 
 /** 卡片的底:白底 + 黑 5% 描边 + 极淡阴影;深色下只有描边。 */
-fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Modifier =
-    (if (colors.cardShadow.alpha > 0f) {
+fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Modifier = composed {
+    val source = LocalGlassBackground.current
+    val layer = if (source != null) rememberGraphicsLayer() else null
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    val shadowed = if (colors.cardShadow.alpha > 0f) {
         shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
-    } else this)
+    } else this
+    shadowed.clip(shape)
+        .then(if (source != null && layer != null) Modifier.onGloballyPositioned { origin = it.positionInRoot() }
+            .drawWithContent {
+                layer.renderEffect = GlassBlur
+                layer.record {
+                    val d = source.origin - origin
+                    translate(d.x, d.y) { drawLayer(source.layer) }
+                }
+                drawLayer(layer)
+                drawContent()
+            } else Modifier)
         .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
-            Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xB5D7E4FF), Color(0xC5EEF5FF))), shape)
-        .border(1.dp, if (colors.isDark) colors.edge else Color(0xDFFFFFFF), shape)
+            Brush.verticalGradient(listOf(Color(0xB8FFFFFF), Color(0x78D7E4FF), Color(0x9DEEF5FF))), shape)
+        .border(1.dp, if (colors.isDark) colors.edge else Color(0xE8FFFFFF), shape)
+}
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */
 fun Modifier.floatShadow(colors: MikaColors, shape: Shape): Modifier =
@@ -172,6 +191,8 @@ fun StateCard(
 
 // ---------- 悬浮玻璃 ----------
 
+private val LocalGlassBackground = staticCompositionLocalOf<GlassBackdrop?> { null }
+
 /** 能做背景模糊(安卓 12 起有 RenderEffect);不能时玻璃退回不透明的卡片底。 */
 val GlassBlurSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -212,11 +233,20 @@ fun GlassBar(
     content: @Composable RowScope.() -> Unit,
 ) {
     val c = MikaTheme.colors
+    val background = LocalGlassBackground.current
     var origin by remember { mutableStateOf(Offset.Zero) }
     Box(
         modifier.floatShadow(c, shape).clip(shape)
-            .then(if (backdrop != null) Modifier.onGloballyPositioned { origin = it.positionInRoot() } else Modifier),
+            .then(if (backdrop != null || background != null) Modifier.onGloballyPositioned { origin = it.positionInRoot() } else Modifier),
     ) {
+        if (background != null) {
+            Box(Modifier.matchParentSize()
+                .graphicsLayer { renderEffect = GlassBlur; clip = true }
+                .drawBehind {
+                    val d = background.origin - origin
+                    translate(d.x, d.y) { drawLayer(background.layer) }
+                })
+        }
         if (backdrop != null) {
             Box(
                 Modifier.matchParentSize()
@@ -229,7 +259,7 @@ fun GlassBar(
         }
         Row(
             Modifier.fillMaxWidth().background(if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.surface)) else
-                Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xACDAE7FF), Color(0xD4F1F5FF))))
+                Brush.verticalGradient(listOf(Color(0xAFFFFFFF), Color(0x78DAE7FF), Color(0xA8F1F5FF))))
                 .border(1.dp, if (c.isDark) c.glassEdge else Color(0xE8FFFFFF), shape)
                 .heightIn(min = MikaSize.Composer).padding(6.dp),
             verticalAlignment = Alignment.CenterVertically,
