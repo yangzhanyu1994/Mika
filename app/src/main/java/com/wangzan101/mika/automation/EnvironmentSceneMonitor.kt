@@ -53,6 +53,10 @@ class EnvironmentSceneMonitor : Service() {
             val lon = rule.longitude ?: return@forEach
             val result = FloatArray(1)
             Location.distanceBetween(location.latitude, location.longitude, lat, lon, result)
+            // A boundary-overlapping fix cannot confirm that a pending edge still holds.
+            if (result[0] - location.accuracy <= rule.radius && result[0] + location.accuracy >= rule.radius) {
+                epochs[rule.id] = (epochs[rule.id] ?: 0L) + 1
+            }
             val transition = locationGate.observe(rule.id, result[0], location.accuracy, rule.radius) ?: return@forEach
             onEdge(rule, transition)
         }
@@ -68,7 +72,7 @@ class EnvironmentSceneMonitor : Service() {
         val hasLocations = store.load() && store.rules.value.any { it.enabled && it.type == "location" }
         if (Build.VERSION.SDK_INT >= 34) {
             val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
-                if (hasLocations && fineGranted(this)) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
+                if (hasLocations && fineGranted(this) && backgroundGranted(this)) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
             startForeground(ID, note, type)
         } else startForeground(ID, note)
     }
@@ -80,7 +84,7 @@ class EnvironmentSceneMonitor : Service() {
         stopObservers()
         val rules = store.rules.value.filter { it.enabled }
         if (rules.any { it.type == "wifi" } && fineGranted(this)) startWifi()
-        if (rules.any { it.type == "location" } && fineGranted(this)) startLocation()
+        if (rules.any { it.type == "location" } && fineGranted(this) && backgroundGranted(this)) startLocation()
         active.value = callback != null || listening
         return START_STICKY
     }
@@ -88,7 +92,7 @@ class EnvironmentSceneMonitor : Service() {
     private fun startWifi() {
         val initial = connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
         if (initial == null || !initial.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifiGate.observe(null)
-        val observer = if (Build.VERSION.SDK_INT >= 31) object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
+        val observer = if (Build.VERSION.SDK_INT >= 31) object : ConnectivityManager.NetworkCallback(ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO) {
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = onWifi(network, caps)
             override fun onLost(network: Network) = onWifiLost(network)
         } else object : ConnectivityManager.NetworkCallback() {
@@ -166,6 +170,7 @@ class EnvironmentSceneMonitor : Service() {
         private val active = MutableStateFlow(false)
         val monitoring = active.asStateFlow()
         fun fineGranted(c: Context) = c.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        fun backgroundGranted(c: Context) = Build.VERSION.SDK_INT < 29 || c.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
         fun start(c: Context) = runCatching { c.startForegroundService(Intent(c, EnvironmentSceneMonitor::class.java)); true }.getOrDefault(false)
         fun stop(c: Context) { c.stopService(Intent(c, EnvironmentSceneMonitor::class.java)) }
     }
