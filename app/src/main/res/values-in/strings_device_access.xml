@@ -22,7 +22,7 @@
     <string name="device_local_group">Jalankan tugas saat ponsel terkunci</string>
     <string name="device_local_title">Jalankan tugas saat ponsel terkunci</string>
     <string name="device_local_sub">Nyalakan dan buka kunci jika diperlukan</string>
-    <string name="device_local_foot">Hanya untuk tugas lokal. Setelah selesai, Mika akan mencoba mengunci lagi. Atur PIN atau sandi saat ini di bawah. Akses jarak jauh terpisah.</string>
+    <string name="device_local_foot">Hanya untuk tugas lokal. Setelah selesai, Mika akan mencoba mengunci lagi. Atur PIN atau sandi saat ini di bawah. Akses jarak jauh terpisah. Notifikasi harus aktif; jika tugas terhenti, peringatan untuk memeriksa kunci tetap ditampilkan.</string>
     <string name="device_local_relock_title">Ponsel mungkin masih terbuka</string>
     <string name="device_local_relock_failed">Mika tidak dapat memastikan ponsel terkunci kembali. Periksa dan kunci secara manual.</string>
 </resources>

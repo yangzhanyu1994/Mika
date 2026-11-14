@@ -22,7 +22,7 @@
     <string name="device_local_group">اجرای کارها هنگام قفل بودن گوشی</string>
     <string name="device_local_title">اجرای کارها هنگام قفل بودن گوشی</string>
     <string name="device_local_sub">روشن و باز کردن قفل هنگام نیاز</string>
-    <string name="device_local_foot">فقط برای کارهای محلی. پس از پایان، قفل دوباره امتحان می‌شود. PIN یا گذرواژه فعلی را در پایین تنظیم کنید. دسترسی از راه دور جداست.</string>
+    <string name="device_local_foot">فقط برای کارهای محلی. پس از پایان، قفل دوباره امتحان می‌شود. PIN یا گذرواژه فعلی را در پایین تنظیم کنید. دسترسی از راه دور جداست. اعلان‌ها باید روشن باشند؛ در صورت توقف، هشدار بررسی قفل باقی می‌ماند.</string>
     <string name="device_local_relock_title">ممکن است قفل گوشی هنوز باز باشد</string>
     <string name="device_local_relock_failed">قفل شدن دوباره تأیید نشد. گوشی را بررسی و دستی قفل کنید.</string>
 </resources>

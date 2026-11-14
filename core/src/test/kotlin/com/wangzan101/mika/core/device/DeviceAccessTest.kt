@@ -99,6 +99,25 @@ class DeviceAccessTest {
         assertFalse(s.enabled)
     }
 
+    @Test fun wakingUnlockedScreenIsTrackedForRelock() = runTest {
+        val p = Port().apply { current = DeviceState(false, false, false, false, true, true) }
+        val s = Store().apply { enabled = false; localEnabled = true }
+        val result = DeviceAccess(p, s).unlockLocal()
+        assertEquals("unlocked", result.status)
+        assertTrue(result.performedUnlock)
+        assertEquals(1, p.wakes)
+        assertEquals(0, p.dismisses + p.entries)
+    }
+
+    @Test fun revokingLocalPermissionDuringWakeStopsBeforeCredentialInput() = runTest {
+        val s = Store().apply { enabled = false; localEnabled = true }
+        val p = Port().apply { wakeHook = { s.localEnabled = false } }
+        val result = DeviceAccess(p, s).unlockLocal()
+        assertEquals("disabled", result.status)
+        assertEquals(0, p.dismisses + p.entries)
+        assertFalse(result.performedUnlock)
+    }
+
     @Test fun disabledAndUnavailableNeverSendInput() = runTest {
         val p = Port(); val s = Store(); val d = DeviceAccess(p, s)
         s.enabled = false

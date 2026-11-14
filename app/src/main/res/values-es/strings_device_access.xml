@@ -22,7 +22,7 @@
     <string name="device_local_group">Ejecutar tareas con el teléfono bloqueado</string>
     <string name="device_local_title">Ejecutar tareas con el teléfono bloqueado</string>
     <string name="device_local_sub">Activar y desbloquear cuando sea necesario</string>
-    <string name="device_local_foot">Solo para tareas locales. Al terminar se intentará bloquear de nuevo. Configura abajo el PIN o la contraseña actuales. El acceso remoto es independiente.</string>
+    <string name="device_local_foot">Solo para tareas locales. Al terminar se intentará bloquear de nuevo. Configura abajo el PIN o la contraseña actuales. El acceso remoto es independiente. Debes activar las notificaciones; si se interrumpe, permanecerá un aviso para comprobar el bloqueo.</string>
     <string name="device_local_relock_title">El teléfono puede seguir desbloqueado</string>
     <string name="device_local_relock_failed">No se pudo confirmar el bloqueo. Compruébalo y bloquea el teléfono manualmente.</string>
 </resources>

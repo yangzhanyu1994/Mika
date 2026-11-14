@@ -22,7 +22,7 @@
     <string name="device_local_group">Run tasks while phone is locked</string>
     <string name="device_local_title">Run tasks while phone is locked</string>
     <string name="device_local_sub">Automatically wake and unlock for local tasks</string>
-    <string name="device_local_foot">Takes effect for new tasks, including local conversations and enabled scheduled tasks. The phone may light up and unlock; Mika attempts to lock it afterward. Configure the current PIN or password below. Remote access remains separate.</string>
+    <string name="device_local_foot">Takes effect for new tasks, including local conversations and enabled scheduled tasks. The phone may light up and unlock; Mika attempts to lock it afterward. Configure the current PIN or password below. Remote access remains separate. Notifications must be enabled; a warning remains if the task is interrupted before re-locking.</string>
     <string name="device_local_relock_title">Phone may still be unlocked</string>
     <string name="device_local_relock_failed">Mika could not confirm the phone was locked again. Check and lock it yourself.</string>
 </resources>

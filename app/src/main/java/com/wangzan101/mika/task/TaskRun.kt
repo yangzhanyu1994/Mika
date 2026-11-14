@@ -714,10 +714,26 @@ class TaskRun(
                         if (local && ScreenAccessibility.instance.value == null) {
                             states.refresh()
                             "accessibility_unavailable"
+                        } else if (local && !service.startLocalUnlockGuard()) {
+                            states.refresh()
+                            "notification_unavailable"
                         } else {
-                            val result = if (local) app.deviceAccess.access.unlockLocal(authorized) else app.deviceAccess.access.unlock(authorized)
+                            val result = try {
+                                if (local) app.deviceAccess.access.unlockLocal(authorized) else app.deviceAccess.access.unlock(authorized)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                // The system may complete injected input after cancellation.
+                                if (local) service.notifyLocalRelockFailed()
+                                throw e
+                            } catch (e: Exception) {
+                                if (local) service.notifyLocalRelockFailed()
+                                throw e
+                            }
                             if (local && result.performedUnlock) service.noteLocalUnlock()
                             states.refresh()
+                            if (local && !result.performedUnlock) {
+                                if (result.status == "unlocked") service.notifyLocalRelockFailed()
+                                else service.clearLocalUnlockGuardIfSafe()
+                            }
                             Log.i(TAG, "${provenance.origin} unlock finished: ${result.status}")
                             result.status
                         }

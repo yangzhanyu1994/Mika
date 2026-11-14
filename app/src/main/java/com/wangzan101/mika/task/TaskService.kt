@@ -216,26 +216,51 @@ class TaskService : Service() {
         val accessibility = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.instance.value
         val decision = localRelock.decide(
             runsRemain = center.runs().any { it !== ignore },
-            locked = keyguard.isKeyguardLocked,
+            locked = systemLockConfirmed(keyguard),
             interactions = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount(),
             canLock = accessibility != null && keeper.page.value == null,
         )
         when (decision) {
-            LocalRelock.Decision.NONE, LocalRelock.Decision.WAIT -> return
+            LocalRelock.Decision.NONE -> { clearLocalUnlockGuardIfSafe(); return }
+            LocalRelock.Decision.WAIT -> return
             LocalRelock.Decision.WARN -> { notifyLocalRelockFailed(); return }
             LocalRelock.Decision.LOCK -> Unit
         }
         val accepted = accessibility?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) == true
         if (accepted) {
             repeat(20) {
-                if (keyguard.isKeyguardLocked) return
+                if (systemLockConfirmed(keyguard)) { clearLocalUnlockGuardIfSafe(); return }
                 kotlinx.coroutines.delay(100)
             }
         }
         notifyLocalRelockFailed()
     }
 
-    private fun notifyLocalRelockFailed() {
+    private fun systemLockConfirmed(keyguard: android.app.KeyguardManager): Boolean =
+        keyguard.isKeyguardLocked && (!keyguard.isKeyguardSecure || keyguard.isDeviceLocked)
+
+    /** A persistent warning survives task interruption or process death after screen unlock. */
+    internal fun startLocalUnlockGuard(): Boolean {
+        ensureChannels(this)
+        val manager = getSystemService(NotificationManager::class.java)
+        val channel = manager.getNotificationChannel(CHANNEL_ATTENTION) ?: return false
+        if (!manager.areNotificationsEnabled() || channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+        return runCatching {
+            manager.notify(81847, Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(tr(R.string.device_local_relock_title))
+                .setContentText(tr(R.string.device_local_relock_failed))
+                .setStyle(Notification.BigTextStyle().bigText(tr(R.string.device_local_relock_failed)))
+                .setContentIntent(openApp(this)).setOngoing(true).build())
+            true
+        }.getOrDefault(false)
+    }
+
+    internal fun clearLocalUnlockGuardIfSafe() {
+        if (!localRelock.hasPending() && systemLockConfirmed(getSystemService(android.app.KeyguardManager::class.java)))
+            runCatching { getSystemService(NotificationManager::class.java).cancel(81847) }
+    }
+
+    internal fun notifyLocalRelockFailed() {
         ensureChannels(this)
         runCatching { getSystemService(NotificationManager::class.java).notify(81847,
             Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)

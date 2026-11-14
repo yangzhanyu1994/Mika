@@ -87,14 +87,17 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
         prepare(authorized, local)?.let { return@withLock it }
         var now = read() ?: return@withLock result("device_unavailable")
         if (now.ready) return@withLock result("unlocked", now)
+        var woke = false
         if (!now.interactive) {
             if (!allowed()) return@withLock result("disabled", now)
             if (!port.wake()) return@withLock result("wake_failed", read())
+            woke = true
             now = await { !allowed() || it.interactive } ?: return@withLock result("device_unavailable")
             if (!allowed()) return@withLock result("disabled", now)
             if (!now.interactive) return@withLock result("wake_failed", now)
         }
         if (!allowed()) return@withLock result("disabled", now)
+        if (local && now.ready) return@withLock result("unlocked", now, performedUnlock = woke)
         val wasSecure = now.secure
         if (!port.dismiss()) return@withLock result("dismiss_failed", read())
         now = await { !allowed() || it.ready || it.secure && it.keyguardShowing } ?: return@withLock result("device_unavailable")

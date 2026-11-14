@@ -22,7 +22,7 @@
     <string name="device_local_group">تشغيل المهام أثناء قفل الهاتف</string>
     <string name="device_local_title">تشغيل المهام أثناء قفل الهاتف</string>
     <string name="device_local_sub">إيقاظ الهاتف وفتحه عند الحاجة</string>
-    <string name="device_local_foot">للمهام المحلية فقط. سيحاول التطبيق إعادة القفل بعد الانتهاء. اضبط رمز PIN أو كلمة المرور الحالية أدناه. الوصول عن بُعد منفصل.</string>
+    <string name="device_local_foot">للمهام المحلية فقط. سيحاول التطبيق إعادة القفل بعد الانتهاء. اضبط رمز PIN أو كلمة المرور الحالية أدناه. الوصول عن بُعد منفصل. يجب تفعيل الإشعارات؛ إذا توقفت المهمة فسيبقى تنبيه للتحقق من القفل.</string>
     <string name="device_local_relock_title">قد يظل الهاتف مفتوح القفل</string>
     <string name="device_local_relock_failed">تعذر التأكد من إعادة قفل الهاتف. تحقّق منه واقفله يدويًا.</string>
 </resources>
