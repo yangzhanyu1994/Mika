@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.lerp
 import com.wangzan101.mika.settings.ThemeAccent
 
 /**
@@ -160,6 +162,21 @@ fun palette(dark: Boolean, accent: ThemeAccent): MikaColors {
     if (accent == ThemeAccent.Blue) return base
     val (color, on) = accentTone(accent, dark)
     return base.withAccent(color, on)
+}
+
+/** Light backgrounds and cards follow the selected custom accent. */
+fun coordinatedLightPalette(accent: ThemeAccent): MikaColors {
+    val chosen = palette(false, accent)
+    return LightColors.withSystemLight(lightColorScheme(
+        primary = chosen.accent, onPrimary = chosen.onAccent,
+        primaryContainer = lerp(Color.White, chosen.accent, 0.16f),
+        background = lerp(Color.White, chosen.accent, 0.075f),
+        surface = lerp(Color.White, chosen.accent, 0.025f),
+        surfaceContainerLow = lerp(Color.White, chosen.accent, 0.035f),
+        surfaceVariant = lerp(Color.White, chosen.accent, 0.12f),
+        onBackground = LightColors.ink, onSurfaceVariant = LightColors.ink2,
+        outlineVariant = lerp(Color.White, chosen.accent, 0.2f),
+    ))
 }
 
 /**

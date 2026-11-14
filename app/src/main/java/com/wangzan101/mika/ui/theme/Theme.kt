@@ -24,7 +24,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -120,18 +119,7 @@ fun MikaTheme(
     val colors = remember(dark, accent, imageHue, systemColors) {
         val base = when {
             systemColors != null -> LightColors.withSystemLight(systemColors)
-            !dark && accent != ThemeAccent.System -> {
-                val chosen = palette(false, accent)
-                LightColors.withSystemLight(lightColorScheme(
-                    primary = chosen.accent, onPrimary = chosen.onAccent,
-                    primaryContainer = lerp(Color.White, chosen.accent, 0.16f),
-                    background = lerp(Color.White, chosen.accent, 0.075f),
-                    surface = lerp(Color.White, chosen.accent, 0.025f),
-                    surfaceVariant = lerp(Color.White, chosen.accent, 0.12f),
-                    onBackground = LightColors.ink, onSurfaceVariant = LightColors.ink2,
-                    outlineVariant = lerp(Color.White, chosen.accent, 0.2f),
-                ))
-            }
+            !dark && accent != ThemeAccent.System -> coordinatedLightPalette(accent)
             else -> palette(dark, accent)
         }
         if (imageHue == null) base else SkinAccent.tone(imageHue, dark).let { (color, on) -> base.withAccent(color, on) }
