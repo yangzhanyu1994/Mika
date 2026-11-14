@@ -13,6 +13,7 @@ import org.junit.Test
 class DeviceAccessTest {
     private class Store : DeviceAccessStore {
         override var enabled = true
+        override var localEnabled = false
         override val credentialConfigured get() = kind != null
         override var attemptBlocked = false
         var kind: CredentialKind? = CredentialKind.Pin
@@ -21,6 +22,12 @@ class DeviceAccessTest {
         override fun credential() = kind?.let { DeviceCredential(it, if (it == CredentialKind.Pin) "123456".toCharArray() else "Test pass!".toCharArray()).also { last = it } }
         override fun beginAttempt(credential: DeviceCredential): Boolean {
             if (attemptBlocked || !enabled) return false
+            attemptBlocked = true
+            beginHook()
+            return true
+        }
+        override fun beginLocalAttempt(credential: DeviceCredential): Boolean {
+            if (attemptBlocked || !localEnabled) return false
             attemptBlocked = true
             beginHook()
             return true
@@ -67,6 +74,29 @@ class DeviceAccessTest {
             if (inputWorks) current = current.copy(keyguardShowing = false, deviceLocked = false)
             return true
         }
+    }
+
+    @Test fun localPermissionDoesNotEnableRemoteAndReportsActualUnlock() = runTest {
+        val p = Port(); val s = Store().apply { enabled = false; localEnabled = true }; val d = DeviceAccess(p, s)
+        assertEquals("disabled", d.unlock().status)
+        val result = d.unlockLocal()
+        assertEquals("unlocked", result.status)
+        assertTrue(result.performedUnlock)
+        assertFalse(s.enabled)
+        val alreadyUnlocked = d.unlockLocal()
+        assertFalse(alreadyUnlocked.performedUnlock)
+        s.localEnabled = false
+        assertEquals("disabled", d.unlockLocal().status)
+    }
+
+    @Test fun revokingLocalPermissionDuringWakeStopsBeforeCredentialInput() = runTest {
+        val s = Store().apply { enabled = false; localEnabled = true }
+        val p = Port().apply { wakeHook = { s.localEnabled = false } }
+        val result = DeviceAccess(p, s).unlockLocal()
+        assertEquals("disabled", result.status)
+        assertEquals(0, p.dismisses + p.entries)
+        assertFalse(result.performedUnlock)
+        assertFalse(s.enabled)
     }
 
     @Test fun disabledAndUnavailableNeverSendInput() = runTest {

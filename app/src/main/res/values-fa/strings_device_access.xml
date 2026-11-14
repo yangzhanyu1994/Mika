@@ -19,4 +19,10 @@
     <string name="device_access_pin_hint">از رمز عددی فعلی ۴ تا ۱۶ رقمی استفاده کنید. ذخیرهٔ دوباره پس از خطا یک تلاش جدید را مجاز می‌کند.</string>
     <string name="device_access_password_hint">از گذرواژهٔ فعلی ۴ تا ۶۴ نویسه‌ای استفاده کنید: حروف انگلیسی، اعداد، فاصله و نمادهای رایج ASCII. نویسه‌های دیگر و قفل الگویی پشتیبانی نمی‌شوند.</string>
     <string name="device_access_save_failed">ذخیره نشد. فضای ذخیره‌سازی گوشی را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="device_local_group">اجرای کارها هنگام قفل بودن گوشی</string>
+    <string name="device_local_title">اجرای کارها هنگام قفل بودن گوشی</string>
+    <string name="device_local_sub">روشن و باز کردن قفل هنگام نیاز</string>
+    <string name="device_local_foot">فقط برای کارهای محلی. پس از پایان، قفل دوباره امتحان می‌شود. PIN یا گذرواژه فعلی را در پایین تنظیم کنید. دسترسی از راه دور جداست.</string>
+    <string name="device_local_relock_title">ممکن است قفل گوشی هنوز باز باشد</string>
+    <string name="device_local_relock_failed">قفل شدن دوباره تأیید نشد. گوشی را بررسی و دستی قفل کنید.</string>
 </resources>

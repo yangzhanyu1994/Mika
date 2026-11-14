@@ -23,6 +23,22 @@ class DeviceAccessSettingsTest {
         reloaded.credential()!!.use { assertEquals("Test pass!4", String(it.value)) }
     }
 
+    @Test fun localPermissionIsIndependentAndPersists() {
+        val s = settings()
+        s.setCredential(CredentialKind.Pin, "123456")
+        s.setLocalEnabled(true)
+        assertTrue(s.localEnabled)
+        assertFalse(s.enabled)
+        val next = settings()
+        assertTrue(next.localEnabled)
+        assertFalse(next.enabled)
+        next.credential()!!.use {
+            assertFalse(next.beginAttempt(it))
+            assertTrue(next.beginLocalAttempt(it))
+        }
+        assertTrue(settings().attemptBlocked)
+    }
+
     @Test fun failureAndProcessRestartCannotResetAttemptPermission() {
         val s = settings(); s.setCredential(CredentialKind.Pin, "123456"); s.setEnabled(true)
         s.credential()!!.use { assertTrue(s.beginAttempt(it)); assertFalse(s.beginAttempt(it)) }

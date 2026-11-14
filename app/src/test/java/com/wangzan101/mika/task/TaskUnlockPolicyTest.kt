@@ -28,6 +28,16 @@ class TaskUnlockPolicyTest {
         }
     }
 
+    @Test fun localTaskPermissionIsIndependentAndRechecked() {
+        var enabled = true
+        val ui = requireNotNull(taskUnlockAuthorization(RunOrigin.Ui, null, localUnlockEnabled = { enabled }) { false })
+        assertTrue(ui())
+        enabled = false
+        assertFalse(ui())
+        assertNull(taskUnlockAuthorization(RunOrigin.Ui, null, localUnlockEnabled = { enabled }) { false })
+        assertNull(taskUnlockAuthorization(RunOrigin.Mcp, null, localUnlockEnabled = { true }) { false })
+    }
+
     @Test fun missingOrOtherChannelPeersNeverResolveWechat() {
         for (candidate in listOf(null, peer.copy(channelId = "local"), peer.copy(channelId = "mcp"))) {
             assertNull(taskUnlockAuthorization(RunOrigin.Channel, candidate) {
@@ -40,14 +50,14 @@ class TaskUnlockPolicyTest {
         var allowed = false
         var checks = 0
         val canUnlock: (ChannelPeer?) -> Boolean = { checks++; allowed }
-        val waitingTask = taskUnlockAuthorization(RunOrigin.Channel, peer, canUnlock)
+        val waitingTask = taskUnlockAuthorization(RunOrigin.Channel, peer, canUnlockWechat = canUnlock)
         assertNull(waitingTask)
         assertEquals(1, checks)
 
         allowed = true
         assertNull(waitingTask)
         assertEquals(1, checks)
-        val nextTask = taskUnlockAuthorization(RunOrigin.Channel, peer, canUnlock)
+        val nextTask = taskUnlockAuthorization(RunOrigin.Channel, peer, canUnlockWechat = canUnlock)
         assertTrue(requireNotNull(nextTask).invoke())
     }
 

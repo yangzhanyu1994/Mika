@@ -220,6 +220,7 @@ fun DuringWorkScreen(
     externalSchedule: Boolean = false, onExternalSchedule: (Boolean) -> Unit = {},
     stepLimit: Int? = null, onStepLimit: (Int?) -> Unit = {},
     tokenBudget: Long? = null, onTokenBudget: (Long?) -> Unit = {},
+    deviceSettings: com.wangzan101.mika.settings.DeviceAccessSettings? = null,
 ) {
     var editingLimit by remember { mutableStateOf(false) }
     var customLimit by remember { mutableStateOf("") }
@@ -256,6 +257,7 @@ fun DuringWorkScreen(
             )
             parallel?.let { ParallelRow(it, onParallelMax) }
         }
+        deviceSettings?.let { DeviceAccessSection(it, localTasks = true) }
         if (editingLimit) StepLimitDialog(
             current = stepLimit,
             custom = customLimit,

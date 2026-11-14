@@ -45,6 +45,8 @@ interface DeviceAccessPort {
 /** 许可和凭据来自手机设置,电脑不能修改。输入前持久化占位,失败/取消/崩溃后不再自动重试。 */
 interface DeviceAccessStore {
     val enabled: Boolean
+    val localEnabled: Boolean get() = false
+    fun beginLocalAttempt(credential: DeviceCredential): Boolean = false
     val credentialConfigured: Boolean
     val attemptBlocked: Boolean
     fun credential(): DeviceCredential?
@@ -55,7 +57,7 @@ interface DeviceAccessStore {
 data class DeviceAccessResult(val status: String, val state: DeviceState?, val enabled: Boolean,
     val credentialConfigured: Boolean, val attemptBlocked: Boolean,
     val storedKind: CredentialKind? = null, val detectedKind: CredentialKind? = null,
-    val keyguardDiagnostics: List<String> = emptyList())
+    val keyguardDiagnostics: List<String> = emptyList(), val performedUnlock: Boolean = false)
 
 /** 整个进程共用一份。并发调用串行化,成功依据系统状态,不依据按键或命令的返回码。 */
 class DeviceAccess(private val port: DeviceAccessPort, private val store: DeviceAccessStore,
@@ -77,9 +79,12 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
     }
 
     /** 来源授权只能进一步收窄本机总开关；等待锁和系统界面后、每次操作前都重新核对。 */
-    suspend fun unlock(authorized: () -> Boolean = { true }): DeviceAccessResult = mutex.withLock {
-        fun allowed() = store.enabled && authorized()
-        prepare(authorized)?.let { return@withLock it }
+    suspend fun unlock(authorized: () -> Boolean = { true }): DeviceAccessResult = unlockUsing(false, authorized)
+    suspend fun unlockLocal(authorized: () -> Boolean = { true }): DeviceAccessResult = unlockUsing(true, authorized)
+
+    private suspend fun unlockUsing(local: Boolean, authorized: () -> Boolean): DeviceAccessResult = mutex.withLock {
+        fun allowed() = (if (local) store.localEnabled else store.enabled) && authorized()
+        prepare(authorized, local)?.let { return@withLock it }
         var now = read() ?: return@withLock result("device_unavailable")
         if (now.ready) return@withLock result("unlocked", now)
         if (!now.interactive) {
@@ -90,10 +95,11 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
             if (!now.interactive) return@withLock result("wake_failed", now)
         }
         if (!allowed()) return@withLock result("disabled", now)
+        val wasSecure = now.secure
         if (!port.dismiss()) return@withLock result("dismiss_failed", read())
         now = await { !allowed() || it.ready || it.secure && it.keyguardShowing } ?: return@withLock result("device_unavailable")
         if (!allowed()) return@withLock result("disabled", now)
-        if (now.ready) return@withLock result("unlocked", now)
+        if (now.ready) return@withLock result("unlocked", now, performedUnlock = !wasSecure)
         if (!now.secure) return@withLock result("unlock_failed", now)
         if (store.attemptBlocked) return@withLock result("attempt_blocked", now)
         val credential = store.credential() ?: return@withLock result("credential_required", now)
@@ -137,7 +143,7 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
                 return@withLock result("unsupported_keyguard", current, keyguardDiagnostics = diagnostics)
             }
             if (!allowed()) return@withLock result("disabled", read())
-            if (!store.beginAttempt(it)) return@withLock result("attempt_blocked", read())
+            if (!(if (local) store.beginLocalAttempt(it) else store.beginAttempt(it))) return@withLock result("attempt_blocked", read())
             // 从此刻起中断也保留占位,不重复输入。只有系统已解锁才清掉。
             if (!allowed()) return@withLock result("disabled", read())
             if (!port.enter(it)) {
@@ -146,13 +152,13 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
                 return@withLock result("input_failed", after)
             }
             now = await { s -> s.ready } ?: return@withLock result("device_unavailable")
-            if (now.ready) { store.completeAttempt(it); result("unlocked", now) }
+            if (now.ready) { store.completeAttempt(it); result("unlocked", now, performedUnlock = true) }
             else result("unlock_failed", now)
         }
     }
 
-    private suspend fun prepare(authorized: () -> Boolean = { true }): DeviceAccessResult? {
-        if (!store.enabled || !authorized()) return result("disabled", read())
+    private suspend fun prepare(authorized: () -> Boolean = { true }, local: Boolean = false): DeviceAccessResult? {
+        if (!(if (local) store.localEnabled else store.enabled) || !authorized()) return result("disabled", read())
         val s = read() ?: return result("device_unavailable")
         if (!s.userUnlocked) return result("first_unlock_required", s)
         if (!s.helperAvailable) return result("helper_unavailable", s)
@@ -167,7 +173,7 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
         return s
     }
     private fun result(status: String, s: DeviceState? = null, storedKind: CredentialKind? = null, detectedKind: CredentialKind? = null,
-        keyguardDiagnostics: List<String> = emptyList()) =
+        keyguardDiagnostics: List<String> = emptyList(), performedUnlock: Boolean = false) =
         DeviceAccessResult(status, s, store.enabled, store.credentialConfigured, store.attemptBlocked, storedKind, detectedKind,
-            keyguardDiagnostics)
+            keyguardDiagnostics, performedUnlock)
 }

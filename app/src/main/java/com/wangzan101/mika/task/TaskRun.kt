@@ -702,17 +702,25 @@ class TaskRun(
             }
             val app = service.application as MikaApp
             // 微信只使用当前绑定会话的独立授权；仍保留 Channel 来源及原有确认/接管规则。
-            val unlockAuthorized = taskUnlockAuthorization(provenance.origin, channelPeer) { peer ->
+            val unlockAuthorized = taskUnlockAuthorization(provenance.origin, channelPeer, localUnlockEnabled = { app.deviceAccess.settings.localEnabled }) { peer ->
                 app.wechat.store.canUnlock(peer)
             }
             val taskGate = TaskGate(states.locked, shellUp,
                 refreshLocked = states::refresh,
                 unattendedUnlock = unlockAuthorized?.let { authorized ->
                     {
-                        val result = app.deviceAccess.access.unlock(authorized)
-                        states.refresh()
-                        Log.i(TAG, "${provenance.origin} unlock finished: ${result.status}")
-                        result.status
+                        val local = provenance.origin in setOf(RunOrigin.Ui, RunOrigin.Trigger) && app.deviceAccess.settings.localEnabled
+                        // The local path must have accessibility available to restore the lock afterward.
+                        if (local && ScreenAccessibility.instance.value == null) {
+                            states.refresh()
+                            "accessibility_unavailable"
+                        } else {
+                            val result = if (local) app.deviceAccess.access.unlockLocal(authorized) else app.deviceAccess.access.unlock(authorized)
+                            if (local && result.performedUnlock) service.noteLocalUnlock()
+                            states.refresh()
+                            Log.i(TAG, "${provenance.origin} unlock finished: ${result.status}")
+                            result.status
+                        }
                     }
                 },
                 unlockFailureMessage = {
@@ -1119,6 +1127,7 @@ class TaskRun(
             _pipInput.value = null
             _appShown.value = false
             if (connection != null) phoneServices.sharedShell.release()
+            withContext(Dispatchers.Main + NonCancellable) { service.finishLocalUnlock(this@TaskRun) }
         }
     }
 

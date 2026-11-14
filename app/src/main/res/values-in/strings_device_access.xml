@@ -19,4 +19,10 @@
     <string name="device_access_pin_hint">Gunakan PIN 4–16 digit yang berlaku saat ini. Menyimpan ulang memberi satu kesempatan baru setelah gagal.</string>
     <string name="device_access_password_hint">Gunakan sandi 4–64 karakter yang berlaku saat ini: huruf Inggris, angka, spasi, dan simbol ASCII umum. Karakter lain dan kunci pola tidak didukung.</string>
     <string name="device_access_save_failed">Gagal menyimpan. Periksa penyimpanan ponsel lalu coba lagi.</string>
+    <string name="device_local_group">Jalankan tugas saat ponsel terkunci</string>
+    <string name="device_local_title">Jalankan tugas saat ponsel terkunci</string>
+    <string name="device_local_sub">Nyalakan dan buka kunci jika diperlukan</string>
+    <string name="device_local_foot">Hanya untuk tugas lokal. Setelah selesai, Mika akan mencoba mengunci lagi. Atur PIN atau sandi saat ini di bawah. Akses jarak jauh terpisah.</string>
+    <string name="device_local_relock_title">Ponsel mungkin masih terbuka</string>
+    <string name="device_local_relock_failed">Mika tidak dapat memastikan ponsel terkunci kembali. Periksa dan kunci secara manual.</string>
 </resources>
