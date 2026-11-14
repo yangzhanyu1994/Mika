@@ -17,6 +17,8 @@ import com.wangzan101.mika.ui.components.PageScaffold
 import com.wangzan101.mika.ui.theme.MikaTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -27,6 +29,19 @@ class DeviceAccessSectionTest {
     @get:Rule val compose = createComposeRule()
     private val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "device-access-ui-test")
     @After fun cleanup() { dir.deleteRecursively() }
+
+    @Test fun localTaskSwitchDoesNotEnableRemoteUnlock() {
+        val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val settings = DeviceAccessSettings(dir, AesGcmKeyCipher { key })
+        compose.setContent { MikaTheme(dark = false, reduceMotion = true) {
+            PageScaffold("任务运行", {}) { DeviceAccessSection(settings, localTasks = true) }
+        } }
+        assertFalse(settings.localEnabled)
+        compose.onNodeWithTag("device-local-enabled").performScrollTo().performClick()
+        compose.waitUntil(5_000) { settings.localEnabled }
+        assertTrue(settings.localEnabled)
+        assertFalse(settings.enabled)
+    }
 
     @Test fun credentialEditorRequiresConfirmationAndNeverShowsSavedValue() {
         val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()

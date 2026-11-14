@@ -19,4 +19,11 @@
     <string name="device_access_pin_hint">填寫目前的 4–16 位數字 PIN。嘗試失敗後重新儲存，可允許再嘗試一次。</string>
     <string name="device_access_password_hint">填寫目前的 4–64 位密碼，支援英文字母、數字、空格及常見英文符號；暫不支援其他字元和圖案螢幕鎖定。</string>
     <string name="device_access_save_failed">沒能儲存，請檢查手機儲存空間後重試。</string>
+    <string name="device_local_group">鎖屏時執行任務</string>
+    <string name="device_local_title">鎖屏時執行任務</string>
+    <string name="device_local_sub">需要時自動亮屏並解鎖</string>
+    <string name="device_local_foot">僅授權本機任務。手機可能亮屏並解鎖；任務結束後會嘗試重新鎖屏。請在下方設定目前的 PIN 或密碼。遠端存取權限另行設定。需要開啟通知；若任務中斷，提示會保留，提醒檢查手機鎖定狀態。</string>
+    <string name="device_local_relock_title">手機可能仍處於解鎖狀態</string>
+    <string name="device_local_relock_failed">Mika 無法確認手機已重新鎖屏，請檢查並手動鎖屏。</string>
+    <string name="device_local_unlock_failed">無法自動亮屏或解鎖。請檢查「任務執行」中的鎖屏開關、已儲存的鎖屏憑據、手機操作設定及通知權限。</string>
 </resources>

@@ -17,7 +17,7 @@ import java.nio.file.StandardCopyOption
 import java.util.UUID
 
 data class DeviceAccessConfig(val enabled: Boolean = false, val kind: CredentialKind? = null,
-    val blocked: Boolean = false, val revision: String = "")
+    val blocked: Boolean = false, val revision: String = "", val localEnabled: Boolean = false)
 
 /** 全部设置加密原子写入。仅保留非秘密状态流,不缓存解密后的凭据。读不出时按关闭处理。 */
 class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher) : DeviceAccessStore {
@@ -25,6 +25,7 @@ class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher)
     private val mutable = MutableStateFlow(runCatching { read()?.let(::configOf) }.getOrNull() ?: DeviceAccessConfig())
     val config = mutable.asStateFlow()
     override val enabled get() = config.value.enabled
+    override val localEnabled get() = config.value.localEnabled
     override val credentialConfigured get() = config.value.kind != null
     override val attemptBlocked get() = config.value.blocked
 
@@ -33,6 +34,14 @@ class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher)
         catch (e: Exception) {
             // 撤销许可时即使磁盘/密钥不可用也先在进程内关闭;不让保存错误留下可用的旧许可。
             if (!on) { mutable.value = config.value.copy(enabled = false); file.delete() }
+            throw e
+        }
+    }
+
+    @Synchronized fun setLocalEnabled(on: Boolean) {
+        try { update(config.value.copy(localEnabled = on)) }
+        catch (e: Exception) {
+            if (!on) { mutable.value = config.value.copy(localEnabled = false); file.delete() }
             throw e
         }
     }
@@ -58,6 +67,12 @@ class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher)
         return true
     }
 
+    @Synchronized override fun beginLocalAttempt(credential: DeviceCredential): Boolean {
+        if (!localEnabled || attemptBlocked || config.value.revision != credential.revision || config.value.kind != credential.kind) return false
+        update(config.value.copy(blocked = true))
+        return true
+    }
+
     @Synchronized override fun completeAttempt(credential: DeviceCredential) {
         if (config.value.revision == credential.revision) update(config.value.copy(blocked = false))
     }
@@ -77,7 +92,8 @@ class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher)
         val revision = (o["revision"] as? JsonPrimitive)?.content.orEmpty()
         check(kind == null || revision.isNotEmpty())
         return DeviceAccessConfig((o["enabled"] as? JsonPrimitive)?.booleanOrNull == true, kind,
-            (o["blocked"] as? JsonPrimitive)?.booleanOrNull == true, revision)
+            (o["blocked"] as? JsonPrimitive)?.booleanOrNull == true, revision,
+            (o["localEnabled"] as? JsonPrimitive)?.booleanOrNull == true)
     }
 
     private fun update(config: DeviceAccessConfig) {
@@ -90,7 +106,7 @@ class DeviceAccessSettings(private val dir: File, private val cipher: KeyCipher)
 
     private fun save(config: DeviceAccessConfig, value: String?) {
         val bytes = buildJsonObject {
-            put("enabled", config.enabled); put("blocked", config.blocked); put("revision", config.revision)
+            put("enabled", config.enabled); put("localEnabled", config.localEnabled); put("blocked", config.blocked); put("revision", config.revision)
             config.kind?.let { put("kind", it.name); put("credential", value) }
         }.toString().toByteArray(Charsets.UTF_8)
         dir.mkdirs()

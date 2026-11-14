@@ -19,4 +19,11 @@
     <string name="device_access_pin_hint">Use the current 4–16 digit PIN. Saving again allows one new attempt after a failure.</string>
     <string name="device_access_password_hint">Use the current 4–64 character password: English letters, numbers, spaces and common ASCII symbols. Other characters and pattern locks are not supported.</string>
     <string name="device_access_save_failed">Could not save. Check the phone storage and try again.</string>
+    <string name="device_local_group">Run tasks while phone is locked</string>
+    <string name="device_local_title">Run tasks while phone is locked</string>
+    <string name="device_local_sub">Automatically wake and unlock for local tasks</string>
+    <string name="device_local_foot">Takes effect for new tasks, including local conversations and enabled scheduled tasks. The phone may light up and unlock; Mika attempts to lock it afterward. Configure the current PIN or password below. Remote access remains separate. Notifications must be enabled; a warning remains if the task is interrupted before re-locking.</string>
+    <string name="device_local_relock_title">Phone may still be unlocked</string>
+    <string name="device_local_relock_failed">Mika could not confirm the phone was locked again. Check and lock it yourself.</string>
+    <string name="device_local_unlock_failed">Could not wake or unlock the phone. Check the locked-task switch, saved screen lock credential, phone control and notification permission in settings.</string>
 </resources>

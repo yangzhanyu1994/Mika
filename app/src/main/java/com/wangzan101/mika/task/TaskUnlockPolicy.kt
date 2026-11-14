@@ -8,8 +8,10 @@ import com.wangzan101.mika.wechat.WechatChannel
 internal fun taskUnlockAuthorization(
     origin: RunOrigin,
     peer: ChannelPeer?,
+    localUnlockEnabled: () -> Boolean = { false },
     canUnlockWechat: (ChannelPeer?) -> Boolean,
 ): (() -> Boolean)? = when {
+    origin == RunOrigin.Ui && localUnlockEnabled() -> ({ localUnlockEnabled() })
     origin == RunOrigin.Trigger -> ({ true })
     origin == RunOrigin.Channel && peer?.channelId == WechatChannel.ID && canUnlockWechat(peer) ->
         ({ canUnlockWechat(peer) })

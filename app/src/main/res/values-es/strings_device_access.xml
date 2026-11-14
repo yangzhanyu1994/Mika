@@ -19,4 +19,11 @@
     <string name="device_access_pin_hint">Usa el PIN actual de 4 a 16 dígitos. Si vuelves a guardarlo, se permite un nuevo intento tras un fallo.</string>
     <string name="device_access_password_hint">Usa la contraseña actual de 4 a 64 caracteres: letras inglesas, números, espacios y símbolos ASCII comunes. No se admiten otros caracteres ni patrones de desbloqueo.</string>
     <string name="device_access_save_failed">No se pudo guardar. Revisa el almacenamiento del teléfono e inténtalo de nuevo.</string>
+    <string name="device_local_group">Ejecutar tareas con el teléfono bloqueado</string>
+    <string name="device_local_title">Ejecutar tareas con el teléfono bloqueado</string>
+    <string name="device_local_sub">Activar y desbloquear cuando sea necesario</string>
+    <string name="device_local_foot">Solo para tareas locales. Al terminar se intentará bloquear de nuevo. Configura abajo el PIN o la contraseña actuales. El acceso remoto es independiente. Debes activar las notificaciones; si se interrumpe, permanecerá un aviso para comprobar el bloqueo.</string>
+    <string name="device_local_relock_title">El teléfono puede seguir desbloqueado</string>
+    <string name="device_local_relock_failed">No se pudo confirmar el bloqueo. Compruébalo y bloquea el teléfono manualmente.</string>
+    <string name="device_local_unlock_failed">No se pudo activar o desbloquear el teléfono. Revisa el ajuste de tareas, la credencial guardada, el control del teléfono y el permiso de notificaciones.</string>
 </resources>

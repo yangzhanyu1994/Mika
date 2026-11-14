@@ -56,6 +56,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -204,6 +205,70 @@ class TaskService : Service() {
     internal fun otherRunHasDisplay(run: TaskRun) = center.running().any { it !== run && it.displayId.value >= 0 }
     internal fun hasActiveRuns() = center.running().isNotEmpty()
     internal fun hasQueuedRuns() = center.queued().isNotEmpty()
+
+    // Keep the re-lock obligation until the final active or queued task finishes.
+    private val localRelock = LocalRelock()
+    internal fun noteLocalUnlock() = localRelock.unlocked(
+        com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount())
+
+    internal suspend fun finishLocalUnlock(ignore: TaskRun? = null) {
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        val accessibility = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.instance.value
+        val decision = localRelock.decide(
+            runsRemain = center.runs().any { it !== ignore },
+            locked = systemLockConfirmed(keyguard),
+            interactions = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount(),
+            canLock = accessibility != null && keeper.page.value == null,
+        )
+        when (decision) {
+            LocalRelock.Decision.NONE -> { clearLocalUnlockGuardIfSafe(); return }
+            LocalRelock.Decision.WAIT -> return
+            LocalRelock.Decision.WARN -> { notifyLocalRelockFailed(); return }
+            LocalRelock.Decision.LOCK -> Unit
+        }
+        val accepted = accessibility?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) == true
+        if (accepted) {
+            repeat(20) {
+                if (systemLockConfirmed(keyguard)) { clearLocalUnlockGuardIfSafe(); return }
+                kotlinx.coroutines.delay(100)
+            }
+        }
+        notifyLocalRelockFailed()
+    }
+
+    private fun systemLockConfirmed(keyguard: android.app.KeyguardManager): Boolean =
+        keyguard.isKeyguardLocked && (!keyguard.isKeyguardSecure || keyguard.isDeviceLocked)
+
+    /** A persistent warning survives task interruption or process death after screen unlock. */
+    internal fun startLocalUnlockGuard(): Boolean {
+        ensureChannels(this)
+        val manager = getSystemService(NotificationManager::class.java)
+        val channel = manager.getNotificationChannel(CHANNEL_ATTENTION) ?: return false
+        if (!manager.areNotificationsEnabled() || channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+        return runCatching {
+            manager.notify(81847, Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(tr(R.string.device_local_relock_title))
+                .setContentText(tr(R.string.device_local_relock_failed))
+                .setStyle(Notification.BigTextStyle().bigText(tr(R.string.device_local_relock_failed)))
+                .setContentIntent(openApp(this)).setOngoing(true).build())
+            true
+        }.getOrDefault(false)
+    }
+
+    internal fun clearLocalUnlockGuardIfSafe() {
+        if (!localRelock.hasPending() && systemLockConfirmed(getSystemService(android.app.KeyguardManager::class.java)))
+            runCatching { getSystemService(NotificationManager::class.java).cancel(81847) }
+    }
+
+    internal fun notifyLocalRelockFailed() {
+        ensureChannels(this)
+        runCatching { getSystemService(NotificationManager::class.java).notify(81847,
+            Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(tr(R.string.device_local_relock_title))
+                .setContentText(tr(R.string.device_local_relock_failed))
+                .setStyle(Notification.BigTextStyle().bigText(tr(R.string.device_local_relock_failed)))
+                .setContentIntent(openApp(this)).setAutoCancel(true).build()) }
+    }
 
     private fun publishRuns() {
         val r = center.runs()
@@ -572,7 +637,7 @@ class TaskService : Service() {
     }
 
     /** 任务收尾之后:都结束了就退出前台;还有别的任务就把前台交给它们,并放出排队的任务。 */
-    private fun onRunEnded(run: TaskRun, store: ConversationStore) {
+    private suspend fun onRunEnded(run: TaskRun, store: ConversationStore) {
         val wasShown = taskState.shownRun === run
         val started = center.onEnded(run)
         // 收尾时替接班的拿着的屏幕锁交给第一个放出来的;没有放出来的(排着的被取消、同一对话还有任务在跑)就放开
@@ -589,6 +654,8 @@ class TaskService : Service() {
                 ready.forEach(::startFollowUp)
                 return
             }
+            // Do not lock while another task is active or waiting. Run after the final task.
+            withContext(Dispatchers.Main + NonCancellable) { finishLocalUnlock() }
             // 还留着一页在后台运行:前台通知换成它的,服务不退(进程靠它撑着);关掉时由 [onKeptPage] 退出
             val kept = keeper.page.value
             if (kept != null) {
