@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -441,6 +442,7 @@ private fun MikaRoot(
     val hasMain = roles.main != null
     val check = Prerequisites.check(status, hasMain)
     val app = context.applicationContext as MikaApp
+    var assistantVoiceRequest by remember { mutableIntStateOf(0) }
     // 查到的新版本:侧栏、设置首页、关于页的红点都看它
     val updateState by app.updates.state.collectAsState()
     val callHistory by app.calls.history.collectAsState()
@@ -449,7 +451,17 @@ private fun MikaRoot(
     LaunchedEffect(requestedAssistant) {
         if (requestedAssistant) {
             nav.reset()
+            assistantVoiceRequest++
             onAssistantOpened()
+        }
+    }
+    AssistantVoiceCapture(assistantVoiceRequest, app.voice) { spoken, sendRequested ->
+        val ui = app.chat.ui.value
+        val text = com.wangzan101.mika.voice.HoldToTalk.join(ui.input, spoken)
+        app.chat.input(text)
+        // Do not accidentally send an existing draft, attachment, quote or shared content.
+        if (sendRequested && ui.input.isBlank() && ui.attachments.isEmpty() && ui.quote == null && ui.sharedDraft == null) {
+            app.chat.send(text, check)
         }
     }
     LaunchedEffect(requestedConversation) {
