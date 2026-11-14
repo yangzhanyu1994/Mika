@@ -81,4 +81,5 @@
     <string name="plans_voice_example">例：毎朝 8 時に雨なら知らせて</string>
     <string name="plans_parse_failed">この文からは予定を作れませんでした。下の項目は直接編集できます</string>
     <string name="plans_parsed_note">項目を入れました。確認してから保存してください</string>
+    <string name="plans_run_history">実行履歴</string>
 </resources>

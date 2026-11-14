@@ -45,6 +45,8 @@ object MikaQuit {
         runCatching { app.stopService(Intent(app, com.wangzan101.mika.calls.tasks.ScheduledDialService::class.java)) }
         runCatching { RuntimePreparer.stop(app) }
         runCatching { app.wechat.stop() }
+        // 主动能力开着时不再读通知:请系统解绑监听,免得系统为了它把进程又拉起来
+        runCatching { if (FeatureFlags.get(app).proactive()) app.proactive.pause() }
         runCatching { app.mcp.stopServer() }
         runCatching { app.chatGptSignIn.cancel() }
         runCatching { app.stopService(Intent(app, TaskService::class.java)) }

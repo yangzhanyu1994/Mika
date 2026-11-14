@@ -82,4 +82,5 @@
     <string name="plans_voice_example">مثلاً: هر روز ساعت ۸ اگر باران می‌آید یادآوری کن</string>
     <string name="plans_parse_failed">کار از این جمله پر نشد. فیلدها را هنوز می‌توانید ویرایش کنید.</string>
     <string name="plans_parsed_note">فیلدها پر شد. بررسی کنید و ذخیره کنید.</string>
+    <string name="plans_run_history">تاریخچه اجرا</string>
 </resources>

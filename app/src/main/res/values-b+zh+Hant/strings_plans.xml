@@ -81,4 +81,5 @@
     <string name="plans_voice_example">例如：每天早上 8 點如果會下雨就提醒我</string>
     <string name="plans_parse_failed">沒能從這句話整理出定時任務，仍可直接改下面的欄位</string>
     <string name="plans_parsed_note">已填好欄位，請核對後再儲存</string>
+    <string name="plans_run_history">執行記錄</string>
 </resources>

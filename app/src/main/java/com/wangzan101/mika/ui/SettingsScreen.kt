@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats }
+private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -165,6 +165,7 @@ fun SettingsScreen(
     val back = {
         page = when (page) {
             SettingsPage.RunStats -> SettingsPage.Developer
+            SettingsPage.Proactive -> SettingsPage.Advanced
             SettingsPage.SelfCheck -> SettingsPage.Recovery
             SettingsPage.Sandbox, SettingsPage.Recovery, SettingsPage.ComputerAccess,
             SettingsPage.McpServers, SettingsPage.Root, SettingsPage.Developer -> SettingsPage.Advanced
@@ -210,6 +211,7 @@ fun SettingsScreen(
             mcpServersCount = mcpServers?.servers?.value?.size, onOpenMcpServers = { page = SettingsPage.McpServers },
             showRoot = rootState.suPresent, rootCommands = rootState.commands, onOpenRoot = { page = SettingsPage.Root },
             showDeveloper = showDeveloper, onOpenDeveloper = { page = SettingsPage.Developer },
+            onOpenProactive = { page = SettingsPage.Proactive },
             onBack = toHome,
         )
         SettingsPage.AppAccess -> AppAccessScreen(onBack = toHome)
@@ -258,6 +260,7 @@ fun SettingsScreen(
             onOpenRunStats = { page = SettingsPage.RunStats },
         )
         SettingsPage.RunStats -> RunStatsScreen(remember { RunStore(context).metrics }, onBack = back)
+        SettingsPage.Proactive -> com.wangzan101.mika.proactive.ProactiveScreen(onBack = back)
     }
 
     if (editingProxy) NetProxyDialog(
@@ -479,6 +482,7 @@ fun AdvancedSettingsContent(
     onOpenRoot: () -> Unit = {},
     showDeveloper: Boolean = false,
     onOpenDeveloper: () -> Unit = {},
+    onOpenProactive: () -> Unit = {},
 ) {
     PageScaffold(stringResource(R.string.settings_advanced), onBack) {
         val sandboxRow = sandbox?.takeIf { it !is SandboxStatus.Unsupported }
@@ -519,6 +523,9 @@ fun AdvancedSettingsContent(
                     }
                 }
             }
+        }
+        GroupCard {
+            ListRow(null, stringResource(R.string.proactive_title), stringResource(R.string.proactive_entry_sub), first = true, onClick = onOpenProactive) { RowChevron() }
         }
         if (showRecovery) {
             GroupLabel(stringResource(R.string.settings_maintenance))

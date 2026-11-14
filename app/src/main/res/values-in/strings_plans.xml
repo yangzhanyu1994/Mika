@@ -81,4 +81,5 @@
     <string name="plans_voice_example">Misalnya: ingatkan jam 8 tiap pagi kalau akan hujan</string>
     <string name="plans_parse_failed">Tidak bisa mengisi tugas dari kalimat itu. Isian tetap bisa diubah.</string>
     <string name="plans_parsed_note">Isian sudah diisi. Periksa lalu simpan.</string>
+    <string name="plans_run_history">Riwayat eksekusi</string>
 </resources>
