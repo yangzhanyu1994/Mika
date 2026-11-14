@@ -2,6 +2,7 @@ package com.wangzan101.mika.powerprobe
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -44,8 +45,17 @@ private class PowerProbeSession(context: Context) : VoiceInteractionSession(cont
 
     override fun onCreateContentView(): View = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(36, 28, 36, 28)
-        label = TextView(context).also { it.text = "系统助理小窗：请松开电源键"; addView(it) }
+        // The assistant window can extend under the status bar. Keep the result below it.
+        val dp = context.resources.displayMetrics.density
+        setPadding((20 * dp).toInt(), (100 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt())
+        label = TextView(context).also {
+            it.text = "系统助理小窗：请松开电源键"
+            it.textSize = 20f
+            it.setTextColor(Color.BLACK)
+            it.setBackgroundColor(Color.WHITE)
+            it.setPadding((16 * dp).toInt(), (16 * dp).toInt(), (16 * dp).toInt(), (16 * dp).toInt())
+            addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
         addView(Button(context).apply { text = "关闭"; setOnClickListener { finish() } })
     }
 
