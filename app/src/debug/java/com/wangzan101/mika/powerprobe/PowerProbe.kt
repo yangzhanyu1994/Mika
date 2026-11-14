@@ -85,13 +85,15 @@ private class PowerProbeSession(context: Context) : VoiceInteractionSession(cont
         label?.text = "请在 8 秒内长按电源键，再松开；只报告电源键结果，不保存按键数据。"
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { shell.runCommand(POWER_UP_TEST)?.getString("output").orEmpty() }.getOrDefault("")
+                runCatching { shell.runCommand(POWER_UP_TEST) }.getOrNull()
             }
             helperTestRunning = false
-            val lines = result.lineSequence().map { it.trim() }.toSet()
+            val lines = result?.getString("output").orEmpty().lineSequence().map { it.trim() }.toSet()
             label?.text = when {
+                result == null || result.getInt("exitCode", -1) != 0 -> "手机助手测试未完成，请重试"
                 "POWER_UP" in lines -> "手机助手：收到了电源键松开事件"
                 "NO_DEVICE" in lines -> "手机助手无法访问电源键设备"
+                "NO_TOOL" in lines -> "手机助手缺少测试所需的系统工具"
                 else -> "手机助手：8 秒内未检测到电源键松开事件"
             }
         }
@@ -132,6 +134,7 @@ private class PowerProbeSession(context: Context) : VoiceInteractionSession(cont
         // Read capabilities to identify the power-key device; during the bounded test,
         // only KEY_POWER release is allowed through the pipe. No events are saved or logged.
         private const val POWER_UP_TEST = """
+            command -v timeout >/dev/null 2>&1 || { echo NO_TOOL; exit; }
             d=${'$'}(getevent -lp 2>/dev/null | awk '/add device/ {d=${'$'}4} /KEY_POWER/ {print d; exit}')
             case "${'$'}d" in /dev/input/event[0-9]*) ;; *) echo NO_DEVICE; exit ;; esac
             if timeout 8 getevent -l "${'$'}d" 2>/dev/null | grep -q -m 1 'KEY_POWER.*UP'; then echo POWER_UP; else echo NO_POWER_UP; fi
