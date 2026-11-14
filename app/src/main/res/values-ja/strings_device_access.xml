@@ -26,4 +26,5 @@
     <string name="device_local_foot">端末上のタスクにのみ適用します。完了後は再ロックを試みます。現在の PIN またはパスワードを下に設定してください。リモート権限は別です。 通知を有効にしてください。中断時はロック状態を確認する通知が残ります。</string>
     <string name="device_local_relock_title">スマートフォンはロック解除されたままの可能性があります</string>
     <string name="device_local_relock_failed">再ロックを確認できませんでした。端末を確認し、手動でロックしてください。</string>
+    <string name="device_local_unlock_failed">画面の点灯またはロック解除ができませんでした。タスク設定、保存した画面ロック情報、端末操作と通知権限を確認してください。</string>
 </resources>

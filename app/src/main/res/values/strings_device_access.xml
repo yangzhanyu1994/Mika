@@ -25,4 +25,5 @@
     <string name="device_local_foot">Takes effect for new tasks, including local conversations and enabled scheduled tasks. The phone may light up and unlock; Mika attempts to lock it afterward. Configure the current PIN or password below. Remote access remains separate. Notifications must be enabled; a warning remains if the task is interrupted before re-locking.</string>
     <string name="device_local_relock_title">Phone may still be unlocked</string>
     <string name="device_local_relock_failed">Mika could not confirm the phone was locked again. Check and lock it yourself.</string>
+    <string name="device_local_unlock_failed">Could not wake or unlock the phone. Check the locked-task switch, saved screen lock credential, phone control and notification permission in settings.</string>
 </resources>

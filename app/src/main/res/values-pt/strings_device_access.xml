@@ -26,4 +26,5 @@
     <string name="device_local_foot">Somente para tarefas locais. Ao terminar, será tentado um novo bloqueio. Configure abaixo o PIN ou a senha atual. O acesso remoto é separado. As notificações devem estar ativadas; se houver interrupção, um aviso permanecerá para verificar o bloqueio.</string>
     <string name="device_local_relock_title">O telefone pode continuar desbloqueado</string>
     <string name="device_local_relock_failed">Não foi possível confirmar o bloqueio. Verifique e bloqueie o telefone manualmente.</string>
+    <string name="device_local_unlock_failed">Não foi possível ativar ou desbloquear o telefone. Verifique a opção de tarefas, a credencial salva, o controle do telefone e a permissão de notificações.</string>
 </resources>

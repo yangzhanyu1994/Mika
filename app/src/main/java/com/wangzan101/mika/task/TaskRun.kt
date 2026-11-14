@@ -740,7 +740,11 @@ class TaskRun(
                     }
                 },
                 unlockFailureMessage = {
-                    tr(if (provenance.origin == RunOrigin.Channel) R.string.wechat_unlock_failed else R.string.trigger_unlock_failed)
+                    tr(when {
+                        provenance.origin == RunOrigin.Channel -> R.string.wechat_unlock_failed
+                        provenance.origin in setOf(RunOrigin.Ui, RunOrigin.Trigger) && app.deviceAccess.settings.localEnabled -> R.string.device_local_unlock_failed
+                        else -> R.string.trigger_unlock_failed
+                    })
                 },
             ) {
                 val t = phone?.screen?.target?.value

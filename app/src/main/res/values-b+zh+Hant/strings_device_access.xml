@@ -25,4 +25,5 @@
     <string name="device_local_foot">僅授權本機任務。手機可能亮屏並解鎖；任務結束後會嘗試重新鎖屏。請在下方設定目前的 PIN 或密碼。遠端存取權限另行設定。需要開啟通知；若任務中斷，提示會保留，提醒檢查手機鎖定狀態。</string>
     <string name="device_local_relock_title">手機可能仍處於解鎖狀態</string>
     <string name="device_local_relock_failed">Mika 無法確認手機已重新鎖屏，請檢查並手動鎖屏。</string>
+    <string name="device_local_unlock_failed">無法自動亮屏或解鎖。請檢查「任務執行」中的鎖屏開關、已儲存的鎖屏憑據、手機操作設定及通知權限。</string>
 </resources>
