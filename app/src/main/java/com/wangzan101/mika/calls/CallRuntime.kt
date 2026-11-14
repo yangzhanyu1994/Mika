@@ -937,6 +937,12 @@ class CallRuntime(private val app: MikaApp) {
             val helper = shell ?: throw CallProblem("Mika 内置助手未连接")
             val credentials = withContext(Dispatchers.IO) { settings.credentials() }
                 ?: throw CallProblem("火山凭据不可用，请重新保存")
+            if (w.direction == CallDirection.OUTGOING && w.task != null) {
+                val model = app.providers.modelFor(ModelRole.Main)
+                    ?: throw CallProblem("无法准备拨出时要交代的话，请检查主模型设置")
+                w.taskOpening = CallOpeningGenerator.generate(model, w.task)
+                    ?: throw CallProblem("无法准备拨出时要交代的话，请检查主模型连接后重试")
+            }
             if (!probeAudio()) throw CallProblem(audioDetail ?: "此设备的双向通话音频不可用")
             if (shell !== helper || w.config.audioMode != settings.state.value.audioMode) {
                 throw CallProblem("通话音频设置已变化，请重试")
@@ -1025,9 +1031,7 @@ class CallRuntime(private val app: MikaApp) {
                 throw CallProblem("Android 未确认通话接通，电话由系统处理")
             }
             val target = w.track ?: throw CallProblem("通话已结束")
-            if (!carrierCall(target.call) || liveCalls().singleOrNull() !== target) {
-                throw CallProblem("当前通话无法由 AI 安全接管")
-            }
+            awaitSafeCarrierCall(w, target)
             w.activeAt = System.currentTimeMillis()
             w.activeElapsed = SystemClock.elapsedRealtime()
             acquireCallWakeLock(w)
@@ -1172,7 +1176,8 @@ class CallRuntime(private val app: MikaApp) {
     }
 
     private suspend fun runAudio(w: Work, helper: IMikaShell, session: VolcRealtimeSession) {
-        val greeting = CallPolicy.callGreeting(w.config, w.direction)
+        val greeting = listOfNotNull(CallPolicy.callGreeting(w.config, w.direction).takeIf { it.isNotBlank() }, w.taskOpening)
+            .joinToString(" ")
         val notification = app.getString(
             if (greeting.isBlank()) R.string.calls_notification_connected_waiting else R.string.calls_notification_connected,
         )
@@ -1626,20 +1631,37 @@ class CallRuntime(private val app: MikaApp) {
 
     private fun isEmergency(number: String): Boolean? = runCatching { telephony?.isEmergencyNumber(number) }.getOrNull()
 
-    private fun carrierCall(call: Call): Boolean {
-        val d = call.details ?: return false
+    private suspend fun awaitSafeCarrierCall(w: Work, target: Tracked) {
+        val started = SystemClock.elapsedRealtime()
+        while (true) {
+            val sameCall = work === w && w.track === target && target.phase == CallPhase.ACTIVE &&
+                liveCalls().singleOrNull() === target
+            val issue = if (sameCall) carrierCallIssue(target.call) else null
+            when (carrierGuardDecision(issue, sameCall, SystemClock.elapsedRealtime() - started)) {
+                CarrierGuardDecision.READY -> return
+                CarrierGuardDecision.WAIT -> delay(100L)
+                CarrierGuardDecision.REJECT_CHANGED_CALL -> throw CallProblem("通话已变化或存在其他通话，AI 未接管")
+                CarrierGuardDecision.REJECT_CARRIER -> throw CallProblem(checkNotNull(issue).message)
+            }
+        }
+    }
+
+    private fun carrierCall(call: Call): Boolean = carrierCallIssue(call) == null
+
+    private fun carrierCallIssue(call: Call): CarrierCallIssue? {
+        val d = call.details ?: return CarrierCallIssue.DETAILS_PENDING
         if (d.videoState != VideoProfile.STATE_AUDIO_ONLY ||
             d.callProperties and (Call.Details.PROPERTY_SELF_MANAGED or Call.Details.PROPERTY_IS_EXTERNAL_CALL or
                 Call.Details.PROPERTY_NETWORK_IDENTIFIED_EMERGENCY_CALL or Call.Details.PROPERTY_EMERGENCY_CALLBACK_MODE or
                 Call.Details.PROPERTY_CONFERENCE or Call.Details.PROPERTY_RTT) != 0 ||
-            call.parent != null || call.children.isNotEmpty()) return false
+            call.parent != null || call.children.isNotEmpty()) return CarrierCallIssue.UNSUPPORTED_CALL
         val number = d.handle?.let { rawHandle ->
-            if (rawHandle.scheme != PhoneAccount.SCHEME_TEL) return false
-            CallPolicy.incomingNumber(rawHandle.schemeSpecificPart) ?: return false
+            if (rawHandle.scheme != PhoneAccount.SCHEME_TEL) return CarrierCallIssue.INVALID_NUMBER
+            CallPolicy.incomingNumber(rawHandle.schemeSpecificPart) ?: return CarrierCallIssue.INVALID_NUMBER
         }
-        val handle = d.accountHandle ?: return false
-        if (subscription(handle) == null) return false
-        return number == null || isEmergency(number) == false
+        val handle = d.accountHandle ?: return CarrierCallIssue.ACCOUNT_PENDING
+        if (subscription(handle) == null) return CarrierCallIssue.SUBSCRIPTION_PENDING
+        return if (number == null || isEmergency(number) == false) null else CarrierCallIssue.EMERGENCY_OR_UNKNOWN
     }
 
     private fun matchesOutgoing(w: Work, tracked: Tracked): Boolean =
@@ -1746,6 +1768,7 @@ class CallRuntime(private val app: MikaApp) {
         var aiActive = false
         var activeAt: Long? = null
         var activeElapsed: Long = 0L
+        var taskOpening: String? = null
         val stopReason = CallStopReason()
         var mediaStage = MediaStage.PREFLIGHT
         var mediaDiagnosticCount = 0
