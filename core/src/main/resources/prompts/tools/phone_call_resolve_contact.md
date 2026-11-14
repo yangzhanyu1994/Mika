@@ -1,0 +1,1 @@
+Look up the exact name of the person the user explicitly asked to call in the device contacts. Use the returned number only when ok is true. If permission is missing, no exact match exists, or multiple numbers match, ask the user for the intended number. Never guess a number, choose a different contact, or dial through the system phone app.
