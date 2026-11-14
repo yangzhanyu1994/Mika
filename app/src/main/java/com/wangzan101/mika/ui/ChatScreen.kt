@@ -5,7 +5,9 @@ import com.wangzan101.mika.cap.sandbox.AttachmentFailure
 import com.wangzan101.mika.cap.sandbox.AttachmentFailureReason
 import com.wangzan101.mika.core.agent.QuoteMessage
 import com.wangzan101.mika.core.record.ConversationTokens
-import com.wangzan101.mika.core.cap.web.AttachedPage
+import com.wangzan101.mika.core.usage.DeepSeekCost
+import com.wangzan101.mika.settings.FeatureFlags
+import com.wangzan101.mika.core.agent.AttachedPage
 import com.wangzan101.mika.ui.components.DirectionalIcon
 import com.wangzan101.mika.ui.components.keepsKeyboard
 import com.wangzan101.mika.ui.components.pageBackground
@@ -205,6 +207,8 @@ fun ChatScreen(
     onOpenTeach: (String) -> Unit = {},
     /** 首页推荐任务。不传时用本机保存的那一份;测试传入单独的存储,避免改到用户的数据。 */
     recommendations: RecommendedTaskStore? = null,
+    openReport: (String) -> Unit = {},
+    openPlayback: (String) -> Unit = {},
 ) {
     val recommendationStore = recommendations
         ?: (LocalContext.current.applicationContext as? MikaApp)?.recommendedTasks
@@ -214,6 +218,13 @@ fun ChatScreen(
     }
     val recommendedTasks by recommendedTasksFlow.collectAsState()
     val ui by vm.ui.collectAsState()
+    var deviceBrowserConversation by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(ui.conversationId, deviceBrowserConversation) {
+        if (deviceBrowserConversation != null && deviceBrowserConversation != vm.ui.value.conversationId) deviceBrowserConversation = null
+    }
+    deviceBrowserConversation?.takeIf { it == ui.conversationId }?.let { id ->
+        DeviceFileBrowser(vm, id) { deviceBrowserConversation = null }
+    }
     val pendingJump by vm.jump.collectAsState()
     val others by vm.otherRunning.collectAsState()
     val keptAny by vm.keptPage.collectAsState()
@@ -335,10 +346,12 @@ fun ChatScreen(
     // 已结束各轮的运行小结:每轮结束那一行写这一轮的 token,顶栏闲着时写这个对话合起来的
     val endedRuns = ui.exchanges.filter { !it.status.isActive() }.mapNotNull { it.recordedRun }
     val runMetrics = rememberRunMetrics(endedRuns)
+    val context = LocalContext.current
+    val flags = remember(context) { FeatureFlags.get(context) }
+    val showTaskCost by remember(flags) { flags.showTaskCostChanges() }.collectAsState(initial = flags.showTaskCost())
 
     val c = MikaTheme.colors
     val backdrop = rememberGlassBackdrop()
-    val context = LocalContext.current
     /** 长按了的那条消息;菜单开着(收起的动画放完才清掉)。 */
     var menu by remember { mutableStateOf<MessageTarget?>(null) }
     var queueActions by remember(ui.conversationId) { mutableStateOf<com.wangzan101.mika.task.QueuedFollowUp?>(null) }
@@ -390,14 +403,17 @@ fun ChatScreen(
                 }
                 ui.exchanges.forEachIndexed { i, ex ->
                     val backgroundNote = i == ui.exchanges.lastIndex && ui.operatingPhone
+                    val metrics = ex.runId?.let(runMetrics::get)
+                    val cost = metrics?.deepSeekCost?.takeIf { showTaskCost }
                     exchange(
                         i, ex, ui.conversationId, ui.takeoverStage, vm, reduceMotion, backgroundNote, openRun, loadSource, openSource, kept,
                         highlightKey = highlightKey,
-                        tokens = ConversationTokens.turn(ex.recordedRun?.let(runMetrics::get)),
+                        tokens = ConversationTokens.turn(metrics, includeSideCalls = cost != null), cost = cost,
                         recover = { resume ->
                             val label = if (resume) R.string.chat_resume_request else R.string.chat_restart_request
                             vm.send(context.getString(label, ex.goal), check)
                         },
+                        openReport = openReport, openPlayback = openPlayback,
                     )
                 }
                 if (phoneSetupNeeded && ui.exchanges.isNotEmpty()) item("phone-setup") { PhoneSetupLine(openPhoneSetup) }
@@ -463,7 +479,10 @@ fun ChatScreen(
             onStartQueued = vm::startQueued,
             attachPanel = if (ui.attachEnabled) ({
                 androidx.compose.runtime.key(ui.conversationId) {
-                    AttachPanelHost(ui.attachments, onPicked = { vm.attach(it, ui.conversationId) }, onToggle = vm::toggleAttachment)
+                    AttachPanelHost(ui.attachments, onPicked = { vm.attach(it, ui.conversationId) }, onToggle = vm::toggleAttachment,
+                        onDeviceFiles = if (com.wangzan101.mika.settings.FeatureFlags.get(context).deviceFiles()) ({
+                            deviceBrowserConversation = vm.libraryTargetConversation()
+                        }) else null)
                 }
             }) else null,
             attachBlocked = false,
@@ -724,8 +743,10 @@ private fun LazyListScope.exchange(
     highlightKey: String? = null,
     /** 这一轮用了多少 token(结束后、读到运行小结时才有)。 */
     tokens: Long? = null,
+    cost: DeepSeekCost? = null,
     /** 终态后的两个新运行入口:true 从摘要断点继续,false 按原目标重新开始。 */
     recover: (Boolean) -> Unit = {},
+    openReport: (String) -> Unit = {}, openPlayback: (String) -> Unit = {},
 ) {
     if (ex.goal.isNotEmpty()) item("u$index") {
         JumpHighlight(highlightKey == "u$index", reduceMotion) { UserBubble(ex.goal, conversationId, key = "u$index") }
@@ -738,7 +759,7 @@ private fun LazyListScope.exchange(
     if (active) {
         if (!answering) item("s$index") { WorkBlock(ex, reduceMotion, backgroundNote, openRun) }
     } else if (ex.steps.isNotEmpty() || ex.recordedRun != null) {
-        item("s$index") { DoneLine(ex, reduceMotion, openRun, tokens) }
+        item("s$index") { DoneLine(ex, reduceMotion, openRun, tokens, cost) }
     }
     // 引导进当前任务的话只带一个弯箭头;没赶上当前任务、转入下一件的不带标记。
     // 插话之前已经说完的回复照常显示;插话打断的那段留在原处(淡色、标「被你的新消息打断」);接着才是插话。
@@ -766,7 +787,8 @@ private fun LazyListScope.exchange(
     waiting.forEach(::steer)
     item("r$index") {
         JumpHighlight(highlightKey == "r$index", reduceMotion) {
-            StatusCard(ex.status, stage, vm, ex.recordedRun, loadSource, openSource, "r$index", recover)
+            StatusCard(ex.status, stage, vm, ex.recordedRun, loadSource, openSource, "r$index",
+                recover = recover, goal = ex.goal, openReport = openReport, openPlayback = openPlayback)
         }
     }
     // 这一轮结束后留在后台运行的那一页:还开着是绿色一行(能关),关了是一句原因
@@ -1111,8 +1133,8 @@ internal fun Spinner(modifier: Modifier, spinning: Boolean, track: Color, head: 
  * 没做步骤的(只聊了几句)只写 token;[tokens] 为 null(还没读到小结、服务商没报用量)时不写。
  */
 @Composable
-private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> Unit, tokens: Long? = null) {
-    val tokenText = tokens?.let(ChatTokensCopy::amount)
+private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> Unit, tokens: Long?, cost: DeepSeekCost?) {
+    val usage = listOfNotNull(tokens?.let(ChatTokensCopy::amount), cost?.let(ChatTokensCopy::cost)).joinToString(" · ")
     val c = MikaTheme.colors
     var open by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
@@ -1123,12 +1145,12 @@ private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> U
             if (ex.status is ExchangeStatus.Done) Icon(MikaIcons.Check, null, Modifier.size(16.dp), tint = c.ink3)
             if (ex.steps.isNotEmpty()) {
                 Text(
-                    stepsSummary(ex) + tokenText?.let { " · $it" }.orEmpty(),
+                    listOf(stepsSummary(ex), usage).filter(String::isNotEmpty).joinToString(" · "),
                     Modifier.clickable(onClickLabel = if (open) stringResource(R.string.chat_collapse_steps) else stringResource(R.string.chat_expand_steps)) { open = !open },
                     style = DoneText, color = c.ink3,
                 )
-            } else if (tokenText != null) {
-                Text(tokenText, style = DoneText, color = c.ink3)
+            } else if (usage.isNotEmpty()) {
+                Text(usage, style = DoneText, color = c.ink3)
             }
             ex.recordedRun?.let { id ->
                 Text(
@@ -1172,6 +1194,7 @@ private fun StatusCard(
     /** 回答的长按菜单认这一条用的(见 [MessageArea])。 */
     key: String,
     recover: (Boolean) -> Unit = {},
+    goal: String, openReport: (String) -> Unit, openPlayback: (String) -> Unit,
 ) {
     when (status) {
         ExchangeStatus.Working -> Unit
@@ -1220,8 +1243,11 @@ private fun StatusCard(
         }
         // 长按整块回答弹菜单;复制、引用的只是回答的字,不带上面的提示和下面的来源
         is ExchangeStatus.Done -> Box(Modifier.padding(bottom = 12.dp)) {
+            var expanded by rememberSaveable(key) { mutableStateOf(false) }
             AnswerArea(key, status.answer, Modifier.fillMaxWidth().answerSurface()) {
                 Column {
+                    if (runId != null) Text(goal, Modifier.padding(bottom = 12.dp), style = MikaType.BodyStrong,
+                        color = MikaTheme.colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     status.unverifiedLine?.let { line ->
                         Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(18.dp).background(MikaTheme.colors.warnSoft, CircleShape), contentAlignment = Alignment.Center) {
@@ -1230,9 +1256,12 @@ private fun StatusCard(
                             Text(line, style = MikaType.Caption, fontWeight = FontWeight.SemiBold, color = MikaTheme.colors.ink2)
                         }
                     }
-                    MarkdownText(status.answer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    MarkdownText(if (runId != null && !expanded) TaskReportViewModel.excerpt(status.answer) else status.answer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    // 运行记录会被轮换清理；对话里的完整回答始终可以直接展开。
+                    if (runId != null && status.answer.length > 240) TextLink(stringResource(if (expanded) R.string.collapse else R.string.expand)) { expanded = !expanded }
                     // 来源:旧记录里模型写的依据文字,或运行记录里代码记下的来源;都没有就不显示
                     if (status.evidence != null || runId != null) SourceChip(status.evidence, runId, loadSource, openSource)
+                    if (runId != null) TaskReportEntries({ openReport(runId) }, { openPlayback(runId) })
                 }
             }
         }
@@ -1243,6 +1272,7 @@ private fun StatusCard(
             }
             Text(status.reason, Modifier.padding(top = 4.dp), style = CardBody, color = MikaTheme.colors.ink2)
             RecoveryActions(runId, recover)
+            if (runId != null) TaskReportEntries({ openReport(runId) }, { openPlayback(runId) })
         }
         // 停止后补上的交代当作这一轮的回答,排在「已停止」下面;还在写时一行小字
         is ExchangeStatus.Cancelled -> Column(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
@@ -1258,6 +1288,7 @@ private fun StatusCard(
                 }
             }
             RecoveryActions(runId, recover)
+            if (runId != null) TaskReportEntries({ openReport(runId) }, { openPlayback(runId) })
         }
     }
 }
