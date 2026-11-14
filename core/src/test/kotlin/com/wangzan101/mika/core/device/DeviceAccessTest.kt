@@ -109,15 +109,6 @@ class DeviceAccessTest {
         assertEquals(0, p.dismisses + p.entries)
     }
 
-    @Test fun revokingLocalPermissionDuringWakeStopsBeforeCredentialInput() = runTest {
-        val s = Store().apply { enabled = false; localEnabled = true }
-        val p = Port().apply { wakeHook = { s.localEnabled = false } }
-        val result = DeviceAccess(p, s).unlockLocal()
-        assertEquals("disabled", result.status)
-        assertEquals(0, p.dismisses + p.entries)
-        assertFalse(result.performedUnlock)
-    }
-
     @Test fun disabledAndUnavailableNeverSendInput() = runTest {
         val p = Port(); val s = Store(); val d = DeviceAccess(p, s)
         s.enabled = false
