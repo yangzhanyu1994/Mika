@@ -28,6 +28,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.wangzan101.mika.ui.components.MikaSwitch
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -545,16 +552,41 @@ fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onB
         GroupLabel(stringResource(R.string.accent_group))
         GroupCard {
             val dark = MikaTheme.colors.isDark
-            // 背景图片的颜色在当强调色时,这里选的暂时不用,行变灰
             val followingImage = skin.accentHue != null
-            ThemeAccent.entries.forEachIndexed { idx, a ->
-                RadioRow(
-                    accentLabel(a), selected = a == themeAccent, first = idx == 0, enabled = !followingImage,
-                    subtitle = if (a == ThemeAccent.Blue) stringResource(R.string.accent_default) else null,
-                    onClick = { if (a != themeAccent) flags.setThemeAccent(a) },
-                ) {
-                    // 色块按此刻的深浅色画,和选上以后看到的一样
-                    Box(Modifier.size(18.dp).background(accentTone(a, dark).first, CircleShape))
+            val options = listOf(ThemeAccent.System, ThemeAccent.Blue, ThemeAccent.Purple, ThemeAccent.Teal,
+                ThemeAccent.Apricot, ThemeAccent.Pink, ThemeAccent.Indigo, ThemeAccent.Graphite)
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(stringResource(R.string.accent_system_detail), style = MikaType.Value, color = MikaTheme.colors.ink2)
+                options.chunked(4).forEach { row ->
+                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        row.forEach { choice ->
+                            val selected = choice == themeAccent
+                            val tone = if (choice == ThemeAccent.System && selected) MikaTheme.colors.accent else accentTone(choice, dark).first
+                            Column(
+                                modifier = Modifier.weight(1f).selectable(
+                                    selected = selected, enabled = !followingImage, role = Role.RadioButton,
+                                    onClick = { flags.setThemeAccent(choice) },
+                                ).padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Box(Modifier.size(40.dp).border(if (selected) 3.dp else 1.dp,
+                                    if (selected) MikaTheme.colors.accent else MikaTheme.colors.edge, CircleShape)
+                                    .padding(4.dp).background(tone, CircleShape))
+                                Text(accentLabel(choice), modifier = Modifier.padding(top = 6.dp),
+                                    style = MikaType.Value, color = MikaTheme.colors.ink2, textAlign = TextAlign.Center)
+                            }
+                        }
+                    }
+                }
+                Text(stringResource(R.string.accent_preview), modifier = Modifier.padding(top = 18.dp),
+                    style = MikaType.Value, color = MikaTheme.colors.ink2)
+                Box(Modifier.fillMaxWidth().padding(top = 8.dp).background(MikaTheme.colors.fill, androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).padding(12.dp)) {
+                    Column {
+                        Text(stringResource(R.string.accent_preview_reply), style = MikaType.Value, color = MikaTheme.colors.ink)
+                        Text(stringResource(R.string.accent_preview_user), modifier = Modifier.padding(top = 8.dp)
+                            .background(MikaTheme.colors.accent, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(10.dp),
+                            style = MikaType.Value, color = MikaTheme.colors.onAccent)
+                    }
                 }
             }
         }
@@ -704,6 +736,8 @@ private fun SkinControls(skin: SkinSpec, onChange: (SkinSpec) -> Unit, onClear: 
 
 fun accentLabel(accent: ThemeAccent): String = tr(
     when (accent) {
+        ThemeAccent.System -> R.string.accent_system
+        ThemeAccent.Apricot -> R.string.accent_apricot
         ThemeAccent.Blue -> R.string.accent_blue
         ThemeAccent.Indigo -> R.string.accent_indigo
         ThemeAccent.Purple -> R.string.accent_purple

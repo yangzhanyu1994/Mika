@@ -202,4 +202,10 @@
     <string name="settings_token_budget_custom">自訂 Token 預算</string>
     <string name="settings_token_budget_apply">使用</string>
     <string name="settings_token_budget_invalid">請輸入 %1$s 到 %2$s 的整數。</string>
+    <string name="accent_system">跟隨系統顏色</string>
+    <string name="accent_system_detail">淺色時自動配合手機系統配色</string>
+    <string name="accent_apricot">暖杏色</string>
+    <string name="accent_preview">效果預覽</string>
+    <string name="accent_preview_reply">你好！我是 Mika，有什麼可以幫你？</string>
+    <string name="accent_preview_user">幫我整理今天的待辦事項。</string>
 </resources>

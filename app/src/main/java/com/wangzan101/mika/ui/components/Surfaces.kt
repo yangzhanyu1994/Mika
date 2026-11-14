@@ -70,7 +70,7 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
         modifier.fillMaxSize().background(MikaTheme.colors.bg).then(
-            if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(Color(0xFFE9ECF5))
+            if (backdrop != null || MikaTheme.colors.isDark) Modifier else Modifier.background(MikaTheme.colors.bg)
         ).then(
             if (backdrop == null) Modifier else Modifier
                 .onGloballyPositioned { backdrop.pageOrigin = it.positionInRoot(); backdrop.pageSize = it.size }
@@ -78,7 +78,7 @@ fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = Ambient
         ),
     ) {
         if (backdrop == null && !MikaTheme.colors.isDark) {
-            Box(Modifier.matchParentSize().glassSource(glassBackground).background(Color(0xFFE9ECF5)))
+            Box(Modifier.matchParentSize().glassSource(glassBackground).background(MikaTheme.colors.bg))
         }
         CompositionLocalProvider(LocalSkinBackdrop provides backdrop, LocalGlassBackground provides glassBackground) { content() }
     }
@@ -126,7 +126,7 @@ fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Mo
                 drawContent()
             } else Modifier)
         .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
-            Brush.verticalGradient(listOf(Color(0xB8FFFFFF), Color(0x78D7E4FF), Color(0x9DEEF5FF))), shape)
+            Brush.verticalGradient(listOf(Color(0xB8FFFFFF), colors.bg.copy(alpha = 0.48f), colors.surface.copy(alpha = 0.62f))), shape)
         .border(1.dp, if (colors.isDark) colors.edge else Color(0xE8FFFFFF), shape)
 }
 
@@ -249,7 +249,7 @@ fun GlassBar(
         }
         Row(
             Modifier.fillMaxWidth().background(if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.surface)) else
-                Brush.verticalGradient(listOf(Color(0xAFFFFFFF), Color(0x78DAE7FF), Color(0xA8F1F5FF))))
+                Brush.verticalGradient(listOf(Color(0xAFFFFFFF), c.bg.copy(alpha = 0.48f), c.surface.copy(alpha = 0.66f))))
                 .border(1.dp, if (c.isDark) c.glassEdge else Color(0xE8FFFFFF), shape)
                 .heightIn(min = MikaSize.Composer).padding(6.dp),
             verticalAlignment = Alignment.CenterVertically,

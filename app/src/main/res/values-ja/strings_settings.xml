@@ -202,4 +202,10 @@
     <string name="settings_token_budget_custom">カスタム Token 予算</string>
     <string name="settings_token_budget_apply">使用</string>
     <string name="settings_token_budget_invalid">%1$s〜%2$s の整数を入力してください。</string>
+    <string name="accent_system">System colors</string>
+    <string name="accent_system_detail">Matches the phone’s colors in light mode</string>
+    <string name="accent_apricot">Warm apricot</string>
+    <string name="accent_preview">Preview</string>
+    <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
+    <string name="accent_preview_user">Help me organize today’s tasks.</string>
 </resources>

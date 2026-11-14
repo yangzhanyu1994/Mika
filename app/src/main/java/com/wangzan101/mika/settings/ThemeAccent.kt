@@ -5,9 +5,9 @@ package com.wangzan101.mika.settings
  * 不提供绿、橙、红:它们已经表示成功、需要你、出错。各色的取值见 `ui/theme/Colors.kt` 的 `palette`。
  */
 enum class ThemeAccent {
-    Blue, Indigo, Purple, Pink, Teal, Graphite;
+    Blue, Indigo, Purple, Pink, Teal, Graphite, System, Apricot;
 
     companion object {
-        fun parse(s: String?): ThemeAccent = entries.firstOrNull { it.name == s } ?: Blue
+        fun parse(s: String?): ThemeAccent = entries.firstOrNull { it.name == s } ?: System
     }
 }

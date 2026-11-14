@@ -202,4 +202,10 @@
     <string name="settings_token_budget_custom">自定义 Token 预算</string>
     <string name="settings_token_budget_apply">使用</string>
     <string name="settings_token_budget_invalid">请输入 %1$s 到 %2$s 的整数。</string>
+    <string name="accent_system">跟随系统颜色</string>
+    <string name="accent_system_detail">浅色时自动匹配手机系统配色</string>
+    <string name="accent_apricot">暖杏色</string>
+    <string name="accent_preview">效果预览</string>
+    <string name="accent_preview_reply">你好！我是 Mika，有什么可以帮你？</string>
+    <string name="accent_preview_user">帮我整理今天的待办事项。</string>
 </resources>
