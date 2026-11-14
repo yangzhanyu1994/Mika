@@ -6,6 +6,9 @@ import kotlinx.serialization.json.JsonObject
 interface PhoneCallPort {
     suspend fun state(): JsonObject
     suspend fun dial(number: String, simId: String? = null, task: PhoneCallTask? = null): JsonObject
+    suspend fun resolveContact(name: String): JsonObject = JsonObject(mapOf("ok" to kotlinx.serialization.json.JsonPrimitive(false)))
+    suspend fun scheduleDial(number: String, target: String, goal: String, constraints: String, localTime: String, simId: String?): JsonObject =
+        JsonObject(mapOf("ok" to kotlinx.serialization.json.JsonPrimitive(false)))
     /** [callId] must still identify the exact call reported by [state]. */
     suspend fun answer(callId: String): JsonObject
     suspend fun hangup(callId: String): JsonObject

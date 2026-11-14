@@ -49,7 +49,7 @@ class ToolRiskTest {
             setOf("phone_find", "phone_collect", "phone_dialog", "phone_run", "phone_system_command", "phone_calendar_bulk_insert", "schedule_task", "spawn_agent", "settings_set", "root_run_command", "web_search",
                 "mika_open_screen", "mika_open_file", "mika_notify", "mika_copy",
                 "mika_open_in_browser", "mika_search_in_browser", "mika_login_site", "mika_confirm_login", "mika_favorites",
-                "phone_call_state", "phone_call_dial", "phone_call_answer", "phone_call_hangup", "phone_call_takeover", "phone_call_incoming_task", "phone_call_manage_tasks")
+                "phone_call_state", "phone_call_resolve_contact", "phone_call_schedule_dial", "phone_call_dial", "phone_call_answer", "phone_call_hangup", "phone_call_takeover", "phone_call_incoming_task", "phone_call_manage_tasks")
         assertEquals(refused, allTools().filter { !it.readOnly }.map { it.name }.toSet())
         // root 命令、通话工具都只在给了端口时登记:各给一个,所有工具都在
         val d = toolDispatcher(FakeScreen(), root = object : com.wangzan101.mika.core.cap.root.RootPort {
