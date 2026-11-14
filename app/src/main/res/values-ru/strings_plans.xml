@@ -84,4 +84,5 @@
     <string name="plans_voice_example">Например: каждое утро в 8 напомни, если будет дождь</string>
     <string name="plans_parse_failed">Не удалось заполнить задачу. Поля можно изменить вручную.</string>
     <string name="plans_parsed_note">Поля заполнены. Проверьте и сохраните.</string>
+    <string name="plans_run_history">История запусков</string>
 </resources>

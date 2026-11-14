@@ -83,4 +83,5 @@
     <string name="plans_voice_example">Por ejemplo: avísame a las 8 si va a llover</string>
     <string name="plans_parse_failed">No se pudo rellenar la tarea. Aún puedes editar los campos.</string>
     <string name="plans_parsed_note">Campos actualizados. Revísalos y guarda.</string>
+    <string name="plans_run_history">Historial de ejecuciones</string>
 </resources>

@@ -81,4 +81,5 @@
     <string name="plans_voice_example">예: 매일 아침 8시에 비가 오면 알려 줘</string>
     <string name="plans_parse_failed">이 문장으로는 작업을 채우지 못했습니다. 아래 칸은 직접 고칠 수 있습니다</string>
     <string name="plans_parsed_note">칸을 채웠습니다. 확인한 뒤 저장하세요</string>
+    <string name="plans_run_history">실행 기록</string>
 </resources>

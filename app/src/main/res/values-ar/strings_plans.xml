@@ -86,4 +86,5 @@
     <string name="plans_voice_example">مثال: ذكرني الساعة 8 إذا كان المطر متوقعًا</string>
     <string name="plans_parse_failed">تعذر ملء المهمة. لا يزال بإمكانك تعديل الحقول.</string>
     <string name="plans_parsed_note">تم تحديث الحقول. راجعها ثم احفظ.</string>
+    <string name="plans_run_history">سجل التنفيذ</string>
 </resources>
