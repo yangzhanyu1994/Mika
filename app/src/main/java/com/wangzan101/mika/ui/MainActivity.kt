@@ -112,10 +112,6 @@ class MainActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    override fun onDestroy() {
-        powerProbeHandler.removeCallbacks(powerProbeTimeout)
-        super.onDestroy()
-    }
     private lateinit var monitor: SystemStatusMonitor
     private var requestedConversation by mutableStateOf<String?>(null)
     private var requestedAssistant by mutableStateOf(false)
@@ -323,6 +319,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        powerProbeHandler.removeCallbacks(powerProbeTimeout)
         shareJob?.cancel()
         // 还没绑到对话的私有副本随这次接收结束清掉;已接受的草稿由 CurrentChat 恢复,不在这里删除。
         requestedSharedDraft?.let { (application as MikaApp).sharedDrafts.discard(it.draft.image) }
