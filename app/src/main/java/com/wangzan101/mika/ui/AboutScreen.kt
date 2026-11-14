@@ -305,7 +305,7 @@ private fun ChangelogSheet(latest: ReleaseInfo?, onOpenAll: () -> Unit, onDismis
         }
         history = bundled
         val remote = withContext(Dispatchers.IO) { ForkReleaseHistory.fetch() }
-        if (remote.isNotEmpty()) history = remote
+        history = ForkReleaseHistory.merge(remote, bundled)
     }
     AboutSheetFrame(AboutCopy.CHANGELOG, null, "changelog-sheet", onDismiss) {
         if (history.isEmpty()) {

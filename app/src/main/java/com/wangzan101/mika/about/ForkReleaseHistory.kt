@@ -26,6 +26,9 @@ internal object ForkReleaseHistory {
         }.distinctBy { it.version }
     }
 
+    fun merge(remote: List<Entry>, bundled: List<Entry>): List<Entry> =
+        (remote + bundled).distinctBy { it.version }.sortedWith { a, b -> AppVersion.compare(b.version, a.version) }
+
     fun fetch(): List<Entry> = runCatching {
         val request = Request.Builder().url(SOURCE).header("User-Agent", "Mika-release-history").build()
         client.newCall(request).execute().use { response ->
