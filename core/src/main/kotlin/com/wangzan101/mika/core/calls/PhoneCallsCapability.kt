@@ -35,7 +35,7 @@ private class CallAgentTool(private val action: String, override val verb: Verb)
     override val offScreen = true
     override val risk = if (action == "state" || action == "resolve_contact") Risk.Read else Risk.Write
     override val logged = action != "state"
-    override val label = when (action) { "state" -> "通话状态"; "resolve_contact" -> "查找联系人"; "schedule_dial" -> "预约 AI 电话"; "dial" -> "拨打电话"; "answer" -> "AI 接听"; "hangup" -> "挂断电话"; "incoming_task", "manage_tasks" -> "保存任务"; else -> "人工接管" }
+    override val label = when (action) { "state" -> "通话状态"; "resolve_contact" -> "通话状态"; "schedule_dial" -> "保存任务"; "dial" -> "拨打电话"; "answer" -> "AI 接听"; "hangup" -> "挂断电话"; "incoming_task", "manage_tasks" -> "保存任务"; else -> "人工接管" }
     override val def = ToolDef("phone_call_$action", Prompts.tool("phone_call_$action"),
         when (action) {
             "resolve_contact" -> mapOf("name" to str("Exact contact name requested by the user."))
