@@ -19,6 +19,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.KeyEvent
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -82,6 +85,37 @@ import com.wangzan101.mika.ui.theme.appearanceDark
 import com.wangzan101.mika.ui.theme.systemBarsFor
 
 class MainActivity : ComponentActivity() {
+    // Temporary diagnostic: observe only the power-key release, never text or other keys.
+    private val powerProbeHandler = Handler(Looper.getMainLooper())
+    private var powerProbeWaiting = false
+    private val powerProbeTimeout = Runnable {
+        if (powerProbeWaiting) {
+            powerProbeWaiting = false
+            Toast.makeText(this, "测试：8 秒内未收到电源键松开事件", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun beginPowerProbe(intent: Intent) {
+        if (intent.action != Intent.ACTION_ASSIST) return
+        powerProbeWaiting = true
+        powerProbeHandler.removeCallbacks(powerProbeTimeout)
+        Toast.makeText(this, "测试：请松开电源键", Toast.LENGTH_SHORT).show()
+        powerProbeHandler.postDelayed(powerProbeTimeout, 8_000L)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (powerProbeWaiting && event.keyCode == KeyEvent.KEYCODE_POWER && event.action == KeyEvent.ACTION_UP) {
+            powerProbeWaiting = false
+            powerProbeHandler.removeCallbacks(powerProbeTimeout)
+            Toast.makeText(this, "测试：收到了电源键松开事件", Toast.LENGTH_LONG).show()
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun onDestroy() {
+        powerProbeHandler.removeCallbacks(powerProbeTimeout)
+        super.onDestroy()
+    }
     private lateinit var monitor: SystemStatusMonitor
     private var requestedConversation by mutableStateOf<String?>(null)
     private var requestedAssistant by mutableStateOf(false)
@@ -108,6 +142,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) beginPowerProbe(intent)
         if (savedInstanceState == null) {
             (application as MikaApp).chat.cancelPendingSharedDraft()
         }
@@ -156,6 +191,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        beginPowerProbe(intent)
         setIntent(intent)
         val app = application as MikaApp
         shareJob?.cancel()
