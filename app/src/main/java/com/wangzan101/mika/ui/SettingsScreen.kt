@@ -164,7 +164,8 @@ fun SettingsScreen(
     val toAdvanced = { page = SettingsPage.Advanced }
     val back = {
         page = when (page) {
-            SettingsPage.RunStats, SettingsPage.Proactive -> SettingsPage.Developer
+            SettingsPage.RunStats -> SettingsPage.Developer
+            SettingsPage.Proactive -> SettingsPage.Advanced
             SettingsPage.SelfCheck -> SettingsPage.Recovery
             SettingsPage.Sandbox, SettingsPage.Recovery, SettingsPage.ComputerAccess,
             SettingsPage.McpServers, SettingsPage.Root, SettingsPage.Developer -> SettingsPage.Advanced
@@ -175,7 +176,7 @@ fun SettingsScreen(
     if (page != SettingsPage.Home) BackHandler { back() }
 
     val visiblePage = when {
-        !showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.RunStats || page == SettingsPage.Proactive) -> SettingsPage.Home
+        !showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.RunStats) -> SettingsPage.Home
         page == SettingsPage.Root && !rootState.suPresent -> SettingsPage.Advanced
         else -> page
     }
@@ -210,6 +211,7 @@ fun SettingsScreen(
             mcpServersCount = mcpServers?.servers?.value?.size, onOpenMcpServers = { page = SettingsPage.McpServers },
             showRoot = rootState.suPresent, rootCommands = rootState.commands, onOpenRoot = { page = SettingsPage.Root },
             showDeveloper = showDeveloper, onOpenDeveloper = { page = SettingsPage.Developer },
+            onOpenProactive = { page = SettingsPage.Proactive },
             onBack = toHome,
         )
         SettingsPage.AppAccess -> AppAccessScreen(onBack = toHome)
@@ -256,7 +258,6 @@ fun SettingsScreen(
             grounding = visionConfig?.let { GroundingSetting(it.model, it.capabilities.groundingVerified) },
             onGrounding = { verified -> scope.launch { withContext(Dispatchers.IO) { store.setVisionGroundingVerified(verified) } } },
             onOpenRunStats = { page = SettingsPage.RunStats },
-            onOpenProactive = { page = SettingsPage.Proactive },
         )
         SettingsPage.RunStats -> RunStatsScreen(remember { RunStore(context).metrics }, onBack = back)
         SettingsPage.Proactive -> com.wangzan101.mika.proactive.ProactiveScreen(onBack = back)
@@ -481,6 +482,7 @@ fun AdvancedSettingsContent(
     onOpenRoot: () -> Unit = {},
     showDeveloper: Boolean = false,
     onOpenDeveloper: () -> Unit = {},
+    onOpenProactive: () -> Unit = {},
 ) {
     PageScaffold(stringResource(R.string.settings_advanced), onBack) {
         val sandboxRow = sandbox?.takeIf { it !is SandboxStatus.Unsupported }
@@ -521,6 +523,9 @@ fun AdvancedSettingsContent(
                     }
                 }
             }
+        }
+        GroupCard {
+            ListRow(null, stringResource(R.string.proactive_title), stringResource(R.string.proactive_entry_sub), first = true, onClick = onOpenProactive) { RowChevron() }
         }
         if (showRecovery) {
             GroupLabel(stringResource(R.string.settings_maintenance))

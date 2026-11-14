@@ -34,7 +34,6 @@ import com.wangzan101.mika.core.proactive.TriageTarget
 import com.wangzan101.mika.core.shell.ShellCommandRunner
 import com.wangzan101.mika.i18n.AppLanguage
 import com.wangzan101.mika.i18n.tr
-import com.wangzan101.mika.record.DetailedTraces
 import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.settings.KeystoreKeyCipher
 import com.wangzan101.mika.ui.classifierLanguage
@@ -175,8 +174,8 @@ class ProactiveRuntime(
     private var watching: Job? = null
     private var receiver: BroadcastReceiver? = null
 
-    /** 发布版里看不到开发者选项,也就关不掉:只认调试版和性能测试版里的开关。 */
-    private fun wanted(): Boolean = DetailedTraces.supportedBuild && flags.proactive()
+    /** 通知读取默认关闭；只有用户主动启用才启动。 */
+    private fun wanted(): Boolean = flags.proactive()
 
     /**
      * 功能开着时,进程起来、或用户从「完全退出」回来时调一次(MikaApp 只在开关开着时调)。
@@ -207,7 +206,7 @@ class ProactiveRuntime(
      */
     fun setEnabled(on: Boolean, target: TriageTarget? = null) {
         flags.setProactive(on)
-        val want = on && DetailedTraces.supportedBuild
+        val want = on
         setConsent(TriageConsent.afterSwitch(want, target, _consent.value))
         _enabled.value = want
         scope.launch {
