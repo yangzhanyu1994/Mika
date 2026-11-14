@@ -134,6 +134,8 @@ import com.wangzan101.mika.task.SteerNote
 import com.wangzan101.mika.task.SteerState
 import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.task.unconsumed
+import com.wangzan101.mika.ui.components.ActionSheet
+import com.wangzan101.mika.ui.components.SheetAction
 import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.ButtonKind
 import com.wangzan101.mika.ui.components.ButtonSize
@@ -339,6 +341,7 @@ fun ChatScreen(
     val context = LocalContext.current
     /** 长按了的那条消息;菜单开着(收起的动画放完才清掉)。 */
     var menu by remember { mutableStateOf<MessageTarget?>(null) }
+    var queueActions by remember(ui.conversationId) { mutableStateOf<com.wangzan101.mika.task.QueuedFollowUp?>(null) }
     /** 选了「选择文字」的那条:它换回系统的长按选中;换对话时清掉。 */
     var selecting by remember(ui.conversationId) { mutableStateOf<String?>(null) }
     /** 菜单出现的进度:0 是没有,1 是完全出来;关了动画时直接到位。 */
@@ -448,23 +451,22 @@ fun ChatScreen(
             onSend = { vm.send(input, check) },
             onTeach = if (ui.composer == ComposerMode.Idle) ({ onOpenTeach(input.trim()) }) else null,
             onStop = vm::cancel,
-            followUpMode = ui.followUpMode,
             queued = ui.queued,
-            onFollowUpMode = vm::setFollowUpMode,
+            onGuideQueued = { id ->
+                if (!vm.guideQueued(id, check)) Toast.makeText(context, context.getString(R.string.follow_up_already_started), Toast.LENGTH_SHORT).show()
+            },
+            onQueueActions = { queueActions = it },
             onCancelQueued = { id ->
                 if (!vm.cancelQueued(id)) Toast.makeText(context, context.getString(R.string.follow_up_already_started), Toast.LENGTH_SHORT).show()
             },
             onEditQueued = { id -> vm.editQueued(id)?.let { editRequest++ } },
             onStartQueued = vm::startQueued,
-            followUpStatus = last?.status?.takeIf { it.isActive() },
-            attachPanel = if (ui.attachEnabled && (ui.composer == ComposerMode.Idle ||
-                    (ui.composer != ComposerMode.Idle && ui.followUpMode == FollowUpMode.Queue))) ({
+            attachPanel = if (ui.attachEnabled) ({
                 androidx.compose.runtime.key(ui.conversationId) {
                     AttachPanelHost(ui.attachments, onPicked = { vm.attach(it, ui.conversationId) }, onToggle = vm::toggleAttachment)
                 }
             }) else null,
-            // 附件功能开着但此刻不能加(任务在跑、插话模式):「＋」保留,点了提示切队列
-            attachBlocked = ui.attachEnabled && ui.composer != ComposerMode.Idle && ui.followUpMode == FollowUpMode.Steer,
+            attachBlocked = false,
             attachments = ui.attachments,
             importing = ui.importing,
             rejected = ui.rejectedAttachments,
@@ -475,7 +477,7 @@ fun ChatScreen(
             quote = ui.quote,
             onRemoveQuote = vm::clearQuote,
             voice = voice,
-            // 说的话接在已有的字后面;任务在跑时发出去就是插话
+            // 说的话接在已有的字后面;任务在跑时先作为补充消息排队
             onVoiceText = { vm.input(HoldToTalk.join(vm.ui.value.input, it)) },
             // 松开在「在听」卡片里:接上已有的字直接发出;发不出去(比如还在导入附件)就留在输入框里
             onVoiceSend = {
@@ -484,7 +486,7 @@ fun ChatScreen(
                 vm.send(text, check)
             },
             onPickSpeech = openSpeechModel,
-            steerTarget = if (ui.followUpMode == FollowUpMode.Steer) last?.goal?.let(ChatCopy::plainTitle) else null,
+            steerTarget = null,
             onVoiceHolding = { voiceHolding = it },
             editRequest = editRequest,
         )
@@ -517,6 +519,21 @@ fun ChatScreen(
                 if (card >= 0) scope.launch { if (reduceMotion) listState.scrollToItem(card) else listState.animateScrollToItem(card) }
             },
         )
+
+        queueActions?.let { item ->
+            ActionSheet(
+                ChatCopy.plainTitle(item.text),
+                buildList {
+                    if (editableSteer(item.text)) add(SheetAction(stringResource(R.string.follow_up_edit)) {
+                        vm.editQueued(item.id)?.let { editRequest++ }
+                    })
+                    add(SheetAction(stringResource(R.string.follow_up_cancel), destructive = true) {
+                        if (!vm.cancelQueued(item.id)) Toast.makeText(context, context.getString(R.string.follow_up_already_started), Toast.LENGTH_SHORT).show()
+                    })
+                },
+                onDismiss = { queueActions = null },
+            )
+        }
 
         // 长按消息的菜单盖在最上面:复制纯文字;引用放到输入框上方;选择文字让那条换回系统的长按选中;
         // 已经答完的一轮还能从这里分支
@@ -723,7 +740,7 @@ private fun LazyListScope.exchange(
     } else if (ex.steps.isNotEmpty() || ex.recordedRun != null) {
         item("s$index") { DoneLine(ex, reduceMotion, openRun, tokens) }
     }
-    // 任务进行中插的话:用户的原话,下面一行小字说它的去向。
+    // 引导进当前任务的话只带一个弯箭头;没赶上当前任务、转入下一件的不带标记。
     // 插话之前已经说完的回复照常显示;插话打断的那段留在原处(淡色、标「被你的新消息打断」);接着才是插话。
     // 还没交给模型的插话排在正在长出来的回答后面:那段回答是它到之前就在写的,不是对它的回复。
     fun steer(n: SteerNote) {
@@ -739,7 +756,7 @@ private fun LazyListScope.exchange(
         }
         item("m$index-${n.id}") {
             JumpHighlight(highlightKey == "m$index-${n.id}", reduceMotion) {
-                UserBubble(n.text, conversationId, steerLabel(n.state, paused), "m$index-${n.id}")
+                UserBubble(n.text, conversationId, key = "m$index-${n.id}", steerMark = n.state != SteerState.Next)
             }
         }
     }
@@ -789,36 +806,42 @@ internal fun ExchangeStatus.isActive() =
  * 在浏览器页上对着一页问的,最上面是「网页 · 网站」和选中的字(见 [SentPage]),页面说明那几行不显示。
  */
 @Composable
-internal fun UserBubble(text: String, conversationId: String?, note: String? = null, key: String = "") {
+internal fun UserBubble(text: String, conversationId: String?, note: String? = null, key: String = "", steerMark: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val paged = remember(text) { AttachedPage.parse(text) }
     val quoted = remember(text) { QuoteMessage.parse(paged.words) }
     val attached = remember(text) { AttachmentMessage.parse(quoted.words) }
     BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 14.dp), contentAlignment = Alignment.CenterEnd) {
-        val max = maxWidth * 0.8f
-        Column(horizontalAlignment = Alignment.End) {
-            paged.page?.let { SentPage(it, max) }
-            quoted.quote?.let { SentQuote(it, max) }
-            if (attached.hasAttachments) {
-                SentAttachments(attached, conversationId, max) { item ->
-                    val id = conversationId ?: return@SentAttachments
-                    scope.launch { if (!AttachFiles.openSent(context, id, item.path)) Toast.makeText(context, AttachCopy.GONE, Toast.LENGTH_SHORT).show() }
+        val max = maxWidth * (if (steerMark) 0.76f else 0.8f)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(horizontalAlignment = Alignment.End) {
+                paged.page?.let { SentPage(it, max) }
+                quoted.quote?.let { SentQuote(it, max) }
+                if (attached.hasAttachments) {
+                    SentAttachments(attached, conversationId, max) { item ->
+                        val id = conversationId ?: return@SentAttachments
+                        scope.launch { if (!AttachFiles.openSent(context, id, item.path)) Toast.makeText(context, AttachCopy.GONE, Toast.LENGTH_SHORT).show() }
+                    }
                 }
-            }
-            if (attached.hasAttachments && attached.words.isNotEmpty()) Spacer(Modifier.size(6.dp))
-            if ((!attached.hasAttachments || attached.words.isNotEmpty()) && (paged.page == null || quoted.words.isNotEmpty())) UserMessage(conversationId, attached.words.takeIf { attached.hasAttachments } ?: quoted.words, ChatThumbWidth) { words ->
-                // 选择文字时蓝底上选中的底色用白色半透明,把手照旧是蓝色(画在气泡外面)
-                val colors = MikaTheme.colors
-                CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(colors.accent, colors.onAccent.copy(alpha = 0.35f))) {
-                    MessageArea(
-                        key, QuoteMessage.From.You, words, "selectable-user",
-                        Modifier.widthIn(max = max).background(colors.accent, MikaShapes.UserBubble),
-                        lifted = { LiftedMessage(MikaShapes.UserBubble, colors.accent) { UserBubbleText(words) } },
-                    ) { UserBubbleText(words) }
+                if (attached.hasAttachments && attached.words.isNotEmpty()) Spacer(Modifier.size(6.dp))
+                if ((!attached.hasAttachments || attached.words.isNotEmpty()) && (paged.page == null || quoted.words.isNotEmpty())) UserMessage(conversationId, attached.words.takeIf { attached.hasAttachments } ?: quoted.words, ChatThumbWidth) { words ->
+                    // 选择文字时蓝底上选中的底色用白色半透明,把手照旧是蓝色(画在气泡外面)
+                    val colors = MikaTheme.colors
+                    CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(colors.accent, colors.onAccent.copy(alpha = 0.35f))) {
+                        MessageArea(
+                            key, QuoteMessage.From.You, words, "selectable-user",
+                            Modifier.widthIn(max = max).background(colors.accent, MikaShapes.UserBubble),
+                            lifted = { LiftedMessage(MikaShapes.UserBubble, colors.accent) { UserBubbleText(words) } },
+                        ) { UserBubbleText(words) }
+                    }
                 }
+                note?.let { Text(it, Modifier.padding(top = 3.dp, end = 4.dp), style = MikaType.Hint, color = MikaTheme.colors.ink3) }
             }
-            note?.let { Text(it, Modifier.padding(top = 3.dp, end = 4.dp), style = MikaType.Hint, color = MikaTheme.colors.ink3) }
+            if (steerMark) Icon(
+                MikaIcons.Steer, stringResource(R.string.follow_up_steer),
+                Modifier.size(18.dp), tint = MikaTheme.colors.accent,
+            )
         }
     }
 }
@@ -1350,7 +1373,7 @@ private fun openShared(context: Context, f: SharedFile) = FileViewer.open(contex
 private enum class Panel { Closed, Open, Yielding }
 
 /**
- * 玻璃胶囊输入栏:左边「＋」,右边发送(没内容时灰);任务在跑时多一个停止,输入框的灰字提示插话会交给当前任务。
+ * 玻璃胶囊输入栏:左边「＋」,右边发送(没内容时灰);任务在跑时多一个停止,补充消息先排在输入栏上方。
  * 「＋」点开的附件面板([attachPanel])在输入栏下面、占键盘那块位置,和键盘互换:开面板收键盘,
  * 再点「＋」(这时是 ×)或点输入框就收起面板、换成键盘;返回先收面板。待发的附件在输入栏上方一排([PendingTray])。
  */
@@ -1363,19 +1386,16 @@ internal fun Composer(
     hasHistory: Boolean,
     onSend: () -> Unit,
     onStop: () -> Unit,
-    /** 任务进行中补充消息交给谁;只影响下次发送。 */
-    followUpMode: FollowUpMode = FollowUpMode.Steer,
     /** 这个对话明确排队、还没开始的下一件。 */
     queued: List<com.wangzan101.mika.task.QueuedFollowUp> = emptyList(),
-    onFollowUpMode: (FollowUpMode) -> Unit = {},
+    onGuideQueued: (String) -> Unit = {},
+    onQueueActions: (com.wangzan101.mika.task.QueuedFollowUp) -> Unit = {},
     onCancelQueued: (String) -> Unit = {},
     onEditQueued: (String) -> Unit = {},
     onStartQueued: () -> Unit = {},
-    /** 显示中的任务状态,选择器据此说「下一步生效」还是「继续后生效」。 */
-    followUpStatus: ExchangeStatus? = null,
-    /** 沙箱就绪、没有任务在跑时才有「＋」;点开是这块面板。 */
+    /** 沙箱就绪时就有「＋」;点开是这块面板。 */
     attachPanel: (@Composable () -> Unit)? = null,
-    /** 附件已启用但此刻不能加(任务在跑、插话模式):「＋」还在,点了提示改切队列。 */
+    /** 附件已启用但此刻不能加:「＋」还在,点了只给提示。 */
     attachBlocked: Boolean = false,
     /** 「＋」面板里的「教 Mika」。点了先收起面板。 */
     onTeach: (() -> Unit)? = null,
@@ -1413,7 +1433,7 @@ internal fun Composer(
     val fade = remember(c) { Brush.verticalGradient(0f to c.bg.copy(alpha = 0f), 0.6f to c.bg, 1f to c.bg) }
     val busy = mode == ComposerMode.Busy
     val context = LocalContext.current
-    // 附件功能开着就保留「＋」;任务在跑、插话模式时点它只提示,不展开面板
+    // 附件功能开着就保留「＋」;此刻不能加时只提示,不展开面板
     val showAttach = attachPanel != null || attachBlocked
     val density = LocalDensity.current
     val focus = LocalFocusManager.current
@@ -1485,10 +1505,10 @@ internal fun Composer(
             .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 6.dp),
     ) {
         Column(Modifier.fillMaxWidth()) {
-            if (busy || (mode == ComposerMode.Answer && (showAttach || attachments.isNotEmpty()))) {
-                FollowUpModeBar(followUpMode, onFollowUpMode, followUpStatus)
-            }
-            FollowUpTray(queued, active = mode != ComposerMode.Idle, onEdit = onEditQueued, onCancel = onCancelQueued, onStartNow = onStartQueued)
+            FollowUpTray(
+                queued, active = mode != ComposerMode.Idle, canGuide = mode == ComposerMode.Busy, onGuide = onGuideQueued,
+                onEdit = onEditQueued, onCancel = onCancelQueued, onStartNow = onStartQueued, onActions = onQueueActions,
+            )
             quote?.let { QuoteChip(it, onRemoveQuote, Modifier.padding(bottom = 6.dp)) }
             if (attachments.isNotEmpty()) PendingTray(attachments, onRemove, Modifier.padding(bottom = 2.dp))
             if (importing || rejected.isNotEmpty() || overLimit > 0) {
@@ -1539,8 +1559,8 @@ internal fun Composer(
                 Box(Modifier.weight(1f).padding(start = if (showAttach) 2.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                     val converting = vState is HoldToTalk.State.Converting
                     if (text.isEmpty() && !converting) {
-                        if (vh != null) VoicePlaceholder(mode, followUpMode)
-                        else Text(ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
+                        if (vh != null) VoicePlaceholder(mode)
+                        else Text(ChatCopy.placeholder(mode, hasHistory), style = MikaType.Body, color = c.ink3, maxLines = 1)
                     }
                     BasicTextField(
                         shownValue,

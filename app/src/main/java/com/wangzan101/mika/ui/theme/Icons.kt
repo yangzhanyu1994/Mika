@@ -188,6 +188,8 @@ object MikaIcons {
     )
     /** 引用:往回指的箭头(接着前面那条说)。 */
     val Quote = stroke("quote", "M9.5 6.5 L4.5 11.5 l5 5", "M4.5 11.5 h9 a5.5 5.5 0 0 1 5.5 5.5 v1")
+    /** 引导当前任务:向右转入的弯箭头。 */
+    val Steer = stroke("steer", "M15 4 l5 5 -5 5", "M20 9 H10 a6 6 0 0 0 -6 6 v5")
     /** 选择文字:文字光标。 */
     val SelectText = stroke("select-text", "M9 4.5 h6 M9 19.5 h6 M12 4.5 v15")
     /** 图钉:置顶了的对话。 */

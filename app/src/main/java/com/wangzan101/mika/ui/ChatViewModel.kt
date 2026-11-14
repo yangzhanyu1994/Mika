@@ -306,8 +306,8 @@ data class ChatUi(
     val blocked: List<Problem>? = null,
     val pip: PipUi = PipUi(),
     val composer: ComposerMode = ComposerMode.Idle,
-    /** 任务进行中补充消息交给谁;新任务开始时回到引导。 */
-    val followUpMode: FollowUpMode = FollowUpMode.Steer,
+    /** 任务进行中补充消息交给谁;主对话默认排队,点消息右侧箭头后改为引导。 */
+    val followUpMode: FollowUpMode = FollowUpMode.Queue,
     /** 这个对话明确排队、还没开始的下一件(按先后);开始或取消后从这里拿掉。 */
     val queued: List<QueuedFollowUp> = emptyList(),
     val takeoverStage: Takeover.Stage = Takeover.Stage.None,
@@ -337,7 +337,7 @@ private data class ComposerDraft(
     val input: String = "",
     val attachments: List<PendingAttachment> = emptyList(),
     val quote: QuoteMessage.Quote? = null,
-    val followUpMode: FollowUpMode = FollowUpMode.Steer,
+    val followUpMode: FollowUpMode = FollowUpMode.Queue,
     val sharedDraft: SharedDraft? = null,
     val importing: Boolean = false,
     val rejected: List<AttachmentFailure> = emptyList(),
@@ -370,7 +370,7 @@ private fun ChatUi.rebuildForConversation(
     pip = PipUi(),
     composer = ComposerMode.Idle,
     input = input,
-    followUpMode = FollowUpMode.Steer,
+    followUpMode = FollowUpMode.Queue,
     queued = emptyList(),
     takeoverStage = takeoverStage,
     attachments = attachments,
@@ -384,7 +384,7 @@ private fun ChatUi.rebuildForConversation(
 
 /**
  * 聊天界面的状态。步骤列表来自运行事件里实际做过的事(活动);进展那一行是模型这一步的话,
- * 等待模型时仅显示状态。任务在跑时输入框发的话交给这个任务(插话)。
+ * 等待模型时仅显示状态。任务在跑时输入框发的话先排队,用户再决定是否改为当前任务的引导。
  * 整个进程只用一个实例,界面关掉再打开时正在跑的任务的步骤还在。
  */
 class ChatViewModel(
@@ -839,7 +839,7 @@ class ChatViewModel(
     }
 
     private fun canAttach(ui: ChatUi) = ui.attachEnabled && !ui.importing &&
-        (ui.composer == ComposerMode.Idle || (ui.composer != ComposerMode.Idle && ui.followUpMode == FollowUpMode.Queue))
+        (ui.composer == ComposerMode.Idle || ui.followUpMode == FollowUpMode.Queue)
 
     /** 从相机、相册、文件选择器拿到的文件:没有任务在跑、沙箱就绪时才收;读出名字和大小后挂在输入框上方,随下一句话发出去。 */
     fun attach(uris: List<String>, conversationId: String? = _ui.value.conversationId) {
@@ -847,8 +847,10 @@ class ChatViewModel(
         val id = draftConversation()
         val sharedBefore = _ui.value.sharedDraft
         val serialBefore = sharedDraftSerial
+        val wasIdle = _ui.value.composer == ComposerMode.Idle
         scope.launch {
             val items = try { describeAttachments(uris) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
+            if (wasIdle && _ui.value.composer != ComposerMode.Idle) return@launch
             if (_ui.value.conversationId == id && (!canAttach(_ui.value) || sharedDraftSerial != serialBefore)) return@launch
             if (_ui.value.conversationId != id && drafts.value[id]?.sharedDraft != sharedBefore) return@launch
             updateDraft(id) { draft ->
@@ -1195,7 +1197,7 @@ class ChatViewModel(
                 attachments = nextAttachments,
                 pip = gated(PipUi(visible = true)),
                 composer = ComposerMode.Busy,
-                followUpMode = if (nextAttachments.isNotEmpty()) FollowUpMode.Queue else FollowUpMode.Steer,
+                followUpMode = FollowUpMode.Queue,
                 // 这一句如果本来在排队条上乐观挂着、现在已经开始,就不能再显示一行
                 queued = it.queued.filterNot { q -> q.text == goal },
             )
@@ -1279,6 +1281,20 @@ class ChatViewModel(
         if (!actions.cancelFollowUp(conversationId, id)) return false
         _ui.update { it.copy(queued = it.queued.filterNot { q -> q.id == id }) }
         return true
+    }
+
+    /** 把一条还没开始的排队改为当前任务的引导;竞争失败时保留或恢复排队。 */
+    fun guideQueued(id: String, check: Prerequisites.Check): Boolean {
+        val ui = _ui.value
+        if (ui.composer != ComposerMode.Busy) return false
+        val item = ui.queued.firstOrNull { it.id == id } ?: return false
+        if (!check.canStartTask) {
+            _ui.update { it.copy(blocked = check.blockers) }
+            return false
+        }
+        if (!cancelQueued(id)) return false
+        if (steer(item.text, check)) return true
+        return enqueue(item.text, check)
     }
 
     /**
@@ -1395,7 +1411,7 @@ class ChatViewModel(
                     followUpMode = when {
                         it.attachments.isNotEmpty() -> FollowUpMode.Queue
                         it.draft().hasContent -> it.followUpMode
-                        else -> FollowUpMode.Steer
+                        else -> FollowUpMode.Queue
                     },
                     queued = it.queued.filterNot { q -> q.text == live.goal })
             }
@@ -2000,7 +2016,7 @@ class ChatViewModel(
                     followUpMode = when {
                         it.attachments.isNotEmpty() -> FollowUpMode.Queue
                         it.draft().hasContent -> it.followUpMode
-                        else -> FollowUpMode.Steer
+                        else -> FollowUpMode.Queue
                     },
                     queued = it.queued.filterNot { q -> q.text == goal })
             }

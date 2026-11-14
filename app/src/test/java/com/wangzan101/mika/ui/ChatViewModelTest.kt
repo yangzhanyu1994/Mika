@@ -111,7 +111,10 @@ class ChatViewModelTest {
 
     private fun TestScope.vm(store: ConversationStore = ConversationStore(tmp.newFolder())) =
         ChatViewModel(backgroundScope, state, stage, actions, store, appLabel = { if (it == "com.chat") "聊天" else it },
-            activities = acts, steers = steerFlow, followUps = followUpFlow).also { runCurrent() }
+            activities = acts, steers = steerFlow, followUps = followUpFlow).also {
+            it.setFollowUpMode(FollowUpMode.Steer)
+            runCurrent()
+        }
 
     /** 和 [vm] 一样,但能指定这块屏开没开。 */
     private fun TestScope.vmWithScreen(open: MutableStateFlow<Boolean>) =
@@ -231,7 +234,7 @@ class ChatViewModelTest {
         runCurrent()
         vm.switchTo("b")
         assertEquals(ComposerMode.Busy, vm.ui.value.composer)
-        assertEquals(FollowUpMode.Steer, vm.ui.value.followUpMode)
+        assertEquals(FollowUpMode.Queue, vm.ui.value.followUpMode)
         assertEquals("", vm.ui.value.input)
         vm.input("B correction")
         vm.switchTo("a")
@@ -308,6 +311,7 @@ class ChatViewModelTest {
         described = CompletableDeferred()
         vm.attach(listOf("content://late.pdf"))
         runCurrent()
+        vm.setFollowUpMode(FollowUpMode.Steer)
         assertTrue(vm.send("already started", ok))
         described.complete(listOf(PendingAttachment("content://late.pdf", "late.pdf", 1)))
         runCurrent()
@@ -1201,6 +1205,7 @@ class ChatViewModelTest {
         val vm = ChatViewModel(backgroundScope, state, stage, actions, conversations, busy, sharedDrafts = drafts)
         runCurrent()
         assertTrue(vm.send("原来的任务", ok))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         assertTrue(vm.send("原来的插话", ok))
         runCurrent()
         assertTrue(calls.isEmpty())
@@ -1327,7 +1332,7 @@ class ChatViewModelTest {
         state.value = TaskState.Running(1, "step")
         runCurrent()
         assertEquals(ComposerMode.Busy, vm.ui.value.composer)
-        assertEquals(FollowUpMode.Steer, vm.ui.value.followUpMode)
+        assertEquals(FollowUpMode.Queue, vm.ui.value.followUpMode)
 
         // 任务运行中收到后台图片分享:自动切换到排队模式。
         val image = com.wangzan101.mika.chat.SharedDraftImage("busy.jpg", "busy.jpg", 2)
@@ -1733,7 +1738,8 @@ class ChatViewModelTest {
         assertEquals(listOf("start:汇总一下\n附件:/workspace/inbox/报表 (1).csv(2 KB)"), calls)
         assertTrue(vm.ui.value.attachments.isEmpty())
         assertTrue(vm.ui.value.input.isEmpty())
-        // 任务在跑时不收附件
+        // 显式插话模式下不收附件
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.attach(listOf("content://x/3"))
         runCurrent()
         assertTrue(vm.ui.value.attachments.isEmpty())
@@ -2381,6 +2387,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("当前任务", ok)
         emit(TaskState.Running(1, "在做"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.send("撤回这句", ok)
         vm.send("留下这句", ok)
         val id = steerIds.first()
@@ -2389,6 +2396,45 @@ class ChatViewModelTest {
         assertFalse(vm.withdrawSteer(id))
         assertEquals(1, calls.count { it == "withdraw:$id" })
         assertEquals("留下这句", vm.ui.value.exchanges.single().steers.last().text)
+    }
+
+    @Test fun messagesWhileRunningQueueByDefault() = runTest {
+        val vm = vm()
+        vm.send("当前任务", ok)
+        emit(TaskState.Running(1, "在做"))
+        assertEquals(FollowUpMode.Queue, vm.ui.value.followUpMode)
+        vm.send("下一件", ok)
+        runCurrent()
+        assertEquals(listOf("queue:下一件"), calls.filter { it.startsWith("queue:") })
+        assertEquals(listOf("下一件"), vm.ui.value.queued.map { it.text })
+        assertTrue(vm.ui.value.exchanges.single().steers.isEmpty())
+    }
+
+    @Test fun guideQueuedMovesTheMessageIntoTheCurrentTask() = runTest {
+        val vm = vm()
+        vm.send("当前任务", ok)
+        emit(TaskState.Running(1, "在做"))
+        vm.send("下一件", ok)
+        runCurrent()
+        val item = vm.ui.value.queued.single()
+        assertTrue(vm.guideQueued(item.id, ok))
+        runCurrent()
+        assertTrue(vm.ui.value.queued.isEmpty())
+        assertEquals(listOf("下一件"), vm.ui.value.exchanges.single().steers.map { it.text })
+        assertTrue(calls.contains("cancelQueued:${item.id}"))
+        assertTrue(calls.contains("steer:下一件"))
+    }
+
+    @Test fun guideQueuedDoesNotMoveAMessageAfterTheTaskEnds() = runTest {
+        val vm = vm()
+        vm.send("当前任务", ok)
+        emit(TaskState.Running(1, "在做"))
+        vm.send("下一件", ok)
+        runCurrent()
+        emit(TaskState.Succeeded("完成了"))
+        assertFalse(vm.guideQueued(vm.ui.value.queued.single().id, ok))
+        assertEquals(listOf("下一件"), vm.ui.value.queued.map { it.text })
+        assertTrue(vm.ui.value.exchanges.single().steers.isEmpty())
     }
 
     @Test fun queueModeEnqueuesInsteadOfSteering() = runTest {
@@ -2416,11 +2462,10 @@ class ChatViewModelTest {
         assertTrue(vm.ui.value.exchanges.single().steers.isEmpty())
     }
 
-    @Test fun newTaskResetsFollowUpModeToSteer() = runTest {
+    @Test fun newTaskKeepsQueueAsTheDefaultFollowUpMode() = runTest {
         val vm = vm()
-        vm.setFollowUpMode(FollowUpMode.Queue)
         vm.send("新任务", ok)
-        assertEquals(FollowUpMode.Steer, vm.ui.value.followUpMode)
+        assertEquals(FollowUpMode.Queue, vm.ui.value.followUpMode)
     }
 
     @Test fun queuedTrayFollowsStoreAndHidesClaimedAndFallback() = runTest {
@@ -2481,6 +2526,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("当前任务", ok)
         emit(TaskState.Running(1, "在做"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         val quote = QuoteMessage.Quote(QuoteMessage.From.Mika, "明天有雨")
         vm.quote(quote.from, quote.text)
         vm.send("改这句话", ok)
@@ -2499,6 +2545,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("当前任务", ok)
         emit(TaskState.Running(1, "在做"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.send("模型刚取走", ok)
         val id = steerIds.single()
         canWithdraw = false
@@ -2557,6 +2604,7 @@ class ChatViewModelTest {
         val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()), serviceBusy = busy)
         runCurrent()
         vm.send("当前任务", ok)
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.send("别发这句", ok)
         val id = vm.ui.value.exchanges.single().steers.single().id
         assertTrue(vm.withdrawSteer(id))
@@ -2590,6 +2638,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("订明天的会议室", ok)
         emit(TaskState.Running(1, "", "phone_launch_app"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         assertEquals(ComposerMode.Busy, vm.ui.value.composer)
 
         assertTrue(vm.send("改成后天", ok))
@@ -2662,6 +2711,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("查快递", ok)
         emit(TaskState.Running(1, "", "phone_launch_app"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.send("只看顺丰的", ok)
         emit(TaskState.Failed("网络断了", FailKind.Environment))
         steerFlow.value = listOf(SteerNote(steerIds.single(), "只看顺丰的", SteerState.Next))
@@ -2707,6 +2757,7 @@ class ChatViewModelTest {
         val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()), busy, steers = steerFlow)
         runCurrent()
         assertTrue(vm.send("订会议室", ok))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         assertTrue(vm.send("要大一点的", ok))
         runCurrent()
         assertTrue(calls.isEmpty())
@@ -2721,6 +2772,7 @@ class ChatViewModelTest {
         val vm = vm()
         vm.send("查快递", ok)
         emit(TaskState.Running(1, "", "phone_launch_app"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.send("只看顺丰的", ok)
         vm.cancel()
         assertEquals("cancel", calls.last())
@@ -2734,6 +2786,7 @@ class ChatViewModelTest {
         val vm2 = ChatViewModel(backgroundScope, MutableStateFlow(TaskState.Idle), stage, actions, ConversationStore(tmp.newFolder()), busy)
         runCurrent()
         vm2.send("订会议室", ok)
+        vm2.setFollowUpMode(FollowUpMode.Steer)
         vm2.send("要大一点的", ok)
         vm2.cancel()
         busy.value = false
@@ -2767,6 +2820,7 @@ class ChatViewModelTest {
         assertNull(vm.ui.value.quote)
 
         emit(TaskState.Running(1, "", "phone_launch_app"))
+        vm.setFollowUpMode(FollowUpMode.Steer)
         vm.quote(QuoteMessage.From.You, "查天气")
         assertTrue(vm.send("改成后天", ok))
         val steer = "> [Quoting my earlier message]\n> 查天气\n\n改成后天"
