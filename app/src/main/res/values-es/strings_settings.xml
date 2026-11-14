@@ -210,4 +210,10 @@
     <string name="settings_token_budget_custom">Presupuesto de tokens personalizado</string>
     <string name="settings_token_budget_apply">Usar</string>
     <string name="settings_token_budget_invalid">Introduce un número entero entre %1$s y %2$s.</string>
+    <string name="accent_system">System colors</string>
+    <string name="accent_system_detail">Matches the phone’s colors in light mode</string>
+    <string name="accent_apricot">Warm apricot</string>
+    <string name="accent_preview">Preview</string>
+    <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
+    <string name="accent_preview_user">Help me organize today’s tasks.</string>
 </resources>

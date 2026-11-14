@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.lightColorScheme
 import com.wangzan101.mika.settings.ThemeAccent
 import kotlin.math.pow
 import org.junit.Assert.assertEquals
@@ -59,6 +60,25 @@ class AccentPaletteTest {
                 assertTrue("$accent dark=$dark: ${"%.2f".format(ratio)}", ratio >= 3.0)
             }
         }
+    }
+
+    @Test fun systemPaletteUsesSystemBackgroundAndForeground() {
+        val system = lightColorScheme(background = Color(0xFFF0E5EB), surface = Color(0xFFFFF8FA),
+            primary = Color(0xFF8B4564), onPrimary = Color.White)
+        val result = LightColors.withSystemLight(system)
+        assertEquals(system.background, result.bg)
+        assertEquals(system.surface, result.surface)
+        assertEquals(system.primary, result.accent)
+        assertEquals(system.onPrimary, result.onAccent)
+    }
+
+    @Test fun customColorChangesBackgroundAndCardsTogether() {
+        val blue = coordinatedLightPalette(ThemeAccent.Blue)
+        val pink = coordinatedLightPalette(ThemeAccent.Pink)
+        assertTrue(blue.bg != pink.bg)
+        assertTrue(blue.surface != pink.surface)
+        assertTrue(blue.accent != pink.accent)
+        assertEquals(LightColors.ink, pink.ink)
     }
 
     private fun contrast(a: Color, b: Color): Double {

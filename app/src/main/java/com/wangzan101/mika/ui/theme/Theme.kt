@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui.theme
 
 import android.content.Context
+import android.os.Build
 import android.provider.Settings
 import android.view.View
 import androidx.compose.animation.core.AnimationSpec
@@ -13,6 +14,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -23,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.activity.ComponentActivity
@@ -107,8 +110,18 @@ fun MikaTheme(
 ) {
     // 背景图片设了「强调色跟随图片」时,用图上的主色代替设置里选的强调色
     val imageHue = appearanceSkin().accentHue
-    val colors = remember(dark, accent, imageHue) {
-        val base = palette(dark, accent)
+    val context = LocalContext.current
+    // Configuration changes (including wallpaper palette changes) invalidate the system colors.
+    val configuration = LocalConfiguration.current
+    val systemColors = if (!dark && accent == ThemeAccent.System && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        remember(context, configuration) { dynamicLightColorScheme(context) }
+    } else null
+    val colors = remember(dark, accent, imageHue, systemColors) {
+        val base = when {
+            systemColors != null -> LightColors.withSystemLight(systemColors)
+            !dark && accent != ThemeAccent.System -> coordinatedLightPalette(accent)
+            else -> palette(dark, accent)
+        }
         if (imageHue == null) base else SkinAccent.tone(imageHue, dark).let { (color, on) -> base.withAccent(color, on) }
     }
     val materialColors = remember(colors) { scheme(colors) }

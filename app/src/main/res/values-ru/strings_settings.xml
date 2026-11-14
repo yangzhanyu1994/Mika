@@ -214,4 +214,10 @@
     <string name="settings_token_budget_custom">Свой бюджет токенов</string>
     <string name="settings_token_budget_apply">Использовать</string>
     <string name="settings_token_budget_invalid">Введите целое число от %1$s до %2$s.</string>
+    <string name="accent_system">System colors</string>
+    <string name="accent_system_detail">Matches the phone’s colors in light mode</string>
+    <string name="accent_apricot">Warm apricot</string>
+    <string name="accent_preview">Preview</string>
+    <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
+    <string name="accent_preview_user">Help me organize today’s tasks.</string>
 </resources>

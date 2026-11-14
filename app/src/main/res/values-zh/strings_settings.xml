@@ -132,11 +132,11 @@
     <string name="appearance_dark">一直深色</string>
     <string name="accent_group">强调色</string>
     <string name="accent_default">默认</string>
-    <string name="accent_blue">蓝色</string>
+    <string name="accent_blue">海盐蓝</string>
     <string name="accent_indigo">靛蓝</string>
-    <string name="accent_purple">紫色</string>
-    <string name="accent_pink">粉色</string>
-    <string name="accent_teal">青色</string>
+    <string name="accent_purple">薰衣草紫</string>
+    <string name="accent_pink">玫瑰粉</string>
+    <string name="accent_teal">薄荷青</string>
     <string name="accent_graphite">石墨</string>
     <string name="skin_group">背景图片</string>
     <string name="skin_pick">从相册选一张</string>
@@ -202,4 +202,10 @@
     <string name="settings_token_budget_custom">自定义 Token 预算</string>
     <string name="settings_token_budget_apply">使用</string>
     <string name="settings_token_budget_invalid">请输入 %1$s 到 %2$s 的整数。</string>
+    <string name="accent_system">跟随系统颜色</string>
+    <string name="accent_system_detail">浅色时自动匹配手机系统配色</string>
+    <string name="accent_apricot">暖杏色</string>
+    <string name="accent_preview">效果预览</string>
+    <string name="accent_preview_reply">你好！我是 Mika，有什么可以帮你？</string>
+    <string name="accent_preview_user">帮我整理今天的待办事项。</string>
 </resources>
