@@ -53,6 +53,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -163,7 +164,9 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
 
     /** 模型配置与 Key;建出的模型都套上计量,记到 [usage]。 */
     override val providers: ProviderStore by lazy {
-        ProviderStore.create(this, usage, "Mika/${BuildConfig.VERSION_NAME}", usage::providerTokensToday)
+        ProviderStore.create(this, usage, "Mika/${BuildConfig.VERSION_NAME}", usage::providerTokensToday,
+            proactiveUsage = usage::proactiveTokensToday, proactiveLimit = { FeatureFlags.get(this).proactiveDailyTokenBudget() },
+            proactiveCalls = usage::proactiveCallsToday)
     }
 
     /** 语音转文字的选择:整个进程一份,设置页改了输入框立刻看得到(两份实例互相看不到对方的 set)。 */
@@ -260,6 +263,18 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
 
     val appAccess: com.wangzan101.mika.settings.AppAccessStore by lazy {
         com.wangzan101.mika.settings.AppAccessStore(java.io.File(filesDir, "app-access.json"))
+    }
+
+    /** 主动能力(实验):通知白名单、监听与本机收件箱。 */
+    val proactive by lazy {
+        com.wangzan101.mika.proactive.ProactiveRuntime.create(this,
+            { com.wangzan101.mika.proactive.AppGate.of(appAccess.current()) },
+            appAccess.state.map { com.wangzan101.mika.proactive.AppGate.of(it) }.distinctUntilChanged(),
+            com.wangzan101.mika.proactive.TriageHooks(
+            target = { providers.proactiveTarget() }, model = { call -> providers.proactiveTargeted(call) },
+            tokensToday = { usage.proactiveTokensToday() }, callsToday = { usage.proactiveCallsToday() },
+            usageVersion = { usage.version }, busy = taskState.busy,
+        )) { phone.shellManager.commandRunner }
     }
 
     /** 首页推荐任务。文件还不存在时,由界面用当前语言的内置示例初始化一次。 */
@@ -426,6 +441,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         if (!quit) runRecovery.recover().let { if (it.isNotEmpty()) Log.w("MikaTask", "${it.size} runs interrupted by process restart") }
         // 用户已绑定并打开微信渠道时恢复监听；完全退出期间由各运行入口统一拒绝补起
         wechat.ensureRunning()
+        if (flags.proactive()) proactive.start(paused = quit)
         // 先对一下设备时区;退出期间不排闹钟,重新打开时再补排
         if (!quit) scope.launch(Dispatchers.IO) { runCatching { TriggerRuntime.syncTimeZone(this@MikaApp); TriggerRuntime.rearm(this@MikaApp) } }
         // 给电脑跑的「经 USB 连接」脚本;顺带清掉上次开机留下的 USB 连接信息
@@ -452,6 +468,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         RuntimePreparer.ensure(this)
         mcp.ensureRunning()
         wechat.ensureRunning()
+        if (FeatureFlags.get(this).proactive()) proactive.start(paused = false)
         scope.launch(Dispatchers.IO) {
             runCatching {
                 TriggerRuntime.syncTimeZone(this@MikaApp)
