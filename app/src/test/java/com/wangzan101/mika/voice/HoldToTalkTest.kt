@@ -8,6 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HoldToTalkTest {
+    @Test fun systemEndOfSpeechDoesNotSubmitAnActiveHold() {
+        val session = pressed()
+        hold.onEvent(SpeechEvent.EndOfSpeech)
+        assertEquals(0, session.released)
+        assertTrue(hold.state.value is HoldToTalk.State.Listening)
+    }
+
     @Test fun autoSendAfterReleaseAndCancellationRemainDistinct() {
         val session = pressed()
         now = 2_000

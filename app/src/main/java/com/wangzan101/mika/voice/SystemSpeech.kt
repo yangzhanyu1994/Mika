@@ -428,7 +428,7 @@ class SystemSpeechSession(
         override fun onReadyForSpeech(params: Bundle?) = heard()
         override fun onBeginningOfSpeech() = heard()
         override fun onBufferReceived(buffer: ByteArray?) = heard()
-        override fun onEndOfSpeech() = heard()
+        override fun onEndOfSpeech() { heard(); if (!done()) out.send(SpeechEvent.EndOfSpeech) }
         override fun onEvent(eventType: Int, params: Bundle?) = heard()
 
         override fun onRmsChanged(rmsdB: Float) {
