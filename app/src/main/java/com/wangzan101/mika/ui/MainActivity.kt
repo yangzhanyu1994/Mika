@@ -84,6 +84,7 @@ import com.wangzan101.mika.ui.theme.systemBarsFor
 class MainActivity : ComponentActivity() {
     private lateinit var monitor: SystemStatusMonitor
     private var requestedConversation by mutableStateOf<String?>(null)
+    private var requestedAssistant by mutableStateOf(false)
     private var requestedCalls by mutableStateOf(false)
     private var requestedCallHistoryId by mutableStateOf<String?>(null)
     private var openTeach by mutableStateOf(false)
@@ -111,6 +112,7 @@ class MainActivity : ComponentActivity() {
             (application as MikaApp).chat.cancelPendingSharedDraft()
         }
         requestedConversation = intent.getStringExtra(EXTRA_OPEN_CONVERSATION)
+        requestedAssistant = savedInstanceState == null && intent.action == Intent.ACTION_ASSIST
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
         takeTeach(intent)
@@ -131,6 +133,7 @@ class MainActivity : ComponentActivity() {
                 KeyboardDismissArea(Modifier.fillMaxSize()) {
                     MikaRoot(
                         store, monitor, ::perform, requestedConversation, { requestedConversation = null },
+                        requestedAssistant, { requestedAssistant = false },
                         requestedCalls, requestedCallHistoryId, { requestedCalls = false; requestedCallHistoryId = null },
                         requestedSharedDraft,
                         onSharedDraftOpened = { accepted, draft ->
@@ -157,6 +160,7 @@ class MainActivity : ComponentActivity() {
         val app = application as MikaApp
         shareJob?.cancel()
         requestedConversation = intent.getStringExtra(EXTRA_OPEN_CONVERSATION)
+        requestedAssistant = intent.action == Intent.ACTION_ASSIST
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
         if (requestedConversation != null || intent.getBooleanExtra(EXTRA_OPEN_TEACH, false)) {
@@ -397,6 +401,8 @@ private fun MikaRoot(
     activityFix: (Fix) -> Unit,
     requestedConversation: String?,
     onConversationOpened: () -> Unit,
+    requestedAssistant: Boolean,
+    onAssistantOpened: () -> Unit,
     requestedCalls: Boolean,
     requestedCallHistoryId: String?,
     onCallsOpened: () -> Unit,
@@ -408,7 +414,7 @@ private fun MikaRoot(
     val context = LocalContext.current
     var focusedCallHistoryId by remember { mutableStateOf<String?>(null) }
     val personalStart = remember { FeatureFlags.get(context).personalStart() }
-    val nav = rememberNavStack(if (personalStart && requestedConversation == null) Route.Personal else Route.Chat)
+    val nav = rememberNavStack(if (personalStart && requestedConversation == null && !requestedAssistant) Route.Personal else Route.Chat)
     var filesFromDrawer by rememberSaveable { mutableStateOf(false) }
     var openPlanCreator by rememberSaveable { mutableStateOf(false) }
     var openCallComposer by rememberSaveable { mutableStateOf(false) }
@@ -440,6 +446,12 @@ private fun MikaRoot(
     val callHistory by app.calls.history.collectAsState()
     val autoUpdate by app.automaticUpdates.enabled.collectAsState()
     val readyUpdate by app.automaticUpdates.ready.collectAsState()
+    LaunchedEffect(requestedAssistant) {
+        if (requestedAssistant) {
+            nav.reset()
+            onAssistantOpened()
+        }
+    }
     LaunchedEffect(requestedConversation) {
         if (requestedConversation != null) {
             if (requestedConversation == "personal-main") nav.show(Route.Personal)
