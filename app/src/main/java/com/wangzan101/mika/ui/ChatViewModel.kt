@@ -1836,7 +1836,7 @@ class ChatViewModel(
      * 停任务、删定时任务、删文件在后台做(见 `ConversationDeleter`)。
      */
     fun deleteConversation(id: String) {
-        deleteConversations(listOf(id), report = false)
+        deleteConversations(listOf(id), report = true)
     }
 
     /** 一次批量删除的进度和结果;侧栏在底部显示,提示完调 [clearDeleteBatch]。 */

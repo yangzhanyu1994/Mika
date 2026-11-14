@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 09a12768165f -->
+<!-- translated-from: README.md @ 200736244785 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -37,6 +37,8 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 </div>
 
 ## Imprescindible
+
+Consulta los cambios de las versiones recientes en el [historial de actualizaciones (en chino)](../../README.md#近期版本更新说明).
 
 ### 2026-11-13
 

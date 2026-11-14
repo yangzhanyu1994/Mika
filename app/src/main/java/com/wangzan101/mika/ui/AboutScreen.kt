@@ -52,6 +52,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.about.ForkReleaseHistory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.wangzan101.mika.about.CheckStatus
 import com.wangzan101.mika.about.MikaLinks
 import com.wangzan101.mika.about.QrImage
@@ -293,15 +296,29 @@ internal fun UpdateSheet(r: ReleaseInfo, current: String, beta: Boolean, onOpenU
 @Composable
 private fun ChangelogSheet(latest: ReleaseInfo?, onOpenAll: () -> Unit, onDismiss: () -> Unit) {
     val c = MikaTheme.colors
+    val context = LocalContext.current
+    var history by remember { mutableStateOf<List<ForkReleaseHistory.Entry>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        val bundled = withContext(Dispatchers.IO) {
+            runCatching { context.assets.open("fork-release-history.md").bufferedReader().use { ForkReleaseHistory.parse(it.readText()) } }
+                .getOrDefault(emptyList())
+        }
+        history = bundled
+        val remote = withContext(Dispatchers.IO) { ForkReleaseHistory.fetch() }
+        history = ForkReleaseHistory.merge(remote, bundled)
+    }
     AboutSheetFrame(AboutCopy.CHANGELOG, null, "changelog-sheet", onDismiss) {
-        if (latest == null) {
-            Text(AboutCopy.CHANGELOG_EMPTY, Modifier.padding(top = 10.dp), style = MikaType.Caption, color = c.ink3)
+        if (history.isEmpty()) {
+            if (latest == null) Text(AboutCopy.CHANGELOG_EMPTY, Modifier.padding(top = 10.dp), style = MikaType.Caption, color = c.ink3)
+            else {
+                Text(latest.version + (latest.date?.let { " · $it" } ?: ""), Modifier.padding(top = 10.dp), style = MikaType.Label, color = c.ink)
+                if (latest.notes.isNotBlank()) NotesBox(latest.notes)
+            }
         } else {
-            Text(
-                latest.version + (latest.date?.let { " · $it" } ?: ""), Modifier.padding(top = 10.dp),
-                style = MikaType.Label, color = c.ink,
-            )
-            if (latest.notes.isNotBlank()) NotesBox(latest.notes)
+            history.forEach { entry ->
+                Text("v${entry.version} · ${entry.date}", Modifier.padding(top = 18.dp), style = MikaType.Label, color = c.ink)
+                MarkdownText(entry.notes, MikaType.Caption.copy(color = c.ink2))
+            }
         }
         MikaButton(AboutCopy.CHANGELOG_ALL, onOpenAll, Modifier.fillMaxWidth().padding(top = 14.dp), kind = ButtonKind.Tonal)
     }

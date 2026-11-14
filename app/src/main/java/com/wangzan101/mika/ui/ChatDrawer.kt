@@ -683,7 +683,7 @@ internal fun DeleteConversationDialog(title: String, impact: DeleteImpact, onCon
         title = { Text(stringResource(R.string.drawer_delete_title)) },
         text = { Text(body, Modifier.testTag("delete-conversation-body")) },
         confirmButton = {
-            TextButton(onClick = onConfirm, Modifier.testTag("confirm-delete-conversation")) {
+            TextButton(onClick = onConfirm, Modifier.fillMaxWidth().testTag("confirm-delete-conversation")) {
                 Text(stringResource(R.string.confirm_delete), color = MikaTheme.colors.bad)
             }
         },
@@ -710,7 +710,7 @@ internal fun DeleteManyConversationsDialog(
         title = { Text(stringResource(R.string.drawer_delete_many_title)) },
         text = { Text(body, Modifier.testTag("delete-many-conversation-body")) },
         confirmButton = {
-            TextButton(onClick = onConfirm, Modifier.testTag("confirm-delete-many-conversation")) {
+            TextButton(onClick = onConfirm, Modifier.fillMaxWidth().testTag("confirm-delete-many-conversation")) {
                 Text(stringResource(R.string.confirm_delete), color = MikaTheme.colors.bad)
             }
         },

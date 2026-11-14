@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 09a12768165f -->
+<!-- translated-from: README.md @ 200736244785 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,8 @@
 </div>
 
 ## 必读
+
+近期各版本的中文更新说明见[仓库首页更新记录](../../README.md#近期版本更新说明)。
 
 ### 2026-11-13
 
