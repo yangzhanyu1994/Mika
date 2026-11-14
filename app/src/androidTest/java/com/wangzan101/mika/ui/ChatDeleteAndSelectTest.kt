@@ -186,7 +186,7 @@ class ChatDeleteAndSelectTest {
         compose.onNodeWithText("天气").performTouchInput { longClick() }
         compose.onNodeWithTag("drawer-menu-delete").performClick()
         compose.onNodeWithTag("confirm-delete-conversation").performTouchInput {
-            click(androidx.compose.ui.geometry.Offset(size.width * 0.08f, size.height / 2f))
+            click(androidx.compose.ui.geometry.Offset(center.x * 0.16f, center.y))
         }
         compose.waitForIdle()
         compose.waitUntil(5_000) { removed.isNotEmpty() }
