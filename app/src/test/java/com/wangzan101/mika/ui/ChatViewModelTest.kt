@@ -1856,6 +1856,19 @@ class ChatViewModelTest {
         assertEquals(listOf("订票"), vm.ui.value.exchanges.map { it.goal })
     }
 
+    @Test fun deletingOneConversationReportsFailureAndRestoresIt() = runTest {
+        val store = ConversationStore(tmp.newFolder())
+        store.append("a", Turn("记录", "内容", "succeeded"))
+        val vm = ChatViewModel(backgroundScope, state, stage, actions, store,
+            removeConversation = { throw java.io.IOException("failed") }).also { runCurrent() }
+        vm.deleteConversation("a")
+        assertEquals(DeleteBatch(1, 0, 0), vm.deleteBatch.value)
+        runCurrent()
+        assertEquals(DeleteBatch(1, 1, 1), vm.deleteBatch.value)
+        assertFalse("a" in vm.deleted.value)
+        assertEquals(listOf("a"), store.list().map { it.id })
+    }
+
     /** 批量删除:几条一起删,进度一条条往前走;一条删不掉不挡后面的,最后照实说几条失败。 */
     @Test fun deletingABatchReportsProgressAndFailures() = runTest {
         val dir = tmp.newFolder()
