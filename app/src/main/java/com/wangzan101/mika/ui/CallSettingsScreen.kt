@@ -628,6 +628,19 @@ private fun CallCenterPage(
         CallPermissionRows(device, state.shellConnected, canConfigure, onHelperSetup, config, first = true)
         CallBackgroundStandbyRow(config, state, canStartStandby, onStartStandby, onSetup.takeIf { standbyNeedsSetup })
     }
+    if (!state.backgroundStandbyRunning && !state.backgroundStandbyStarting) {
+        val reason = when {
+            !config.autoAnswer -> stringResource(R.string.calls_background_auto_off)
+            !state.shellConnected -> stringResource(R.string.calls_setup_shell)
+            !device.readiness.phoneAllowed -> stringResource(R.string.calls_device_phone_permissions_note)
+            !device.readiness.standbyNotificationsAllowed -> stringResource(R.string.calls_permissions_required)
+            !config.credentialsConfigured -> stringResource(R.string.calls_setup_credentials)
+            !config.audioVerified -> stringResource(R.string.calls_device_ready_to_test)
+            !ready -> stringResource(R.string.calls_needs_setup)
+            else -> state.backgroundStandbyBlockedReason
+        }
+        reason?.let { FooterNote(it) }
+    }
     CallReadinessActions(
         config, state, ready, canConfigure, stopBusy, device.readiness, onPrepare, {}, onCredentials, showStop = false,
     )
