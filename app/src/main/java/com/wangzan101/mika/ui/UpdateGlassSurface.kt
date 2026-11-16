@@ -67,50 +67,13 @@ internal fun UpdateGlassSurface(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val dark = MikaTheme.colors.isDark
-    val base = if (dark) material.darkBackdrop else Color(0xFFE9F1E6)
-    val tint = if (dark) NightTint else Color.White
+    val colors = MikaTheme.colors
     val shape = RoundedCornerShape(material.radius.dp)
-    var origin by remember { mutableStateOf(Offset.Zero) }
     Box(
-        modifier.shadow(20.dp, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = material.shadow),
-            spotColor = Color.Black.copy(alpha = material.shadow * 2f))
-            .clip(shape)
-            .onGloballyPositioned { origin = it.positionInRoot() }
-            .border(1.dp, Brush.linearGradient(listOf(
-                Color.White.copy(alpha = if (dark) 0.52f else 0.96f),
-                Color.White.copy(alpha = 0.09f),
-                if (dark) Color.White.copy(alpha = 0.21f) else Color.Black.copy(alpha = 0.11f),
-            )), shape),
-    ) {
-        if (backdrop != null) {
-            Box(Modifier.matchParentSize()
-                .graphicsLayer {
-                    renderEffect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && size.width > 0f && size.height > 0f) {
-                        refractedEffect(material, size.width, size.height, density, base, dark)
-                    } else {
-                        val blur = material.blur.dp.toPx()
-                        BlurEffect(blur, blur, TileMode.Clamp)
-                    }
-                    clip = true
-                }
-                .drawBehind {
-                    val delta = backdrop.origin - origin
-                    translate(delta.x, delta.y) { drawLayer(backdrop.layer) }
-                    if (material.scrim > 0f) drawRect(UpdateGlassScrim.copy(alpha = material.scrim))
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                        drawRect(base.copy(alpha = if (dark) 0.90f else 0.67f))
-                    }
-                })
-        }
-        Box(Modifier.matchParentSize().background(if (backdrop != null) tint.copy(alpha = material.tint) else base))
-        Box(Modifier.matchParentSize().drawBehind {
-            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.23f), Color.Transparent),
-                center = Offset.Zero, radius = size.width * 0.82f))
-        })
-        content()
-    }
+        modifier.shadow(20.dp, shape, clip = false)
+            .clip(shape).background(colors.surface).border(1.dp, colors.edge, shape),
+        content = content,
+    )
 }
 
 @RequiresApi(33)

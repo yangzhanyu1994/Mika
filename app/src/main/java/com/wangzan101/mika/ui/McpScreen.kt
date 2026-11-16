@@ -94,7 +94,7 @@ fun McpScreen(runtime: McpRuntime, onBack: () -> Unit) {
                     MikaSwitch(historyEnabled, runtime.settings::setHistoryEnabled, Modifier.testTag("computer-history"))
                 }
             }
-            DeviceAccessSection(runtime.device.settings)
+            DeviceAccessSection(runtime.device.settings, access = runtime.device.access)
         },
         relayGuide = { mcp -> RelaySection(runtime, mcp) { copy(context, it) } },
     )

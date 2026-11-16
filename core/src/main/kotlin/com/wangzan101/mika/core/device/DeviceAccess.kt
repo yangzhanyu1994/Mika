@@ -69,6 +69,15 @@ class DeviceAccess(private val port: DeviceAccessPort, private val store: Device
         return result(if (s == null) "device_unavailable" else "state", s)
     }
 
+    /** Resume one safe attempt only after the phone is already unlocked by its user. */
+    suspend fun resumeAfterUserUnlock(): DeviceAccessResult = mutex.withLock {
+        val current = read() ?: return@withLock result("device_unavailable")
+        if (!current.ready) return@withLock result("manual_unlock_required", current)
+        val credential = store.credential() ?: return@withLock result("credential_required", current)
+        credential.use { store.completeAttempt(it) }
+        result("resumed", current)
+    }
+
     suspend fun wake(): DeviceAccessResult = mutex.withLock {
         prepare()?.let { return@withLock it }
         val before = read() ?: return@withLock result("device_unavailable")

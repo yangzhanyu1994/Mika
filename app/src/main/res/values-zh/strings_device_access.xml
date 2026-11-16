@@ -6,7 +6,7 @@
     <string name="device_access_no_credential">未设置 · 仅可解除滑动或无密码锁屏</string>
     <string name="device_access_pin_saved">已保存 PIN · 点此更换</string>
     <string name="device_access_password_saved">已保存密码 · 点此更换</string>
-    <string name="device_access_blocked">自动解锁已暂停 · 请在手机上检查并重新保存凭据</string>
+    <string name="device_access_blocked">自动解锁已暂停 · 请手动解锁手机后点击恢复；若密码已更改，请重新保存</string>
     <string name="device_access_clear">移除已保存的凭据</string>
     <string name="device_access_foot">默认关闭。凭据加密保存在本机，不发送给模型或电脑。凭据尝试失败一次后暂停后续尝试；重启后请先亲手解锁一次。需先完成手机操作设置。</string>
     <string name="device_access_pin">PIN</string>
@@ -26,4 +26,5 @@
     <string name="device_local_relock_title">手机可能仍处于解锁状态</string>
     <string name="device_local_relock_failed">Mika 无法确认手机已重新锁屏，请检查并手动锁屏。</string>
     <string name="device_local_unlock_failed">无法自动亮屏或解锁。请检查“任务运行”中的锁屏开关、已保存的锁屏凭据、手机操作设置及通知权限。</string>
+    <string name="device_access_resume">已手动解锁，恢复自动解锁</string>
 </resources>

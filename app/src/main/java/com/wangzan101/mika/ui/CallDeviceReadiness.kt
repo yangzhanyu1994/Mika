@@ -298,7 +298,7 @@ internal fun CallBackgroundStandbyRow(
     onStart: () -> Unit, onBlocked: (() -> Unit)? = null,
 ) {
     val stopped = !state.backgroundStandbyStarting && !state.backgroundStandbyRunning
-    val canAct = stopped && config.autoAnswer
+    val canAct = stopped
     val action = if (canAct && canStart) onStart else onBlocked.takeIf { canAct }
     ListRow(
         MikaIcons.Shield, stringResource(R.string.calls_background_service),

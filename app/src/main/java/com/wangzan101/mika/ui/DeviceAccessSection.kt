@@ -40,7 +40,7 @@ import kotlinx.coroutines.withContext
 
 /** 电脑连接页中的主屏准备设置。新凭据不进可恢复状态,不显示旧凭据;编辑时禁止截屏。 */
 @Composable
-fun DeviceAccessSection(settings: DeviceAccessSettings, localTasks: Boolean = false) {
+fun DeviceAccessSection(settings: DeviceAccessSettings, localTasks: Boolean = false, access: com.wangzan101.mika.core.device.DeviceAccess? = null) {
     val config by settings.config.collectAsState()
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
@@ -88,6 +88,20 @@ fun DeviceAccessSection(settings: DeviceAccessSettings, localTasks: Boolean = fa
         ListRow(MikaIcons.Key, stringResource(R.string.device_access_credential), stringResource(subtitle),
             tone = if (config.blocked) TileTone.Bad else TileTone.Neutral,
             onClick = { if (!busy) { kind = config.kind ?: CredentialKind.Pin; editing = true } })
+        if (config.blocked && access != null) RowActions {
+            MikaButton(stringResource(R.string.device_access_resume), {
+                if (!busy) {
+                    busy = true
+                    failed = false
+                    scope.launch {
+                        try { failed = access.resumeAfterUserUnlock().status != "resumed" }
+                        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                        catch (_: Exception) { failed = true }
+                        finally { busy = false }
+                    }
+                }
+            }, kind = ButtonKind.Tonal, size = ButtonSize.Small, enabled = !busy)
+        }
         if (config.kind != null && !editing) RowActions {
             MikaButton(stringResource(R.string.device_access_clear), { change({ settings.clearCredential() }) }, kind = ButtonKind.Tonal, size = ButtonSize.Small, enabled = !busy)
         }

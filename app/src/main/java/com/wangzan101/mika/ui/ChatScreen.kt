@@ -867,13 +867,20 @@ internal fun UserBubble(text: String, conversationId: String?, note: String? = n
             if ((!attached.hasAttachments || attached.words.isNotEmpty()) && (paged.page == null || quoted.words.isNotEmpty())) UserMessage(conversationId, attached.words.takeIf { attached.hasAttachments } ?: quoted.words, ChatThumbWidth) { words ->
                 // 选择文字时蓝底上选中的底色用白色半透明,把手照旧是蓝色(画在气泡外面)
                 val colors = MikaTheme.colors
-                CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(colors.accent, colors.onAccent.copy(alpha = 0.35f))) {
+                val selected = com.wangzan101.mika.ui.theme.appearanceAccent()
+                val imageHue = com.wangzan101.mika.ui.theme.appearanceSkin().accentHue
+                val (bubble, onBubble) = when {
+                    imageHue != null -> com.wangzan101.mika.ui.theme.SkinAccent.tone(imageHue, colors.isDark)
+                    selected == com.wangzan101.mika.settings.ThemeAccent.System -> colors.accent to colors.onAccent
+                    else -> com.wangzan101.mika.ui.theme.accentTone(selected, colors.isDark)
+                }
+                CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(bubble, onBubble.copy(alpha = 0.35f))) {
                     MessageArea(
                         key, QuoteMessage.From.You, words, "selectable-user",
-                        Modifier.widthIn(max = max).background(Brush.verticalGradient(listOf(colors.accent.copy(alpha = 0.74f), colors.accent)), MikaShapes.UserBubble)
+                        Modifier.widthIn(max = max).background(bubble, MikaShapes.UserBubble)
                             .border(1.dp, Color.White.copy(alpha = if (colors.isDark) 0.18f else 0.65f), MikaShapes.UserBubble),
-                        lifted = { LiftedMessage(MikaShapes.UserBubble, colors.accent) { UserBubbleText(words) } },
-                    ) { UserBubbleText(words) }
+                        lifted = { LiftedMessage(MikaShapes.UserBubble, bubble) { UserBubbleText(words, onBubble) } },
+                    ) { UserBubbleText(words, onBubble) }
                 }
             }
             note?.let { Text(it, Modifier.padding(top = 3.dp, end = 4.dp), style = MikaType.Hint, color = MikaTheme.colors.ink3) }
@@ -882,8 +889,8 @@ internal fun UserBubble(text: String, conversationId: String?, note: String? = n
 }
 
 @Composable
-private fun UserBubbleText(words: String) {
-    Text(words, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = BubbleText, color = MikaTheme.colors.onAccent)
+private fun UserBubbleText(words: String, color: Color) {
+    Text(words, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = BubbleText, color = color)
 }
 
 /** 长按抬起的那条消息:[color] 底、带阴影;太长时(最高半屏)只露开头,下面裁掉。 */
