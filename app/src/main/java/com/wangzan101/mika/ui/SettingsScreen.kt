@@ -238,6 +238,7 @@ fun SettingsScreen(
             pipOperate = pipOperate, onPipOperate = { flags.setPipOperate(it); pipOperate = it },
             externalSchedule = externalSchedule, onExternalSchedule = { flags.setExternalSchedule(it); externalSchedule = it },
             deviceSettings = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.settings,
+            deviceAccess = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.access,
         )
         SettingsPage.Language -> LanguageScreen(language, onLanguage = { AppLanguage.set(context, it) }, onBack = toHome)
         SettingsPage.Recommendations -> RecommendedTasksScreen(recommendedTasks, onBack = toHome)

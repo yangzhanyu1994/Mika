@@ -66,7 +66,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 @Composable
 fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = AmbientMode.Idle, reduceMotion: Boolean = MikaTheme.reduceMotion, content: @Composable BoxScope.() -> Unit) {
     val backdrop = rememberSkinBackdrop()
-    val glassBackground = if (backdrop == null && !MikaTheme.colors.isDark) rememberGlassBackdrop() else null
+    val glassBackground: GlassBackdrop? = null
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
         modifier.fillMaxSize().background(MikaTheme.colors.bg).then(
@@ -108,26 +108,10 @@ fun Modifier.pageBackground(color: Color, fade: Brush? = null): Modifier = compo
 
 /** 卡片的底:白底 + 黑 5% 描边 + 极淡阴影;深色下只有描边。 */
 fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Modifier = composed {
-    val source = LocalGlassBackground.current
-    val layer = if (source != null) rememberGraphicsLayer() else null
-    var origin by remember { mutableStateOf(Offset.Zero) }
     val shadowed = if (colors.cardShadow.alpha > 0f) {
-        shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
+        shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.2f), spotColor = colors.cardShadow.copy(alpha = 0.1f))
     } else this
-    shadowed.clip(shape)
-        .then(if (source != null && layer != null) Modifier.onGloballyPositioned { origin = it.positionInRoot() }
-            .drawWithContent {
-                layer.renderEffect = GlassBlur
-                layer.record {
-                    val d = source.origin - origin
-                    translate(d.x, d.y) { drawLayer(source.layer) }
-                }
-                drawLayer(layer)
-                drawContent()
-            } else Modifier)
-        .background(if (colors.isDark) Brush.verticalGradient(listOf(colors.surface, colors.surface)) else
-            Brush.verticalGradient(listOf(Color(0xB8FFFFFF), colors.bg.copy(alpha = 0.48f), colors.surface.copy(alpha = 0.62f))), shape)
-        .border(1.dp, if (colors.isDark) colors.edge else Color(0xE8FFFFFF), shape)
+    shadowed.clip(shape).background(colors.surface, shape).border(1.dp, colors.edge, shape)
 }
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */
@@ -223,38 +207,11 @@ fun GlassBar(
     content: @Composable RowScope.() -> Unit,
 ) {
     val c = MikaTheme.colors
-    val background = LocalGlassBackground.current
-    var origin by remember { mutableStateOf(Offset.Zero) }
-    Box(
-        modifier.floatShadow(c, shape).clip(shape)
-            .then(if (backdrop != null || background != null) Modifier.onGloballyPositioned { origin = it.positionInRoot() } else Modifier),
-    ) {
-        if (background != null) {
-            Box(Modifier.matchParentSize()
-                .graphicsLayer { renderEffect = GlassBlur; clip = true }
-                .drawBehind {
-                    val d = background.origin - origin
-                    translate(d.x, d.y) { drawLayer(background.layer) }
-                })
-        }
-        if (backdrop != null) {
-            Box(
-                Modifier.matchParentSize()
-                    .graphicsLayer { renderEffect = GlassBlur; clip = true }
-                    .drawBehind {
-                        val d = backdrop.origin - origin
-                        translate(d.x, d.y) { drawLayer(backdrop.layer) }
-                    },
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth().background(if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.surface)) else
-                Brush.verticalGradient(listOf(Color(0xAFFFFFFF), c.bg.copy(alpha = 0.48f), c.surface.copy(alpha = 0.66f))))
-                .border(1.dp, if (c.isDark) c.glassEdge else Color(0xE8FFFFFF), shape)
-                .heightIn(min = MikaSize.Composer).padding(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            content = content,
-        )
-    }
+    Row(
+        modifier.floatShadow(c, shape).clip(shape).background(c.surface)
+            .border(1.dp, c.edge, shape).heightIn(min = MikaSize.Composer).padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        content = content,
+    )
 }

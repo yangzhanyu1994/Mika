@@ -145,7 +145,7 @@
     <string name="appearance_system_detail">Light or dark, whichever the phone is in</string>
     <string name="appearance_light">Always light</string>
     <string name="appearance_dark">Always dark</string>
-    <string name="accent_group">Accent color</string>
+    <string name="accent_group">Chat bubble color</string>
     <string name="accent_default">Default</string>
     <string name="accent_blue">Blue</string>
     <string name="accent_indigo">Indigo</string>
@@ -218,7 +218,7 @@
     <string name="settings_token_budget_apply">Use</string>
     <string name="settings_token_budget_invalid">Enter a whole number from %1$s to %2$s.</string>
     <string name="accent_system">System colors</string>
-    <string name="accent_system_detail">Matches the phone’s colors in light mode</string>
+    <string name="accent_system_detail">Changes chat bubble color only; system uses the phone’s accent color</string>
     <string name="accent_apricot">Warm apricot</string>
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>

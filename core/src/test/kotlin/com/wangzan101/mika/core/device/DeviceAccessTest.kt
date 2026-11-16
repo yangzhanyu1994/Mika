@@ -235,6 +235,16 @@ class DeviceAccessTest {
         assertTrue(s.attemptBlocked)
     }
 
+    @Test fun blockedAttemptCanResumeOnlyWhenUserHasUnlockedPhone() = runTest {
+        val p = Port(); val s = Store().apply { attemptBlocked = true }; val d = DeviceAccess(p, s)
+        assertEquals("manual_unlock_required", d.resumeAfterUserUnlock().status)
+        assertTrue(s.attemptBlocked)
+        p.current = p.current.copy(interactive = true, keyguardShowing = false, deviceLocked = false)
+        assertEquals("resumed", d.resumeAfterUserUnlock().status)
+        assertFalse(s.attemptBlocked)
+        assertEquals(0, p.entries)
+    }
+
     @Test fun unknownTargetAndMissingCredentialNeverEnter() = runTest {
         val p = Port().apply { readyTarget = false }; val s = Store(); val d = DeviceAccess(p, s, 10, 30)
         assertEquals("unsupported_keyguard", d.unlock().status)

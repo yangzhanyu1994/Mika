@@ -228,6 +228,7 @@ fun DuringWorkScreen(
     stepLimit: Int? = null, onStepLimit: (Int?) -> Unit = {},
     tokenBudget: Long? = null, onTokenBudget: (Long?) -> Unit = {},
     deviceSettings: com.wangzan101.mika.settings.DeviceAccessSettings? = null,
+    deviceAccess: com.wangzan101.mika.core.device.DeviceAccess? = null,
 ) {
     var editingLimit by remember { mutableStateOf(false) }
     var customLimit by remember { mutableStateOf("") }
@@ -264,7 +265,7 @@ fun DuringWorkScreen(
             )
             parallel?.let { ParallelRow(it, onParallelMax) }
         }
-        deviceSettings?.let { DeviceAccessSection(it, localTasks = true) }
+        deviceSettings?.let { DeviceAccessSection(it, localTasks = true, access = deviceAccess) }
         if (editingLimit) StepLimitDialog(
             current = stepLimit,
             custom = customLimit,
@@ -553,6 +554,11 @@ fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onB
         GroupCard {
             val dark = MikaTheme.colors.isDark
             val followingImage = skin.accentHue != null
+            val (previewColor, previewText) = when {
+                followingImage -> com.wangzan101.mika.ui.theme.SkinAccent.tone(skin.accentHue!!, dark)
+                themeAccent == ThemeAccent.System -> MikaTheme.colors.accent to MikaTheme.colors.onAccent
+                else -> accentTone(themeAccent, dark)
+            }
             val options = listOf(ThemeAccent.System, ThemeAccent.Blue, ThemeAccent.Purple, ThemeAccent.Teal,
                 ThemeAccent.Apricot, ThemeAccent.Pink, ThemeAccent.Indigo, ThemeAccent.Graphite)
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
@@ -584,8 +590,8 @@ fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onB
                     Column {
                         Text(stringResource(R.string.accent_preview_reply), style = MikaType.Value, color = MikaTheme.colors.ink)
                         Text(stringResource(R.string.accent_preview_user), modifier = Modifier.padding(top = 8.dp)
-                            .background(MikaTheme.colors.accent, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(10.dp),
-                            style = MikaType.Value, color = MikaTheme.colors.onAccent)
+                            .background(previewColor, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(10.dp),
+                            style = MikaType.Value, color = previewText)
                     }
                 }
             }

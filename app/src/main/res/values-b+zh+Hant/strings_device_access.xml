@@ -26,4 +26,5 @@
     <string name="device_local_relock_title">手機可能仍處於解鎖狀態</string>
     <string name="device_local_relock_failed">Mika 無法確認手機已重新鎖屏，請檢查並手動鎖屏。</string>
     <string name="device_local_unlock_failed">無法自動亮屏或解鎖。請檢查「任務執行」中的鎖屏開關、已儲存的鎖屏憑據、手機操作設定及通知權限。</string>
+    <string name="device_access_resume">Resume after manually unlocking</string>
 </resources>

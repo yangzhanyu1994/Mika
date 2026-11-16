@@ -27,4 +27,5 @@
     <string name="device_local_relock_title">O telefone pode continuar desbloqueado</string>
     <string name="device_local_relock_failed">Não foi possível confirmar o bloqueio. Verifique e bloqueie o telefone manualmente.</string>
     <string name="device_local_unlock_failed">Não foi possível ativar ou desbloquear o telefone. Verifique a opção de tarefas, a credencial salva, o controle do telefone e a permissão de notificações.</string>
+    <string name="device_access_resume">Resume after manually unlocking</string>
 </resources>

@@ -130,7 +130,7 @@
     <string name="appearance_system_detail">手机是浅色就浅色，深色就深色</string>
     <string name="appearance_light">一直浅色</string>
     <string name="appearance_dark">一直深色</string>
-    <string name="accent_group">强调色</string>
+    <string name="accent_group">聊天气泡颜色</string>
     <string name="accent_default">默认</string>
     <string name="accent_blue">海盐蓝</string>
     <string name="accent_indigo">靛蓝</string>
@@ -203,7 +203,7 @@
     <string name="settings_token_budget_apply">使用</string>
     <string name="settings_token_budget_invalid">请输入 %1$s 到 %2$s 的整数。</string>
     <string name="accent_system">跟随系统颜色</string>
-    <string name="accent_system_detail">浅色时自动匹配手机系统配色</string>
+    <string name="accent_system_detail">只改变聊天气泡颜色；系统选项使用手机系统强调色</string>
     <string name="accent_apricot">暖杏色</string>
     <string name="accent_preview">效果预览</string>
     <string name="accent_preview_reply">你好！我是 Mika，有什么可以帮你？</string>

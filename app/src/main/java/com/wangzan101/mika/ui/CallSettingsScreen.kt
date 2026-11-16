@@ -312,7 +312,7 @@ private fun CallSettingsWorkspace(
                             config, state, ready, device, tasks,
                             controlsEnabled = !settingsBusy && !controlBusy && (!busy || config.autoAnswer),
                             canStartStandby = canStartStandby,
-                            standbyNeedsSetup = ready && !device.readiness.standbyNotificationsAllowed,
+                            standbyNeedsSetup = !canStartStandby,
                             canConfigure = idle && pendingLockedDial == null && !busy && !controlBusy && !settingsBusy,
                             stopBusy = controlBusy || settingsBusy,
                             onSetAi = { enabled ->

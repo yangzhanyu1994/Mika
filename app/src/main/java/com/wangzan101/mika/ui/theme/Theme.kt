@@ -113,16 +113,15 @@ fun MikaTheme(
     val context = LocalContext.current
     // Configuration changes (including wallpaper palette changes) invalidate the system colors.
     val configuration = LocalConfiguration.current
-    val systemColors = if (!dark && accent == ThemeAccent.System && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val systemColors = if (!dark && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         remember(context, configuration) { dynamicLightColorScheme(context) }
     } else null
     val colors = remember(dark, accent, imageHue, systemColors) {
         val base = when {
             systemColors != null -> LightColors.withSystemLight(systemColors)
-            !dark && accent != ThemeAccent.System -> coordinatedLightPalette(accent)
-            else -> palette(dark, accent)
+            else -> palette(dark, ThemeAccent.Blue)
         }
-        if (imageHue == null) base else SkinAccent.tone(imageHue, dark).let { (color, on) -> base.withAccent(color, on) }
+        base
     }
     val materialColors = remember(colors) { scheme(colors) }
     val layoutDirection = if (LocalContext.current.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) {
