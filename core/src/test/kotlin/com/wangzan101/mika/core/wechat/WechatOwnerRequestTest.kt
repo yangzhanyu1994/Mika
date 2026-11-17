@@ -24,6 +24,7 @@ class WechatOwnerRequestTest {
         assertTrue(explicitWechatOwnerRequest("执行后发到微信"))
         assertTrue(explicitWechatOwnerRequest("微信通知我"))
         assertFalse(explicitWechatOwnerRequest("发送到微信给小王"))
+        assertFalse(explicitWechatOwnerRequest("把结果发到微信小王"))
         assertTrue(explicitWechatOwnerRequest("推送到我的微信。不要把已提交当作成功"))
         assertFalse(explicitWechatOwnerRequest("给朋友微信发消息"))
         assertFalse(explicitWechatOwnerRequest("查看我的微信，然后发短信给我"))

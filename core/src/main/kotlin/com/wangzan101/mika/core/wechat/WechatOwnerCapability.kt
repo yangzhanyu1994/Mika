@@ -21,7 +21,7 @@ fun explicitWechatOwnerRequest(goal: String): Boolean {
     // Ambiguous named-recipient requests must never be redirected to the owner.
     val otherRecipient = Regex("(给|发给|发送给|通知|转给)(?!我|本人|自己|我的微信|微信)[^，。；！？\\n]{1,12}")
         .containsMatchIn(g)
-    val genericWechat = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,8}(到|至|给)微信")
+    val genericWechat = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,8}(到|至|给)微信(?:上|里)?(?=$|[，。；！？\\s])")
         .containsMatchIn(g)
     return (toOwner || viaWechat || genericWechat) && !otherRecipient
 }
