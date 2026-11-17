@@ -70,8 +70,15 @@ object AttachFiles {
 
     /** 拍照没成(取消了):把空文件删掉。 */
     fun discardCamera(context: Context, uri: Uri) {
-        val name = uri.lastPathSegment ?: return
-        File(context.cacheDir, "attach/camera/$name").takeIf { it.name == name }?.delete()
+        cameraFile(context, uri)?.delete()
+    }
+
+    internal fun cameraFile(context: Context, uri: Uri): File? {
+        if (uri.scheme != "content" || uri.authority != AttachFilesProvider.authority(context.packageName)) return null
+        if (uri.pathSegments.size != 2 || uri.pathSegments.first() != AttachFilesProvider.CAMERA) return null
+        val name = uri.pathSegments.last()
+        if (!name.startsWith("IMG_") || !name.endsWith(".jpg") || File(name).name != name) return null
+        return File(context.cacheDir, "attach/camera/$name")
     }
 
     /** 工作区里的路径(`/workspace/inbox/…`)换成相对工作区的路径;不在工作区里为 null。 */

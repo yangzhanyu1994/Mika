@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_input">بنویسید یا با Mika صحبت کنید</string>
+    <string name="assistant_take_screenshot">پیوست کردن صفحه</string>
+    <string name="assistant_screenshot_unavailable">پیوست کردن صفحه ممکن نشد. تنظیم عکس صفحه دستیار و دسترسی دسترس‌پذیری Mika را بررسی کنید.</string>
+    <string name="assistant_camera_permission">برای گرفتن عکس، اجازه دسترسی به دوربین را بدهید.</string>
+    <string name="assistant_stop_listening">پایان گفتار به نوشتار</string>
+    <string name="assistant_preview_photo">پیش‌نمایش عکس</string>
+    <string name="assistant_preview_screen">پیش‌نمایش عکس صفحه</string>
+    <string name="assistant_send_failed">Mika نتوانست کار را آغاز کند. پیش‌نویس شما اینجاست.</string>
+    <string name="assistant_model_required">پیش از ارسال، یک مدل در Mika تنظیم کنید.</string>
+    <string name="assistant_clear">پاک کردن پیش‌نویس</string>
+</resources>

@@ -2,31 +2,22 @@ package com.wangzan101.mika.task
 
 import android.view.Gravity
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.wangzan101.mika.cap.phone.a11y.OverlayPlacement
 import com.wangzan101.mika.cap.phone.a11y.OverlayWindow
 import com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility
 import com.wangzan101.mika.core.agent.TaskState
+import com.wangzan101.mika.ui.theme.animationsOff
+import com.wangzan101.mika.ui.theme.edgeGlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,8 +75,7 @@ internal object TaskEdgeLight {
                             window = null
                         } else if (window == null) {
                             window = service.overlays().open(OverlayPlacement(Gravity.TOP or Gravity.LEFT), touchable = false) {
-                                val completedKey = successKey.value
-                                key(completedKey) { Edge(completedKey != null) }
+                                Edge(successKey.value)
                             }?.also { it.setFullScreen(true) }
                         }
                     }
@@ -97,29 +87,22 @@ internal object TaskEdgeLight {
     }
 
     @Composable
-    private fun Edge(success: Boolean) {
-        val opacity: State<Float> = if (success) {
-            val fade = remember { Animatable(1f) }
-            LaunchedEffect(Unit) {
+    private fun Edge(successKey: String?) {
+        val success = successKey != null
+        val fade = remember(successKey) { Animatable(1f) }
+        LaunchedEffect(successKey) {
+            if (success) {
                 delay(SUCCESS_HOLD_MS)
                 fade.animateTo(0f, tween(SUCCESS_FADE_MS))
             }
-            fade.asState()
-        } else {
-            rememberInfiniteTransition(label = "edge light")
-                .animateFloat(0.48f, 1f, infiniteRepeatable(tween(1_150), RepeatMode.Reverse), label = "opacity")
         }
-        val brush = remember(success) {
-            if (success) Brush.linearGradient(listOf(Color(0xFF09BF72), Color(0xFF9FFFC7), Color(0xFF09BF72)))
-            else Brush.linearGradient(listOf(Color(0xFF1E60FF), Color(0xFF64E9FF), Color(0xFF1A74FF)))
-        }
-        Canvas(Modifier.fillMaxSize()) {
-            val inset = 2.5.dp.toPx()
-            val bounds = Size((size.width - 2 * inset).coerceAtLeast(0f), (size.height - 2 * inset).coerceAtLeast(0f))
-            val radius = CornerRadius(24.dp.toPx())
-            val alpha = opacity.value
-            drawRoundRect(brush, Offset(inset, inset), bounds, radius, style = Stroke(8.dp.toPx()), alpha = alpha * 0.20f)
-            drawRoundRect(brush, Offset(inset, inset), bounds, radius, style = Stroke(3.dp.toPx()), alpha = alpha)
-        }
+        Box(
+            Modifier.fillMaxSize().edgeGlow(
+                color = if (success) Color(0xFF22E78C) else Color(0xFF387DFF),
+                highlight = if (success) Color(0xFFB5FFD3) else Color(0xFFB0EEFF),
+                reducedMotion = animationsOff(LocalContext.current),
+                intensity = { fade.value },
+            ),
+        )
     }
 }

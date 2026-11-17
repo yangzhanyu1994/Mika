@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_input">入力するか Mika に話しかける</string>
+    <string name="assistant_take_screenshot">画面を添付</string>
+    <string name="assistant_screenshot_unavailable">画面を添付できませんでした。アシスタントのスクリーンショット設定と Mika のユーザー補助の権限を確認してください。</string>
+    <string name="assistant_camera_permission">写真を撮るにはカメラの使用を許可してください。</string>
+    <string name="assistant_stop_listening">音声入力を終了</string>
+    <string name="assistant_preview_photo">写真のプレビュー</string>
+    <string name="assistant_preview_screen">スクリーンショットのプレビュー</string>
+    <string name="assistant_send_failed">Mika はタスクを開始できませんでした。下書きは残っています。</string>
+    <string name="assistant_model_required">送信する前に Mika でモデルを設定してください。</string>
+    <string name="assistant_clear">下書きを消去</string>
+</resources>

@@ -156,6 +156,42 @@
         </activity>
 
         <activity
+            android:name=".assistant.AssistantOverlayActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|density"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Mika.Assistant"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
+
+        <service
+            android:name=".assistant.MikaAssistantService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/mika_voice_interaction" />
+        </service>
+
+        <service
+            android:name=".assistant.MikaAssistantSessions"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+
+        <service android:name=".assistant.MikaAssistantRecognizer" android:exported="false">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/mika_assistant_recognition" />
+        </service>
+
+        <activity
             android:name=".self.SelfNotificationActivity"
             android:excludeFromRecents="true"
             android:exported="false"

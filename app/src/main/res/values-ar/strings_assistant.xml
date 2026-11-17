@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_input">اكتب أو تحدّث إلى Mika</string>
+    <string name="assistant_take_screenshot">إرفاق الشاشة</string>
+    <string name="assistant_screenshot_unavailable">تعذّر إرفاق الشاشة. تحقّق من إعداد لقطة شاشة المساعد وإمكانية وصول Mika.</string>
+    <string name="assistant_camera_permission">اسمح باستخدام الكاميرا لالتقاط صورة.</string>
+    <string name="assistant_stop_listening">إنهاء الإملاء</string>
+    <string name="assistant_preview_photo">معاينة الصورة</string>
+    <string name="assistant_preview_screen">معاينة لقطة الشاشة</string>
+    <string name="assistant_send_failed">تعذّر على Mika بدء المهمة. لا تزال مسودتك هنا.</string>
+    <string name="assistant_model_required">اضبط نموذجًا في Mika قبل إرسال المهمة.</string>
+    <string name="assistant_clear">مسح المسودة</string>
+</resources>

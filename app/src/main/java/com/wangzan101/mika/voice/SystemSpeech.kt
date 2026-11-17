@@ -89,9 +89,10 @@ object SystemSpeech {
      * [RecognizerService.permission] 是绑定它要的权限。给诊断信息和 [attempts] 用。
      */
     fun services(context: Context): List<RecognizerService> = runCatching {
-        context.packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), 0).map { r ->
+        context.packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), 0).mapNotNull { r ->
             val s = r.serviceInfo
-            RecognizerService(ComponentName(s.packageName, s.name).flattenToShortString(), s.exported, s.permission)
+            if (s.packageName == context.packageName) null
+            else RecognizerService(ComponentName(s.packageName, s.name).flattenToShortString(), s.exported, s.permission)
         }
     }.getOrDefault(emptyList())
 
