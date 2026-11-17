@@ -33,7 +33,7 @@
     <string name="about_guide_sub">البدء؛ أضف معرفة بالتطبيق حتى دون كتابة شيفرة</string>
     <string name="about_data_note">كل ما ترسله إلى Mika — الرسائل ومحتوى الشاشة ولقطات الشاشة — يُرسل فقط إلى موفر النموذج الذي أعددته. لا تملك Mika خوادم خاصة بها ولا تجمع أي بيانات عنك؛ ولا يتصل التحقق من التحديثات إلا بـ GitHub.</string>
     <string name="about_license_link">ترخيص Apache-2.0</string>
-    <string name="about_author">من إعداد Wang Zan · © 2026</string>
+    <string name="about_author">تطوير إضافي بواسطة Yang Zhanyu استنادًا إلى عمل Wang Zan · © 2026</string>
     <string name="about_license_title">ترخيص Apache-2.0</string>
     <string name="about_update_download">التنزيل من GitHub</string>
     <string name="about_update_download_in_app">تنزيل التحديث</string>

@@ -33,7 +33,7 @@
     <string name="about_guide_sub">Mulai memakai; tambahkan pengetahuan aplikasi tanpa perlu coding</string>
     <string name="about_data_note">Apa yang Anda kirim ke Mika — pesan, isi layar, dan tangkapan layar — hanya dikirim ke penyedia model yang Anda atur. Mika tidak punya server sendiri dan tidak mengumpulkan data Anda; pemeriksaan pembaruan hanya menghubungi GitHub.</string>
     <string name="about_license_link">Lisensi Apache-2.0</string>
-    <string name="about_author">Dibuat oleh Wang Zan · © 2026</string>
+    <string name="about_author">Dikembangkan lebih lanjut oleh Yang Zhanyu berdasarkan karya Wang Zan · © 2026</string>
     <string name="about_license_title">Lisensi Apache-2.0</string>
     <string name="about_update_download">Unduh dari GitHub</string>
     <string name="about_update_download_in_app">Unduh pembaruan</string>

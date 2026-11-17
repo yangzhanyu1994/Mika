@@ -2,13 +2,18 @@ package com.wangzan101.mika.wechat
 
 import com.wangzan101.mika.core.run.*
 import com.wangzan101.mika.core.wechat.WechatAccount
+import com.wangzan101.mika.core.wechat.WechatApi
 import com.wangzan101.mika.settings.KeyCipher
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.net.InetAddress
 
 class WechatOwnerSenderTest {
     @get:Rule val tmp = TemporaryFolder()
@@ -80,5 +85,25 @@ class WechatOwnerSenderTest {
         }
         assertEquals("unavailable", WechatOwnerSender(store, channel, Outbox(), "run-2")
             .send("车辆状态").getValue("status").jsonPrimitive.content)
+    }
+
+    @Test fun uncertainHttpFailureSurfacesSafeDiagnosticWithoutRetrying() = runBlocking {
+        MockWebServer().use { server ->
+            server.start(InetAddress.getByName("127.0.0.1"), 0)
+            val store = WechatStore(tmp.newFolder(), cipher)
+            val account = WechatAccount("secret-token", server.url("/").toString(), "bot", "owner")
+            store.saveAccount(account)
+            store.setEnabled(true)
+            store.messagePeer(account, "secret-context")
+            val channel = WechatChannel(store, WechatApi(OkHttpClient(), "test"), log = {})
+            val sender = WechatOwnerSender(store, channel, Outbox(), "run-4")
+            server.enqueue(MockResponse().setResponseCode(500).setBody("secret server response"))
+            val first = sender.send("private message")
+            assertEquals("uncertain", first.getValue("status").jsonPrimitive.content)
+            assertEquals("wechat_http_500", first.getValue("diagnostic").jsonPrimitive.content)
+            assertFalse(first.toString().contains("secret"))
+            assertEquals("uncertain", sender.send("private message").getValue("status").jsonPrimitive.content)
+            assertEquals(1, server.requestCount)
+        }
     }
 }

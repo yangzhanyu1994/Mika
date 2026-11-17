@@ -17,15 +17,15 @@
     <string name="about_feedback_sheet_sub">遇到问题、有想法，选一个方便的地方告诉作者</string>
     <string name="about_feedback_github">去 GitHub 提问题</string>
     <string name="about_feedback_github_sub">报 Bug、提需求，能跟踪进度</string>
-    <string name="about_group">联系作者</string>
+    <string name="about_group">联系开发者</string>
     <string name="about_group_sub">微信</string>
-    <string name="about_group_sheet_title">联系作者</string>
+    <string name="about_group_sheet_title">联系开发者</string>
     <string name="about_group_sheet_sub">聊用法、提想法；加微信时请备注 Mika</string>
     <string name="about_group_hint">长按图片保存 · 或在微信里扫一扫</string>
     <string name="about_save_qr">保存二维码</string>
     <string name="about_qr_saved">二维码已保存到相册</string>
     <string name="about_qr_save_failed">没能保存，可以截屏保存</string>
-    <string name="about_follow">关注作者</string>
+    <string name="about_follow">关注开发者</string>
     <string name="about_follow_sub">X %1$s，第一时间看新功能</string>
     <string name="about_repo">开源仓库</string>
     <string name="about_repo_sub">%1$s · 欢迎点星</string>
@@ -33,7 +33,7 @@
     <string name="about_guide_sub">上手指南；不会写代码也能补充 App 知识</string>
     <string name="about_data_note">你发给 Mika 的话、屏幕内容和截图，只发给你自己设置的模型服务商。Mika 没有自己的服务器，不收集你的数据；检查更新时只访问 GitHub。</string>
     <string name="about_license_link">Apache-2.0 开源许可</string>
-    <string name="about_author">由 王赞 开发 · © 2026</string>
+    <string name="about_author">由杨占宇基于王赞的作品二次开发 · © 2026</string>
     <string name="about_license_title">Apache-2.0 许可证</string>
     <string name="about_update_download">从 GitHub 下载</string>
     <string name="about_update_download_in_app">下载更新</string>

@@ -6,10 +6,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.wangzan101.mika.R
 
-/** 作者的微信二维码(随 App 打包,换码只换 res/drawable-nodpi/wechat_qr.jpg)。 */
+/** 开发者的微信二维码(随 App 打包,换码只换 res/drawable-nodpi/wechat_qr.png)。 */
 object QrImage {
     val RES = R.drawable.wechat_qr
-    private const val FILE_NAME = "Mika-author-wechat.jpg"
+    private const val FILE_NAME = "Mika-developer-wechat.png"
 
     /**
      * 存进相册的 Pictures/Mika。经 MediaStore 写自己新建的图片不要存储权限(安卓 10 起如此,Mika 最低支持安卓 11)。
@@ -19,7 +19,7 @@ object QrImage {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, FILE_NAME)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Mika")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }

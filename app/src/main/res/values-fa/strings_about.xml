@@ -33,7 +33,7 @@
     <string name="about_guide_sub">شروع به کار؛ افزودن دانش برنامه‌ها حتی بدون برنامه‌نویسی</string>
     <string name="about_data_note">آنچه برای میکا می‌فرستید، از جمله پیام‌ها، محتوای صفحه و عکس‌های صفحه، فقط به ارائه‌دهندهٔ مدلی که تنظیم کرده‌اید ارسال می‌شود. میکا سرور اختصاصی ندارد و داده‌ای از شما جمع‌آوری نمی‌کند؛ بررسی به‌روزرسانی فقط با GitHub ارتباط برقرار می‌کند.</string>
     <string name="about_license_link">مجوز Apache-2.0</string>
-    <string name="about_author">ساختهٔ Wang Zan · © 2026</string>
+    <string name="about_author">توسعهٔ مجدد توسط Yang Zhanyu بر پایهٔ کار Wang Zan · © 2026</string>
     <string name="about_license_title">مجوز Apache-2.0</string>
     <string name="about_update_download">دانلود از GitHub</string>
     <string name="about_update_download_in_app">دانلود به‌روزرسانی</string>

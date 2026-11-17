@@ -33,7 +33,7 @@
     <string name="about_guide_sub">시작하기, 코딩을 몰라도 앱 지식을 추가할 수 있어요</string>
     <string name="about_data_note">Mika에 보내는 내용(메시지, 화면 내용, 스크린샷)은 직접 설정한 모델 제공업체에게만 전달돼요. Mika는 자체 서버가 없고 데이터를 수집하지 않아요. 업데이트 확인은 GitHub에만 연결해요.</string>
     <string name="about_license_link">Apache-2.0 라이선스</string>
-    <string name="about_author">Wang Zan 제작 · © 2026</string>
+    <string name="about_author">Wang Zan의 작업을 바탕으로 Yang Zhanyu가 추가 개발 · © 2026</string>
     <string name="about_license_title">Apache-2.0 라이선스</string>
     <string name="about_update_download">GitHub에서 다운로드</string>
     <string name="about_update_download_in_app">업데이트 다운로드</string>
