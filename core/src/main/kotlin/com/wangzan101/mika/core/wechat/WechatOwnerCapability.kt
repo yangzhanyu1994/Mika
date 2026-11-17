@@ -15,9 +15,9 @@ fun explicitWechatOwnerRequest(goal: String): Boolean {
     val g = goal.lowercase()
     if ("微信" !in g) return false
     if (Regex("(不要|别|无需|不需要|禁止|不必|不用).{0,12}(发|推送|发送|通知|同步|回传).{0,12}微信").containsMatchIn(g)) return false
-    val owner = Regex("我的微信|我微信|微信.{0,12}(给我|通知我|发我|给本人)|微信.{0,6}本人").containsMatchIn(g)
-    val send = Regex("发|发送|推送|通知|同步|回传").containsMatchIn(g)
-    return owner && send
+    val toOwner = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,18}(我的微信|我微信|本人微信)").containsMatchIn(g)
+    val viaWechat = Regex("微信[^，。；！？\\n]{0,12}(发给我|发送给我|推送给我|发我|通知我|给我发|回传给我)").containsMatchIn(g)
+    return toOwner || viaWechat
 }
 
 internal class WechatOwnerCapability(val port: WechatOwnerPort) : Capability {
