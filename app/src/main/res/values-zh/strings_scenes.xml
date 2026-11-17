@@ -80,4 +80,10 @@
     <string name="env_search_failed">未找到地点或系统地点搜索不可用，请更换关键词，或手动填写坐标。</string>
     <string name="env_search_choose">请选择一个搜索结果：</string>
     <string name="calls_exit_reason">结束原因：%1$s</string>
+    <string name="scene_send_wechat">结果发送到已绑定微信</string>
+    <string name="scene_send_wechat_hint">任务结束后推送实际结果；微信会话可能需要重新发送消息以恢复。</string>
+    <string name="scene_wechat_accepted">微信接口已接受，不能确认已读。</string>
+    <string name="scene_wechat_failed">微信接口拒绝或发送失败；请查看微信连接后重试。</string>
+    <string name="scene_wechat_unavailable">微信未连接或没有可用会话；请在微信中给 Mika 发一条消息。</string>
+    <string name="scene_wechat_uncertain">微信发送结果不确定，未自动重发，请检查微信。</string>
 </resources>

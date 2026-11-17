@@ -22,6 +22,7 @@ data class EnvironmentScene(
     val delaySeconds: Int = 60,
     val goal: String,
     val enabled: Boolean = true,
+    val sendWechat: Boolean = false,
     val lastThreadId: String? = null,
 ) {
     override fun toString() = "EnvironmentScene(type=$type, enabled=$enabled)"

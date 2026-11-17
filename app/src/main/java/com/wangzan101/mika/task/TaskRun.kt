@@ -181,6 +181,10 @@ class TaskRun(
     @Volatile internal var resultReadyAtMs = 0L
         private set
     internal val conditionCheck get() = triggerActionGoal != null
+    internal fun shouldSendWechat(): Boolean = com.wangzan101.mika.core.wechat.shouldSendOwnerResult(
+        provenance.origin, goal, conditionCheck,
+        provenance.origin == RunOrigin.Trigger && TriggerRuntime.sendsWechat(service, triggerWindowKey),
+    )
     @Volatile private var children: ChildAgentRunner? = null
     /** 这次任务连上的外部 MCP server;结束时关闭会话。 */
     @Volatile private var mcpConnections: com.wangzan101.mika.settings.McpConnections? = null
@@ -838,7 +842,8 @@ class TaskRun(
             // 这个对话里用户发来的屏幕(跟着对话存在工作区里)
             val userScreens = (service.application as MikaApp).userScreens.source(conversationId)
             val stepLimit = if (conditionCheck) null else FeatureFlags.get(service).taskStepLimit()
-            val runSpec = RunSpec(RunId(key), goal, conversationId,
+            val executionGoal = if (shouldSendWechat()) goal + "\n\n结果将由 Mika 程序在任务结束后发送到已绑定的微信。请只汇报实际结果，不要打开微信、网页或尝试自行发送，也不要声称已经发送。" else goal
+            val runSpec = RunSpec(RunId(key), executionGoal, conversationId,
                 priorTurns,
                 provenance, if (conditionCheck) setOf("web", "sandbox") else null, readOnly = conditionCheck,
                 stepBudget = stepLimit, tokenBudget = tokenBudget)
@@ -884,10 +889,7 @@ class TaskRun(
                 (service.application as? MikaApp)?.let { app -> com.wangzan101.mika.self.AndroidSelfPort(app, conversationId, key) }
             } else null
             val tools = toolDispatcher(accessedPhone, model.capabilities.vision, catalog, recordFrames = true, vision = vision?.let { VisionService(it, BitmapImageOps) },
-                wechatOwner = if (provenance.origin == RunOrigin.Ui && !conditionCheck &&
-                    com.wangzan101.mika.core.wechat.explicitWechatOwnerRequest(goal)) {
-                    com.wangzan101.mika.wechat.AndroidWechatOwnerPort(app, key)
-                } else null,
+
                 phoneCalls = (service.application as MikaApp).callPort.takeIf {
                     !conditionCheck && (service.application as MikaApp).calls.settings.state.value.enabled
                 },

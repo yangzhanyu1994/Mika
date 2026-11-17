@@ -52,6 +52,7 @@ import com.wangzan101.mika.takeover.TakeoverActivity
 import com.wangzan101.mika.ui.MainActivity
 import com.wangzan101.mika.ui.ScreenCopy
 import com.wangzan101.mika.ui.StatusCopy
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -964,6 +965,25 @@ class TaskService : Service() {
         val started = SystemClock.elapsedRealtime()
         val delivered = ResultDelivery.send(outbox, channelFor(peer), peer,
             Delivery.Result(deliveryId, run.conversationId, text, title = title))
+        if (run.shouldSendWechat()) {
+            val result = runCatching {
+                com.wangzan101.mika.wechat.AndroidWechatOwnerPort(application as com.wangzan101.mika.MikaApp, run.key)
+                    .send(text)
+            }.getOrNull()
+            val status = result?.get("status")?.jsonPrimitive?.content
+            val diagnostic = result?.get("diagnostic")?.jsonPrimitive?.content
+            val message = when (status) {
+                "delivered" -> getString(R.string.scene_wechat_accepted)
+                "failed" -> getString(R.string.scene_wechat_failed)
+                "unavailable" -> getString(R.string.scene_wechat_unavailable)
+                else -> getString(R.string.scene_wechat_uncertain)
+            } + (diagnostic?.let { " ($it)" } ?: "")
+            runCatching { getSystemService(NotificationManager::class.java).notify(nextResultId(),
+                Notification.Builder(this, CHANNEL_RESULT).setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(getString(R.string.scene_send_wechat)).setContentText(message)
+                    .setStyle(Notification.BigTextStyle().bigText(message))
+                    .setContentIntent(openApp(run.conversationId)).setAutoCancel(true).build()) }
+        }
         val finished = SystemClock.elapsedRealtime()
         val sinceReady = if (run.resultReadyAtMs > 0) finished - run.resultReadyAtMs else -1
         Log.i(TAG, "result $delivered: delivery ${finished - started} ms, since ready $sinceReady ms")

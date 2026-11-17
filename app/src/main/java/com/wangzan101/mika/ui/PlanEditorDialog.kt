@@ -80,6 +80,7 @@ fun PlanEditorDialog(
     var draft by remember(original?.id) {
         mutableStateOf(original?.toPlanDraft() ?: newPlanDraft(System.currentTimeMillis()))
     }
+    var sendWechat by remember(original?.id) { mutableStateOf(original?.sendWechat ?: false) }
     var attempted by remember(original?.id) { mutableStateOf(false) }
     var parsing by remember { mutableStateOf(false) }
     var parseNote by remember { mutableStateOf<String?>(null) }
@@ -213,6 +214,7 @@ fun PlanEditorDialog(
                             )
                         }
                     }
+                    if (!draft.reminder) PlanSwitch(tr(R.string.scene_send_wechat), sendWechat, { sendWechat = it }, "plan-editor-wechat")
                     PlanSwitch(tr(R.string.plans_when_idle), draft.whenIdle, { draft = draft.copy(whenIdle = it) }, "plan-editor-idle")
                     PlanSwitch(tr(R.string.plans_enabled), draft.enabled, { draft = draft.copy(enabled = it) }, "plan-editor-enabled")
 
@@ -274,7 +276,7 @@ fun PlanEditorDialog(
                         editedTrigger(draft, original, newId, newThreadId, System.currentTimeMillis())
                     }
                     if (saved.isFailure) attempted = true
-                    else onSave(saved.getOrThrow())
+                    else onSave(saved.getOrThrow().copy(sendWechat = !draft.reminder && sendWechat))
                 },
             ) { Text(tr(R.string.save)) }
         },

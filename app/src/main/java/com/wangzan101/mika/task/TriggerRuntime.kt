@@ -153,6 +153,13 @@ object TriggerRuntime {
         catch (e: Exception) { reportStartFailure(context, store, trigger, window.key, e, before = trigger) }
     }
 
+    @Synchronized fun sendsWechat(context: Context, windowKey: String?): Boolean {
+        val key = windowKey ?: return false
+        val saved = store(context)
+        val window = saved.windows().firstOrNull { it.key == key } ?: return false
+        return saved.get(window.triggerId)?.sendWechat == true
+    }
+
     @Synchronized fun list(context: Context): List<TriggerDefinition> = store(context).all()
 
     fun canScheduleExactly(context: Context): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||

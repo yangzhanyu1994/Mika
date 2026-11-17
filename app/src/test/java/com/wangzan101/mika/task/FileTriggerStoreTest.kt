@@ -16,6 +16,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FileTriggerStoreTest {
+    @Test fun wechatDeliverySettingSurvivesReopenAndEdits() {
+        val file = Files.createTempDirectory("trigger-wechat").resolve("triggers.json").toFile()
+        val store = FileTriggerStore(file)
+        val plan = TriggerDefinition("scene", "thread", "check", 1_000, sendWechat = true)
+        store.upsert(plan)
+        assertEquals(true, FileTriggerStore(file).get("scene")!!.sendWechat)
+        assertEquals(false, file.readText().contains("sendWechat"))
+        assertTrue(store.edit(plan.copy(sendWechat = false)))
+        assertEquals(false, FileTriggerStore(file).get("scene")!!.sendWechat)
+    }
+
     @Test fun failedSidecarWriteKeepsPreviousScheduleInMemoryAndOnDisk() {
         assertInterruptedEditKeepsPreviousSchedule("triggers.json.conditions.tmp")
     }
