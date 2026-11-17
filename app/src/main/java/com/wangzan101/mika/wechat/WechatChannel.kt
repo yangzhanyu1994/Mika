@@ -47,8 +47,9 @@ class WechatChannel(
     override fun acknowledge(messageId: String) = store.acknowledge(messageId)
 
     override suspend fun send(peer: ChannelPeer, delivery: Delivery): SendOutcome {
-        if (peer.channelId != id || !isAlive(peer)) return SendOutcome.Failed
+        if (peer.channelId != id) return SendOutcome.Failed
         val account = store.account() ?: return SendOutcome.Failed
+        if (!store.accepts(peer, account)) return SendOutcome.Failed
         if (delivery is Delivery.Image) return sendImage(account, peer, delivery)
         val text = when (delivery) {
             is Delivery.Ask -> delivery.text

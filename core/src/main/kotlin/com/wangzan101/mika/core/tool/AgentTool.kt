@@ -31,6 +31,7 @@ enum class Verb {
     Navigate, ReadPage, EvaluateJs, SiteCommand, Tabs, Downloads, Upload, SiteMode, Script, Interact, Capture, WaitFor, KeepOpen,
     RunCommand, RunBundledScript, ReadFile, WriteFile, SearchFiles, ShareFile,
     RootCommand,
+    WechatSendOwner,
     CallState, CallDial, CallResolveContact, CallScheduleDial, CallAnswer, CallHangup, CallTakeover, CallIncomingTask, CallManageTasks,
     Wait, AskUser, RequestConfirmation, HandToUser, HandleObstacle, EndNotDone,
     KnowledgeSearch, KnowledgeRead, SkillSearch, SkillRead, SkillSave, MemorySearch, MemorySave, MemoryEdit, ProfileEdit, HistoryRead, NoticesRead, WebSearch,

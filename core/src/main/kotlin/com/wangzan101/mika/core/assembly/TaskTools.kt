@@ -131,6 +131,7 @@ fun toolDispatcher(
     taskMemory: com.wangzan101.mika.core.memory.TaskMemoryStore? = null,
     /** 这两天的通知原文和存着的各天、各周、各月的归纳(主动能力攒下的、够格带进任务的);给了才提供 notices_read。 */
     notices: com.wangzan101.mika.core.proactive.NoticeSource? = null,
+    wechatOwner: com.wangzan101.mika.core.wechat.WechatOwnerPort? = null,
 ): ToolDispatcher {
     val screenshotStore = sandbox?.takeIf {
         it.status() !is com.wangzan101.mika.core.cap.sandbox.SandboxStatus.Unsupported &&
@@ -158,6 +159,11 @@ fun toolDispatcher(
         object : CapabilityProvider {
             override val id = RootCapability.KEY.name
             override fun open(spec: RunSpec) = RootCapability(port)
+        }
+    }, wechatOwner?.let { port ->
+        object : CapabilityProvider {
+            override val id = "wechat_owner"
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.wechat.WechatOwnerCapability(port)
         }
     }, phoneCalls?.let { port ->
         object : CapabilityProvider {
@@ -210,7 +216,7 @@ fun recordedTools(): ToolIndex = legacyNames().let { legacy -> ToolIndex(allTool
 
 /** Mika 所有可能提供的工具,按发给模型的顺序。 */
 internal fun allTools(): List<AgentTool> =
-    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools
+    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools + com.wangzan101.mika.core.wechat.wechatOwnerTools
 
 /** Mika 所有可能提供的工具的声明。 */
 fun knownTools(): ToolIndex = ToolIndex(allTools())

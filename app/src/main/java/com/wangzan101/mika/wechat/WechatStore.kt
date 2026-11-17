@@ -138,6 +138,14 @@ class WechatStore(
     }
     @Synchronized fun contextToken(peerId: String) = state.contextTokens[peerId]
 
+    /** Use only the existing bound owner's private conversation and a token obtained from an incoming message. */
+    @Synchronized fun boundOwnerPeer(): ChannelPeer? {
+        val current = account ?: return null
+        if (!state.enabled || state.contextTokens[current.ownerId].isNullOrBlank()) return null
+        val thread = state.threads[current.ownerId] ?: return null
+        return ChannelPeer(WechatChannel.ID, current.ownerId, thread)
+    }
+
     @Synchronized fun accepts(peer: ChannelPeer, expectedAccount: WechatAccount? = null): Boolean {
         val current = account ?: return false
         return (expectedAccount == null || expectedAccount == current) && state.enabled &&
