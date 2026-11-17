@@ -45,6 +45,23 @@ class WechatStoreTest {
         assertFalse(WechatStore(dir, cipher).journal("message-1", peer, "任务"))
     }
 
+    @Test fun proactiveOwnerRequiresEnabledBindingExistingThreadAndContext() {
+        val store = WechatStore(tmp.newFolder(), cipher)
+        assertEquals(null, store.boundOwnerPeer())
+        store.saveAccount(WechatAccount("secret", "https://example.test", "bot", "owner"))
+        store.setEnabled(true)
+        assertEquals(null, store.boundOwnerPeer())
+        val peer = store.peer("owner")
+        assertEquals(null, store.boundOwnerPeer())
+        store.rememberContext("owner", "context")
+        assertEquals(peer, store.boundOwnerPeer())
+        store.setEnabled(false)
+        assertEquals(null, store.boundOwnerPeer())
+        store.setEnabled(true)
+        store.saveAccount(WechatAccount("other", "https://example.test", "bot2", "other-owner"))
+        assertEquals(null, store.boundOwnerPeer())
+    }
+
     @Test fun acknowledgementHistoryPrunesOldestFirstAndSurvivesReopen() {
         val dir = tmp.newFolder()
         val store = WechatStore(dir, cipher)

@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ bfa5ffc40929 -->
+<!-- translated-from: README.md @ 4419b1303d3e -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
