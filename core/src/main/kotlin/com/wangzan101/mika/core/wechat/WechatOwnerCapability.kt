@@ -25,7 +25,7 @@ internal class WechatOwnerCapability(val port: WechatOwnerPort) : Capability {
     override fun tools(): List<AgentTool> = wechatOwnerTools
     override fun sections(env: PromptEnv): List<String> = listOf(
         "The user explicitly requested sending this task's result to their own bound WeChat private chat. " +
-        "Use wechat_send_owner with the accurate result and its uncertainties, only when the user asked to send it. " +
+        "After completing the requested work, use wechat_send_owner once with the accurate result and its uncertainties, only when the user asked to send it. Do not send progress updates or unrelated screen content. " +
         "Do not use the WeChat app, browser, or another recipient as a substitute. " +
         "A delivered status means the WeChat API accepted the message, not that the user read it. " +
         "If failed or uncertain, report that accurately and never resend an uncertain result automatically."

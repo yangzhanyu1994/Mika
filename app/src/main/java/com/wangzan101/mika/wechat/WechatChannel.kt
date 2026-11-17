@@ -59,6 +59,7 @@ class WechatChannel(
             is Delivery.Image -> error("handled above")
         }
         return withContext(Dispatchers.IO) {
+            if (!store.accepts(peer, account)) return@withContext SendOutcome.Failed
             val started = System.nanoTime()
             val outcome = try {
                 api.sendText(account, peer.peerId, delivery.id, text, store.contextToken(peer.peerId))
