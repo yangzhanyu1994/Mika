@@ -2,6 +2,7 @@ package com.wangzan101.mika.core.wechat
 
 import com.wangzan101.mika.core.capability.*
 import com.wangzan101.mika.core.tool.*
+import com.wangzan101.mika.core.prompt.Prompts
 import kotlinx.serialization.json.JsonObject
 
 /** Host accepts no recipient from the model: delivery goes only to the currently bound owner. */
@@ -44,7 +45,7 @@ private class WechatOwnerTool : AgentTool {
     override val logged = true
     override val label = "发送到我的微信"
     override val def = ToolDef("wechat_send_owner",
-        "Send text to the user's own already-bound WeChat private channel only. Use only when explicitly requested. Report delivery state accurately.",
+        Prompts.tool("wechat_send_owner"),
         mapOf("text" to str("Complete message for the bound owner, including relevant uncertainties. No secrets or invented facts.")),
         listOf("text"))
     override fun available(ctx: ToolContext) = ctx[WechatOwnerCapability.KEY] != null
