@@ -58,6 +58,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -212,25 +214,44 @@ class TaskService : Service() {
     internal fun noteLocalUnlock() = localRelock.unlocked(
         com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount())
 
-    internal suspend fun finishLocalUnlock(ignore: TaskRun? = null) {
+    private val relockMutex = Mutex()
+    internal suspend fun finishLocalUnlock(ignore: TaskRun? = null) = relockMutex.withLock {
         val keyguard = getSystemService(android.app.KeyguardManager::class.java)
-        val accessibility = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.instance.value
-        val decision = localRelock.decide(
-            runsRemain = center.runs().any { it !== ignore },
-            locked = systemLockConfirmed(keyguard),
-            interactions = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount(),
-            canLock = accessibility != null && keeper.page.value == null,
+        fun count() = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.mainInteractionCount()
+        fun runsRemain() = center.runs().any { it !== ignore }
+        fun accessibility() = com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility.instance.value
+        fun decision() = localRelock.decide(
+            runsRemain = runsRemain(), locked = systemLockConfirmed(keyguard), interactions = count(),
+            canLock = accessibility() != null && keeper.page.value == null,
         )
-        when (decision) {
-            LocalRelock.Decision.NONE -> { clearLocalUnlockGuardIfSafe(); return }
-            LocalRelock.Decision.WAIT -> return
-            LocalRelock.Decision.WARN -> { notifyLocalRelockFailed(); return }
+        var result = decision()
+        if (result == LocalRelock.Decision.WAIT_IDLE) {
+            val before = count()
+            kotlinx.coroutines.delay(5_000)
+            if (!localRelock.acceptIdle(before, count())) { notifyLocalRelockFailed(); return@withLock }
+            result = decision()
+        }
+        when (result) {
+            LocalRelock.Decision.NONE -> { clearLocalUnlockGuardIfSafe(); return@withLock }
+            LocalRelock.Decision.WAIT -> return@withLock
+            LocalRelock.Decision.WARN, LocalRelock.Decision.WAIT_IDLE -> { notifyLocalRelockFailed(); return@withLock }
             LocalRelock.Decision.LOCK -> Unit
         }
-        val accepted = accessibility?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) == true
-        if (accepted) {
-            repeat(20) {
-                if (systemLockConfirmed(keyguard)) { clearLocalUnlockGuardIfSafe(); return }
+        repeat(2) {
+            // A new task or user activity during a retry must never be interrupted by this lock.
+            when (decision()) {
+                LocalRelock.Decision.NONE -> { clearLocalUnlockGuardIfSafe(); return@withLock }
+                LocalRelock.Decision.WAIT -> return@withLock
+                LocalRelock.Decision.WARN, LocalRelock.Decision.WAIT_IDLE -> { notifyLocalRelockFailed(); return@withLock }
+                LocalRelock.Decision.LOCK -> Unit
+            }
+            val accepted = accessibility()?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) == true
+            if (accepted) repeat(30) {
+                if (systemLockConfirmed(keyguard)) {
+                    localRelock.confirmed()
+                    clearLocalUnlockGuardIfSafe()
+                    return@withLock
+                }
                 kotlinx.coroutines.delay(100)
             }
         }
@@ -248,9 +269,9 @@ class TaskService : Service() {
         if (!manager.areNotificationsEnabled() || channel.importance == NotificationManager.IMPORTANCE_NONE) return false
         return runCatching {
             manager.notify(81847, Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(tr(R.string.device_local_relock_title))
-                .setContentText(tr(R.string.device_local_relock_failed))
-                .setStyle(Notification.BigTextStyle().bigText(tr(R.string.device_local_relock_failed)))
+                .setContentTitle(tr(R.string.device_local_relock_running_title))
+                .setContentText(tr(R.string.device_local_relock_running_body))
+                .setStyle(Notification.BigTextStyle().bigText(tr(R.string.device_local_relock_running_body)))
                 .setContentIntent(openApp(this)).setOngoing(true).build())
             true
         }.getOrDefault(false)
@@ -259,6 +280,17 @@ class TaskService : Service() {
     internal fun clearLocalUnlockGuardIfSafe() {
         if (!localRelock.hasPending() && systemLockConfirmed(getSystemService(android.app.KeyguardManager::class.java)))
             runCatching { getSystemService(NotificationManager::class.java).cancel(81847) }
+    }
+
+    internal fun notifyUnlockRecoveryNeeded(conversationId: String, status: String) {
+        ensureChannels(this)
+        val safeStatus = status.takeIf { it.matches(Regex("[a-z_]{1,50}")) }.orEmpty()
+        val message = tr(R.string.device_unlock_recovery_body) + if (safeStatus.isBlank()) "" else " ($safeStatus)"
+        runCatching { getSystemService(NotificationManager::class.java).notify(nextResultId(),
+            Notification.Builder(this, CHANNEL_ATTENTION).setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(tr(R.string.device_unlock_recovery_title)).setContentText(message)
+                .setStyle(Notification.BigTextStyle().bigText(message))
+                .setContentIntent(openApp(this, conversationId)).setAutoCancel(true).build()) }
     }
 
     internal fun notifyLocalRelockFailed() {
