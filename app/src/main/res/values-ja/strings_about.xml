@@ -33,7 +33,7 @@
     <string name="about_guide_sub">はじめ方。コードを書かなくてもアプリの知識を追加できます</string>
     <string name="about_data_note">Mika に送った内容(メッセージ、画面の内容、スクリーンショット)は、設定したモデルプロバイダーにだけ送信されます。Mika 専用のサーバーはなく、データも収集しません。アップデートの確認では GitHub にだけ接続します。</string>
     <string name="about_license_link">Apache-2.0 ライセンス</string>
-    <string name="about_author">制作: Wang Zan · © 2026</string>
+    <string name="about_author">Wang Zan の作品を基に Yang Zhanyu が二次開発 · © 2026</string>
     <string name="about_license_title">Apache-2.0 ライセンス</string>
     <string name="about_update_download">GitHub からダウンロード</string>
     <string name="about_update_download_in_app">アップデートをダウンロード</string>

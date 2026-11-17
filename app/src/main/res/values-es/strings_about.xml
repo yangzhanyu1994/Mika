@@ -33,7 +33,7 @@
     <string name="about_guide_sub">Primeros pasos; añade conocimiento de apps aunque no programes</string>
     <string name="about_data_note">Lo que le envías a Mika (mensajes, contenido de la pantalla y capturas) va solo al proveedor de modelos que configuraste. Mika no tiene servidores propios y no recoge ninguno de tus datos; al buscar actualizaciones solo se conecta con GitHub.</string>
     <string name="about_license_link">Licencia Apache-2.0</string>
-    <string name="about_author">Hecho por Wang Zan · © 2026</string>
+    <string name="about_author">Desarrollado por Yang Zhanyu a partir del trabajo de Wang Zan · © 2026</string>
     <string name="about_license_title">Licencia Apache-2.0</string>
     <string name="about_update_download">Descargar desde GitHub</string>
     <string name="about_update_download_in_app">Descargar actualización</string>
