@@ -32,14 +32,16 @@ internal class WechatOwnerSender(
             .joinToString("") { "%02x".format(it) }
         val delivery = Delivery.Notice("owner-send:$runKey:$digest", peer.threadId, text)
         val state = outbox.deliver(channel, peer, delivery).state
+        val diagnostic = (channel as? WechatChannel)?.diagnosticFor(delivery.id)
         return when (state) {
             DeliveryState.Delivered -> result("delivered", "WeChat accepted the message; this does not confirm it was read.")
-            DeliveryState.Uncertain, DeliveryState.Attempting -> result("uncertain", "Delivery could not be confirmed. Do not retry automatically.")
-            else -> result("failed", "WeChat did not confirm delivery. Check the channel and report failure.")
+            DeliveryState.Uncertain, DeliveryState.Attempting -> result("uncertain", "Delivery could not be confirmed. Do not retry automatically. Report the diagnostic code if present.", diagnostic)
+            else -> result("failed", "WeChat did not confirm delivery. Report the diagnostic code if present.", diagnostic)
         }
     }
 
-    private fun result(status: String, message: String) = buildJsonObject {
+    private fun result(status: String, message: String, diagnostic: String? = null) = buildJsonObject {
         put("ok", status == "delivered"); put("status", status); put("message", message)
+        if (diagnostic != null) put("diagnostic", diagnostic)
     }
 }

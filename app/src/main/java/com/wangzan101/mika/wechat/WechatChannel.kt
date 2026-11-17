@@ -10,6 +10,7 @@ import com.wangzan101.mika.core.run.Delivery
 import com.wangzan101.mika.core.run.SendOutcome
 import com.wangzan101.mika.core.wechat.WechatApi
 import com.wangzan101.mika.core.wechat.WechatApiException
+import com.wangzan101.mika.core.wechat.WechatHttpException
 import com.wangzan101.mika.core.wechat.WechatAccount
 import com.wangzan101.mika.core.wechat.WechatUpdates
 import kotlinx.coroutines.CancellationException
@@ -18,6 +19,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 
 /** 微信只适配收发；主人校验、提问路由和任务执行都在通用渠道层。 */
 class WechatChannel(
@@ -34,6 +39,17 @@ class WechatChannel(
     override val supportsImages = true
     @Volatile private var sink: ChannelInputSink? = null
     private val pollLock = Mutex()
+    // Error categories only: never keep the message, token, recipient or server response body here.
+    private val deliveryDiagnostics = linkedMapOf<String, String>()
+
+    @Synchronized internal fun diagnosticFor(deliveryId: String): String? = deliveryDiagnostics[deliveryId]
+
+    @Synchronized private fun clearDiagnostic(deliveryId: String) { deliveryDiagnostics.remove(deliveryId) }
+
+    @Synchronized private fun recordDiagnostic(deliveryId: String, category: String) {
+        deliveryDiagnostics[deliveryId] = category
+        while (deliveryDiagnostics.size > 64) deliveryDiagnostics.remove(deliveryDiagnostics.keys.first())
+    }
 
     override fun isAlive(peer: ChannelPeer): Boolean {
         return store.accepts(peer)
@@ -60,15 +76,36 @@ class WechatChannel(
         }
         return withContext(Dispatchers.IO) {
             if (!store.accepts(peer, account)) return@withContext SendOutcome.Failed
+            clearDiagnostic(delivery.id)
             val started = System.nanoTime()
             val outcome = try {
                 api.sendText(account, peer.peerId, delivery.id, text, store.contextToken(peer.peerId))
                 SendOutcome.Delivered
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: WechatApiException) {
+            } catch (e: WechatApiException) {
+                recordDiagnostic(delivery.id, "wechat_rejected_${e.code}")
                 SendOutcome.Failed
+            } catch (e: WechatHttpException) {
+                recordDiagnostic(delivery.id, "wechat_http_${e.httpCode}")
+                SendOutcome.Uncertain
+            } catch (_: UnknownHostException) {
+                recordDiagnostic(delivery.id, "network_dns")
+                SendOutcome.Uncertain
+            } catch (_: ConnectException) {
+                recordDiagnostic(delivery.id, "network_connect")
+                SendOutcome.Uncertain
+            } catch (_: SocketTimeoutException) {
+                recordDiagnostic(delivery.id, "network_timeout")
+                SendOutcome.Uncertain
+            } catch (_: SSLException) {
+                recordDiagnostic(delivery.id, "network_tls")
+                SendOutcome.Uncertain
             } catch (_: IOException) {
+                recordDiagnostic(delivery.id, "network_io")
+                SendOutcome.Uncertain
+            } catch (_: Exception) {
+                recordDiagnostic(delivery.id, "response_or_internal_error")
                 SendOutcome.Uncertain
             }
             log("${delivery::class.simpleName} send $outcome in ${(System.nanoTime() - started) / 1_000_000} ms")

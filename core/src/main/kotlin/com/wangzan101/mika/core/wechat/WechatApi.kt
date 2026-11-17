@@ -133,6 +133,9 @@ private data class SendRequest(
     @SerialName("base_info") val baseInfo: WechatBaseInfo,
 )
 
+@Serializable
+private data class SendResponse(val ret: Int = 0, val errcode: Int = 0, val errmsg: String? = null)
+
 class WechatApiException(val code: Int, message: String) : IOException(message)
 class WechatHttpException(val httpCode: Int) : IOException("WeChat HTTP $httpCode")
 
@@ -179,7 +182,7 @@ class WechatApi(
             messageType = 2, messageState = 2, items = listOf(WechatItem(type = 1, textItem = WechatText(text))),
             contextToken = contextToken)
         val body = SendRequest(message, WechatBaseInfo(channelVersion))
-        post(account, "sendmessage", body, SendRequest.serializer(), WechatQrStart.serializer())
+        post(account, "sendmessage", body, SendRequest.serializer(), SendResponse.serializer())
     }
 
     suspend fun downloadImage(image: WechatImage): WechatDownloadedImage = images.download(image)
@@ -204,7 +207,7 @@ class WechatApi(
         val body = SendRequest(message, WechatBaseInfo(channelVersion))
         val request = Request.Builder().url(endpoint(account.baseUrl, "sendmessage")).headers(headers(account.token))
             .post(json.encodeToString(SendRequest.serializer(), body).toRequestBody(jsonBody)).build()
-        executeCancellable(request, WechatQrStart.serializer(), mediaClient)
+        executeCancellable(request, SendResponse.serializer(), mediaClient)
     }
 
     private inline fun <reified T, reified R> post(account: WechatAccount, path: String, body: T,
@@ -231,6 +234,7 @@ class WechatApi(
             is WechatQrStatus -> result.ret to result.errmsg
             is WechatUpdates -> result.ret to result.errmsg
             is WechatUploadResponse -> result.ret to result.errmsg
+            is SendResponse -> (if (result.ret != 0) result.ret else result.errcode) to result.errmsg
             else -> 0 to null
         }
         if (code != 0) throw WechatApiException(code, message ?: "WeChat API error $code")

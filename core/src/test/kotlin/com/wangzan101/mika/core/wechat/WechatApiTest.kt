@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -64,5 +65,14 @@ class WechatApiTest {
         assertEquals("context", message.getValue("context_token").jsonPrimitive.content)
         assertEquals("owner", message.getValue("to_user_id").jsonPrimitive.content)
         assertEquals("/ilink/bot/sendmessage", request?.path)
+    }
+
+    @Test fun sendTextDoesNotTreatNonzeroErrcodeAsAccepted() = server { server, api ->
+        server.enqueue(response("""{"ret":0,"errcode":-14,"errmsg":"rejected"}"""))
+        val error = assertThrows(WechatApiException::class.java) {
+            api.sendText(WechatAccount("token", server.url("/").toString(), "bot", "owner"),
+                "owner", "result:run-2", "完成了", "context")
+        }
+        assertEquals(-14, error.code)
     }
 }

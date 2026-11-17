@@ -340,8 +340,16 @@ class WechatChannelTest {
             val delivery = Delivery.Result("result:1", peer.threadId, "完成")
             server.enqueue(response("""{"ret":-1,"errmsg":"rejected"}"""))
             assertEquals(SendOutcome.Failed, channel.send(peer, delivery))
+            assertEquals("wechat_rejected_-1", channel.diagnosticFor(delivery.id))
             server.enqueue(response("""{"ret":0}""").setResponseCode(500))
             assertEquals(SendOutcome.Uncertain, channel.send(peer, delivery))
+            assertEquals("wechat_http_500", channel.diagnosticFor(delivery.id))
+            server.enqueue(response("""{"ret":0,"errcode":-14,"errmsg":"secret response text"}"""))
+            assertEquals(SendOutcome.Failed, channel.send(peer, delivery))
+            assertEquals("wechat_rejected_-14", channel.diagnosticFor(delivery.id))
+            server.enqueue(response("""{"ret":0}"""))
+            assertEquals(SendOutcome.Delivered, channel.send(peer, delivery))
+            assertEquals(null, channel.diagnosticFor(delivery.id))
         }
     }
 }
