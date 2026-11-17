@@ -26,6 +26,14 @@ fun explicitWechatOwnerRequest(goal: String): Boolean {
     return (toOwner || viaWechat || genericWechat) && !otherRecipient
 }
 
+/** Task results from an inbound channel already have their own reply path. */
+fun shouldSendOwnerResult(origin: com.wangzan101.mika.core.run.RunOrigin, goal: String,
+    conditionCheck: Boolean, sceneEnabled: Boolean): Boolean = !conditionCheck && when (origin) {
+    com.wangzan101.mika.core.run.RunOrigin.Ui -> explicitWechatOwnerRequest(goal)
+    com.wangzan101.mika.core.run.RunOrigin.Trigger -> sceneEnabled
+    else -> false
+}
+
 internal class WechatOwnerCapability(val port: WechatOwnerPort) : Capability {
     override val id = "wechat_owner"
     override fun status(): CapabilityStatus = CapabilityStatus.Available

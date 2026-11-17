@@ -181,11 +181,10 @@ class TaskRun(
     @Volatile internal var resultReadyAtMs = 0L
         private set
     internal val conditionCheck get() = triggerActionGoal != null
-    internal fun shouldSendWechat(): Boolean = !conditionCheck && when (provenance.origin) {
-        RunOrigin.Ui -> com.wangzan101.mika.core.wechat.explicitWechatOwnerRequest(goal)
-        RunOrigin.Trigger -> TriggerRuntime.sendsWechat(service, triggerWindowKey)
-        else -> false
-    }
+    internal fun shouldSendWechat(): Boolean = com.wangzan101.mika.core.wechat.shouldSendOwnerResult(
+        provenance.origin, goal, conditionCheck,
+        provenance.origin == RunOrigin.Trigger && TriggerRuntime.sendsWechat(service, triggerWindowKey),
+    )
     @Volatile private var children: ChildAgentRunner? = null
     /** 这次任务连上的外部 MCP server;结束时关闭会话。 */
     @Volatile private var mcpConnections: com.wangzan101.mika.settings.McpConnections? = null
