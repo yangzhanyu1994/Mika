@@ -7,6 +7,7 @@ import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.remote.RemoteSteer
 import com.wangzan101.mika.takeover.Takeover
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -66,6 +67,7 @@ class TaskCenterState {
 
     val _runs = MutableStateFlow<List<TaskRun>>(emptyList())
     val runs: StateFlow<List<TaskRun>> = _runs.asStateFlow()
+    internal val edgeLightSuccesses = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val _activeConversations = MutableStateFlow<List<String>>(emptyList())
     val activeConversations: StateFlow<List<String>> = _activeConversations.asStateFlow()
     val _shownTask = MutableStateFlow<Pair<String, TaskState>?>(null)

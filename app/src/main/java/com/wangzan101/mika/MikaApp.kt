@@ -46,6 +46,8 @@ import com.wangzan101.mika.task.TaskRecovery
 import com.wangzan101.mika.task.TriggerOutcomes
 import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.task.TaskCenterState
+import com.wangzan101.mika.task.DeviceStateWatcher
+import com.wangzan101.mika.task.TaskEdgeLight
 import com.wangzan101.mika.teach.TeachRuntime
 import com.wangzan101.mika.ui.ChatViewModel
 import com.wangzan101.mika.ui.TaskActions
@@ -425,7 +427,9 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         com.wangzan101.mika.core.net.NetProxy.shared.installSocksAuth()
         // 内置浏览器:设了代理才给 WebView 设上(读设置要解密,放到后台;没设代理不为此加载 WebView)
         scope.launch(Dispatchers.IO) { runCatching { com.wangzan101.mika.cap.web.WebProxy.apply(this@MikaApp) } }
-        capsule.start()
+        val screen = DeviceStateWatcher(this) { -1 }
+        capsule.start(screen.locked)
+        TaskEdgeLight.start(scope, taskState, foreground.visible, screen.locked, flags.quitChanges())
         // 内置助手的真实现,并开始看着助手(Mika 进程起来后,还活着的助手会自己交接 Binder)
         phone.shellManager.start()
         // 连接一可用就补上默认打开的几项能力

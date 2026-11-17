@@ -45,7 +45,6 @@ import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.userscreen.CapturedScreen
 import com.wangzan101.mika.core.userscreen.UserScreenMessage
 import com.wangzan101.mika.settings.FeatureFlags
-import com.wangzan101.mika.task.DeviceStateWatcher
 import com.wangzan101.mika.task.TaskCenterState
 import com.wangzan101.mika.task.TaskRun
 import com.wangzan101.mika.task.TaskService
@@ -246,8 +245,7 @@ class CapsuleController(
     /** 胶囊此刻真的显示在亮着的屏幕上;任务服务据此把「需要你」通知发得安静些。 */
     val showing: StateFlow<Boolean> = _showing.asStateFlow()
 
-    fun start() {
-        val screen = DeviceStateWatcher(context) { -1 }
+    fun start(locked: StateFlow<Boolean>) {
         // 用户点了「完全退出」:按开关关着算,直到用户重新打开 Mika([resume] 清掉标记后再亮出来)
         val mode = combine(flags.capsuleModeChanges(), flags.quitChanges()) { m, quit -> if (quit) CapsuleMode.Off else m }
         scope.launch {
@@ -255,7 +253,7 @@ class CapsuleController(
                 combine(
                     runs(),
                     combine(mode, flags.capsuleIdleOpacityChanges(), flags.capsuleCardScaleChanges()) { m, o, s -> Triple(m, o, s) },
-                    foreground.visible, screen.locked, ScreenAccessibility.instance,
+                    foreground.visible, locked, ScreenAccessibility.instance,
                 ) { r, settings, f, l, a ->
                     Snapshot(r, settings.first, f, l, a, opacity = settings.second, cardScale = settings.third)
                 },
