@@ -33,6 +33,7 @@ import com.wangzan101.mika.core.agent.Conversation
 import com.wangzan101.mika.core.model.ModelSession
 import com.wangzan101.mika.core.agent.FailKind
 import com.wangzan101.mika.core.agent.RunOutcome
+import com.wangzan101.mika.core.agent.LearnGate
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.trigger.ConditionOutcome
@@ -488,11 +489,11 @@ class TaskService : Service() {
                 acknowledgeChannel(channelPeer, channelMessageId)
                 taskState._busy.value = true
                 taskState._conversationId.value = conversationId
+                r.run.queue(r.position)
                 // 先登记再显示:界面收到它的状态时,任务列表里已经有它(对话、原话)
                 publishRuns()
                 // 清空成功标准、运行编号,显示排队
                 if (center.running().none { it.conversationId == conversationId }) r.run.show()
-                r.run.queue(r.position)
                 keepForeground()
             }
             is StartResult.Started -> {
@@ -622,6 +623,7 @@ class TaskService : Service() {
                 }) {
                     // 交出之后:回答按用户的要求判结局(记进运行记录和这一轮对话),只从办成的学
                     val judged = runCatching { run.settleOutcome(end, store) }.onFailure { Log.w(TAG, "outcome judging failed", it) }.getOrNull()
+                    if (judged != null && LearnGate.done(end, judged.outcome)) taskState.edgeLightSuccesses.emit(run.key)
                     // 回答如实说没办成、只办了一部分的,和放弃一样记成没办成;没判成的照交出算
                     val notDone = judged?.outcome == RunOutcome.Partial || judged?.outcome == RunOutcome.NotPossible
                     if (delivered && notDone && end is TaskState.Succeeded) run.triggerWindowKey?.let { key ->

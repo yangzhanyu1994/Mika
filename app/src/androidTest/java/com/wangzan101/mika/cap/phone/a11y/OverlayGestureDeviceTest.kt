@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,37 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @RunWith(AndroidJUnit4::class)
 class OverlayGestureDeviceTest {
+    @Test fun nonTouchableFullScreenOverlayLetsUserTapThrough() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        val service = DeviceSupport.service()
+        val testPackage = instrumentation.context.packageName
+        DeviceSupport.startTestActivity(Display.DEFAULT_DISPLAY, GestureTapTestActivity::class.java)
+        var overlay: OverlayWindow? = null
+        lateinit var area: OverlayArea
+        try {
+            assertEquals(0, DeviceSupport.pollUntil(5_000) { pageTaps(service, testPackage).takeIf { it == 0 } })
+            instrumentation.runOnMainSync {
+                area = service.overlays().area()
+                overlay = service.overlays().open(OverlayPlacement(Gravity.TOP or Gravity.LEFT), touchable = false) {
+                    Box(Modifier.fillMaxSize().background(Color(0x220099FF)))
+                }?.also { it.setFullScreen(true) }
+            }
+            val window = checkNotNull(overlay)
+            assertNotNull("overlay did not fill the screen", DeviceSupport.pollUntil(5_000) {
+                true.takeIf { window.width == area.width && window.height == area.height }
+            })
+            instrumentation.waitForIdleSync()
+            userTap(instrumentation, area.width / 2, area.height / 2)
+            assertNotNull("tap did not reach the page under the overlay", DeviceSupport.pollUntil(3_000) {
+                pageTaps(service, testPackage).takeIf { it == 1 }
+            })
+        } finally {
+            instrumentation.runOnMainSync { overlay?.close() }
+            instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+        }
+    }
+
     @Test fun normalAndCancelledInjectionPassThroughThenRestoreTouch() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
