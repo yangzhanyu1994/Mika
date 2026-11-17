@@ -19,6 +19,7 @@ data class BluetoothScene(
     val delaySeconds: Int,
     val goal: String,
     val enabled: Boolean = true,
+    val sendWechat: Boolean = false,
     val lastThreadId: String? = null,
     val lastDispatchedAt: Long? = null,
 ) {

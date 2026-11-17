@@ -47,6 +47,7 @@ data class TriggerDefinition(
     val calendarTimes: List<String> = emptyList(),
     /** 计划是谁建的:用户手动 / 模型 / 外部脚本,只影响展示与追溯。 */
     val source: TriggerSource = TriggerSource.Model,
+    val sendWechat: Boolean = false,
 ) {
     init {
         require(id.isNotBlank() && threadId.isNotBlank() && goal.isNotBlank())

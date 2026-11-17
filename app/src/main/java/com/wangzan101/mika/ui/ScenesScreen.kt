@@ -183,6 +183,7 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
 private fun BluetoothSceneEditor(context: Context, existing: BluetoothScene?, error: Boolean, onBack: () -> Unit, onSave: (BluetoothScene) -> Unit) {
     var title by remember(existing?.id) { mutableStateOf(existing?.title.orEmpty()) }
     var goal by remember(existing?.id) { mutableStateOf(existing?.goal.orEmpty()) }
+    var sendWechat by remember(existing?.id) { mutableStateOf(existing?.sendWechat ?: false) }
     var address by remember(existing?.id) { mutableStateOf(existing?.address.orEmpty()) }
     var deviceName by remember(existing?.id) { mutableStateOf(existing?.deviceName.orEmpty()) }
     var onConnect by remember(existing?.id) { mutableStateOf(existing?.onConnect ?: false) }
@@ -209,12 +210,17 @@ private fun BluetoothSceneEditor(context: Context, existing: BluetoothScene?, er
         OutlinedTextField(delay, { delay = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.scene_delay)) },
             supportingText = { Text(stringResource(R.string.scene_delay_hint)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(goal, { goal = it.take(4000) }, label = { Text(stringResource(R.string.scene_goal)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(R.string.scene_send_wechat), modifier = Modifier.weight(1f))
+            Switch(checked = sendWechat, onCheckedChange = { sendWechat = it })
+        }
+        FooterNote(stringResource(R.string.scene_send_wechat_hint))
         FooterNote(stringResource(R.string.scene_notification_note))
         if (permissionError || error) Text(stringResource(R.string.scene_error), color = MaterialTheme.colorScheme.error)
         Button(enabled = title.isNotBlank() && goal.isNotBlank() && address.isNotBlank() && (delay.toIntOrNull()?.let { it in 0..600 } == true),
             onClick = {
                 onSave(BluetoothScene(existing?.id ?: UUID.randomUUID().toString(), title.trim(), address, deviceName,
-                    onConnect, delay.toInt(), goal.trim(), enabled = existing?.enabled ?: true,
+                    onConnect, delay.toInt(), goal.trim(), enabled = existing?.enabled ?: true, sendWechat = sendWechat,
                     lastThreadId = existing?.lastThreadId, lastDispatchedAt = existing?.lastDispatchedAt))
             }, modifier = Modifier.fillMaxWidth().testTag("scene-save")) { Text(stringResource(R.string.scene_save)) }
     }

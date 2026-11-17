@@ -30,6 +30,7 @@ private data class ConditionPlanState(
     val lastFiredAtMs: Long? = null,
     val calendarTimes: List<String> = emptyList(),
     val source: TriggerSource = TriggerSource.Model,
+    val sendWechat: Boolean = false,
 )
 
 @Serializable
@@ -54,7 +55,7 @@ private fun ByteArray.sha256(): String =
     MessageDigest.getInstance("SHA-256").digest(this).joinToString("") { "%02x".format(it) }
 
 private fun TriggerDefinition.conditionState() = ConditionPlanState(
-    notifyWhen, cooldownMs, lastValue, baselineValue, baselineAtMs, lastFiredAtMs, calendarTimes, source,
+    notifyWhen, cooldownMs, lastValue, baselineValue, baselineAtMs, lastFiredAtMs, calendarTimes, source, sendWechat,
 )
 
 private fun TriggerSnapshot.conditionStates(): Map<String, ConditionPlanState> =
@@ -70,6 +71,7 @@ private fun TriggerDefinition.legacy() = copy(
     lastFiredAtMs = null,
     calendarTimes = emptyList(),
     source = TriggerSource.Model,
+    sendWechat = false,
 )
 
 private fun TriggerDefinition.withConditionState(state: ConditionPlanState?): TriggerDefinition {
@@ -77,7 +79,7 @@ private fun TriggerDefinition.withConditionState(state: ConditionPlanState?): Tr
     // 旧版改过首个钟点、或扩展列表损坏时，沿用主文件，不让 sidecar 破坏整份计划。
     val times = state.calendarTimes.takeIf { it.firstOrNull() == calendarTime &&
         runCatching { normalizedCalendarTimes(it) == it }.getOrDefault(false) }.orEmpty()
-    val plan = copy(source = state.source, calendarTimes = times)
+    val plan = copy(source = state.source, calendarTimes = times, sendWechat = state.sendWechat)
     if (conditionGoal == null) return plan
     return plan.copy(
         notifyWhen = state.notifyWhen,

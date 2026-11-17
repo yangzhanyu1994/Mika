@@ -193,7 +193,7 @@ internal object EnvironmentSceneDispatcher {
         val thread = ConversationStore.shared(context).newConversation()
         TriggerRuntime.schedule(context, TriggerDefinition(UUID.randomUUID().toString(), thread,
             rule.goal + "\n\n" + context.getString(R.string.scene_result_instruction),
-            System.currentTimeMillis() + 1000L, source = TriggerSource.User))
+            System.currentTimeMillis() + 1000L, source = TriggerSource.User, sendWechat = rule.sendWechat))
         store.save(rule.copy(lastThreadId = thread))
     }
 }

@@ -80,4 +80,10 @@
     <string name="env_search_failed">No place found or system geocoding is unavailable. Try another search or enter coordinates.</string>
     <string name="env_search_choose">Choose a search result:</string>
     <string name="calls_exit_reason">End reason: %1$s</string>
+    <string name="scene_send_wechat">Send result to bound WeChat</string>
+    <string name="scene_send_wechat_hint">Send the actual result after the task; the WeChat conversation may need refreshing.</string>
+    <string name="scene_wechat_accepted">Accepted by WeChat; read status is unknown.</string>
+    <string name="scene_wechat_failed">WeChat rejected the message or sending failed. Check the connection.</string>
+    <string name="scene_wechat_unavailable">WeChat is unavailable or has no conversation. Send Mika a message in WeChat.</string>
+    <string name="scene_wechat_uncertain">WeChat delivery is uncertain; it was not retried automatically.</string>
 </resources>

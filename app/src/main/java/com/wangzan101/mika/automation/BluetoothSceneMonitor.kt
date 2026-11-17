@@ -157,7 +157,7 @@ internal object SceneDispatcher {
         val thread = ConversationStore.shared(context).newConversation()
         val trigger = TriggerDefinition(UUID.randomUUID().toString(), thread,
             rule.goal + "\n\n" + context.getString(R.string.scene_result_instruction),
-            System.currentTimeMillis() + 1000L, source = TriggerSource.User)
+            System.currentTimeMillis() + 1000L, source = TriggerSource.User, sendWechat = rule.sendWechat)
         TriggerRuntime.schedule(context, trigger)
         // Dispatch does not mean completion; the linked conversation carries the result.
         store.save(rule.copy(lastThreadId = thread, lastDispatchedAt = System.currentTimeMillis()))

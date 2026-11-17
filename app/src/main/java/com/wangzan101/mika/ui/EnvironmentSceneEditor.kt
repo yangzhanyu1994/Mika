@@ -28,6 +28,7 @@ internal fun EnvironmentSceneEditor(context: Context, kind: String, existing: En
     var latitude by remember(existing?.id, kind) { mutableStateOf(existing?.latitude?.toString().orEmpty()) }
     var longitude by remember(existing?.id, kind) { mutableStateOf(existing?.longitude?.toString().orEmpty()) }
     var radius by remember(existing?.id, kind) { mutableStateOf((existing?.radius ?: 200f).toString()) }
+    var sendWechat by remember(existing?.id, kind) { mutableStateOf(existing?.sendWechat ?: false) }
     var goal by remember(existing?.id, kind) { mutableStateOf(existing?.goal.orEmpty()) }
     var delay by remember(existing?.id, kind) { mutableStateOf((existing?.delaySeconds ?: 60).toString()) }
     var enter by remember(existing?.id, kind) { mutableStateOf(existing?.enter ?: true) }
@@ -103,6 +104,11 @@ internal fun EnvironmentSceneEditor(context: Context, kind: String, existing: En
         OutlinedTextField(delay, { delay = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.scene_delay)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         FooterNote(stringResource(R.string.scene_delay_hint))
         OutlinedTextField(goal, { goal = it.take(4000) }, label = { Text(stringResource(R.string.scene_goal)) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(R.string.scene_send_wechat), modifier = Modifier.weight(1f))
+            Switch(checked = sendWechat, onCheckedChange = { sendWechat = it })
+        }
+        FooterNote(stringResource(R.string.scene_send_wechat_hint))
         FooterNote(stringResource(R.string.env_permission_note))
         FooterNote(stringResource(R.string.scene_notification_note))
         if (permissionError || error) Text(stringResource(R.string.scene_error), color = MaterialTheme.colorScheme.error)
@@ -112,7 +118,7 @@ internal fun EnvironmentSceneEditor(context: Context, kind: String, existing: En
             onClick = { withPermission {
                 onSave(EnvironmentScene(existing?.id ?: UUID.randomUUID().toString(), title.trim(), kind, target.trim(),
                     latitude = lat, longitude = lon, radius = meters ?: 200f, enter = enter, delaySeconds = delay.toInt(),
-                    goal = goal.trim(), enabled = existing?.enabled ?: true, lastThreadId = existing?.lastThreadId))
+                    goal = goal.trim(), enabled = existing?.enabled ?: true, sendWechat = sendWechat, lastThreadId = existing?.lastThreadId))
             } }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.scene_save)) }
     }
 }
