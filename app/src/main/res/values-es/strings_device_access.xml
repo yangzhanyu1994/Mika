@@ -27,4 +27,8 @@
     <string name="device_local_relock_failed">No se pudo confirmar el bloqueo. Compruébalo y bloquea el teléfono manualmente.</string>
     <string name="device_local_unlock_failed">No se pudo activar o desbloquear el teléfono. Revisa el ajuste de tareas, la credencial guardada, el control del teléfono y el permiso de notificaciones.</string>
     <string name="device_access_resume">Resume after manually unlocking</string>
+    <string name="device_local_relock_running_title">Task is running</string>
+    <string name="device_local_relock_running_body">Mika will try to lock the phone after the task. If interrupted, check whether the phone is locked.</string>
+    <string name="device_unlock_recovery_title">Task paused until unlock</string>
+    <string name="device_unlock_recovery_body">The phone locked during the task and automatic recovery failed. Unlock it to continue.</string>
 </resources>

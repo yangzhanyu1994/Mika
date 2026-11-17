@@ -28,4 +28,8 @@
     <string name="device_local_relock_failed">다시 잠겼는지 확인할 수 없습니다. 직접 확인하고 잠가 주세요.</string>
     <string name="device_local_unlock_failed">화면을 켜거나 잠금을 해제할 수 없습니다. 작업 설정, 저장된 잠금 정보, 휴대전화 제어 및 알림 권한을 확인하세요.</string>
     <string name="device_access_resume">Resume after manually unlocking</string>
+    <string name="device_local_relock_running_title">Task is running</string>
+    <string name="device_local_relock_running_body">Mika will try to lock the phone after the task. If interrupted, check whether the phone is locked.</string>
+    <string name="device_unlock_recovery_title">Task paused until unlock</string>
+    <string name="device_unlock_recovery_body">The phone locked during the task and automatic recovery failed. Unlock it to continue.</string>
 </resources>

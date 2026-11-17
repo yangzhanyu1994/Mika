@@ -88,6 +88,51 @@ class TaskGateTest {
     }
 
     @Test
+    fun midRunFailedUnlockWaitsForManualUnlockWithoutRetryingCredential() = runTest {
+        var attempts = 0
+        var failure: String? = null
+        val recovering = TaskGate(locked, shellUp,
+            unattendedUnlock = { attempts++; "attempt_blocked" },
+            recoverUnlockFailure = { true },
+            onRecoveryFailure = { failure = it }) { true }
+        recovering.pass { reported += it }
+        locked.value = true
+        var resumed = false
+        var needsFreshScreen = false
+        launch { needsFreshScreen = recovering.pass { reported += it }; resumed = true }
+        runCurrent()
+        assertEquals(1, attempts)
+        assertEquals("attempt_blocked", failure)
+        assertFalse(resumed)
+        assertEquals(TaskState.Held(TaskGate.LOCKED), reported.last())
+        locked.value = false
+        runCurrent()
+        assertTrue(resumed)
+        assertTrue(needsFreshScreen)
+        assertEquals(1, attempts)
+    }
+
+    @Test
+    fun midRunSuccessfulAutoUnlockAlsoRequiresFreshScreen() = runTest {
+        val recovering = TaskGate(locked, shellUp,
+            unattendedUnlock = { locked.value = false; "unlocked" },
+            recoverUnlockFailure = { true }) { true }
+        assertFalse(recovering.pass { reported += it })
+        locked.value = true
+        assertTrue(recovering.pass { reported += it })
+        assertFalse(locked.value)
+    }
+
+    @Test
+    fun initialFailureStillEndsUnattendedRun() = runTest {
+        locked.value = true
+        val recovering = TaskGate(locked, shellUp,
+            unattendedUnlock = { "unsupported_keyguard" }, recoverUnlockFailure = { true }) { true }
+        val outcome = runCatching { recovering.pass { reported += it } }
+        assertTrue(outcome.exceptionOrNull() is UnattendedLockException)
+    }
+
+    @Test
     fun unattendedTaskFailsWhenUnlockIsUnavailable() = runTest {
         locked.value = true
         val unattended = TaskGate(locked, shellUp, unattendedUnlock = { "unsupported_keyguard" }) { true }

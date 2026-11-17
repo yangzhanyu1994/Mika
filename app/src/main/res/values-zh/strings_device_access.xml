@@ -27,4 +27,8 @@
     <string name="device_local_relock_failed">Mika 无法确认手机已重新锁屏，请检查并手动锁屏。</string>
     <string name="device_local_unlock_failed">无法自动亮屏或解锁。请检查“任务运行”中的锁屏开关、已保存的锁屏凭据、手机操作设置及通知权限。</string>
     <string name="device_access_resume">已手动解锁，恢复自动解锁</string>
+    <string name="device_local_relock_running_title">任务正在运行</string>
+    <string name="device_local_relock_running_body">任务结束后将尝试自动锁屏；如果任务中断，请检查手机是否已锁定。</string>
+    <string name="device_unlock_recovery_title">任务已暂停，等待解锁</string>
+    <string name="device_unlock_recovery_body">任务执行中手机锁屏，自动恢复未成功。请手动解锁手机，任务将尝试继续。</string>
 </resources>
