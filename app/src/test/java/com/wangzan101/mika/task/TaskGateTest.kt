@@ -124,6 +124,24 @@ class TaskGateTest {
     }
 
     @Test
+    fun midRunUnlockExceptionWaitsForUserInsteadOfLosingProgress() = runTest {
+        var reportedStatus: String? = null
+        val recovering = TaskGate(locked, shellUp,
+            unattendedUnlock = { error("helper disconnected") }, recoverUnlockFailure = { true },
+            onRecoveryFailure = { reportedStatus = it }) { true }
+        recovering.pass { reported += it }
+        locked.value = true
+        var resumed = false
+        launch { recovering.pass { reported += it }; resumed = true }
+        runCurrent()
+        assertEquals("internal_error", reportedStatus)
+        assertFalse(resumed)
+        locked.value = false
+        runCurrent()
+        assertTrue(resumed)
+    }
+
+    @Test
     fun initialFailureStillEndsUnattendedRun() = runTest {
         locked.value = true
         val recovering = TaskGate(locked, shellUp,

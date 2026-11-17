@@ -4,6 +4,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.core.agent.GateReason
 import com.wangzan101.mika.core.agent.TaskState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -86,7 +87,9 @@ class TaskGate(
                     if (unattendedUnlock == null) {
                         locked.first { !it }
                     } else {
-                        val status = unattendedUnlock.invoke()
+                        val status = try { unattendedUnlock.invoke() }
+                        catch (e: CancellationException) { throw e }
+                        catch (_: Exception) { refreshLocked?.invoke(); "internal_error" }
                         // 无人值守时不能无限等用户来解锁；只认刷新后的系统状态，不认流程自称成功。
                         if (locked.value) {
                             if (!hasPassed || !recoverUnlockFailure()) throw UnattendedLockException(unlockFailureMessage(), status)
