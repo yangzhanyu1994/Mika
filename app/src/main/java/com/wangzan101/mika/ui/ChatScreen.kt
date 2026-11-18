@@ -473,18 +473,12 @@ fun ChatScreen(
                 .onSizeChanged { topHeight = it.height },
         ) {
             if (modeHeader != null) {
-                val runs = (context.applicationContext as? MikaApp)?.taskState?.runs?.collectAsState()?.value.orEmpty()
-                val activeRun = runs.firstOrNull { it.conversationId == ui.conversationId }
-                    ?.takeIf { last?.status?.isActive() == true }
-                val live = activeRun?.conversationUsage?.collectAsState()?.value
-                val measured = endedRuns.distinct().map { runMetrics[it] }
-                val completed = measured.map { it?.conversationReportedTokens() }
-                val unrecorded = ui.exchanges.count { !it.status.isActive() && it.runId == null }
-                val usage = conversationUsage(
-                    completed + listOfNotNull(live?.tokens),
-                    unrecorded + measured.count { it?.conversationUsageIncomplete() == true } +
-                        if (live?.partial == true) 1 else 0,
-                )
+                val usage = (context.applicationContext as? MikaApp)?.let { app ->
+                    rememberModeConversationUsage(
+                        app, ui.conversationId, rememberModeTurns(app, ui.conversationId), endedRuns,
+                        ui.exchanges.count { !it.status.isActive() && it.runId == null }, knownMetrics = runMetrics,
+                    )
+                }
                 modeHeader(usage, others.isNotEmpty())
                 if (sub != null && (last?.status?.isActive() == true || kept != null)) {
                     Text(sub.first, Modifier.padding(horizontal = 16.dp, vertical = 5.dp),

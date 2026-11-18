@@ -29,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchDraft
@@ -54,12 +54,7 @@ import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.withContext
 
 @Composable
 internal fun ConversationModeHeader(
@@ -155,14 +150,8 @@ internal fun ResearchConversationScreen(
     onPickSpeech: () -> Unit,
 ) {
     val c = MikaTheme.colors
-    val loaded by produceState<List<Turn>?>(null, id) {
-        value = null
-        if (id == null) return@produceState
-        app.conversations.changes.filter { it == id }.onStart { emit(id) }.collect {
-            value = withContext(Dispatchers.IO) { app.conversations.turns(id).filter { it.research } }
-        }
-    }
-    val stored = loaded.orEmpty()
+    val loaded = rememberModeTurns(app, id)
+    val stored = loaded.orEmpty().filter { it.research }
     val pending by app.researchChat.pending.collectAsState()
     val working = id?.let(pending::get)?.takeUnless { live ->
         stored.lastOrNull()?.atMs == live.startedAt
@@ -189,13 +178,7 @@ internal fun ResearchConversationScreen(
     }
     PageBackground {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
-            val usage = if (id == null || loaded != null) {
-                conversationUsage(
-                    stored.map { it.reportedTokens } + listOfNotNull(working?.reportedTokens),
-                    stored.count { it.usageIncomplete && it.reportedTokens != null } +
-                        if (working != null && (working.reportedTokens == null || working.usageIncomplete)) 1 else 0,
-                )
-            } else null
+            val usage = rememberModeConversationUsage(app, id, loaded)
             ConversationModeHeader(true, model, usage, onMode, onModel, onOpenDrawer, onNew,
                 title = id?.let(app.conversations::title), reasoning = {
                     ConversationReasoning(app.providers, com.wangzan101.mika.core.model.ModelRole.Chat)
@@ -215,7 +198,7 @@ internal fun ResearchConversationScreen(
                 items(stored.asReversed()) { turn ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         ResearchQuestion(turn.userText, Modifier.align(Alignment.End))
-                        MarkdownText(turn.outcome, MikaType.Body.copy(color = c.ink))
+                        ResearchAnswer(turn.outcome)
                         if (turn.status == "succeeded") {
                             TextButton(onClick = { onTransfer(turn) }) {
                                 Text(stringResource(R.string.mode_transfer), color = c.accent)
@@ -263,14 +246,21 @@ internal fun ResearchPendingReply(draft: ResearchDraft) {
                 )
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ResearchThinkingOrb(draft.phase.orbMotion)
-                Column(Modifier.weight(1f)) {
-                    MarkdownText(draft.text, MikaType.Body.copy(color = c.ink), streaming = true)
-                }
-            }
+            ResearchThinkingOrb(draft.phase.orbMotion, 20.dp)
+            ResearchAnswer(draft.text, streaming = true)
         }
     }
+}
+
+@Composable
+private fun ResearchAnswer(text: String, streaming: Boolean = false) {
+    val c = MikaTheme.colors
+    MarkdownText(
+        text, MikaType.Body.copy(color = c.ink, lineHeight = 24.sp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.surface)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        streaming = streaming,
+    )
 }
 
 @Composable
