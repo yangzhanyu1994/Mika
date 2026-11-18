@@ -342,7 +342,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             status = getString(R.string.assistant_reading_result)
             val played = try {
                 val words = withContext(Dispatchers.Default) { MarkdownModel.toPlainText(answer) }
-                val configured = withContext(Dispatchers.IO) { readout.configured() }
+                val configured = withContext(Dispatchers.IO) { readout.playbackConfiguration() }
                 configured != null && words.isNotBlank() && readout.enabled &&
                     speakAssistantResult(this@AssistantOverlayActivity, configured.first, configured.second, words)
             } catch (e: CancellationException) {
