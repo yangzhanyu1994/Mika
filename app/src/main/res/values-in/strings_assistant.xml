@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Ketik atau bicara dengan Mika</string>
+    <string name="assistant_input">Ketik atau bicara dengan Aura</string>
     <string name="assistant_take_screenshot">Lampirkan layar</string>
-    <string name="assistant_screenshot_unavailable">Layar tidak dapat dilampirkan. Periksa setelan tangkapan layar asisten dan aksesibilitas Mika.</string>
+    <string name="assistant_screenshot_unavailable">Layar tidak dapat dilampirkan. Periksa setelan tangkapan layar asisten dan aksesibilitas Aura.</string>
     <string name="assistant_camera_permission">Izinkan akses kamera untuk mengambil foto.</string>
     <string name="assistant_stop_listening">Selesaikan dikte</string>
     <string name="assistant_preview_photo">Pratinjau foto</string>
     <string name="assistant_preview_screen">Pratinjau tangkapan layar</string>
-    <string name="assistant_send_failed">Mika tidak dapat memulai tugas. Draf masih tersimpan.</string>
-    <string name="assistant_model_required">Siapkan model di Mika sebelum mengirim tugas.</string>
+    <string name="assistant_send_failed">Aura tidak dapat memulai tugas. Draf masih tersimpan.</string>
+    <string name="assistant_model_required">Siapkan model di Aura sebelum mengirim tugas.</string>
     <string name="assistant_clear">Hapus draf</string>
 </resources>

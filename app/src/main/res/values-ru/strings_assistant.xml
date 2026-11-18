@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Введите текст или скажите Mika</string>
+    <string name="assistant_input">Введите текст или скажите Aura</string>
     <string name="assistant_take_screenshot">Прикрепить снимок экрана</string>
-    <string name="assistant_screenshot_unavailable">Не удалось прикрепить экран. Проверьте настройки снимков экрана для ассистента и доступ Mika к специальным возможностям.</string>
+    <string name="assistant_screenshot_unavailable">Не удалось прикрепить экран. Проверьте настройки снимков экрана для ассистента и доступ Aura к специальным возможностям.</string>
     <string name="assistant_camera_permission">Разрешите доступ к камере, чтобы сделать фото.</string>
     <string name="assistant_stop_listening">Завершить диктовку</string>
     <string name="assistant_preview_photo">Предпросмотр фото</string>
     <string name="assistant_preview_screen">Предпросмотр снимка экрана</string>
-    <string name="assistant_send_failed">Mika не удалось запустить задачу. Черновик сохранён.</string>
-    <string name="assistant_model_required">Настройте модель в Mika перед отправкой задачи.</string>
+    <string name="assistant_send_failed">Aura не удалось запустить задачу. Черновик сохранён.</string>
+    <string name="assistant_model_required">Настройте модель в Aura перед отправкой задачи.</string>
     <string name="assistant_clear">Очистить черновик</string>
 </resources>

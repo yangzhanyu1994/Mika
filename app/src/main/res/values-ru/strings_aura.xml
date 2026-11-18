@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aura_home_title">Ваш помощник на телефоне</string>
+    <string name="aura_speak">Нажмите, чтобы говорить</string>
+    <string name="aura_input">Поручите задачу Aura</string>
+    <string name="aura_new">Новая задача</string>
+    <string name="aura_tools">Инструменты</string>
+    <string name="aura_show_tools">Показать</string>
+    <string name="aura_hide_tools">Скрыть</string>
+    <string name="aura_all">Все задачи</string>
+    <string name="aura_model_setup">Настроить модель</string>
+    <string name="aura_confirm">Проверить и подтвердить</string>
+    <string name="aura_queued">В очереди</string>
+    <string name="aura_reply">Добавить ответ</string>
+    <string name="aura_takeover">Открыть и взять управление</string>
+    <string name="aura_progress">Посмотреть ход работы</string>
+    <string name="aura_finished">Результат готов</string>
+    <string name="aura_result_unconfirmed">Результат требует проверки</string>
+    <string name="aura_stopped">Остановлено</string>
+    <string name="aura_incomplete">Не удалось завершить</string>
+    <string name="aura_examples">Попробуйте попросить Aura</string>
+    <string name="aura_swipe">Смахните для других примеров</string>
+    <string name="aura_phone">Телефон и приложения</string>
+    <string name="aura_phone_example">Поставь будильник на семь утра завтра</string>
+    <string name="aura_call_example">Позвони контакту и скажи, что я опоздаю на десять минут</string>
+    <string name="aura_answer_example">Отвечай на звонки по моим правилам и составляй краткое резюме</string>
+    <string name="aura_scene_example">При подключении к домашнему Wi-Fi напомни проверить замок двери</string>
+    <string name="aura_setup">Настроить</string>
+    <string name="aura_try">Использовать этот пример</string>
+</resources>

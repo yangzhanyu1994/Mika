@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">Hai, saya Mika</string>
+    <string name="welcome_title">Hai, saya Aura</string>
     <string name="welcome_lead">Asisten pribadi di ponsel Anda.\nBilang saja apa yang harus dikerjakan, dan saya selesaikan di latar belakang.</string>
     <string name="welcome_note">Sebelum mulai: atur model dan aktifkan kontrol ponsel. Sekitar 3 menit.</string>
     <string name="welcome_start">Mulai</string>

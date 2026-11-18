@@ -75,13 +75,13 @@ android {
         // 真机验收时并排安装,保留发行版和用户数据;默认构建标识不变。
         if (providers.gradleProperty("devInstall").isPresent) getByName("debug") {
             applicationIdSuffix = ".dev"
-            resValue("string", "app_name", "Mika Dev")
+            resValue("string", "app_name", "Aura Dev")
         }
         // 用户 Fork 的正式发布包:独立包名,可与原版并装;更新使用稳定的 Fork 签名密钥。
         create("forkRelease") {
             initWith(getByName("release"))
             applicationIdSuffix = ".fork"
-            resValue("string", "app_name", "Mika Fork")
+            resValue("string", "app_name", "Aura")
             signingConfig = signingConfigs.getByName("forkRelease")
             matchingFallbacks += "release"
         }
@@ -101,7 +101,7 @@ android {
             versionNameSuffix = "-logs"
             isDebuggable = true
             isProfileable = false
-            resValue("string", "app_name", "Mika Logs")
+            resValue("string", "app_name", "Aura Logs")
             buildConfigField("boolean", "ADB_LOGS", "true")
             matchingFallbacks += "release"
         }

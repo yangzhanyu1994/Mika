@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aura_home_title">你的手机数字助理</string>
+    <string name="aura_speak">点按说话</string>
+    <string name="aura_input">交给 Aura 一件事</string>
+    <string name="aura_new">新建任务</string>
+    <string name="aura_tools">工具</string>
+    <string name="aura_show_tools">展开</string>
+    <string name="aura_hide_tools">收起</string>
+    <string name="aura_all">查看全部</string>
+    <string name="aura_model_setup">配置模型</string>
+    <string name="aura_confirm">查看并确认</string>
+    <string name="aura_queued">排队中</string>
+    <string name="aura_reply">补充信息</string>
+    <string name="aura_takeover">打开并接管</string>
+    <string name="aura_progress">查看进度</string>
+    <string name="aura_finished">查看结果</string>
+    <string name="aura_result_unconfirmed">结果待核实</string>
+    <string name="aura_stopped">已停止</string>
+    <string name="aura_incomplete">未完成</string>
+    <string name="aura_examples">试试这样用</string>
+    <string name="aura_swipe">左右滑动</string>
+    <string name="aura_phone">手机与应用</string>
+    <string name="aura_phone_example">打开时钟，给明天早上 7 点设个闹钟</string>
+    <string name="aura_call_example">给指定联系人打个电话，转达我会晚到十分钟</string>
+    <string name="aura_answer_example">符合规则的来电，帮我接听并生成摘要</string>
+    <string name="aura_scene_example">连上家里的 Wi-Fi 时，提醒我检查门锁</string>
+    <string name="aura_setup">去设置</string>
+    <string name="aura_try">使用此示例</string>
+</resources>

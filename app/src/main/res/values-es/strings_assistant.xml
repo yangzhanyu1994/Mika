@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Escribe o habla con Mika</string>
+    <string name="assistant_input">Escribe o habla con Aura</string>
     <string name="assistant_take_screenshot">Adjuntar pantalla</string>
-    <string name="assistant_screenshot_unavailable">No se pudo adjuntar la pantalla. Comprueba el ajuste de captura del asistente y el acceso de accesibilidad de Mika.</string>
+    <string name="assistant_screenshot_unavailable">No se pudo adjuntar la pantalla. Comprueba el ajuste de captura del asistente y el acceso de accesibilidad de Aura.</string>
     <string name="assistant_camera_permission">Permite el acceso a la cámara para hacer una foto.</string>
     <string name="assistant_stop_listening">Finalizar dictado</string>
     <string name="assistant_preview_photo">Vista previa de la foto</string>
     <string name="assistant_preview_screen">Vista previa de la captura</string>
-    <string name="assistant_send_failed">Mika no pudo iniciar la tarea. Tu borrador sigue aquí.</string>
-    <string name="assistant_model_required">Configura un modelo en Mika antes de enviar la tarea.</string>
+    <string name="assistant_send_failed">Aura no pudo iniciar la tarea. Tu borrador sigue aquí.</string>
+    <string name="assistant_model_required">Configura un modelo en Aura antes de enviar la tarea.</string>
     <string name="assistant_clear">Borrar borrador</string>
 </resources>

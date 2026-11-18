@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">입력하거나 Mika에게 말하세요</string>
+    <string name="assistant_input">입력하거나 Aura에게 말하세요</string>
     <string name="assistant_take_screenshot">화면 첨부</string>
-    <string name="assistant_screenshot_unavailable">화면을 첨부할 수 없습니다. 시스템 어시스턴트 스크린샷 설정과 Mika의 접근성 권한을 확인하세요.</string>
+    <string name="assistant_screenshot_unavailable">화면을 첨부할 수 없습니다. 시스템 어시스턴트 스크린샷 설정과 Aura의 접근성 권한을 확인하세요.</string>
     <string name="assistant_camera_permission">사진을 찍으려면 카메라 접근을 허용하세요.</string>
     <string name="assistant_stop_listening">받아쓰기 종료</string>
     <string name="assistant_preview_photo">사진 미리보기</string>
     <string name="assistant_preview_screen">스크린샷 미리보기</string>
-    <string name="assistant_send_failed">Mika가 작업을 시작하지 못했습니다. 초안은 그대로 있습니다.</string>
-    <string name="assistant_model_required">작업을 보내기 전에 Mika에서 모델을 설정하세요.</string>
+    <string name="assistant_send_failed">Aura가 작업을 시작하지 못했습니다. 초안은 그대로 있습니다.</string>
+    <string name="assistant_model_required">작업을 보내기 전에 Aura에서 모델을 설정하세요.</string>
     <string name="assistant_clear">초안 지우기</string>
 </resources>

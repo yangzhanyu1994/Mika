@@ -55,6 +55,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +68,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -281,8 +281,12 @@ fun ChatDrawer(
     onDeleteSelected: () -> Unit = {},
     /** 批量删除的进度和结果;在底部显示,删完过几秒由外面清掉。 */
     deleteBatch: DeleteBatch? = null,
+    needsAttention: Set<String> = emptySet(),
 ) {
     val c = MikaTheme.colors
+    var toolsExpanded by rememberSaveable { mutableStateOf(false) }
+    val attention = sections.running.filter { it.id in needsAttention }
+    val backgroundRuns = sections.running.filterNot { it.id in needsAttention }
     // 能勾的就是列在侧栏里、已经存过的对话(还没存过的当前草稿没有编号,删不了)
     val selectableIds = remember(sections) {
         (sections.running + sections.pinned + sections.recent).mapNotNull { it.id }.toSet()
@@ -293,9 +297,7 @@ fun ChatDrawer(
     val searchActive = canSearch && !selecting && query.isNotBlank()
     Column(
         Modifier.fillMaxHeight().widthIn(max = DrawerWidth).fillMaxWidth()
-            .clip(DrawerShape).background(
-                if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.bg))
-                else Brush.verticalGradient(listOf(c.surface.copy(alpha = 0.92f), c.bg.copy(alpha = 0.88f))), DrawerShape)
+            .clip(DrawerShape).background(c.surface, DrawerShape)
             .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars))
             .testTag("drawer"),
     ) {
@@ -307,7 +309,7 @@ fun ChatDrawer(
         ) {
             MikaLogo(36.dp, corner = 10.dp)
             Column(Modifier.weight(1f)) {
-                Text("Mika", style = MikaType.Title, color = c.ink)
+                Text(stringResource(R.string.app_name), style = MikaType.Title, color = c.ink)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Box(Modifier.size(6.dp).background(if (ok) c.ok else c.warnSolid, CircleShape))
                     Text(state, style = MikaType.Hint, fontWeight = FontWeight.Medium, color = c.ink3)
@@ -320,29 +322,20 @@ fun ChatDrawer(
                     HeaderAction(stringResource(R.string.drawer_select), "drawer-select", c.accent, onStartSelect)
             }
         }
-        if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
-        // 搜索、多选时把几个入口收起来，把高度让给列表;退出后原样回来。入口本身不再分组。
-        if (!searchActive && !selecting) Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (!searchActive && !selecting) {
             MikaButton(
-                stringResource(R.string.drawer_new_chat), onNew,
-                Modifier.fillMaxWidth().testTag("drawer-new"),
+                stringResource(R.string.aura_new), onNew,
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).testTag("drawer-new"),
                 size = ButtonSize.Medium, enabled = canSwitch,
             )
-            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
-            NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
-            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
-            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
-            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
-            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
-            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
-                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
-                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
         }
+        if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
         // 侧栏关着时列表只剩末尾那一项;打开时对话插在它前面,列表会按原来那一项停在最底下。最上面一项变了就回到顶上
         val list = rememberLazyListState()
         val first = when {
             searchActive -> "h-search"
-            sections.running.isNotEmpty() -> "h-running"
+            attention.isNotEmpty() -> "h-attention"
+            backgroundRuns.isNotEmpty() -> "h-running"
             sections.pinned.isNotEmpty() -> "h-pinned"
             sections.recent.isNotEmpty() -> "h-recent"
             else -> "end"
@@ -370,10 +363,16 @@ fun ChatDrawer(
                     item("search-more") { SearchHint(stringResource(R.string.drawer_search_truncated, ConversationSearch.MAX_HITS)) }
                 }
             } else {
-                if (sections.running.isNotEmpty()) {
+                if (attention.isNotEmpty()) {
+                    item("h-attention") { SectionLabel(stringResource(R.string.takeover_title)) }
+                    items(attention, key = { "a-${it.id}" }) {
+                        ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
+                    }
+                }
+                if (backgroundRuns.isNotEmpty()) {
                     // 「进行中」这一段的右边进「后台屏」页:看每个在跑的任务正在用哪个 App、实时画面
                     item("h-running") { RunningLabel(onScreens) }
-                    items(sections.running, key = { "r-${it.id}" }) {
+                    items(backgroundRuns, key = { "r-${it.id}" }) {
                         ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
                     }
                 }
@@ -400,6 +399,27 @@ fun ChatDrawer(
                     if (sections.pinned.isEmpty()) busyNote()
                     items(sections.recent, key = { "c-${it.id}" }) {
                         ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
+                    }
+                }
+            }
+            if (!searchActive && !selecting) {
+                item("aura-tools") {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        NavEntry(MikaIcons.Apps, stringResource(R.string.aura_tools),
+                            trailing = stringResource(if (toolsExpanded) R.string.aura_hide_tools else R.string.aura_show_tools)) {
+                            toolsExpanded = !toolsExpanded
+                        }
+                        if (toolsExpanded) {
+                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
+                            NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
+                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
+                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
+                                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null, onClick = onCalls)
+                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
+                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
+                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
+                            NavEntry(MikaIcons.Screens, stringResource(R.string.drawer_screens), onClick = onScreens)
+                        }
                     }
                 }
             }
@@ -765,6 +785,8 @@ fun ChatWithDrawer(
     onReopened: () -> Unit = {},
     onPersonal: () -> Unit = {},
     onRegularChat: () -> Unit = {},
+    onNewHome: () -> Unit = onRegularChat,
+    needsAttention: Set<String> = emptySet(),
     /** 外部跳回对话页时变化:若之前因返回键留在展开的侧栏,当场收起侧栏。 */
     resetKey: Int = 0,
     content: @Composable (openDrawer: () -> Unit) -> Unit,
@@ -948,7 +970,8 @@ fun ChatWithDrawer(
                     onQueryChange = { query = it },
                     search = searchView,
                     canSearch = candidates.isNotEmpty(),
-                    onNew = { close { vm.newConversation(); onRegularChat() } },
+                    onNew = { close { vm.newConversation(); onNewHome() } },
+                    needsAttention = needsAttention,
                     onPersonal = { leave(onPersonal) },
                     onPlans = { leave(onPlans) },
                     onScenes = { leave(onScenes) },
