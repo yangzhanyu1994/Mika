@@ -22,4 +22,6 @@
     <string name="assistant_searching">جارٍ البحث</string>
     <string name="assistant_looking">جارٍ التحقق</string>
     <string name="assistant_thinking">جارٍ التفكير</string>
+    <string name="assistant_result_speech_setup">اضبط ميزة الصوت الفوري من Doubao في إعدادات الصوت لسماع نتائج المهام.</string>
+    <string name="assistant_result_speech_failed">تعذّر تشغيل النتيجة. تحقّق من صلاحية استخدام الصوت الفوري من Doubao في إعدادات الصوت.</string>
 </resources>

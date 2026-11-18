@@ -22,4 +22,6 @@
     <string name="assistant_searching">Mencari</string>
     <string name="assistant_looking">Memeriksa</string>
     <string name="assistant_thinking">Sedang berpikir</string>
+    <string name="assistant_result_speech_setup">Siapkan suara real-time Doubao di pengaturan suara untuk mendengarkan hasil tugas.</string>
+    <string name="assistant_result_speech_failed">Hasil tidak dapat diputar. Periksa akses suara real-time Doubao di pengaturan suara.</string>
 </resources>

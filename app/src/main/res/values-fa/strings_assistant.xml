@@ -22,4 +22,6 @@
     <string name="assistant_searching">در حال جستجو</string>
     <string name="assistant_looking">در حال بررسی</string>
     <string name="assistant_thinking">در حال فکر کردن</string>
+    <string name="assistant_result_speech_setup">برای شنیدن نتیجهٔ کارها، گفتار بی‌درنگ Doubao را در تنظیمات صدا پیکربندی کنید.</string>
+    <string name="assistant_result_speech_failed">پخش نتیجه ممکن نبود. در تنظیمات صدا دسترسی به گفتار بی‌درنگ Doubao را بررسی کنید.</string>
 </resources>

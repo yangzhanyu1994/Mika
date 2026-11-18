@@ -22,4 +22,6 @@
     <string name="assistant_searching">Pesquisando</string>
     <string name="assistant_looking">Consultando</string>
     <string name="assistant_thinking">Pensando</string>
+    <string name="assistant_result_speech_setup">Configure a voz em tempo real do Doubao nas configurações de voz para ouvir os resultados das tarefas.</string>
+    <string name="assistant_result_speech_failed">Não foi possível reproduzir o resultado. Verifique o acesso à voz em tempo real do Doubao nas configurações de voz.</string>
 </resources>
