@@ -1510,6 +1510,7 @@ internal fun Composer(
     sendFromIme: Boolean = false,
     draftKey: String? = null,
     idlePlaceholder: String? = null,
+    sendEnabled: Boolean = true,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1666,7 +1667,7 @@ internal fun Composer(
                         maxLines = 5,
                         keyboardOptions = if (sendFromIme) KeyboardOptions(imeAction = ImeAction.Send) else KeyboardOptions.Default,
                         keyboardActions = if (sendFromIme) KeyboardActions(onSend = {
-                            if (AttachTray.canSend(text, attachments, importing)) onSend()
+                            if (sendEnabled && AttachTray.canSend(text, attachments, importing)) onSend()
                         }) else KeyboardActions.Default,
                     )
                     // 服务商松开后在转:输入框里转圈,转好的字填进来
@@ -1675,7 +1676,7 @@ internal fun Composer(
                         Box(Modifier.matchParentSize().holdToTalk(vh) { field.requestFocus(); keyboard?.show() })
                     }
                 }
-                val canSend = AttachTray.canSend(text, attachments, importing)
+                val canSend = sendEnabled && AttachTray.canSend(text, attachments, importing)
                 // 键盘出来以后长按输入框留给系统选字;话筒按住才听,点一下只提示按住
                 if (fieldFocused && vh != null) {
                     val hint = stringResource(R.string.voice_hold_to_talk)

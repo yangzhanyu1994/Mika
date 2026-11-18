@@ -71,6 +71,7 @@ class AssistantOverlayTest {
             reply.value = AssistantReply("任务完成", List(45) { "第 ${it + 1} 段回复。" }.joinToString("\n\n"))
             history.value = listOf(AssistantExchange(question, reply.value.body))
         }
+        compose.onNodeWithText("第 45 段回复。").assertIsDisplayed()
         compose.onNode(hasSetTextAction()).assertIsDisplayed()
         compose.onNodeWithContentDescription("发送").assertIsDisplayed()
     }
