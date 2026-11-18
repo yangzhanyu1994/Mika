@@ -15,7 +15,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +81,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var history by mutableStateOf<List<AssistantExchange>>(emptyList())
     private var pendingQuestion by mutableStateOf<String?>(null)
     private var pendingAfter = 0
+    private var revealTurn by mutableStateOf<Int?>(null)
     private var previousRun: String? = null
     private var replyJob: Job? = null
     private var pendingPhoto: Uri? = null
@@ -144,6 +144,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 text = savedInstanceState.getString("assistantQuestion").orEmpty()
                 pendingQuestion = savedInstanceState.getString("assistantPendingQuestion")
                 pendingAfter = savedInstanceState.getInt("assistantPendingAfter", 0)
+                revealTurn = pendingAfter.takeIf { pendingQuestion != null }
                 previousRun = savedInstanceState.getString("assistantPreviousRun")
                 showReply(id)
             }
@@ -158,16 +159,11 @@ class AssistantOverlayActivity : ComponentActivity() {
         window.isNavigationBarContrastEnforced = false
         val appearance = AssistantAppearance(this)
         setContent {
-            val avatar by produceState<Bitmap?>(null) { value = appearance.avatar() }
-            val face by produceState<AvatarEyes?>(null, avatar) {
-                value = withContext(Dispatchers.Default) { avatar?.let { AvatarEyes.detect(it) } }
-            }
             MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = animationsOff(this)) {
                 SettingsAppearance {
                     AssistantOverlay(
-                        avatar = avatar,
-                        face = face,
                         history = history,
+                        revealTurn = revealTurn,
                         pendingQuestion = pendingQuestion,
                         awaitingReply = pendingQuestion != null,
                         displayName = appearance.name,
@@ -408,6 +404,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 text = ""
                 pendingQuestion = words
                 pendingAfter = baseline
+                revealTurn = baseline
                 previousRun = oldRun
                 if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) showReply(id) else finish()
             } catch (e: CancellationException) {
@@ -465,9 +462,11 @@ class AssistantOverlayActivity : ComponentActivity() {
             )
             is TaskState.Running -> AssistantReply(
                 getString(assistantProgressLabel(state.tool)),
+                body = state.preview.orEmpty(),
                 running = true,
                 waiting = true,
-                thinking = state.tool == null,
+                searching = assistantProgressLabel(state.tool) == R.string.assistant_searching ||
+                    assistantProgressLabel(state.tool) == R.string.assistant_looking,
             )
             is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued)
             else -> AssistantReply(title, body)

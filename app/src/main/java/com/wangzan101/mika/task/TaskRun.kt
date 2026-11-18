@@ -57,6 +57,7 @@ import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.settings.MemorySwitches
 import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.core.model.ModelRole
+import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.replay.RouteMatcher
 import com.wangzan101.mika.core.replay.RouteRecorder
@@ -134,6 +135,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -452,6 +454,9 @@ class TaskRun(
         }
     }
 
+    private val _conversationUsage = MutableStateFlow(ConversationTokens(0L, 0, 0))
+    internal val conversationUsage = _conversationUsage.asStateFlow()
+
     /** 运行事件里界面要跟的两样:实际做过的事,和插话已交给模型。 */
     private val liveEvents = object : RunSink {
         override fun event(e: RunEvent) {
@@ -526,7 +531,13 @@ class TaskRun(
         var runStore: RunStore? = null
         // 整个运行共用一份已报告 Token 预算；子任务沿用协程上下文里的这份，不另开额度。
         val tokenBudget = if (conditionCheck) null else FeatureFlags.get(service).taskTokenBudget()
-        val tally = RunUsageTally(tokenBudget)
+        val tally = RunUsageTally(tokenBudget) { usage, attempts ->
+            _conversationUsage.update { total ->
+                val used = usage?.let { it.inputTokens.toLong() + it.outputTokens } ?: 0L
+                val unreported = if (usage == null) attempts.coerceAtLeast(1) else (attempts - 1).coerceAtLeast(0)
+                ConversationTokens(total.tokens + used, total.turns + 1, total.missing + unreported)
+            }
+        }
         // 第一次打开网址时才建;没建过就不用关
         var webStack: WebStack? = null
         // 当前界面(手机/网页)要看分发器;画中画的画面来源随它切换

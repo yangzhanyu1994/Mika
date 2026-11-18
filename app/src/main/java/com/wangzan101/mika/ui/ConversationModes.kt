@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,7 +49,8 @@ import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.ui.components.PageBackground
 import com.wangzan101.mika.ui.components.pageBackground
-import com.wangzan101.mika.ui.components.TopBar
+import com.wangzan101.mika.core.record.ConversationTokens
+import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
@@ -59,26 +61,53 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun ConversationModeHeader(chat: Boolean, model: String?, onMode: (Boolean) -> Unit, onModel: () -> Unit) {
+internal fun ConversationModeHeader(
+    chat: Boolean,
+    model: String?,
+    usage: ConversationTokens?,
+    onMode: (Boolean) -> Unit,
+    onModel: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    onNew: (() -> Unit)? = null,
+    runningElsewhere: Boolean = false,
+    profile: (@Composable () -> Unit)? = null,
+    title: String? = null,
+) {
     val c = MikaTheme.colors
-    Column(Modifier.fillMaxWidth().pageBackground(c.bg).padding(bottom = 6.dp)) {
-        Row(
-            Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(1f / 3)
-                .clip(RoundedCornerShape(24.dp)).background(c.fill).selectableGroup(),
-        ) {
-            listOf(true to R.string.mode_chat, false to R.string.mode_work).forEach { (value, label) ->
-                Box(
-                    Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
-                        .then(if (value == chat) Modifier.background(c.accentSoft) else Modifier)
-                        .selectable(selected = value == chat, onClick = { onMode(value) }, role = Role.Tab),
-                    contentAlignment = Alignment.Center,
-                ) { Text(stringResource(label), color = c.ink, style = MikaType.Caption) }
+    Column(Modifier.fillMaxWidth().pageBackground(c.bg).statusBarsPadding().padding(bottom = 6.dp)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+            Box(Modifier.align(Alignment.CenterStart)) {
+                BarIconButton(MikaIcons.Menu, stringResource(R.string.chat_menu), onOpenDrawer, badge = runningElsewhere)
+            }
+            Row(
+                Modifier.align(Alignment.Center).fillMaxWidth(1f / 3)
+                    .clip(RoundedCornerShape(24.dp)).background(c.fill).selectableGroup(),
+            ) {
+                listOf(true to R.string.mode_chat, false to R.string.mode_work).forEach { (value, label) ->
+                    Box(
+                        Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
+                            .then(if (value == chat) Modifier.background(c.accentSoft) else Modifier)
+                            .selectable(selected = value == chat, onClick = { onMode(value) }, role = Role.Tab),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(stringResource(label), color = c.ink, style = MikaType.Caption) }
+                }
+            }
+            if (onNew != null) Box(Modifier.align(Alignment.CenterEnd)) {
+                BarIconButton(MikaIcons.New, stringResource(R.string.mode_new_thread), onNew)
             }
         }
-        TextButton(onClick = onModel, modifier = Modifier.padding(start = 6.dp)) {
-            val label = stringResource(if (chat) R.string.mode_chat_model else R.string.mode_work_model)
-            Text(stringResource(R.string.mode_model_value, label, model ?: stringResource(R.string.settings_not_set)),
-                color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        profile?.invoke()
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            if (!title.isNullOrBlank()) Text(title, style = MikaType.Label, color = c.ink,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                stringResource(R.string.mode_current_model, model ?: stringResource(R.string.settings_not_set)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                    .clickable(role = Role.Button, onClick = onModel).padding(vertical = 8.dp),
+                color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text(currentConversationTokenText(usage), color = c.ink2, style = MikaType.Caption,
+                modifier = Modifier.padding(bottom = 6.dp))
         }
     }
 }
@@ -120,12 +149,14 @@ internal fun ResearchConversationScreen(
     onTransfer: (Turn) -> Unit,
 ) {
     val c = MikaTheme.colors
-    val stored by produceState(emptyList<Turn>(), id) {
+    val loaded by produceState<List<Turn>?>(null, id) {
+        value = null
         if (id == null) return@produceState
         app.conversations.changes.filter { it == id }.onStart { emit(id) }.collect {
             value = withContext(Dispatchers.IO) { app.conversations.turns(id).filter { it.research } }
         }
     }
+    val stored = loaded.orEmpty()
     val pending by app.researchChat.pending.collectAsState()
     val working = id?.let(pending::get)?.takeUnless { live ->
         stored.lastOrNull()?.atMs == live.startedAt
@@ -138,14 +169,15 @@ internal fun ResearchConversationScreen(
     var draft by rememberSaveable { mutableStateOf("") }
     PageBackground {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
-            TopBar(
-                id?.let { app.conversations.title(it) } ?: stringResource(R.string.mode_new_thread),
-                left = MikaIcons.Menu, onLeft = onOpenDrawer, leftLabel = stringResource(R.string.chat_menu),
-                right = {
-                    IconButton(onClick = onNew) { Icon(MikaIcons.New, stringResource(R.string.mode_new_thread)) }
-                },
-            )
-            ConversationModeHeader(true, model, onMode, onModel)
+            val usage = if (id == null || loaded != null) {
+                conversationUsage(
+                    stored.map { it.reportedTokens } + listOfNotNull(working?.reportedTokens),
+                    stored.count { it.usageIncomplete && it.reportedTokens != null } +
+                        if (working != null && (working.reportedTokens == null || working.usageIncomplete)) 1 else 0,
+                )
+            } else null
+            ConversationModeHeader(true, model, usage, onMode, onModel, onOpenDrawer, onNew,
+                title = id?.let(app.conversations::title))
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
                 state = scroll,

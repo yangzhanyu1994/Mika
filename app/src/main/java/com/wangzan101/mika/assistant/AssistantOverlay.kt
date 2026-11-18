@@ -2,16 +2,10 @@ package com.wangzan101.mika.assistant
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +22,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
@@ -53,13 +46,16 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.advanceResearchText
+import com.wangzan101.mika.ui.ResearchReplyHaptics
+import com.wangzan101.mika.ui.ResearchThinkingOrb
+import kotlinx.coroutines.delay
 import com.wangzan101.mika.task.TaskEdgeLight
 import com.wangzan101.mika.ui.MarkdownText
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -71,7 +67,7 @@ internal data class AssistantReply(
     val body: String = "",
     val running: Boolean = false,
     val waiting: Boolean = false,
-    val thinking: Boolean = false,
+    val searching: Boolean = false,
     val completed: Boolean = false,
 )
 
@@ -100,18 +96,29 @@ internal fun AssistantOverlay(
     onClose: () -> Unit,
     reply: AssistantReply? = null,
     onOpenConversation: () -> Unit = {},
-    avatar: Bitmap? = null,
     displayName: String = "",
     animateAvatar: Boolean = true,
-    face: AvatarEyes? = null,
     history: List<AssistantExchange> = emptyList(),
     pendingQuestion: String? = null,
+    revealTurn: Int? = null,
     awaitingReply: Boolean = false,
 ) {
     val c = MikaTheme.colors
     val glow by animateFloatAsState(if (listening) 1f else 0.48f, label = "assistant glow")
     val running = reply?.running == true
     val reducedMotion = MikaTheme.reduceMotion
+    val target = revealTurn?.let { index ->
+        history.getOrNull(index)?.answer ?: reply?.body.orEmpty()
+    }.orEmpty()
+    var revealed by remember(revealTurn) { mutableStateOf("") }
+    LaunchedEffect(revealTurn, target, reducedMotion) {
+        if (reducedMotion) revealed = target
+        else while (target != revealed) {
+            revealed = advanceResearchText(revealed, target)
+            if (target != revealed) delay(24)
+        }
+    }
+    ResearchReplyHaptics(revealTurn?.toString(), revealed)
     val taskGlow = remember { mutableFloatStateOf(1f) }
     LaunchedEffect(running, reducedMotion) {
         if (running && !reducedMotion) {
@@ -158,15 +165,10 @@ internal fun AssistantOverlay(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
-                            AssistantAvatar(
-                                avatar, 48.dp, eyes = face,
-                                motion = when {
-                                    !animateAvatar || reducedMotion -> null
-                                    reply?.waiting == true && reply.thinking -> AvatarExpression.Thinking
-                                    reply?.waiting == true -> AvatarExpression.Working
-                                    reply?.completed == true -> AvatarExpression.Done
-                                    else -> null
-                                },
+                            ResearchThinkingOrb(
+                                searching = reply?.searching == true,
+                                diameter = 48.dp,
+                                animated = animateAvatar,
                             )
                             Text(displayName.ifBlank { stringResource(R.string.app_name) },
                                 style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -189,26 +191,29 @@ internal fun AssistantOverlay(
                     }
                     if (reply != null || history.isNotEmpty()) {
                         val scroll = rememberScrollState()
-                        LaunchedEffect(pendingQuestion) {
-                            if (pendingQuestion != null) {
-                                withFrameNanos {}
-                                scroll.scrollTo(scroll.maxValue)
-                            }
+                        var previousMax by remember { mutableStateOf(0) }
+                        var previousTurn by remember { mutableStateOf<Int?>(null) }
+                        LaunchedEffect(pendingQuestion, revealTurn, revealed, history.size) {
+                            val newTurn = previousTurn != revealTurn
+                            previousTurn = revealTurn
+                            val follow = newTurn || (!scroll.isScrollInProgress && scroll.value >= previousMax)
+                            withFrameNanos {}
+                            if (follow) scroll.scrollTo(scroll.maxValue)
+                            previousMax = scroll.maxValue
                         }
                         Column(
                             Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(scroll),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            history.forEach { turn ->
+                            history.forEachIndexed { index, turn ->
                                 AssistantQuestion(turn.question, Modifier.align(Alignment.End))
-                                AssistantAnswer(turn.answer)
+                                if (index == revealTurn) AssistantAnswer(revealed, streaming = revealed != target)
+                                else AssistantAnswer(turn.answer)
                             }
                             if (pendingQuestion != null) {
                                 AssistantQuestion(pendingQuestion, Modifier.align(Alignment.End))
-                                if (reply?.waiting == true) {
-                                    AssistantWaiting(avatar, face, animateAvatar && !reducedMotion, reply.thinking)
-                                }
-                                if (reply?.body?.isNotBlank() == true) AssistantAnswer(reply.body)
+                                val body = if (revealTurn != null) revealed else reply?.body.orEmpty()
+                                AssistantAnswer(body, streaming = reply?.running == true || body != reply?.body.orEmpty())
                             }
                         }
                         TextButton(onClick = onOpenConversation) {
@@ -304,42 +309,14 @@ private fun AssistantQuestion(question: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AssistantAnswer(answer: String) {
+private fun AssistantAnswer(answer: String, streaming: Boolean = false) {
     if (answer.isBlank()) return
     val c = MikaTheme.colors
     MarkdownText(
         answer, MaterialTheme.typography.bodyMedium.copy(color = c.ink),
         Modifier.fillMaxWidth().background(c.fill, RoundedCornerShape(16.dp)).padding(10.dp),
+        streaming = streaming,
     )
-}
-
-@Composable
-private fun AssistantWaiting(avatar: Bitmap?, eyes: AvatarEyes?, animate: Boolean, thinking: Boolean) {
-    val c = MikaTheme.colors
-    val lift = if (animate) rememberInfiniteTransition(label = "assistant waiting avatar").animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(720), RepeatMode.Reverse), label = "avatar lift",
-    ) else null
-    Row(
-        Modifier.padding(top = 8.dp).clearAndSetSemantics {},
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AssistantAvatar(
-            avatar, 30.dp, Modifier.border(1.dp, c.accent.copy(alpha = 0.6f), CircleShape), eyes,
-            when {
-                !animate -> null
-                thinking -> AvatarExpression.Thinking
-                else -> AvatarExpression.Working
-            },
-        )
-        repeat(3) { index ->
-            Box(Modifier.size(4.dp).graphicsLayer {
-                alpha = if (lift == null) 0.65f else (0.3f + 0.7f *
-                    (1f - kotlin.math.abs(lift.value - index / 2f) * 1.25f).coerceAtLeast(0f))
-            }.background(c.accent, CircleShape))
-        }
-    }
 }
 
 @Composable

@@ -22,7 +22,7 @@ class ForkReleaseHistoryTest {
         val entries = ForkReleaseHistory.parse(source)
         assertEquals(listOf("0.1.65", "0.1.64"), entries.map { it.version })
         assertEquals("- First update.", entries[0].notes)
-        assertEquals("- Older update.", entries[1].notes)
+        assertEquals("- Older update.", entries[2].notes)
         assertTrue(ForkReleaseHistory.parse("no changelog").isEmpty())
     }
 
@@ -37,16 +37,18 @@ class ForkReleaseHistoryTest {
     @Test fun bundledHistoryContainsRecentVersionsInOrder() {
         val source = File("src/main/assets/fork-release-history.md").readText()
         val entries = ForkReleaseHistory.parse(source)
-        assertEquals(listOf("0.1.84", "0.1.83", "0.1.82", "0.1.81", "0.1.80", "0.1.77"), entries.take(6).map { it.version })
+        assertEquals(listOf("0.1.85", "0.1.84", "0.1.83", "0.1.82", "0.1.81", "0.1.80", "0.1.77"), entries.take(7).map { it.version })
         assertEquals("0.1.40", entries.last().version)
-        assertEquals(43, entries.size)
-        assertTrue(entries.first().notes.contains("流式回复"))
-        assertTrue(entries.first().notes.contains("聊天动效"))
-        assertTrue(entries[1].notes.contains("动态头像"))
-        assertTrue(entries[1].notes.contains("浮窗续聊"))
-        assertTrue(entries[2].notes.contains("助手外观"))
-        assertTrue(entries[3].notes.contains("后台蓝光"))
-        assertTrue(entries[4].notes.contains("首页引导"))
-        assertTrue(entries[5].notes.contains("系统动态配色"))
+        assertEquals(44, entries.size)
+        assertTrue(entries.first().notes.contains("数字助理浮窗"))
+        assertTrue(entries.first().notes.contains("任务侧栏"))
+        assertTrue(entries[1].notes.contains("流式回复"))
+        assertTrue(entries[1].notes.contains("聊天动效"))
+        assertTrue(entries[2].notes.contains("动态头像"))
+        assertTrue(entries[2].notes.contains("浮窗续聊"))
+        assertTrue(entries[3].notes.contains("助手外观"))
+        assertTrue(entries[4].notes.contains("后台蓝光"))
+        assertTrue(entries[5].notes.contains("首页引导"))
+        assertTrue(entries[6].notes.contains("系统动态配色"))
     }
 }

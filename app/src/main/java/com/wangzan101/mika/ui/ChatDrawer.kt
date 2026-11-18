@@ -2,7 +2,6 @@ package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
-import com.wangzan101.mika.ui.components.DirectionalIcon
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.geometry.Offset
@@ -56,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -242,7 +242,7 @@ private const val MAX_RECENT = 50
  * 打开和关上由外面的抽屉管,这里只摆内容,点了什么交给回调。
  */
 @Composable
-fun ChatDrawer(
+internal fun ChatDrawer(
     check: Prerequisites.Check,
     sections: DrawerSections,
     canSwitch: Boolean,
@@ -255,6 +255,11 @@ fun ChatDrawer(
     canSearch: Boolean = false,
     onNew: () -> Unit,
     onPlans: () -> Unit,
+    onCreatePlan: () -> Unit = onPlans,
+    onCreateCall: () -> Unit = {},
+    onOpenPlan: (String) -> Unit = { onPlans() },
+    onOpenCallTask: (String) -> Unit = {},
+    tasks: DrawerTasks = DrawerTasks(),
     onScenes: () -> Unit = {},
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
@@ -321,27 +326,15 @@ fun ChatDrawer(
             }
         }
         if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
-        // 搜索、多选时把几个入口收起来，把高度让给列表;退出后原样回来。入口本身不再分组。
-        if (!searchActive && !selecting) Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            MikaButton(
-                stringResource(R.string.drawer_new_chat), onNew,
-                Modifier.fillMaxWidth().testTag("drawer-new"),
-                size = ButtonSize.Medium, enabled = canSwitch,
-            )
-            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
-            NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
-            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
-            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
-            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
-            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
-            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
-                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
-                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
-        }
-        // 侧栏关着时列表只剩末尾那一项;打开时对话插在它前面,列表会按原来那一项停在最底下。最上面一项变了就回到顶上
+        var newExpanded by rememberSaveable { mutableStateOf(false) }
+        var runningExpanded by rememberSaveable { mutableStateOf(true) }
+        var scheduledExpanded by rememberSaveable { mutableStateOf(false) }
+        var automationExpanded by rememberSaveable { mutableStateOf(false) }
+        var callsExpanded by rememberSaveable { mutableStateOf(false) }
         val list = rememberLazyListState()
         val first = when {
             searchActive -> "h-search"
+            !selecting -> "h-new"
             sections.running.isNotEmpty() -> "h-running"
             sections.pinned.isNotEmpty() -> "h-pinned"
             sections.recent.isNotEmpty() -> "h-recent"
@@ -370,11 +363,85 @@ fun ChatDrawer(
                     item("search-more") { SearchHint(stringResource(R.string.drawer_search_truncated, ConversationSearch.MAX_HITS)) }
                 }
             } else {
-                if (sections.running.isNotEmpty()) {
-                    // 「进行中」这一段的右边进「后台屏」页:看每个在跑的任务正在用哪个 App、实时画面
-                    item("h-running") { RunningLabel(onScreens) }
+                if (!selecting) {
+                    item("h-new") {
+                        DrawerTaskLabel(R.string.drawer_task_new, newExpanded, onToggle = { newExpanded = !newExpanded })
+                    }
+                    if (newExpanded) item("task-shortcuts") {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                            MikaButton(stringResource(R.string.drawer_new_chat), onNew,
+                                Modifier.fillMaxWidth().testTag("drawer-new"), size = ButtonSize.Medium, enabled = canSwitch)
+                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
+                            NavEntry(MikaIcons.Clock, stringResource(R.string.plans_add), onClick = onCreatePlan)
+                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title), onClick = onCreateCall)
+                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
+                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
+                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
+                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
+                        }
+                    }
+                    item("h-running") {
+                        DrawerTaskLabel(R.string.drawer_task_running, runningExpanded, sections.running.size,
+                            onToggle = { runningExpanded = !runningExpanded })
+                    }
+                }
+                if ((runningExpanded && !selecting) || (selecting && sections.running.isNotEmpty())) {
+                    if (selecting) item("h-running") { SectionLabel(stringResource(R.string.drawer_task_running)) }
+                    if (!selecting && sections.running.isEmpty()) item("running-empty") { DrawerTaskEmpty() }
                     items(sections.running, key = { "r-${it.id}" }) {
                         ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
+                    }
+                    if (!selecting && sections.running.isNotEmpty()) item("running-screens") {
+                        NavEntry(MikaIcons.Screens, stringResource(R.string.drawer_screens),
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("drawer-screens"), onClick = onScreens)
+                    }
+                }
+                if (!selecting) {
+                    item("h-scheduled") {
+                        DrawerTaskLabel(R.string.drawer_task_scheduled, scheduledExpanded, tasks.scheduled.size,
+                            onToggle = { scheduledExpanded = !scheduledExpanded })
+                    }
+                    if (scheduledExpanded) {
+                        if (tasks.scheduled.isEmpty()) item("scheduled-empty") { DrawerTaskEmpty() }
+                        items(tasks.scheduled, key = { "splan-${it.id}" }) { task ->
+                            DrawerTaskEntry(task.title, task.detail) { onOpenPlan(task.id) }
+                        }
+                        item("scheduled-manage") {
+                            NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onPlans)
+                        }
+                    }
+                    item("h-automation") {
+                        DrawerTaskLabel(R.string.drawer_task_automation, automationExpanded, tasks.automation.size,
+                            onToggle = { automationExpanded = !automationExpanded })
+                    }
+                    if (automationExpanded) {
+                        if (tasks.automation.isEmpty()) item("automation-empty") { DrawerTaskEmpty() }
+                        items(tasks.automation, key = { "auto-${it.source}-${it.id}" }) { task ->
+                            DrawerTaskEntry(task.title, task.detail) {
+                                if (task.source == DrawerTaskSource.Plan) onOpenPlan(task.id) else onScenes()
+                            }
+                        }
+                        item("automation-manage") {
+                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onScenes)
+                        }
+                    }
+                    item("h-calls") {
+                        DrawerTaskLabel(R.string.drawer_task_calls, callsExpanded, tasks.calls.size,
+                            unread = unhandledCalls > 0, onToggle = { callsExpanded = !callsExpanded })
+                    }
+                    if (callsExpanded) {
+                        if (tasks.calls.isEmpty()) item("calls-empty") { DrawerTaskEmpty() }
+                        items(tasks.calls, key = { "call-${it.id}" }) { task ->
+                            DrawerTaskEntry(task.title, task.detail) { onOpenCallTask(task.id) }
+                        }
+                        item("calls-manage") {
+                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
+                                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
+                        }
                     }
                 }
                 // 换不了对话时的说明放在第一段存着的对话(置顶或最近)上面
@@ -508,25 +575,6 @@ private fun NavEntry(
             } else 1f
             Text(trailing, Modifier.alpha(opacity), style = MikaType.Hint,
                 color = if (flashing) c.accent else c.ink3, maxLines = 1, softWrap = false)
-        }
-    }
-}
-
-/** 「进行中」的段标题,右边一个「后台屏 ›」进后台屏页(只有有任务在跑时才有这一段)。 */
-@Composable
-private fun RunningLabel(onScreens: () -> Unit) {
-    val c = MikaTheme.colors
-    Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.weight(1f)) { SectionLabel(stringResource(R.string.drawer_running)) }
-        Row(
-            Modifier.clip(NavShape).clickable(role = Role.Button, onClick = onScreens)
-                .padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 4.dp).testTag("drawer-screens"),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(MikaIcons.Screens, null, Modifier.size(14.dp), tint = c.ink3)
-            Text(stringResource(R.string.drawer_screens), style = MikaType.Hint, color = c.ink2)
-            DirectionalIcon(MikaIcons.Chevron, null, Modifier.size(10.dp), tint = c.ink3)
         }
     }
 }
@@ -749,6 +797,10 @@ fun ChatWithDrawer(
     /** 侧栏搜索用的索引;没有时侧栏不显示搜索框。 */
     search: ConversationSearch? = null,
     onPlans: () -> Unit,
+    onCreatePlan: () -> Unit = onPlans,
+    onCreateCall: () -> Unit = {},
+    onOpenPlan: (String) -> Unit = { onPlans() },
+    onOpenCallTask: (String) -> Unit = {},
     onScenes: () -> Unit = {},
     onMemory: () -> Unit,
     onBrowser: () -> Unit,
@@ -942,8 +994,9 @@ fun ChatWithDrawer(
                     (sections.running + sections.pinned + sections.recent).mapNotNull { it.id }.toSet()
                 }
                 LaunchedEffect(selectableIds) { selected = selected intersect selectableIds }
+                val tasks = rememberDrawerTasks(open)
                 ChatDrawer(
-                    check, sections, canSwitch,
+                    check, sections, canSwitch, tasks = tasks,
                     query = query,
                     onQueryChange = { query = it },
                     search = searchView,
@@ -951,6 +1004,10 @@ fun ChatWithDrawer(
                     onNew = { close { vm.newConversation(); onRegularChat() } },
                     onPersonal = { leave(onPersonal) },
                     onPlans = { leave(onPlans) },
+                    onCreatePlan = { leave(onCreatePlan) },
+                    onCreateCall = { leave(onCreateCall) },
+                    onOpenPlan = { id -> leave { onOpenPlan(id) } },
+                    onOpenCallTask = { id -> leave { onOpenCallTask(id) } },
                     onScenes = { leave(onScenes) },
                     onMemory = { leave(onMemory) },
                     onSettings = { leave(onSettings) },

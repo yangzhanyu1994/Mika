@@ -17,6 +17,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -29,13 +30,13 @@ import kotlin.math.sin
 
 /** Native dotted orb inspired by https://github.com/Jakubantalik/thinking-orbs. */
 @Composable
-internal fun ResearchThinkingOrb(searching: Boolean) {
+internal fun ResearchThinkingOrb(searching: Boolean, diameter: Dp = 24.dp, animated: Boolean = true) {
     val c = MikaTheme.colors
-    val motion = if (MikaTheme.reduceMotion) null else rememberInfiniteTransition(label = "research orb").animateFloat(
+    val motion = if (!animated || MikaTheme.reduceMotion) null else rememberInfiniteTransition(label = "research orb").animateFloat(
         initialValue = 0f, targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(tween(2_400, easing = LinearEasing)), label = "research orb phase",
     )
-    Canvas(Modifier.size(24.dp)) {
+    Canvas(Modifier.size(diameter)) {
         val phase = motion?.value ?: 0.9f
         val radius = size.minDimension * 0.39f
         val dot = size.minDimension * 0.038f

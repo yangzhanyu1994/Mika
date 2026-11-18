@@ -24,6 +24,7 @@ private fun stripReplyMetadata(text: String): String = replyMetadata.replaceFirs
 data class PersonalMessage(
     val id: String, val role: String, val text: String, val at: Long,
     val taskId: String? = null, val handled: Boolean = true, val error: Boolean = false,
+    val reportedTokens: Long? = null, val usageIncomplete: Boolean = false,
 ) {
     /** 旧版的模型可能把历史前缀照抄进回复，只清理这类机器格式。 */
     fun conversationText(): String = if (role == "assistant") stripReplyMetadata(text) else text

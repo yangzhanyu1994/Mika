@@ -166,7 +166,8 @@ class PersonalRuntime(private val app: MikaApp) {
         store.update {
             it.copy(messages = it.messages + listOf(
                 PersonalMessage(UUID.randomUUID().toString(), "user", turn.userText, at),
-                PersonalMessage(UUID.randomUUID().toString(), "assistant", turn.outcome, at, error = turn.status != "succeeded"),
+                PersonalMessage(UUID.randomUUID().toString(), "assistant", turn.outcome, at,
+                    error = turn.status != "succeeded", reportedTokens = turn.reportedTokens, usageIncomplete = turn.usageIncomplete),
             ))
         }
     }

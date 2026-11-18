@@ -20,4 +20,16 @@
     <string name="mode_new_thread">新对话</string>
     <string name="mode_chat_error">Mika 没能完成这次回复，请重试。</string>
     <string name="mode_model_value">%1$s · %2$s</string>
+    <string name="mode_current_model">当前模型：%1$s</string>
+    <string name="mode_current_tokens">当前对话已使用 Token：%1$s</string>
+    <string name="mode_tokens_partial">至少 %1$s</string>
+    <string name="mode_tokens_unavailable">暂未上报</string>
+    <string name="drawer_task_new">新建任务</string>
+    <string name="drawer_task_running">正在进行</string>
+    <string name="drawer_task_scheduled">预约任务</string>
+    <string name="drawer_task_automation">自动化任务</string>
+    <string name="drawer_task_calls">电话任务</string>
+    <string name="drawer_task_empty">暂无任务</string>
+    <string name="drawer_task_expanded">已展开</string>
+    <string name="drawer_task_collapsed">已折叠</string>
 </resources>

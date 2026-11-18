@@ -64,6 +64,8 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
     onPickSpeech: () -> Unit = {},
     openTaskComposer: Boolean = false,
     onTaskComposerOpened: () -> Unit = {},
+    focusTaskId: String? = null,
+    onFocusTaskConsumed: () -> Unit = {},
 ) {
     var instructionsOpen by rememberSaveable { mutableStateOf(false) }
     var briefOpen by rememberSaveable { mutableStateOf(false) }
@@ -85,6 +87,15 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
             briefOpen = false
             creatingTask = true
             onTaskComposerOpened()
+        }
+    }
+    LaunchedEffect(focusTaskId) {
+        if (focusTaskId != null) {
+            val selected = withContext(Dispatchers.IO) {
+                runCatching { runtime.tasks.snapshot().firstOrNull { it.id == focusTaskId } }.getOrNull()
+            }
+            if (selected != null) editingTaskId = selected.id
+            onFocusTaskConsumed()
         }
     }
     when {
