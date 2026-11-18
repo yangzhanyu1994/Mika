@@ -518,6 +518,7 @@ private fun MikaRoot(
             else {
                 app.chat.openConversation(requestedConversation)
                 nav.reset()
+                selectedChat = false
             }
             onConversationOpened()
         }
