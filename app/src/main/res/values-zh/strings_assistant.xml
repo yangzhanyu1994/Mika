@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">跟随工作模型</string>
     <string name="mode_work_draft_pending">工作区有待处理的草稿或任务，请处理后再发送。</string>
     <string name="assistant_readout_unavailable">暂时无法播报，请检查「设置 → 语音播报」。</string>
+    <string name="assistant_mode_auto">自动</string>
+    <string name="assistant_mode_chat">聊天</string>
+    <string name="assistant_mode_work">工作</string>
+    <string name="assistant_routing">正在判断用哪种模式…</string>
+    <string name="assistant_routing_unavailable">暂时无法自动分流。请选择聊天或工作，再发送一次。</string>
 </resources>

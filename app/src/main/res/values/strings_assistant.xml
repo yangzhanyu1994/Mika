@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">Follow Work</string>
     <string name="mode_work_draft_pending">Finish the existing Work draft or task before sending this request.</string>
     <string name="assistant_readout_unavailable">Could not read the result aloud. Check Settings › Voice readout.</string>
+    <string name="assistant_mode_auto">Auto</string>
+    <string name="assistant_mode_chat">Chat</string>
+    <string name="assistant_mode_work">Work</string>
+    <string name="assistant_routing">Choosing a mode…</string>
+    <string name="assistant_routing_unavailable">Couldn’t choose a mode. Select Chat or Work and send again.</string>
 </resources>

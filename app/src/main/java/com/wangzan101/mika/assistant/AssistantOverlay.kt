@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,6 +76,12 @@ internal data class AssistantReply(
 
 internal data class AssistantExchange(val question: String, val answer: String)
 
+internal enum class AssistantMode(val label: Int) {
+    Auto(R.string.assistant_mode_auto),
+    Chat(R.string.assistant_mode_chat),
+    Work(R.string.assistant_mode_work),
+}
+
 @Composable
 internal fun AssistantOverlay(
     text: String,
@@ -103,6 +111,8 @@ internal fun AssistantOverlay(
     pendingQuestion: String? = null,
     revealTurn: Int? = null,
     awaitingReply: Boolean = false,
+    mode: AssistantMode = AssistantMode.Auto,
+    onMode: (AssistantMode) -> Unit = {},
 ) {
     val c = MikaTheme.colors
     val glow by animateFloatAsState(if (listening) 1f else 0.48f, label = "assistant glow")
@@ -221,10 +231,33 @@ internal fun AssistantOverlay(
                             Text(stringResource(R.string.assistant_open_conversation), color = c.accent)
                         }
                     }
-                    if (text.isNotBlank() || screenshot != null || photo != null) {
-                        IconButton(onClick = onClear, enabled = !sending,
-                            modifier = Modifier.align(Alignment.End).size(36.dp)) {
-                            Icon(MikaIcons.Trash, stringResource(R.string.assistant_clear), tint = c.ink2)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val hasMedia = screenshot != null || photo != null
+                        var selectMode by remember { mutableStateOf(false) }
+                        Box {
+                            TextButton(
+                                onClick = { selectMode = true },
+                                enabled = !sending && !awaitingReply && !hasMedia,
+                            ) {
+                                Text(stringResource((if (hasMedia) AssistantMode.Work else mode).label))
+                            }
+                            DropdownMenu(expanded = selectMode, onDismissRequest = { selectMode = false }) {
+                                AssistantMode.entries.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(option.label)) },
+                                        onClick = { selectMode = false; onMode(option) },
+                                    )
+                                }
+                            }
+                        }
+                        if (text.isNotBlank() || hasMedia) {
+                            IconButton(onClick = onClear, enabled = !sending, modifier = Modifier.size(36.dp)) {
+                                Icon(MikaIcons.Trash, stringResource(R.string.assistant_clear), tint = c.ink2)
+                            }
                         }
                     }
                     if (partial.isNotBlank()) {
