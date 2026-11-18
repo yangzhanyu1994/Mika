@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
+import com.wangzan101.mika.ui.components.DirectionalIcon
 import com.wangzan101.mika.i18n.tr
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
@@ -294,11 +295,11 @@ fun ChatDrawer(
             .testTag("drawer"),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 20.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 5.dp, bottom = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            MikaLogo(58.dp, corner = 14.dp)
+            MikaLogo(34.dp, corner = 9.dp)
             Text(stringResource(R.string.app_name), Modifier.weight(1f), style = DrawerBrand,
                 color = drawerInk(), maxLines = 1, overflow = TextOverflow.Ellipsis)
             when {
@@ -316,16 +317,16 @@ fun ChatDrawer(
         }
         if (!selecting) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 15.dp).clip(NavShape)
-                    .background(if (canSwitch) drawerBlue() else c.fill)
-                    .clickable(enabled = canSwitch, role = Role.Button, onClick = onNew)
-                    .heightIn(min = 48.dp).padding(horizontal = 22.dp, vertical = 8.dp)
-                    .testTag("drawer-new"),
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp).clip(NavShape)
+                    .clickable(enabled = canSwitch, role = Role.Button, onClick = onNew).testTag("drawer-new")
+                    .heightIn(min = 48.dp).padding(vertical = 4.dp).clip(NavShape)
+                    .background(if (canSwitch) drawerActionFill() else c.fill)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val contentColor = if (canSwitch) Color.White else c.ink3
-                Icon(MikaIcons.Plus, null, Modifier.size(25.dp), tint = contentColor)
+                val contentColor = if (canSwitch) drawerActionInk() else c.ink3
+                Icon(MikaIcons.Plus, null, Modifier.size(18.dp), tint = contentColor)
                 Text(stringResource(R.string.aura_new), style = DrawerLabel, color = contentColor)
             }
             if (canSearch) DrawerSearchField(query, onQueryChange)
@@ -354,26 +355,24 @@ fun ChatDrawer(
                     item("search-more") { SearchHint(stringResource(R.string.drawer_search_truncated, ConversationSearch.MAX_HITS)) }
                 }
             } else {
-                item("h-attention") { SectionLabel(stringResource(R.string.aura_drawer_attention)) }
-                if (attention.isEmpty()) item("no-attention") { DrawerEmpty() }
+                item("h-attention") { SectionLabel(stringResource(R.string.aura_drawer_attention), count = attention.size) }
                 items(attention, key = { "a-${it.id}" }) {
                     ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected,
                         onToggleSelect = onToggleSelect, compact = true, leading = MikaIcons.PaperPlane, showRunningDot = false)
                 }
-                item("h-running") { SectionLabel(stringResource(R.string.drawer_running)) }
-                if (backgroundRuns.isEmpty()) item("no-running") { DrawerEmpty() }
+                item("h-running") { SectionLabel(stringResource(R.string.drawer_running), count = backgroundRuns.size) }
                 items(backgroundRuns, key = { "r-${it.id}" }) {
                     ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected,
                         onToggleSelect = onToggleSelect, compact = true, leading = MikaIcons.Calendar)
                 }
                 if (!selecting) {
-                    item("h-appointments") { SectionLabel(stringResource(R.string.aura_drawer_appointments)) }
+                    item("h-appointments") { SectionLabel(stringResource(R.string.aura_drawer_appointments), count = appointments.size, divider = true) }
                     item("appointments") { AutomationPreview(MikaIcons.Clock, appointments, onPlans) }
-                    item("h-scenes") { SectionLabel(stringResource(R.string.aura_drawer_automations)) }
+                    item("h-scenes") { SectionLabel(stringResource(R.string.aura_drawer_automations), count = scenes.size) }
                     item("scenes") { AutomationPreview(MikaIcons.Layers, scenes, onScenes) }
                 }
                 val recent = sections.pinned + sections.recent
-                item("h-recent") { SectionLabel(stringResource(R.string.aura_drawer_recent)) }
+                item("h-recent") { SectionLabel(stringResource(R.string.aura_drawer_recent), divider = true) }
                 if (!canSwitch && recent.isNotEmpty()) {
                     item("busy") {
                         Text(stringResource(R.string.drawer_busy), Modifier.padding(horizontal = 20.dp),
@@ -388,7 +387,7 @@ fun ChatDrawer(
             }
             if (!searchActive && !selecting) {
                 item("aura-tools") {
-                    Column(Modifier.padding(horizontal = 15.dp, vertical = 16.dp)) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
                         NavEntry(MikaIcons.Layers, stringResource(R.string.aura_tools), Modifier.fillMaxWidth().testTag("drawer-tools"),
                             expanded = toolsExpanded) {
                             toolsExpanded = !toolsExpanded
@@ -416,7 +415,7 @@ fun ChatDrawer(
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 15.dp)
                     .drawBehind { drawLine(c.hair, Offset.Zero, Offset(size.width, 0f), 0.5.dp.toPx()) }
-                    .padding(vertical = 6.dp).testTag("drawer-footer"),
+                    .padding(vertical = 2.dp).testTag("drawer-footer"),
             ) {
                 NavEntry(MikaIcons.Gear, stringResource(R.string.aura_settings), Modifier.fillMaxWidth(),
                     trailing = if (aboutDot) stringResource(R.string.drawer_update_available) else null,
@@ -487,25 +486,28 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
 private fun NavEntry(
     icon: ImageVector, text: String, modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true, dot: Boolean = false, trailing: String? = null,
-    flashing: Boolean = false, reduceMotion: Boolean = false, expanded: Boolean? = null, onClick: () -> Unit,
+    flashing: Boolean = false, reduceMotion: Boolean = false, expanded: Boolean? = null,
+    showChevron: Boolean = false, onClick: () -> Unit,
 ) {
     val c = MikaTheme.colors
     Row(
-        modifier.heightIn(min = 52.dp).clip(NavShape)
+        modifier.heightIn(min = 46.dp).clip(NavShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.4f)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = drawerInk())
+        Icon(icon, null, Modifier.size(18.dp), tint = drawerMutedInk())
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text, style = DrawerLabel, color = drawerInk(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(text, style = DrawerLabel, color = drawerInk(), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (dot) UpdateDot()
         }
         if (expanded != null) {
             val label = stringResource(if (expanded) R.string.aura_hide_tools else R.string.aura_show_tools)
-            Icon(MikaIcons.Chevron, label, Modifier.size(18.dp).rotate(if (expanded) -90f else 90f), tint = drawerInk())
+            Icon(MikaIcons.Chevron, label, Modifier.size(15.dp).rotate(if (expanded) -90f else 90f), tint = drawerMutedInk())
+        } else if (showChevron) {
+            DirectionalIcon(MikaIcons.Chevron, null, Modifier.size(14.dp), tint = drawerMutedInk())
         }
         if (trailing != null) {
             val opacity = if (flashing && !reduceMotion) {
@@ -522,8 +524,8 @@ private fun NavEntry(
 private fun AutomationPreview(icon: ImageVector, entries: List<String>, onOpen: () -> Unit) {
     NavEntry(
         icon, entries.firstOrNull() ?: stringResource(R.string.aura_all),
-        Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-        trailing = if (entries.size > 1) "+${entries.size - 1}" else null,
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+        showChevron = true,
         onClick = onOpen,
     )
 }
@@ -535,11 +537,24 @@ private fun DrawerEmpty() {
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text, Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 3.dp),
-        style = SectionText, color = drawerMutedInk(),
-    )
+private fun SectionLabel(text: String, count: Int? = null, divider: Boolean = false) {
+    val c = MikaTheme.colors
+    val muted = drawerMutedInk()
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp)
+            .then(if (divider) Modifier.drawBehind {
+                drawLine(c.hair, Offset.Zero, Offset(size.width, 0f), 0.5.dp.toPx())
+            } else Modifier)
+            .padding(top = if (divider) 10.dp else 5.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text, Modifier.weight(1f), style = SectionText, color = muted)
+        if (count != null) Text(
+            java.text.NumberFormat.getIntegerInstance(uiLocale()).format(count), style = SectionText,
+            color = if (count > 0) drawerActionInk() else muted,
+        )
+    }
 }
 
 /**
@@ -593,25 +608,24 @@ internal fun ConversationEntry(
             .padding(horizontal = 8.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(vertical = 8.dp),
+            Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (selectable) SelectMark(selected)
             if (compact) {
                 val icon = leading ?: when {
                     item.pinned -> MikaIcons.Pin
                     item.branch -> MikaIcons.Route
-                    item.site != null -> MikaIcons.Globe
-                    else -> MikaIcons.TaskList
+                    else -> null
                 }
-                Icon(icon, if (item.pinned) stringResource(R.string.drawer_pinned_mark) else null,
-                    Modifier.size(24.dp).then(if (item.pinned) Modifier.testTag("conversation-pin") else Modifier),
-                    tint = drawerInk())
+                if (icon != null) Icon(icon, if (item.pinned) stringResource(R.string.drawer_pinned_mark) else null,
+                    Modifier.size(16.dp).then(if (item.pinned) Modifier.testTag("conversation-pin") else Modifier),
+                    tint = drawerMutedInk())
                 Text(item.title, Modifier.weight(1f), style = DrawerLabel, color = drawerInk(),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (item.running && showRunningDot) {
-                    Box(Modifier.padding(end = 4.dp).size(8.dp).background(drawerBlue(), CircleShape))
+                    Box(Modifier.padding(end = 4.dp).size(6.dp).background(drawerBlue(), CircleShape))
                 }
                 if (item.site != null) Text(PageAskCopy.WEB, Modifier.testTag("conversation-web"),
                     style = ConversationTag, color = drawerMutedInk(), maxLines = 1)
@@ -754,14 +768,20 @@ internal fun DeleteManyConversationsDialog(
 internal const val MENU_IN_MS = 200
 internal const val MENU_OUT_MS = 140
 internal val NavShape = RoundedCornerShape(12.dp)
-private val DrawerBrand = TextStyle(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
-private val DrawerLabel = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)
-private val SectionText = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+private val DrawerBrand = TextStyle(fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
+private val DrawerLabel = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
+private val SectionText = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
 
 @Composable
 internal fun drawerInk() = if (MikaTheme.colors.isDark) Color(0xFFF1F5FC) else Color(0xFF111F33)
 @Composable
 internal fun drawerMutedInk() = if (MikaTheme.colors.isDark) Color(0xFFA9B8CD) else Color(0xFF546173)
+@Composable
+private fun drawerActionFill() = if (MikaTheme.colors.isDark) Color(0xFF203954) else Color(0xFFEAF2FD)
+
+@Composable
+private fun drawerActionInk() = if (MikaTheme.colors.isDark) Color(0xFFA8CDFF) else Color(0xFF235D9E)
+
 @Composable
 internal fun drawerBlue() = if (MikaTheme.colors.isDark) Color(0xFF2868BC) else Color(0xFF185FBE)
 private val ConversationTitle = TextStyle(fontSize = 14.5.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
