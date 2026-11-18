@@ -2,11 +2,13 @@ package com.wangzan101.mika.ui
 
 import android.graphics.Bitmap
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +48,7 @@ class ChatRecommendationTest {
         override fun decline(key: Int) {}
     }
 
-    private fun show() {
+    private fun show(onGuide: (String) -> Unit = {}, habits: List<String> = listOf("记下门禁密码")) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = ConversationStore(File(context.cacheDir, "chat-recommendation-test-" + UUID.randomUUID()))
         val vm = ChatViewModel(
@@ -55,18 +58,41 @@ class ChatRecommendationTest {
         compose.setContent {
             ChatScreen(
                 vm, Prerequisites.Check(emptyList()), MutableStateFlow<Bitmap?>(null), MutableStateFlow(false),
-                reduceMotion = true, onOpenDrawer = {}, openSettings = {},
-                habitSuggestions = listOf("记下门禁密码"),
+                reduceMotion = true, onOpenDrawer = { onGuide("more") }, openSettings = {},
+                habitSuggestions = habits,
+                onCreatePlan = { onGuide("plan") },
+                onCreateCall = { onGuide("call") },
+                onExploreSkills = { onGuide("skills") },
             )
         }
         compose.waitForIdle()
+    }
+
+    private fun tapRow(title: String) {
+        compose.onNodeWithTag("chat-list").performScrollToNode(hasText(title))
+        compose.onNodeWithText(title).performClick()
+    }
+
+    @Test fun homeGuidesOpenTheirDestinationsWithoutReplacingDraft() {
+        val selected = mutableListOf<String>()
+        show(onGuide = { selected.add(it) }, habits = emptyList())
+        val draft = "保留我的草稿"
+        compose.onNodeWithTag("composer-field").performTextInput(draft)
+
+        tapRow("设置自动化任务")
+        tapRow("使用 AI 电话")
+        tapRow("探索技能")
+        tapRow("发现更多")
+
+        compose.runOnIdle { assertEquals(listOf("plan", "call", "skills", "more"), selected) }
+        compose.onNodeWithTag("composer-field").assertTextEquals(draft)
     }
 
     @Test fun emptyDraftIsPrefilledDirectly() {
         show()
         val recommendation = "记下门禁密码"
         org.junit.Assert.assertTrue(compose.onAllNodesWithText("github.com/wangzan101/mika", substring = true).fetchSemanticsNodes().isEmpty())
-        compose.onNodeWithText(recommendation).performClick()
+        tapRow(recommendation)
         compose.onNodeWithTag("composer-field").assertTextEquals(recommendation)
         compose.onNodeWithText("替换当前草稿？").assertDoesNotExist()
     }
@@ -77,13 +103,13 @@ class ChatRecommendationTest {
         val recommendation = "记下门禁密码"
         compose.onNodeWithTag("composer-field").performTextInput(original)
 
-        compose.onNodeWithText(recommendation).performClick()
+        tapRow(recommendation)
         compose.onNodeWithText("替换当前草稿？").assertExists()
         compose.onNodeWithTag("composer-field").assertTextEquals(original)
         compose.onNodeWithText("取消").performClick()
         compose.onNodeWithTag("composer-field").assertTextEquals(original)
 
-        compose.onNodeWithText(recommendation).performClick()
+        tapRow(recommendation)
         compose.onNodeWithTag("confirm-replace-draft").performClick()
         compose.onNodeWithTag("composer-field").assertTextEquals(recommendation)
     }

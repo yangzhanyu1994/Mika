@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">إنشاء مهمة تلقائية</string>
-    <string name="home_chip_call">إنشاء مهمة اتصال بالذكاء الاصطناعي</string>
-    <string name="home_chip_assistant">المساعد الشخصي</string>
+    <string name="home_guide_plan">إعداد مهمة تلقائية</string>
+    <string name="home_guide_plan_detail">مثل تذكيري بمراجعة جدولي كل صباح في الثامنة</string>
+    <string name="home_guide_call">استخدام الاتصال بالذكاء الاصطناعي</string>
+    <string name="home_guide_call_detail">مثل الاتصال بمندوب التوصيل وإبلاغه برسالة</string>
+    <string name="home_guide_skills">استكشاف المهارات</string>
+    <string name="home_guide_skills_detail">تعرّف على ما يمكنني مساعدتك في إنجازه أيضًا</string>
+    <string name="home_guide_more">اكتشف المزيد</string>
+    <string name="home_guide_more_detail">اعثر على مزيد من الميزات التي قد تستخدمها</string>
     <string name="hint_home_remind">ذكّرني بالاجتماع غدًا الساعة 8</string>
     <string name="hint_home_courier">إذا اتصل المندوب، اطلب منه تركها عند الباب</string>
     <string name="hint_home_property">اتصل بالإدارة واسأل عن موقف السيارات</string>
