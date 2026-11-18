@@ -21,4 +21,5 @@
     <string name="assistant_wait_animation">待機アニメーション</string>
     <string name="assistant_searching">検索中</string>
     <string name="assistant_looking">確認中</string>
+    <string name="assistant_thinking">考え中</string>
 </resources>
