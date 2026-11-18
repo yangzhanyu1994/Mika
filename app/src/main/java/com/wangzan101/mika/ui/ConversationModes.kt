@@ -32,6 +32,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +57,7 @@ import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onStart
@@ -72,6 +75,7 @@ internal fun ConversationModeHeader(
     runningElsewhere: Boolean = false,
     profile: (@Composable () -> Unit)? = null,
     title: String? = null,
+    reasoning: (@Composable () -> Unit)? = null,
 ) {
     val c = MikaTheme.colors
     Column(Modifier.fillMaxWidth().pageBackground(c.bg).statusBarsPadding().padding(bottom = 6.dp)) {
@@ -100,12 +104,15 @@ internal fun ConversationModeHeader(
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             if (!title.isNullOrBlank()) Text(title, style = MikaType.Label, color = c.ink,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-            Text(
-                stringResource(R.string.mode_current_model, model ?: stringResource(R.string.settings_not_set)),
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                    .clickable(role = Role.Button, onClick = onModel).padding(vertical = 8.dp),
-                color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.mode_current_model, model ?: stringResource(R.string.settings_not_set)),
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                        .clickable(role = Role.Button, onClick = onModel).padding(vertical = 8.dp),
+                    color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                if (reasoning != null) Box(Modifier.weight(1f)) { reasoning() }
+            }
             Text(currentConversationTokenText(usage), color = c.ink2, style = MikaType.Caption,
                 modifier = Modifier.padding(bottom = 6.dp))
         }
@@ -145,7 +152,7 @@ internal fun ResearchConversationScreen(
     onNew: () -> Unit,
     onMode: (Boolean) -> Unit,
     onModel: () -> Unit,
-    onSend: (String) -> Boolean,
+    onSend: suspend (String) -> Boolean,
     onTransfer: (Turn) -> Unit,
 ) {
     val c = MikaTheme.colors
@@ -167,6 +174,8 @@ internal fun ResearchConversationScreen(
         if (working != null) scroll.scrollToItem(0)
     }
     var draft by rememberSaveable { mutableStateOf("") }
+    var routing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     PageBackground {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
             val usage = if (id == null || loaded != null) {
@@ -177,7 +186,9 @@ internal fun ResearchConversationScreen(
                 )
             } else null
             ConversationModeHeader(true, model, usage, onMode, onModel, onOpenDrawer, onNew,
-                title = id?.let(app.conversations::title))
+                title = id?.let(app.conversations::title), reasoning = {
+                    ConversationReasoning(app.providers, com.wangzan101.mika.core.model.ModelRole.Chat)
+                })
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
                 state = scroll,
@@ -222,8 +233,18 @@ internal fun ResearchConversationScreen(
                     },
                 )
                 IconButton(
-                    enabled = draft.isNotBlank() && id?.let(pending::containsKey) != true,
-                    onClick = { if (onSend(draft.trim())) draft = "" },
+                    enabled = !routing && draft.isNotBlank() && id?.let(pending::containsKey) != true,
+                    onClick = {
+                        val submitted = draft
+                        routing = true
+                        scope.launch {
+                            try {
+                                if (onSend(submitted.trim()) && draft == submitted) draft = ""
+                            } finally {
+                                routing = false
+                            }
+                        }
+                    },
                 ) { Icon(MikaIcons.Up, stringResource(R.string.chat_send)) }
             }
         }

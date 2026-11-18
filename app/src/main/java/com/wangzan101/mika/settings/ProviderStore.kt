@@ -228,13 +228,22 @@ data class RoleChoices(
         ModelRole.Vision -> copy(vision = choice)
         ModelRole.Light -> if (choice == RoleChoice.Off) null else copy(light = choice)
     })?.let { next ->
-        if (get(role) == choice) next else next.copy(reasoningEfforts = reasoningEfforts - role)
+        if (get(role) == choice) next
+        else {
+            val changed = if (role == ModelRole.Main && chat == RoleChoice.SameAsMain) {
+                reasoningEfforts - ModelRole.Chat - role
+            } else reasoningEfforts - role
+            next.copy(reasoningEfforts = changed)
+        }
     }
 
-    fun reasoningEffort(role: ModelRole): String? = when (get(role)) {
-        is RoleChoice.Model -> reasoningEfforts[role]
-        RoleChoice.SameAsMain -> main?.let { reasoningEfforts[ModelRole.Main] }
-        else -> null
+    fun hasOwnReasoning(role: ModelRole): Boolean =
+        get(role) is RoleChoice.Model || (role == ModelRole.Chat && resolve(role) != null)
+
+    fun reasoningEffort(role: ModelRole): String? {
+        val saved = if (hasOwnReasoning(role)) reasoningEfforts[role] else null
+        if (saved != null) return saved.takeUnless { it == MODEL_DEFAULT_REASONING }
+        return if (get(role) == RoleChoice.SameAsMain && main != null) reasoningEffort(ModelRole.Main) else null
     }
 
     /** 指向 [valid] 之外的选择退回默认:主模型变成没选,看图不用,轻量用主模型。 */
@@ -245,10 +254,12 @@ data class RoleChoices(
             vision = if (vision.gone()) RoleChoice.Off else vision,
             light = if (light.gone()) RoleChoice.SameAsMain else light,
             chat = if (chat.gone()) RoleChoice.SameAsMain else chat,
-            reasoningEfforts = reasoningEfforts.filterKeys { role -> (get(role) as? RoleChoice.Model)?.configId in valid },
+            reasoningEfforts = reasoningEfforts.filterKeys { role -> hasOwnReasoning(role) && resolve(role) in valid },
         )
     }
 }
+
+internal const val MODEL_DEFAULT_REASONING = "model-default"
 
 /**
  * 建一个模型客户端时额外给的:[headers] 每个请求都带(客户端标识、会话号,见 [ClientHeaders]);
@@ -525,11 +536,13 @@ class ProviderStore(
     /** 只改这个用途;不支持的协议、跟随主模型的用途或列表明确不支持的档位不接受。 */
     @Synchronized
     fun setReasoningEffort(role: ModelRole, effort: String?): Boolean {
-        if (_roles.value[role] !is RoleChoice.Model) return false
+        if (!_roles.value.hasOwnReasoning(role)) return false
         val cfg = configFor(role) ?: return false
         val listed = provider(cfg.providerId)?.models?.firstOrNull { it.id == cfg.model }
         val options = ReasoningOptions.of(cfg, listed)
-        if (effort != null && (options == null || effort !in options.levels)) return false
+        val independentDefault = role == ModelRole.Chat && _roles.value[role] == RoleChoice.SameAsMain &&
+            effort == MODEL_DEFAULT_REASONING
+        if (!independentDefault && effort != null && (options == null || effort !in options.levels)) return false
         _roles.value = _roles.value.copy(reasoningEfforts =
             if (effort == null) _roles.value.reasoningEfforts - role else _roles.value.reasoningEfforts + (role to effort))
         writeConfig()
@@ -614,6 +627,13 @@ class ProviderStore(
     fun modelFor(role: ModelRole, session: ModelSession = ModelSession.fresh()): ChatModel? =
         meteredFor(role, session, UsagePurpose.of(role), ::checkDailyBudget)
 
+    /** Use only the configured conversation providers and do not inherit the reply's chosen effort. */
+    internal fun conversationRoutingModel(): ChatModel? {
+        val role = if (configFor(ModelRole.Chat) != null) ModelRole.Chat else ModelRole.Main
+        val cfg = configFor(role) ?: return null
+        return meteredWith(cfg, role, ModelSession.fresh(), UsagePurpose.of(role), ::checkDailyBudget, routing = true)
+    }
+
     /**
      * 主动能力用的模型:轻量模型,没有时用主模型;用量记在 [UsagePurpose.Proactive] 名下。
      * 每次请求前只查主动能力自己的每日预算(见 [ProactiveBudget]),不查也不占服务商的每日预算。
@@ -649,6 +669,7 @@ class ProviderStore(
         cfg: ProviderConfig, role: ModelRole, session: ModelSession, purpose: UsagePurpose, beforeCall: (UsageSource) -> Unit,
         call: ProactiveCall = ProactiveCall.Triage,
         beforeRetry: (UsageSource, Int) -> Unit = { _, _ -> },
+        routing: Boolean = false,
     ): ChatModel {
         val p = provider(cfg.providerId)
         val source = UsageSource(cfg.providerId, p?.name ?: cfg.name, cfg.model, purpose)
@@ -662,6 +683,8 @@ class ProviderStore(
         // 主动能力:思考取服务商写明的最低档;回复短的那两种请求另设上限(见 ProactiveModelSetup)
         val (effort, cap) = if (purpose == UsagePurpose.Proactive) {
             ProactiveModelSetup.of(adapterFor(cfg, listed?.endpoint).first, ReasoningOptions.of(cfg, listed), roleEffort, call)
+        } else if (routing) {
+            ProactiveModelSetup.lowestDeclared(ReasoningOptions.of(cfg, listed)) to null
         } else roleEffort to null
         return modelFactory(configured, apiKey(cfg.id), listed?.endpoint, ClientSetup(
             headers(p?.sessionHeader, session), maxOutputTokens = cap, reasoningEffort = effort,
@@ -1036,7 +1059,7 @@ class ProviderStore(
             val cfg = configFor(role) ?: return@mapNotNull null
             val listed = provider(cfg.providerId)?.models?.firstOrNull { it.id == cfg.model }
             val options = ReasoningOptions.of(cfg, listed)
-            if (options == null || effort in options.levels) role to effort else null
+            if (effort == MODEL_DEFAULT_REASONING || options == null || effort in options.levels) role to effort else null
         }.toMap()
         _roles.value = _roles.value.copy(reasoningEfforts = repaired)
     }
@@ -1137,7 +1160,7 @@ class ProviderStore(
         ModelRole.entries.forEach { role -> choice(role)?.let { c -> r.with(role, c)?.let { r = it } } }
         return r.copy(reasoningEfforts = ModelRole.entries.mapNotNull { role ->
             val effort = runCatching { o[role.name]?.jsonObject?.get("reasoningEffort")?.jsonPrimitive?.content }.getOrNull()
-            if (r[role] is RoleChoice.Model && !effort.isNullOrBlank()) role to effort else null
+            if (r.hasOwnReasoning(role) && !effort.isNullOrBlank()) role to effort else null
         }.toMap())
     }
 
@@ -1216,7 +1239,10 @@ class ProviderStore(
                             put("use", USE_MODEL); put("config", c.configId)
                             _roles.value.reasoningEfforts[role]?.let { put("reasoningEffort", it) }
                         }
-                        RoleChoice.SameAsMain -> putJsonObject(role.name) { put("use", USE_MAIN) }
+                        RoleChoice.SameAsMain -> putJsonObject(role.name) {
+                            put("use", USE_MAIN)
+                            _roles.value.reasoningEfforts[role]?.let { put("reasoningEffort", it) }
+                        }
                         RoleChoice.Off -> putJsonObject(role.name) { put("use", USE_NONE) }
                         null -> Unit
                     }

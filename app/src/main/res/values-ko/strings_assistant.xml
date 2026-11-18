@@ -23,6 +23,17 @@
     <string name="assistant_looking">확인 중</string>
     <string name="assistant_thinking">생각 중</string>
     <string name="assistant_reading_result">결과를 읽는 중</string>
-    <string name="assistant_readout_unavailable">Doubao 실시간 음성으로 읽을 수 없습니다. AI 전화의 음성 설정을 확인하세요.</string>
     <string name="drawer_calls_listening">수신 대기 중</string>
+    <string name="assistant_readout_settings">음성 읽어 주기</string>
+    <string name="assistant_readout_enable">결과 읽어 주기 켜기</string>
+    <string name="assistant_readout_compatible">OpenAI 호환</string>
+    <string name="assistant_readout_doubao">Doubao 실시간 3.0 (1.2.6.1)</string>
+    <string name="assistant_readout_model">음성 합성 모델</string>
+    <string name="assistant_readout_voice">음성 ID</string>
+    <string name="assistant_readout_privacy">켜면 결과 텍스트가 선택한 음성 서비스로 전송됩니다. 인증 정보는 기기에 암호화해 저장합니다.</string>
+    <string name="assistant_readout_saved">음성 합성 설정을 저장했습니다.</string>
+    <string name="assistant_readout_save_error">모델, 엔드포인트, 인증 정보를 확인하고 설정을 저장한 후 켜세요.</string>
+    <string name="mode_reasoning_follow_work">작업 설정 따르기</string>
+    <string name="mode_work_draft_pending">기존 작업이나 초안을 먼저 처리하세요.</string>
+    <string name="assistant_readout_unavailable">읽어 줄 수 없습니다. 설정에서 음성 읽어 주기를 확인하세요.</string>
 </resources>

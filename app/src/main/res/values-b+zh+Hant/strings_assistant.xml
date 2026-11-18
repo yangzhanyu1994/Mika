@@ -23,6 +23,17 @@
     <string name="assistant_looking">正在查找</string>
     <string name="assistant_thinking">思考中</string>
     <string name="assistant_reading_result">正在播報結果</string>
-    <string name="assistant_readout_unavailable">豆包即時語音暫時無法播報，請檢查 AI 電話中的語音設定。</string>
     <string name="drawer_calls_listening">持續監聽中</string>
+    <string name="assistant_readout_settings">語音播報</string>
+    <string name="assistant_readout_enable">開啟播報</string>
+    <string name="assistant_readout_compatible">OpenAI 相容介面</string>
+    <string name="assistant_readout_doubao">豆包即時語音 3.0（1.2.6.1）</string>
+    <string name="assistant_readout_model">語音合成模型</string>
+    <string name="assistant_readout_voice">音色 ID</string>
+    <string name="assistant_readout_privacy">開啟後，播報的結果文字會傳送到所選語音服務。憑證加密保存在本機。</string>
+    <string name="assistant_readout_saved">語音合成設定已儲存。</string>
+    <string name="assistant_readout_save_error">請檢查模型、介面和憑證，儲存設定後再開啟。</string>
+    <string name="mode_reasoning_follow_work">跟隨工作模型</string>
+    <string name="mode_work_draft_pending">工作區有待處理的草稿或任務，請處理後再傳送。</string>
+    <string name="assistant_readout_unavailable">暫時無法播報，請檢查「設定 → 語音播報」。</string>
 </resources>

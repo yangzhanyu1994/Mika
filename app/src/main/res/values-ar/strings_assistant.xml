@@ -23,6 +23,17 @@
     <string name="assistant_looking">جارٍ التحقق</string>
     <string name="assistant_thinking">جارٍ التفكير</string>
     <string name="assistant_reading_result">جارٍ قراءة النتيجة بصوت عالٍ</string>
-    <string name="assistant_readout_unavailable">تعذرت قراءة النتيجة عبر Doubao. تحقّق من إعدادات الصوت في هاتف الذكاء الاصطناعي.</string>
     <string name="drawer_calls_listening">في وضع الاستماع</string>
+    <string name="assistant_readout_settings">القراءة الصوتية</string>
+    <string name="assistant_readout_enable">قراءة النتائج بصوت عالٍ</string>
+    <string name="assistant_readout_compatible">متوافق مع OpenAI</string>
+    <string name="assistant_readout_doubao">Doubao الفوري 3.0 ‏(1.2.6.1)</string>
+    <string name="assistant_readout_model">نموذج تحويل النص إلى كلام</string>
+    <string name="assistant_readout_voice">معرّف الصوت</string>
+    <string name="assistant_readout_privacy">عند التفعيل يُرسل نص النتيجة إلى خدمة الصوت المحددة. تُحفظ بيانات الاعتماد مشفّرة على الجهاز.</string>
+    <string name="assistant_readout_saved">تم حفظ إعدادات الصوت.</string>
+    <string name="assistant_readout_save_error">تحقّق من النموذج والعنوان وبيانات الاعتماد واحفظها قبل التفعيل.</string>
+    <string name="mode_reasoning_follow_work">اتّباع إعدادات العمل</string>
+    <string name="mode_work_draft_pending">أكمل مهمة العمل أو مسودته قبل الإرسال.</string>
+    <string name="assistant_readout_unavailable">تعذرت قراءة النتيجة. تحقّق من إعدادات القراءة الصوتية.</string>
 </resources>

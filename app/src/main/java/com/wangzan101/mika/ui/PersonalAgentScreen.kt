@@ -162,7 +162,7 @@ internal fun PersonalAgentScreen(
     onPickSpeech: () -> Unit,
     modeHeader: @Composable (ConversationTokens) -> Unit,
     researchDraft: ResearchDraft?,
-    onResearchSend: (String) -> Boolean,
+    onResearchSend: suspend (String) -> Boolean,
     onTransfer: (String, String) -> Unit,
 ) {
     val state by runtime.state.collectAsState()
@@ -175,6 +175,7 @@ internal fun PersonalAgentScreen(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     var draft by rememberSaveable { mutableStateOf("") }
+    var routing by remember { mutableStateOf(false) }
     var voiceHolding by remember { mutableStateOf(false) }
     var followLatest by rememberSaveable { mutableStateOf(true) }
     var composerHeight by remember { mutableIntStateOf(0) }
@@ -195,10 +196,22 @@ internal fun PersonalAgentScreen(
     val dayFormat = remember { DateTimeFormatter.ofPattern("M 月 d 日") }
     fun send(value: String = draft) {
         val text = value.trim()
-        if (text.isEmpty() || thinking || !onResearchSend(text)) return
-        draft = ""
+        if (text.isEmpty() || thinking || routing) return
+        val submitted = draft
+        // Keep voice input editable if the selected mode cannot submit.
+        if (value != draft) draft = value
+        routing = true
         keyboard?.hide()
-        followLatest = true
+        scope.launch {
+            try {
+                if (onResearchSend(text)) {
+                    if (draft == submitted || draft == value) draft = ""
+                    followLatest = true
+                }
+            } finally {
+                routing = false
+            }
+        }
     }
     LaunchedEffect(list) {
         snapshotFlow { list.isScrollInProgress to list.layoutInfo }.collect { (scrolling, layout) ->

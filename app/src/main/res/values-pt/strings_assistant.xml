@@ -23,6 +23,17 @@
     <string name="assistant_looking">Consultando</string>
     <string name="assistant_thinking">Pensando</string>
     <string name="assistant_reading_result">Lendo o resultado em voz alta</string>
-    <string name="assistant_readout_unavailable">O Doubao não conseguiu ler o resultado. Verifique a configuração de voz no Telefone com IA.</string>
     <string name="drawer_calls_listening">À escuta</string>
+    <string name="assistant_readout_settings">Leitura em voz alta</string>
+    <string name="assistant_readout_enable">Ler resultados em voz alta</string>
+    <string name="assistant_readout_compatible">Compatível com OpenAI</string>
+    <string name="assistant_readout_doubao">Doubao em tempo real 3.0 (1.2.6.1)</string>
+    <string name="assistant_readout_model">Modelo de síntese de voz</string>
+    <string name="assistant_readout_voice">ID da voz</string>
+    <string name="assistant_readout_privacy">Ao ativar, o texto do resultado vai para o serviço escolhido. As credenciais ficam criptografadas neste dispositivo.</string>
+    <string name="assistant_readout_saved">Configurações de voz salvas.</string>
+    <string name="assistant_readout_save_error">Verifique o modelo, a URL e as credenciais e salve antes de ativar.</string>
+    <string name="mode_reasoning_follow_work">Seguir Trabalho</string>
+    <string name="mode_work_draft_pending">Conclua a tarefa ou o rascunho de Trabalho antes de enviar.</string>
+    <string name="assistant_readout_unavailable">Não foi possível ler o resultado. Confira Configurações › Leitura em voz alta.</string>
 </resources>

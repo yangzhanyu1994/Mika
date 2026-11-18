@@ -68,7 +68,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
+private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -196,6 +196,7 @@ fun SettingsScreen(
             onOpenNotifications = { page = SettingsPage.Notifications },
             language = language, onOpenLanguage = { page = SettingsPage.Language },
             onOpenAssistantAppearance = { page = SettingsPage.AssistantAppearance },
+            onOpenAssistantReadout = { page = SettingsPage.AssistantReadout },
             personalStart = personalStart,
             onPersonalStart = { flags.setPersonalStart(it); personalStart = it },
             onOpenMemory = onOpenMemory,
@@ -242,6 +243,7 @@ fun SettingsScreen(
             deviceSettings = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.settings,
             deviceAccess = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.access,
         )
+        SettingsPage.AssistantReadout -> AssistantReadoutScreen(onBack = toHome)
         SettingsPage.AssistantAppearance -> MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = MikaTheme.reduceMotion) {
             com.wangzan101.mika.ui.theme.SettingsAppearance { AssistantAppearanceScreen(onBack = toHome) }
         }
@@ -370,6 +372,7 @@ fun SettingsContent(
     onPersonalStart: ((Boolean) -> Unit)? = null,
     onQuit: () -> Unit = {},
     onOpenAssistantAppearance: (() -> Unit)? = null,
+    onOpenAssistantReadout: (() -> Unit)? = null,
 ) {
     var pickingHome by remember { mutableStateOf(false) }
     val check = Prerequisites.check(status, hasMainModel = mainModel != null)
@@ -416,6 +419,9 @@ fun SettingsContent(
             }
             onOpenAssistantAppearance?.let {
                 ListRow(MikaIcons.Spark, stringResource(R.string.assistant_appearance), onClick = it) { RowChevron() }
+            }
+            onOpenAssistantReadout?.let {
+                ListRow(MikaIcons.Message, stringResource(R.string.assistant_readout_settings), onClick = it) { RowChevron() }
             }
             val homeLabel = stringResource(R.string.settings_home_title)
             ListRow(MikaIcons.Spark, homeLabel, stringResource(R.string.settings_personal_start_sub), onClick = onPersonalStart?.let { { pickingHome = true } }) {

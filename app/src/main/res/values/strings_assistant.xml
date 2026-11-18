@@ -23,6 +23,17 @@
     <string name="assistant_looking">Looking up</string>
     <string name="assistant_thinking">Thinking</string>
     <string name="assistant_reading_result">Reading the result aloud</string>
-    <string name="assistant_readout_unavailable">Could not read the result aloud with Doubao Realtime. Check the voice credentials in AI Phone.</string>
     <string name="drawer_calls_listening">Listening</string>
+    <string name="assistant_readout_settings">Voice readout</string>
+    <string name="assistant_readout_enable">Read results aloud</string>
+    <string name="assistant_readout_compatible">OpenAI compatible</string>
+    <string name="assistant_readout_doubao">Doubao Realtime 3.0 (1.2.6.1)</string>
+    <string name="assistant_readout_model">Speech synthesis model</string>
+    <string name="assistant_readout_voice">Voice ID</string>
+    <string name="assistant_readout_privacy">Result text is sent to the selected speech provider when readout is on. Credentials stay encrypted on this device.</string>
+    <string name="assistant_readout_saved">Speech synthesis settings saved.</string>
+    <string name="assistant_readout_save_error">Check the model, endpoint or credentials and save before turning on readout.</string>
+    <string name="mode_reasoning_follow_work">Follow Work</string>
+    <string name="mode_work_draft_pending">Finish the existing Work draft or task before sending this request.</string>
+    <string name="assistant_readout_unavailable">Could not read the result aloud. Check Settings › Voice readout.</string>
 </resources>
