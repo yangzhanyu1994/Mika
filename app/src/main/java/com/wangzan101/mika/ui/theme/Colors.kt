@@ -79,6 +79,20 @@ class MikaColors(
         series = series, seriesOther = seriesOther, grid = grid, isDark = false,
     )
 
+    internal fun forSettings(s: ColorScheme) = MikaColors(
+        bg = if (isDark) s.surface else s.surfaceContainer,
+        surface = if (isDark) s.surfaceContainerHigh else s.surface,
+        fill = s.surfaceContainerHighest,
+        ink = s.onSurface, ink2 = s.onSurfaceVariant, ink3 = s.onSurfaceVariant,
+        hair = s.outlineVariant.copy(alpha = 0.7f), edge = s.outlineVariant,
+        accent = s.primary, accentSoft = s.primaryContainer, onAccent = s.onPrimary,
+        ok = ok, okSoft = okSoft, warn = warn, warnSolid = warnSolid, warnSoft = warnSoft,
+        bad = bad, badSoft = badSoft, neutralSoft = s.surfaceContainerHigh,
+        answer = answer, greySoft = s.surfaceContainerHighest,
+        glass = glass, glassEdge = glassEdge, cardShadow = Color.Transparent, floatShadow = floatShadow,
+        thumb = thumb, series = series, seriesOther = seriesOther, grid = grid, isDark = isDark,
+    )
+
     /** 换一种强调色,其余不变;淡底的透明度和原来一样(浅色 10%、深色 16%)。 */
     fun withAccent(accent: Color, onAccent: Color) = MikaColors(
         bg = bg, surface = surface, fill = fill, ink = ink, ink2 = ink2, ink3 = ink3, hair = hair, edge = edge,

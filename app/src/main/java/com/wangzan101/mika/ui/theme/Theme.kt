@@ -14,6 +14,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ fun animationsOff(context: Context): Boolean =
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
 val LocalReduceMotion = staticCompositionLocalOf { false }
+internal val LocalSettingsAppearance = staticCompositionLocalOf { false }
 
 object MikaTheme {
     val colors: MikaColors
@@ -135,6 +137,32 @@ fun MikaTheme(
         LocalReduceMotion provides reduceMotion,
     ) {
         MaterialTheme(colorScheme = materialColors) {
+            CompositionLocalProvider(LocalContentColor provides colors.ink, content = content)
+        }
+    }
+}
+
+/** Settings use Android's public dynamic colors in either appearance mode. */
+@Composable
+internal fun SettingsAppearance(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val base = MikaTheme.colors
+    val colors = remember(context, configuration, base) {
+        val system = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (base.isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        } else {
+            scheme(base).copy(
+                surface = base.surface,
+                surfaceContainer = base.bg,
+                surfaceContainerHigh = if (base.isDark) base.surface else Color(0xFFECEEF3),
+                surfaceContainerHighest = if (base.isDark) Color(0xFF292A30) else Color(0xFFE2E5EC),
+            )
+        }
+        base.forSettings(system)
+    }
+    CompositionLocalProvider(LocalSettingsAppearance provides true, LocalMikaColors provides colors) {
+        MaterialTheme(colorScheme = scheme(colors)) {
             CompositionLocalProvider(LocalContentColor provides colors.ink, content = content)
         }
     }
