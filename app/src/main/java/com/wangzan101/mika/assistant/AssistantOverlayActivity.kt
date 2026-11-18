@@ -39,13 +39,16 @@ import com.wangzan101.mika.ui.VoiceCopy
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
+import com.wangzan101.mika.voice.DoubaoResultSpeech
 import com.wangzan101.mika.voice.HoldToTalk
+import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.SpeechEvent
 import com.wangzan101.mika.voice.assistantSpeech
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
@@ -87,6 +90,9 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var pendingPhoto: Uri? = null
     private var photoUri: Uri? = null
     private var voiceJob: Job? = null
+    private var narrationJob: Job? = null
+    private var dismissAfterSpeech: Job? = null
+    private var keepOverlay = false
     private var screenJob: Job? = null
     private var finishSpeech = false
     private var afterSpeech: (() -> Unit)? = null
@@ -179,9 +185,19 @@ class AssistantOverlayActivity : ComponentActivity() {
                         sending = sending,
                         reply = reply,
                         onOpenConversation = ::openConversation,
-                        onText = { text = it },
-                        onEdit = { stopSpeech(keepText = true) },
-                        onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
+                        onText = {
+                            keepOverlayOpen()
+                            text = it
+                        },
+                        onEdit = {
+                            keepOverlayOpen()
+                            stopSpeech(keepText = true)
+                        },
+                        onVoice = {
+                            keepOverlayOpen()
+                            narrationJob?.cancel()
+                            if (listening) finishSpeech = true else if (!converting) requestSpeech()
+                        },
                         onScreenshot = ::attachScreenshot,
                         onPhoto = { finishThen(::requestCamera) },
                         onRemoveScreenshot = ::removeScreenshot,
@@ -215,8 +231,15 @@ class AssistantOverlayActivity : ComponentActivity() {
         }
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        keepOverlayOpen()
+    }
+
     override fun onPause() {
         resumed = false
+        keepOverlayOpen()
+        narrationJob?.cancel()
         stopSpeech(keepText = true)
         super.onPause()
     }
@@ -257,11 +280,18 @@ class AssistantOverlayActivity : ComponentActivity() {
         listening = true
         voiceJob = lifecycleScope.launch {
             var finalText: String? = null
+            var endedBySilence = false
             try {
-                assistantSpeech(app.voice, { finishSpeech }) { event ->
+                assistantSpeech(app.voice, { finishSpeech }, onSilence = { endedBySilence = true }) { event ->
                     when (event) {
-                        is SpeechEvent.Level -> level = event.value
-                        is SpeechEvent.Partial -> partial = event.stable + event.tail
+                        is SpeechEvent.Level -> {
+                            level = event.value
+                            if (level >= 0.12f && dismissAfterSpeech?.isActive == true) keepOverlayOpen()
+                        }
+                        is SpeechEvent.Partial -> {
+                            partial = event.stable + event.tail
+                            if (partial.isNotBlank() && dismissAfterSpeech?.isActive == true) keepOverlayOpen()
+                        }
                         SpeechEvent.Converting -> { converting = true; listening = false }
                         is SpeechEvent.Final -> finalText = event.text.trim()
                         is SpeechEvent.Failed -> status = VoiceCopy.failure(event.why)
@@ -282,7 +312,10 @@ class AssistantOverlayActivity : ComponentActivity() {
             converting = false
             val action = afterSpeech
             afterSpeech = null
-            if (resumed) action?.invoke()
+            if (resumed) {
+                if (action != null) action()
+                else if (endedBySilence && !finalText.isNullOrBlank()) send()
+            }
         }
     }
 
@@ -383,6 +416,8 @@ class AssistantOverlayActivity : ComponentActivity() {
             status = getString(R.string.appaccess_share_expired)
             return
         }
+        keepOverlayOpen()
+        narrationJob?.cancel()
         sending = true
         status = null
         lifecycleScope.launch {
@@ -445,10 +480,55 @@ class AssistantOverlayActivity : ComponentActivity() {
                     }
                 } else {
                     startupTimeout.cancel()
+                    val finishedCurrentTask = pendingQuestion != null && turns.size > pendingAfter
                     pendingQuestion = null
                     previousRun = null
-                    reply = turns.lastOrNull()?.let(::savedReply)
+                    val result = turns.lastOrNull()?.let(::savedReply)
+                    reply = result
+                    if (finishedCurrentTask && result?.completed == true) {
+                        announceResult(result.body.orEmpty())
+                    }
                 }
+            }
+        }
+    }
+
+    private fun keepOverlayOpen() {
+        keepOverlay = true
+        dismissAfterSpeech?.cancel()
+        dismissAfterSpeech = null
+    }
+
+    private fun announceResult(result: String) {
+        if (!resumed || locked() || result.isBlank() || listening || converting) return
+        narrationJob?.cancel()
+        keepOverlay = text.isNotBlank()
+        narrationJob = lifecycleScope.launch {
+            val credentials = app.speech.doubaoCredentials()
+            if (credentials == null) {
+                status = getString(R.string.assistant_result_speech_setup)
+                return@launch
+            }
+            try {
+                DoubaoResultSpeech.speak(this@AssistantOverlayActivity, credentials, result)
+            } catch (e: TimeoutCancellationException) {
+                status = getString(R.string.assistant_result_speech_failed)
+                return@launch
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                status = getString(R.string.assistant_result_speech_failed)
+                return@launch
+            }
+            if (keepOverlay || !resumed || locked() || isFinishing) return@launch
+            dismissAfterSpeech = lifecycleScope.launch {
+                delay(3_000)
+                if (resumed && !isFinishing) finish()
+            }
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
+                app.voice.spec() !is SpeechEngineSpec.Unavailable
+            ) {
+                startSpeech()
             }
         }
     }

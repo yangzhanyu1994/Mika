@@ -22,4 +22,6 @@
     <string name="assistant_searching">正在搜索</string>
     <string name="assistant_looking">正在查找</string>
     <string name="assistant_thinking">思考中</string>
+    <string name="assistant_result_speech_setup">在语音设置中配置豆包实时语音后，可播报任务结果。</string>
+    <string name="assistant_result_speech_failed">结果播报失败，请在语音设置中检查豆包实时语音权限。</string>
 </resources>
