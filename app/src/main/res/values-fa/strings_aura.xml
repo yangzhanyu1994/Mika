@@ -27,4 +27,11 @@
     <string name="aura_scene_example">وقتی به وای‌فای خانه وصل شدم، یادآوری کن قفل در را بررسی کنم</string>
     <string name="aura_setup">تنظیم</string>
     <string name="aura_try">استفاده از این نمونه</string>
+    <string name="aura_settings">تنظیمات</string>
+    <string name="aura_standby">آماده به کار</string>
+    <string name="aura_completed">کار انجام شد</string>
+    <string name="aura_drawer_attention">نیازمند توجه شما</string>
+    <string name="aura_drawer_appointments">کارهای زمان‌بندی‌شده</string>
+    <string name="aura_drawer_automations">صحنه‌های خودکار</string>
+    <string name="aura_drawer_recent">اخیر</string>
 </resources>

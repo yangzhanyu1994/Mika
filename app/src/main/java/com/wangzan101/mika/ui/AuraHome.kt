@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -38,12 +41,10 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.task.TaskCenterState
 import com.wangzan101.mika.ui.components.BarIconButton
-import com.wangzan101.mika.ui.components.MikaLogo
 import com.wangzan101.mika.ui.components.DirectionalIcon
 import com.wangzan101.mika.ui.components.ProgressDots
 import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.ui.theme.MikaIcons
-import com.wangzan101.mika.ui.theme.MikaShapes
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 
@@ -79,7 +80,6 @@ internal fun AuraHeader(openDrawer: () -> Unit, newTask: () -> Unit, canStart: B
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         BarIconButton(MikaIcons.Menu, stringResource(R.string.chat_menu), openDrawer, badge = hasTasks)
-        MikaLogo(29.dp)
         Text(stringResource(R.string.app_name), Modifier.weight(1f), style = MikaType.Title, color = c.ink)
         BarIconButton(MikaIcons.Plus, stringResource(R.string.aura_new), newTask, enabled = canStart)
     }
@@ -89,10 +89,9 @@ internal fun AuraHeader(openDrawer: () -> Unit, newTask: () -> Unit, canStart: B
 internal fun AuraHomeContent(
     tasks: List<AuraTask>,
     recent: Exchange?,
-    voiceAvailable: Boolean,
+    recentSuccess: Boolean,
     modelReady: Boolean,
     reduceMotion: Boolean,
-    onVoice: () -> Unit,
     onOpenTask: (AuraTask) -> Unit,
     onOpenRecent: () -> Unit,
     onAll: () -> Unit,
@@ -103,55 +102,50 @@ internal fun AuraHomeContent(
     onExample: (String) -> Unit,
 ) {
     val c = MikaTheme.colors
-    Column(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        val current = tasks.firstOrNull { it.needsYou } ?: tasks.firstOrNull { it.state is TaskState.Running } ?: tasks.firstOrNull()
+    val current = tasks.firstOrNull { it.needsYou } ?: tasks.firstOrNull { it.state is TaskState.Running } ?: tasks.firstOrNull()
+    val result = recent?.status?.takeUnless { it.isActive() }
+    val mood = when {
+        current?.state is TaskState.Running || (current == null && recent?.status == ExchangeStatus.Working) -> AuraOrbMood.Working
+        current == null && recentSuccess -> AuraOrbMood.Succeeded
+        else -> AuraOrbMood.Idle
+    }
+    Column(
+        Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        AuraOrb(mood, reduceMotion)
         when {
             current != null -> {
                 TaskOverview(current, reduceMotion) { onOpenTask(current) }
-                if (tasks.size > 1) {
-                    TextButton(onClick = onAll, modifier = Modifier.align(Alignment.End)) {
-                        Text(stringResource(R.string.aura_all))
-                    }
-                }
+                if (tasks.size > 1) TextButton(onClick = onAll) { Text(stringResource(R.string.aura_all)) }
             }
-            recent != null && !recent.status.isActive() -> {
-                val label = when (val status = recent.status) {
-                    is ExchangeStatus.Done -> if (status.unverifiedLine == null) R.string.aura_finished else R.string.aura_result_unconfirmed
+            result != null -> {
+                val label = when (result) {
+                    is ExchangeStatus.Done -> if (result.unverifiedLine == null) R.string.aura_completed else R.string.aura_result_unconfirmed
                     is ExchangeStatus.Cancelled -> R.string.aura_stopped
                     else -> R.string.aura_incomplete
                 }
-                AuraRow(stringResource(label), ChatCopy.plainTitle(recent.goal), onOpen = onOpenRecent)
-            }
-            else -> {
-                Column(
-                    Modifier.fillMaxWidth().padding(vertical = 13.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    MikaLogo(58.dp)
-                    Text(stringResource(R.string.aura_home_title), style = MikaType.LargeTitle, color = c.ink, textAlign = TextAlign.Center)
-                    if (modelReady && voiceAvailable) {
-                        Row(
-                            Modifier.clip(MikaShapes.Pill).background(c.accent)
-                                .clickable(role = Role.Button, onClick = onVoice)
-                                .heightIn(min = 48.dp).padding(horizontal = 24.dp)
-                                .testTag("aura-voice"),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(MikaIcons.Mic, null, Modifier.size(20.dp), tint = c.onAccent)
-                            Text(stringResource(R.string.aura_speak), style = MikaType.BodyStrong, color = c.onAccent)
-                        }
-                    } else if (!modelReady) {
-                        TextButton(onClick = onSetup) { Text(stringResource(R.string.aura_model_setup)) }
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(label), style = MikaType.Title, color = c.ink, textAlign = TextAlign.Center)
+                    TextButton(onClick = onOpenRecent) { Text(stringResource(R.string.aura_finished), color = c.ink2) }
                 }
-                AuraExamples(onExample, onCalls, onScenes)
+            }
+            recent?.status == ExchangeStatus.Working -> {
+                Text(ChatCopy.plainTitle(recent.goal), style = MikaType.Title, color = c.ink, textAlign = TextAlign.Center)
+                TextButton(onClick = onOpenRecent) { Text(stringResource(R.string.aura_progress), color = c.ink2) }
+            }
+            recentSuccess -> Text(stringResource(R.string.aura_completed), style = MikaType.Title, color = c.ink)
+            else -> {
+                Text(stringResource(R.string.aura_standby), style = MikaType.Title, color = c.ink)
+                if (!modelReady) TextButton(onClick = onSetup) { Text(stringResource(R.string.aura_model_setup)) }
             }
         }
+        Spacer(Modifier.height(8.dp))
+        AuraExamples(onExample, onCalls, onScenes)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AuraShortcut(MikaIcons.Clock, R.string.drawer_plans, Modifier.weight(1f), onPlan)
-            AuraShortcut(MikaIcons.Screens, R.string.scene_title, Modifier.weight(1f), onScenes)
+            AuraShortcut(MikaIcons.Layers, R.string.scene_title, Modifier.weight(1f), onScenes)
             AuraShortcut(MikaIcons.Phone, R.string.calls_title, Modifier.weight(1f), onCalls)
         }
     }
@@ -188,18 +182,17 @@ private fun TaskOverview(task: AuraTask, reduceMotion: Boolean, onOpen: () -> Un
     val ink = if (high) Color(0xFFF1F7FF) else c.ink
     val accent = if (high) Color(0xFF9EDAFF) else c.accent
     Column(
-        Modifier.fillMaxWidth().clip(MikaShapes.Card)
-            .background(if (high) Color(0xFF112743) else c.surface)
-            .padding(18.dp).testTag("aura-status"),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+        Modifier.fillMaxWidth().testTag("aura-status"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (state is TaskState.Running) Spinner(Modifier.size(18.dp), !reduceMotion, c.hair, c.accent)
             Text(stringResource(label), style = MikaType.Label, color = accent)
         }
-        Text(title, style = MikaType.Title, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, style = MikaType.Title, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
         if (detail.isNotBlank()) Text(detail, style = MikaType.Caption, color = ink.copy(alpha = 0.76f),
-            maxLines = 2, overflow = TextOverflow.Ellipsis)
+            maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
         TextButton(onClick = onOpen, contentPadding = PaddingValues(horizontal = 4.dp)) {
             Text(stringResource(action), color = accent)
         }
@@ -210,7 +203,8 @@ private fun TaskOverview(task: AuraTask, reduceMotion: Boolean, onOpen: () -> Un
 private fun AuraRow(label: String, text: String, action: String? = null, onOpen: () -> Unit) {
     val c = MikaTheme.colors
     Row(
-        Modifier.fillMaxWidth().clip(MikaShapes.Card).background(c.surface)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(c.surface)
+            .border(1.dp, c.edge, RoundedCornerShape(15.dp))
             .clickable(role = Role.Button, onClick = onOpen).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -227,14 +221,15 @@ private fun AuraRow(label: String, text: String, action: String? = null, onOpen:
 @Composable
 private fun AuraShortcut(icon: ImageVector, name: Int, modifier: Modifier, onClick: () -> Unit) {
     val c = MikaTheme.colors
-    Column(
-        modifier.clip(RoundedCornerShape(16.dp)).background(c.surface)
-            .clickable(role = Role.Button, onClick = onClick).heightIn(min = 70.dp).padding(horizontal = 2.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        modifier.clip(shape).background(c.surface).border(1.dp, c.edge, shape)
+            .clickable(role = Role.Button, onClick = onClick).heightIn(min = 44.dp).padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
     ) {
-        Icon(icon, null, Modifier.size(21.dp), tint = c.ink2)
-        Text(stringResource(name), style = MikaType.Caption, color = c.ink, textAlign = TextAlign.Center, maxLines = 2)
+        Icon(icon, null, Modifier.size(16.dp), tint = c.ink)
+        Text(stringResource(name), style = MikaType.Hint, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

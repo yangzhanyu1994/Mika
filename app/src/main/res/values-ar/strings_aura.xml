@@ -27,4 +27,11 @@
     <string name="aura_scene_example">عند الاتصال بشبكة Wi-Fi المنزلية، ذكّرني بفحص قفل الباب</string>
     <string name="aura_setup">الإعداد</string>
     <string name="aura_try">استخدم هذا المثال</string>
+    <string name="aura_settings">الإعدادات</string>
+    <string name="aura_standby">جاهز في أي وقت</string>
+    <string name="aura_completed">اكتملت المهمة</string>
+    <string name="aura_drawer_attention">تحتاج إلى انتباهك</string>
+    <string name="aura_drawer_appointments">المهام المجدولة</string>
+    <string name="aura_drawer_automations">مشاهد الأتمتة</string>
+    <string name="aura_drawer_recent">الأخيرة</string>
 </resources>

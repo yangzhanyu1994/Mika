@@ -27,4 +27,11 @@
     <string name="aura_scene_example">Ao conectar ao Wi-Fi de casa, lembre-me de verificar a fechadura</string>
     <string name="aura_setup">Configurar</string>
     <string name="aura_try">Usar este exemplo</string>
+    <string name="aura_settings">Configurações</string>
+    <string name="aura_standby">Pronto quando precisar</string>
+    <string name="aura_completed">Tarefa concluída</string>
+    <string name="aura_drawer_attention">Precisa da sua atenção</string>
+    <string name="aura_drawer_appointments">Tarefas agendadas</string>
+    <string name="aura_drawer_automations">Cenas automáticas</string>
+    <string name="aura_drawer_recent">Recentes</string>
 </resources>

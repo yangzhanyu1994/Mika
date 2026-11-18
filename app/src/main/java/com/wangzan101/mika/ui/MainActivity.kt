@@ -594,9 +594,9 @@ private fun MikaRoot(
                 onStopOrDispose {}
             }
             val overview = auraTasks(app.taskState)
+            val completed by app.taskState.edgeLightCompletion.collectAsState()
             ChatWithDrawer(
                 vm = app.chat,
-                check = check,
                 reduceMotion = MikaTheme.reduceMotion,
                 conversations = { ConversationStore.shared(context).list() },
                 conversationChanges = ConversationStore.shared(context).changes,
@@ -612,7 +612,6 @@ private fun MikaRoot(
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
                 updateAvailable = AboutCopy.drawerDot(updateState),
                 unhandledCalls = callHistory.count { !it.handled },
-                currentVersion = com.wangzan101.mika.BuildConfig.VERSION_NAME,
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,
                 onPersonal = { nav.show(Route.Personal) },
@@ -620,6 +619,7 @@ private fun MikaRoot(
                 onNewHome = ::startAuraTask,
                 needsAttention = overview.filter { it.needsYou }.map { it.conversation }.toSet(),
                 resetKey = nav.resetSerial,
+                blackHome = nav.current == Route.Chat && showAuraHome,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
@@ -647,6 +647,7 @@ private fun MikaRoot(
                             onCreateCall = { openCallComposer = true; nav.push(Route.Calls) },
                             showAuraHome = showAuraHome,
                             auraTasks = overview,
+                            auraCompletedAt = completed?.startedAt,
                             onAuraNew = { app.chat.newConversation(); startAuraTask() },
                             onAuraTask = { item ->
                                 app.chat.openConversation(item.conversation)

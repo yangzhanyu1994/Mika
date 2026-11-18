@@ -27,4 +27,11 @@
     <string name="aura_scene_example">집 Wi-Fi에 연결하면 문 잠금을 확인하라고 알려 줘</string>
     <string name="aura_setup">설정</string>
     <string name="aura_try">이 예시 사용</string>
+    <string name="aura_settings">설정</string>
+    <string name="aura_standby">대기 중</string>
+    <string name="aura_completed">작업 완료</string>
+    <string name="aura_drawer_attention">확인이 필요함</string>
+    <string name="aura_drawer_appointments">예약 작업</string>
+    <string name="aura_drawer_automations">자동화 시나리오</string>
+    <string name="aura_drawer_recent">최근</string>
 </resources>

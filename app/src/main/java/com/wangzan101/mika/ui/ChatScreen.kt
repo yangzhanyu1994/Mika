@@ -10,6 +10,7 @@ import com.wangzan101.mika.ui.components.pageBackground
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
@@ -147,6 +148,8 @@ import com.wangzan101.mika.ui.components.cardSurface
 import com.wangzan101.mika.ui.components.floatShadow
 import com.wangzan101.mika.ui.components.glassSource
 import com.wangzan101.mika.ui.components.rememberGlassBackdrop
+import com.wangzan101.mika.ui.theme.AuraHomeColors
+import com.wangzan101.mika.ui.theme.LocalMikaColors
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaMotion
 import com.wangzan101.mika.ui.theme.MikaShapes
@@ -208,6 +211,7 @@ fun ChatScreen(
     habitSuggestions: List<String>? = null,
     showAuraHome: Boolean = false,
     auraTasks: List<AuraTask> = emptyList(),
+    auraCompletedAt: Long? = null,
     onAuraTask: (AuraTask) -> Unit = {},
     onAuraConversation: () -> Unit = {},
     onAuraNew: () -> Unit = {},
@@ -257,6 +261,14 @@ fun ChatScreen(
         AssistantVoiceCapture(auraVoiceRequest, voice, sendOnConfirm = false) { spoken, _ ->
             vm.input(HoldToTalk.join(vm.ui.value.input, spoken))
         }
+    }
+    val recentAuraSuccess by produceState(false, showAuraHome, auraCompletedAt) {
+        val remaining = if (showAuraHome && auraCompletedAt != null) {
+            7200L - (SystemClock.uptimeMillis() - auraCompletedAt)
+        } else 0L
+        value = remaining > 0L
+        if (remaining > 0L) delay(remaining)
+        value = false
     }
     var shortcutsDismissed by remember { mutableStateOf(false) }
     var deviceHabits by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -358,8 +370,8 @@ fun ChatScreen(
     val endedRuns = ui.exchanges.filter { !it.status.isActive() }.mapNotNull { it.recordedRun }
     val runMetrics = rememberRunMetrics(endedRuns)
 
-    val c = MikaTheme.colors
-    val backdrop = rememberGlassBackdrop()
+    val c = if (showAuraHome) AuraHomeColors else MikaTheme.colors
+    val backdrop = if (showAuraHome) null else rememberGlassBackdrop()
     val context = LocalContext.current
     LaunchedEffect(habitSuggestions, ui.exchanges.isEmpty(), showAuraHome) {
         if (showAuraHome || habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
@@ -400,7 +412,8 @@ fun ChatScreen(
         last?.waitingForModel == true -> AmbientMode.Thinking
         else -> AmbientMode.Executing
     }
-    PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
+    CompositionLocalProvider(LocalMikaColors provides c) {
+    PageBackground(ambient = ambient, reduceMotion = reduceMotion, solid = showAuraHome) {
         CompositionLocalProvider(LocalMessageMenu provides menuHost) {
             LazyColumn(
                 Modifier.fillMaxSize().behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion).glassSource(backdrop),
@@ -414,8 +427,8 @@ fun ChatScreen(
                 if (showAuraHome) {
                     item("aura-home") {
                         AuraHomeContent(
-                            auraTasks, last, voiceAvailable = voice != null, modelReady = check.canStartTask,
-                            reduceMotion = reduceMotion, onVoice = { auraVoiceRequest++ }, onOpenTask = onAuraTask,
+                            auraTasks, last, recentSuccess = recentAuraSuccess, modelReady = check.canStartTask,
+                            reduceMotion = reduceMotion, onOpenTask = onAuraTask,
                             onOpenRecent = onAuraConversation, onAll = onOpenDrawer, onPlan = onAuraPlans,
                             onScenes = onAuraScenes, onCalls = onAuraCalls, onSetup = onAuraModelSetup,
                             onExample = { prompt -> if (ui.input.isBlank()) vm.input(prompt) else pendingExample = prompt },
@@ -528,7 +541,7 @@ fun ChatScreen(
             onDismissRejected = vm::dismissRejected,
             quote = ui.quote,
             onRemoveQuote = vm::clearQuote,
-            voice = voice,
+            voice = if (showAuraHome) null else voice,
             // 说的话接在已有的字后面;任务在跑时发出去就是插话
             onVoiceText = { vm.input(HoldToTalk.join(vm.ui.value.input, it)) },
             // 松开在「在听」卡片里:接上已有的字直接发出;发不出去(比如还在导入附件)就留在输入框里
@@ -545,7 +558,8 @@ fun ChatScreen(
             focusRequest = focusRequest,
             rotatingHintIds = if (!showAuraHome && ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
             idlePlaceholder = if (showAuraHome) stringResource(R.string.aura_input) else null,
-            showVoiceButton = !showAuraHome || auraTasks.isNotEmpty() || last != null,
+            onTapVoice = if (showAuraHome && voice != null) ({ auraVoiceRequest++ }) else null,
+            auraAppearance = showAuraHome,
         )
         }
 
@@ -653,6 +667,7 @@ fun ChatScreen(
             text = { Text(details) },
             confirmButton = { TextButton({ retryFailures = null }) { Text(stringResource(R.string.ok_got_it)) } },
         )
+    }
     }
 
     pendingExample?.let { example ->
@@ -1509,7 +1524,8 @@ internal fun Composer(
     sendFromIme: Boolean = false,
     draftKey: String? = null,
     idlePlaceholder: String? = null,
-    showVoiceButton: Boolean = true,
+    onTapVoice: (() -> Unit)? = null,
+    auraAppearance: Boolean = false,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1626,6 +1642,21 @@ internal fun Composer(
             }
             Box(Modifier.fillMaxWidth()) {
             GlassBar(Modifier.fillMaxWidth().keepsKeyboard(), backdrop) {
+                if (onTapVoice != null) {
+                    val label = stringResource(R.string.aura_speak)
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(c.fill)
+                            .clickable(role = Role.Button, onClickLabel = label) {
+                                panel = Panel.Closed
+                                focus.clearFocus()
+                                keyboard?.hide()
+                                onTapVoice()
+                            }.testTag("aura-voice"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(MikaIcons.Mic, label, Modifier.size(22.dp), tint = c.ink)
+                    }
+                }
                 if (showAttach) {
                     val label = if (panel == Panel.Open) AttachCopy.CLOSE else AttachCopy.ADD
                     val blockedHint = stringResource(R.string.attach_blocked_running)
@@ -1641,7 +1672,7 @@ internal fun Composer(
                         Icon(MikaIcons.Plus, label, Modifier.size(MikaSize.Icon).graphicsLayer { rotationZ = turn }, tint = c.ink)
                     }
                 }
-                Box(Modifier.weight(1f).padding(start = if (showAttach) 2.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
+                Box(Modifier.weight(1f).padding(start = if (showAttach || onTapVoice != null) 3.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                     val converting = vState is HoldToTalk.State.Converting
                     if (text.isEmpty() && !converting) {
                         if (idlePlaceholder != null && mode == ComposerMode.Idle) {
@@ -1677,7 +1708,7 @@ internal fun Composer(
                 }
                 val canSend = AttachTray.canSend(text, attachments, importing)
                 // 键盘出来以后长按输入框留给系统选字;话筒按住才听,点一下只提示按住
-                if (showVoiceButton && fieldFocused && vh != null) {
+                if (fieldFocused && vh != null) {
                     val hint = stringResource(R.string.voice_hold_to_talk)
                     Box(
                         Modifier.size(MikaSize.IconButton).testTag("composer-mic").holdToTalk(vh) { vh.toast = hint },
@@ -1699,12 +1730,13 @@ internal fun Composer(
                 if (!busy || canSend) {
                     Box(
                         Modifier.size(MikaSize.IconButton)
-                            .background(if (canSend) c.accent else c.greySoft, CircleShape)
+                            .background(if (auraAppearance) Color.Transparent else if (canSend) c.accent else c.greySoft, CircleShape)
                             .clip(CircleShape)
                             .clickable(enabled = canSend, onClickLabel = stringResource(R.string.chat_send)) { panel = Panel.Closed; onSend() },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(MikaIcons.Up, stringResource(R.string.chat_send), Modifier.size(20.dp), tint = if (canSend) c.onAccent else c.ink3)
+                        Icon(if (auraAppearance) MikaIcons.PaperPlane else MikaIcons.Up, stringResource(R.string.chat_send),
+                            Modifier.size(20.dp), tint = if (auraAppearance && canSend) c.ink else if (canSend) c.onAccent else c.ink3)
                     }
                 }
             }

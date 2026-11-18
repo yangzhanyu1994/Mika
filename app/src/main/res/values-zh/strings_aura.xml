@@ -27,4 +27,11 @@
     <string name="aura_scene_example">连上家里的 Wi-Fi 时，提醒我检查门锁</string>
     <string name="aura_setup">去设置</string>
     <string name="aura_try">使用此示例</string>
+    <string name="aura_settings">设置</string>
+    <string name="aura_standby">随时待命</string>
+    <string name="aura_completed">任务已完成</string>
+    <string name="aura_drawer_attention">需要你关注</string>
+    <string name="aura_drawer_appointments">预约任务</string>
+    <string name="aura_drawer_automations">自动化场景任务</string>
+    <string name="aura_drawer_recent">最近</string>
 </resources>

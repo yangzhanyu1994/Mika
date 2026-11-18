@@ -27,4 +27,11 @@
     <string name="aura_scene_example">When I connect to home Wi-Fi, remind me to check the door</string>
     <string name="aura_setup">Set up</string>
     <string name="aura_try">Use this example</string>
+    <string name="aura_settings">Settings</string>
+    <string name="aura_standby">Ready when you are</string>
+    <string name="aura_completed">Task completed</string>
+    <string name="aura_drawer_attention">Needs your attention</string>
+    <string name="aura_drawer_appointments">Scheduled tasks</string>
+    <string name="aura_drawer_automations">Automation scenes</string>
+    <string name="aura_drawer_recent">Recent</string>
 </resources>
