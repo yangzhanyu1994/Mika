@@ -971,7 +971,7 @@ class TaskRun(
             } else null
             val agent = AgentLoop(
                 model, tools,
-                SystemPrompt.identity(),
+                SystemPrompt.identity() + USER_REPLY_STYLE,
                 // 助手断开、被挪走只在这一步用的是手机时才查
                 gate = { w ->
                     if (phoneScreen.acquired && dispatcher?.surface != WEB) phone?.screen?.let { awaitUserPick(it, taskGate, w) }
@@ -1538,3 +1538,15 @@ class TaskRun(
         const val TAG = "MikaTask"
     }
 }
+
+private const val USER_REPLY_STYLE = """
+
+User-facing progress and final replies:
+- Keep progress updates to one short sentence when the user needs an update.
+- Start the final answer with the outcome and any immediate decision the user must make.
+- For simple actions, one sentence with the essential receipt is enough.
+- For lookups, list the requested results with the details the user needs.
+- For partial or blocked work, give the confirmed portion and the specific blocker.
+- Leave out generic advice, repeated context, a play-by-play and offers to do more unless asked.
+- Continue to follow any required output format for machine-readable results.
+"""
