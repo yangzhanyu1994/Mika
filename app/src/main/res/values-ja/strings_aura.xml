@@ -27,4 +27,11 @@
     <string name="aura_scene_example">自宅の Wi-Fi に接続したら玄関の鍵を確認するよう知らせて</string>
     <string name="aura_setup">設定する</string>
     <string name="aura_try">この例を使う</string>
+    <string name="aura_settings">設定</string>
+    <string name="aura_standby">いつでも準備完了</string>
+    <string name="aura_completed">タスクが完了しました</string>
+    <string name="aura_drawer_attention">確認が必要</string>
+    <string name="aura_drawer_appointments">予約タスク</string>
+    <string name="aura_drawer_automations">自動化シーン</string>
+    <string name="aura_drawer_recent">最近</string>
 </resources>

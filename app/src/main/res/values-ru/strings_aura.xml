@@ -27,4 +27,11 @@
     <string name="aura_scene_example">При подключении к домашнему Wi-Fi напомни проверить замок двери</string>
     <string name="aura_setup">Настроить</string>
     <string name="aura_try">Использовать этот пример</string>
+    <string name="aura_settings">Настройки</string>
+    <string name="aura_standby">Готов к работе</string>
+    <string name="aura_completed">Задача выполнена</string>
+    <string name="aura_drawer_attention">Требует вашего внимания</string>
+    <string name="aura_drawer_appointments">Запланированные задачи</string>
+    <string name="aura_drawer_automations">Сценарии автоматизации</string>
+    <string name="aura_drawer_recent">Недавние</string>
 </resources>
