@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -23,6 +24,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
@@ -55,6 +58,8 @@ import com.wangzan101.mika.ui.theme.MikaShapes
 import com.wangzan101.mika.ui.theme.MikaSize
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
+import com.wangzan101.mika.ui.theme.LocalSettingsAppearance
+import com.wangzan101.mika.ui.theme.SettingsType
 import androidx.compose.runtime.getValue
 
 // ---------- 开关 ----------
@@ -71,6 +76,13 @@ fun MikaSwitch(
     enabled: Boolean = true,
 ) {
     val c = MikaTheme.colors
+    if (LocalSettingsAppearance.current) {
+        Switch(checked, onCheckedChange, modifier, enabled = enabled, colors = SwitchDefaults.colors(
+            checkedTrackColor = c.accent, checkedThumbColor = c.onAccent,
+            uncheckedTrackColor = c.fill, uncheckedThumbColor = c.ink2, uncheckedBorderColor = c.hair,
+        ))
+        return
+    }
     val reduce = MikaTheme.reduceMotion
     val position by animateFloatAsState(if (checked) 1f else 0f, MikaMotion.switch(reduce), label = "switch")
     val track by animateColorAsState(if (checked) c.accent else c.greySoft, MikaMotion.switch(reduce), label = "switch-track")
@@ -266,15 +278,20 @@ fun TopBar(
     background: Color = MikaTheme.colors.bg,
 ) {
     val c = MikaTheme.colors
+    val settings = LocalSettingsAppearance.current
     Box(Modifier.fillMaxWidth().pageBackground(background).windowInsetsPadding(WindowInsets.statusBars)) {
         Row(
-            Modifier.fillMaxWidth().height(MikaSize.TopBar).padding(horizontal = 8.dp),
+            Modifier.fillMaxWidth()
+                .then(if (settings) Modifier.heightIn(min = MikaSize.TopBar).padding(vertical = 4.dp) else Modifier.height(MikaSize.TopBar))
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (left != null) BarIconButton(left, leftLabel, onLeft, glass = leftGlass, badge = leftBadge) else Spacer(Modifier.size(MikaSize.IconButton))
-            Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(title, style = MikaType.Title, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).padding(horizontal = 4.dp),
+                horizontalAlignment = if (settings) Alignment.Start else Alignment.CenterHorizontally) {
+                Text(title, style = if (settings) SettingsType.Title else MikaType.Title,
+                    color = c.ink, maxLines = if (settings) 2 else 1, overflow = TextOverflow.Ellipsis)
                 if (!subtitle.isNullOrEmpty()) {
                     Text(
                         subtitle, style = MikaType.Hint, fontWeight = FontWeight.Medium,
@@ -283,7 +300,7 @@ fun TopBar(
                 }
             }
             if (right != null) Row(verticalAlignment = Alignment.CenterVertically, content = right)
-            else Spacer(Modifier.size(MikaSize.IconButton))
+            else if (!settings) Spacer(Modifier.size(MikaSize.IconButton))
         }
     }
 }

@@ -78,6 +78,7 @@ import com.wangzan101.mika.cap.phone.setup.PairingNotifier
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.core.knowledge.GuideCatalog
 import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.ui.theme.appearanceDark
 import com.wangzan101.mika.ui.theme.systemBarsFor
@@ -672,7 +673,7 @@ private fun MikaRoot(
                 }
             }
         }
-        Route.Settings -> {
+        Route.Settings -> SettingsAppearance {
             val autonomous by app.approvals.autonomous.collectAsState()
             SettingsScreen(store, status, release, onFix, onBack = back, onOpenMemory = { nav.push(Route.Memory) },
                 onOpenModels = { nav.push(Route.Models) }, onOpenSpeech = { nav.push(Route.SpeechModel) },
@@ -680,32 +681,36 @@ private fun MikaRoot(
                 updateVersion = updateState.update?.version, onOpenAbout = { nav.push(Route.About) },
                 mcpServers = app.mcpServers)
         }
-        Route.Models -> ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) }, onOpenUsage = { nav.push(Route.Usage) })
-        Route.Usage -> UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) })
-        Route.SpeechModel -> SpeechModelScreen(store, onBack = back)
-        Route.About -> AboutScreen(
-            versionName = BuildConfig.VERSION_NAME, build = BuildConfig.GIT_HASH, beta = BuildConfig.BETA,
-            update = updateState,
-            issueUrl = remember {
-                MikaLinks.issueUrl(
-                    MikaLinks.Device(
-                        Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
-                        BuildConfig.VERSION_NAME, BuildConfig.GIT_HASH,
-                    ),
-                )
-            },
-            onCheck = app.updates::checkInBackground,
-            autoUpdate = autoUpdate,
-            onAutoUpdate = app.automaticUpdates::setEnabled,
-            onOpenUrl = { openInBrowser(context, it) },
-            onSaveQr = { QrImage.saveToPictures(context) },
-            onOpenLicense = { nav.push(Route.License) },
-            onBack = back,
-            diagnostics = {
-                Diagnostics.render(DiagnosticsCollector.collect(context, status))
-            },
-        )
-        Route.License -> LicensesScreen(onBack = back)
+        Route.Models -> SettingsAppearance {
+            ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) }, onOpenUsage = { nav.push(Route.Usage) })
+        }
+        Route.Usage -> SettingsAppearance { UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) }) }
+        Route.SpeechModel -> SettingsAppearance { SpeechModelScreen(store, onBack = back) }
+        Route.About -> SettingsAppearance {
+            AboutScreen(
+                versionName = BuildConfig.VERSION_NAME, build = BuildConfig.GIT_HASH, beta = BuildConfig.BETA,
+                update = updateState,
+                issueUrl = remember {
+                    MikaLinks.issueUrl(
+                        MikaLinks.Device(
+                            Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
+                            BuildConfig.VERSION_NAME, BuildConfig.GIT_HASH,
+                        ),
+                    )
+                },
+                onCheck = app.updates::checkInBackground,
+                autoUpdate = autoUpdate,
+                onAutoUpdate = app.automaticUpdates::setEnabled,
+                onOpenUrl = { openInBrowser(context, it) },
+                onSaveQr = { QrImage.saveToPictures(context) },
+                onOpenLicense = { nav.push(Route.License) },
+                onBack = back,
+                diagnostics = {
+                    Diagnostics.render(DiagnosticsCollector.collect(context, status))
+                },
+            )
+        }
+        Route.License -> SettingsAppearance { LicensesScreen(onBack = back) }
         Route.Browser -> BrowserScreen(remember { UserBrowser.of(context) }, onBack = back)
         Route.Files -> FileLibraryScreen(app.chat, filesConversation, filesFromDrawer, onBack = back, onAdded = { id ->
             app.chat.openConversation(id)
