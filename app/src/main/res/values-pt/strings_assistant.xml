@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">A Mika não conseguiu iniciar a tarefa. O rascunho ainda está aqui.</string>
     <string name="assistant_model_required">Configure um modelo na Mika antes de enviar a tarefa.</string>
     <string name="assistant_clear">Limpar rascunho</string>
+    <string name="assistant_reply">Resposta da Mika</string>
+    <string name="assistant_open_conversation">Ver conversa completa</string>
+    <string name="assistant_status_unavailable">Aguardando uma atualização do status da tarefa</string>
 </resources>

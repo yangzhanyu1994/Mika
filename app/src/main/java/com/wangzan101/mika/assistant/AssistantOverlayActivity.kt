@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
@@ -26,6 +27,9 @@ import com.wangzan101.mika.cap.sandbox.Attachments
 import com.wangzan101.mika.cap.sandbox.SandboxDirs
 import com.wangzan101.mika.cap.sandbox.SandboxState
 import com.wangzan101.mika.core.agent.AttachmentLines
+import com.wangzan101.mika.core.agent.Conversation
+import com.wangzan101.mika.core.agent.TaskState
+import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.i18n.AppLanguage
 import com.wangzan101.mika.quit.MikaQuit
 import com.wangzan101.mika.task.TaskService
@@ -38,8 +42,17 @@ import com.wangzan101.mika.voice.SpeechEvent
 import com.wangzan101.mika.voice.assistantSpeech
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -60,6 +73,8 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var screenshot by mutableStateOf<Bitmap?>(null)
     private var photo by mutableStateOf<Bitmap?>(null)
     private var sending by mutableStateOf(false)
+    private var conversationId: String? = null
+    private var reply by mutableStateOf<AssistantReply?>(null)
     private var pendingPhoto: Uri? = null
     private var photoUri: Uri? = null
     private var voiceJob: Job? = null
@@ -114,6 +129,13 @@ class AssistantOverlayActivity : ComponentActivity() {
             return
         }
         invocation = active
+        if (savedInstanceState != null) {
+            savedInstanceState.getString("assistantConversation")?.let { id ->
+                autoListen = false
+                text = savedInstanceState.getString("assistantQuestion").orEmpty()
+                showReply(id)
+            }
+        }
         MikaQuit.resume(this)
         lifecycleScope.launch { active.invalidated.collect { if (it) finish() } }
         val transparent = android.graphics.Color.TRANSPARENT
@@ -134,6 +156,8 @@ class AssistantOverlayActivity : ComponentActivity() {
                     screenshot = screenshot,
                     photo = photo,
                     sending = sending,
+                    reply = reply,
+                    onOpenConversation = ::openConversation,
                     onText = { text = it },
                     onEdit = { stopSpeech(keepText = true) },
                     onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
@@ -147,6 +171,12 @@ class AssistantOverlayActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("assistantConversation", conversationId)
+        outState.putString("assistantQuestion", text)
     }
 
     override fun onResume() {
@@ -186,7 +216,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     private fun requestSpeech() {
-        if (!resumed || isFinishing || sending) return
+        if (!resumed || isFinishing || sending || conversationId != null) return
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startSpeech()
         else {
             permissionPending = true
@@ -310,7 +340,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun send() {
-        if (sending || screenJob?.isActive == true || locked() || isFinishing) return
+        if (sending || conversationId != null || screenJob?.isActive == true || locked() || isFinishing) return
         val words = text.trim()
         val screen = screenshot
         val cameraFile = photoUri?.let { AttachFiles.cameraFile(this, it) }
@@ -335,7 +365,10 @@ class AssistantOverlayActivity : ComponentActivity() {
             try {
                 if (screen == null && cameraFile == null) TaskService.start(this@AssistantOverlayActivity, words, id)
                 else submitImages(id, words, screen, cameraFile)
-                finish()
+                removeScreenshot()
+                removePhoto()
+                invocation?.screenshot?.value = null
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) showReply(id) else finish()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -345,6 +378,63 @@ class AssistantOverlayActivity : ComponentActivity() {
                 sending = false
             }
         }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun showReply(id: String) {
+        conversationId = id
+        reply = AssistantReply(getString(R.string.runtime_preparing))
+        val live = app.taskState.runs.map { runs -> runs.firstOrNull { it.conversationId == id } }
+            .distinctUntilChanged()
+            .flatMapLatest { run -> run?.state ?: flowOf(null) }
+        val saved = app.conversations.changes.filter { it == id }.onStart { emit(id) }.map {
+            withContext(Dispatchers.IO) { app.conversations.turns(id).firstOrNull() }
+        }
+
+        val startupTimeout = lifecycleScope.launch {
+            delay(15_000)
+            reply = AssistantReply(getString(R.string.assistant_status_unavailable))
+        }
+        lifecycleScope.launch {
+            combine(live, saved) { state, turn -> turn?.let(::savedReply) ?: state?.let(::liveReply) }
+                .collect { next ->
+                    if (next != null) {
+                        startupTimeout.cancel()
+                        reply = next
+                    }
+                }
+        }
+    }
+
+    private fun liveReply(state: TaskState): AssistantReply? {
+        if (state == TaskState.Idle) return null
+        val (title, body) = TaskService.describe(state)
+        return when (state) {
+            is TaskState.Succeeded -> AssistantReply(
+                if (state.doubtful) title else getString(R.string.assistant_reply), body,
+            )
+            is TaskState.Running -> AssistantReply(title, running = true)
+            else -> AssistantReply(title, body)
+        }
+    }
+
+    private fun savedReply(turn: Turn): AssistantReply = when (turn.status) {
+        "unverified" -> AssistantReply(
+            getString(R.string.chat_unverified),
+            listOfNotNull(turn.note?.takeIf(String::isNotBlank), turn.outcome).joinToString("\n\n"),
+        )
+        "failed" -> AssistantReply(getString(R.string.task_not_done), turn.outcome)
+        "cancelled" -> AssistantReply(
+            getString(R.string.task_stopped),
+            Conversation.stopSummary(turn) ?: getString(R.string.task_stopped_body),
+        )
+        else -> AssistantReply(getString(R.string.assistant_reply), turn.outcome)
+    }
+
+    private fun openConversation() {
+        val id = conversationId ?: return
+        startActivity(TaskService.openAppIntent(this, id))
+        finish()
     }
 
     private suspend fun submitImages(id: String, words: String, screen: Bitmap?, cameraFile: File?) = withContext(Dispatchers.IO) {

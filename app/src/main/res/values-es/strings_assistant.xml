@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika no pudo iniciar la tarea. Tu borrador sigue aquí.</string>
     <string name="assistant_model_required">Configura un modelo en Mika antes de enviar la tarea.</string>
     <string name="assistant_clear">Borrar borrador</string>
+    <string name="assistant_reply">Respuesta de Mika</string>
+    <string name="assistant_open_conversation">Ver conversación completa</string>
+    <string name="assistant_status_unavailable">Esperando una actualización del estado de la tarea</string>
 </resources>

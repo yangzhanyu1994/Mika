@@ -8,6 +8,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaskEdgeLightTest {
+    @Test fun blueBrightnessDimsAndReturnsOverOneCycle() {
+        assertEquals(1f, TaskEdgeLight.breathingAlpha(0), 0.0001f)
+        assertEquals(0.57f, TaskEdgeLight.breathingAlpha(725), 0.0001f)
+        assertEquals(0.14f, TaskEdgeLight.breathingAlpha(1_450), 0.0001f)
+        assertEquals(0.57f, TaskEdgeLight.breathingAlpha(2_175), 0.0001f)
+        assertEquals(1f, TaskEdgeLight.breathingAlpha(2_900), 0.0001f)
+        assertEquals(TaskEdgeLight.breathingAlpha(725), TaskEdgeLight.breathingAlpha(3_625), 0.0001f)
+    }
+
     @Test fun completedTaskIsEligibleWithoutWaitingForBackgroundJudgment() {
         val result = TaskState.Succeeded("done")
         assertTrue(TaskEdgeLight.showsCompletion(result, conditionCheck = false))
