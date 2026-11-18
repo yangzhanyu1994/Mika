@@ -170,6 +170,7 @@ internal class ResearchChat(
             recordUsage(id, reply.usage)
             return reply
         }
+        val completedQueries = mutableSetOf<String>()
         repeat(3) { step ->
             val mayDelegate = delegating && step == 0
             val reply = request(if (mayDelegate) tools + WORK else tools, stream = !mayDelegate)
@@ -185,7 +186,13 @@ internal class ResearchChat(
                         .getOrNull()?.trim()?.take(500)?.takeIf(String::isNotEmpty)
                 } else null
                 if (query == null || search == null) Part.ToolResult(call.id, "Search is unavailable for this call.", true)
-                else lookup(search, query, call.id)
+                else {
+                    if (query in completedQueries) {
+                        Part.ToolResult(call.id, "This identical query already returned results earlier in the current request. Use those results.", false)
+                    } else lookup(search, query, call.id).also { result ->
+                        if (!result.isError) completedQueries += query
+                    }
+                }
             }
             messages += Message(Role.Tool, results, Author.Mika)
         }

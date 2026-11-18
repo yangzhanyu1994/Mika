@@ -42,6 +42,7 @@ class ForkReleaseHistoryTest {
         assertEquals(51, entries.size)
         assertTrue(entries.first().notes.contains("MCP 查询"))
         assertTrue(entries.first().notes.contains("重试耗时"))
+        assertTrue(entries.first().notes.contains("工作动效"))
         assertTrue(entries[1].notes.contains("默认跟随最新输出"))
         assertTrue(entries[1].notes.contains("恢复长按输入框说话"))
         assertTrue(entries[2].notes.contains("按需接入工作模式"))

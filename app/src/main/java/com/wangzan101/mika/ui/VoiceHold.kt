@@ -523,7 +523,10 @@ private const val WAVE_BARS = 14
  * [title] 是卡片顶上那句(平时「在听」,任务在跑时「插话给『…』」)。
  */
 @Composable
-internal fun VoiceFloat(vh: VoiceHold, state: HoldToTalk.State, title: String, backdrop: GlassBackdrop?, reduceMotion: Boolean) {
+internal fun VoiceFloat(
+    vh: VoiceHold, state: HoldToTalk.State, title: String, backdrop: GlassBackdrop?, reduceMotion: Boolean,
+    think: Boolean = false,
+) {
     val gap = with(LocalDensity.current) { 12.dp.roundToPx() }
     val listening = state as? HoldToTalk.State.Listening
     // 卡片收起的动画里还要画最后那一刻的内容
@@ -546,7 +549,9 @@ internal fun VoiceFloat(vh: VoiceHold, state: HoldToTalk.State, title: String, b
                     fadeIn(tween(200)) + slideInVertically(tween(200)) { it / 12 } + scaleIn(tween(200), initialScale = 0.98f),
                 exit = fadeOut(tween(if (reduceMotion) 0 else 150)),
             ) {
-                last[0]?.let { ListenCard(it, title, vh.engine, backdrop, vh.autoSendOnRelease) { at -> vh.cardAt = at } }
+                last[0]?.let {
+                    ListenCard(it, title, vh.engine, backdrop, vh.autoSendOnRelease, think, reduceMotion) { at -> vh.cardAt = at }
+                }
             }
             val toast = vh.toast
             if (toast != null && listening == null) VoiceToast(toast)
@@ -578,7 +583,8 @@ private fun CancelHint(armed: Boolean, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun ListenCard(
-    s: HoldToTalk.State.Listening, title: String, engine: String, backdrop: GlassBackdrop?, autoSend: Boolean, onPlaced: (Rect) -> Unit,
+    s: HoldToTalk.State.Listening, title: String, engine: String, backdrop: GlassBackdrop?, autoSend: Boolean,
+    think: Boolean, reduceMotion: Boolean, onPlaced: (Rect) -> Unit,
 ) {
     val c = MikaTheme.colors
     val shape = RoundedCornerShape(22.dp)
@@ -589,7 +595,9 @@ private fun ListenCard(
     ) {
         Column(Modifier.weight(1f).padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RecDot(s)
+                if (think && !s.cancelArmed && !s.sendArmed) {
+                    ResearchThinkingOrb(OrbMotion.Listening, 20.dp, animated = !reduceMotion, level = { s.level })
+                } else RecDot(s)
                 Text(title, Modifier.weight(1f, fill = false), style = HeadText, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (engine.isNotEmpty()) {
                     Text(

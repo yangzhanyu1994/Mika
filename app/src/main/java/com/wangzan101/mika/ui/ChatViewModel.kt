@@ -204,6 +204,7 @@ data class Exchange(
     val keptPageClosed: String? = null,
     /** 每一步实际做的动作(按步号):标题是汇总,点开一步时看这里的明细。 */
     val stepActions: Map<Int, List<StepAction>> = emptyMap(),
+    val motion: OrbMotion = OrbMotion.Connecting,
 )
 
 /**
@@ -2062,7 +2063,7 @@ class ChatViewModel(
                 list.map { a -> StepAction(toolLabel(a.label), a.target?.let { where(it, appLabel) }, a.effect, a.failed) }
             }
 
-        private fun state(ex: Exchange, s: TaskState, appLabel: (String) -> String): Exchange = when (s) {
+        private fun state(ex: Exchange, s: TaskState, appLabel: (String) -> String): Exchange = (when (s) {
             TaskState.Idle -> ex
             is TaskState.Running -> {
                 val progress = s.progress?.let(StatusCopy::progress)
@@ -2100,7 +2101,7 @@ class ChatViewModel(
                 waitingForModel = false, draft = null, line = "")
             is TaskState.Failed -> ex.copy(status = ExchangeStatus.Failed(s.reason), waitingForModel = false, draft = null, line = "")
             TaskState.Cancelled -> ex.copy(status = ExchangeStatus.Cancelled(), waitingForModel = false, draft = null, line = "")
-        }
+        }).copy(motion = if (s == TaskState.Idle) ex.motion else s.orbMotion)
 
         /**
          * 步骤列表:每件实际做过的事一行。读取类只在知道读的是哪里时出现,连着读同一处合成一行(「看了微信的聊天列表」);

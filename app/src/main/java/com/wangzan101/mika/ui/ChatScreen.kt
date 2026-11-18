@@ -558,6 +558,7 @@ fun ChatScreen(
                 if (onRouteSend != null) onRouteSend(text) else vm.send(text, check)
             },
             voiceAutoSend = true,
+            thinkVoiceMotion = true,
             onPickSpeech = openSpeechModel,
             steerTarget = if (ui.followUpMode == FollowUpMode.Steer) last?.goal?.let(ChatCopy::plainTitle) else null,
             onVoiceHolding = { voiceHolding = it },
@@ -837,7 +838,9 @@ private fun LazyListScope.exchange(
     }
     val (joined, waiting) = steersAroundDraft(ex.steers)
     joined.forEach(::steer)
-    ex.draft?.takeIf(String::isNotBlank)?.let { draft -> item("d$index") { MessageRise(reduceMotion) { DraftText(draft, ex.waitingForModel) } } }
+    ex.draft?.takeIf(String::isNotBlank)?.let { draft ->
+        item("d$index") { MessageRise(reduceMotion) { DraftText(draft, ex.waitingForModel, reduceMotion) } }
+    }
     waiting.forEach(::steer)
     item("r$index") {
         JumpHighlight(highlightKey == "r$index", reduceMotion) {
@@ -942,11 +945,14 @@ private val ChatThumbWidth = 110.dp
 
 /** 正在生成的回答:和完成后的回答一样放在淡灰底上。 */
 @Composable
-private fun DraftText(text: String, generating: Boolean) {
-    MarkdownText(
-        text, AnswerText.copy(color = MikaTheme.colors.ink),
-        Modifier.fillMaxWidth().padding(bottom = 12.dp).answerSurface(), streaming = generating,
-    )
+private fun DraftText(text: String, generating: Boolean, reduceMotion: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).answerSurface(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ResearchThinkingOrb(OrbMotion.Writing, 20.dp, animated = !reduceMotion)
+        MarkdownText(text, AnswerText.copy(color = MikaTheme.colors.ink), Modifier.weight(1f), streaming = generating)
+    }
 }
 
 /** 插话交给模型之前已经说完的回复:和回答一样的底和字,长按一样能复制、引用、选择文字。 */
@@ -1007,10 +1013,7 @@ private fun WorkBlock(ex: Exchange, reduceMotion: Boolean, backgroundNote: Boole
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (ex.waitingForModel && !paused) ThinkingDots(reduceMotion) else Spinner(
-                Modifier.size(16.dp), spinning = !paused && !reduceMotion,
-                track = if (paused) c.warnSoft else c.accentSoft, head = if (paused) c.warnSolid else c.accent,
-            )
+            ResearchThinkingOrb(if (paused) OrbMotion.Waiting else ex.motion, 20.dp, animated = !reduceMotion)
             Text(
                 ChatCopy.progressLine(ex), Modifier.weight(1f), style = NowText, color = c.ink,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -1197,7 +1200,9 @@ private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> U
             Modifier.heightIn(min = 28.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (ex.status is ExchangeStatus.Done) Icon(MikaIcons.Check, null, Modifier.size(16.dp), tint = c.ink3)
+            if (ex.status is ExchangeStatus.Done && ex.status.unverifiedLine == null) {
+                ResearchThinkingOrb(OrbMotion.Complete, 16.dp, animated = false)
+            }
             if (ex.steps.isNotEmpty()) {
                 Text(
                     stepsSummary(ex) + tokenText?.let { " · $it" }.orEmpty(),
@@ -1511,6 +1516,7 @@ internal fun Composer(
     draftKey: String? = null,
     idlePlaceholder: String? = null,
     sendEnabled: Boolean = true,
+    thinkVoiceMotion: Boolean = false,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1623,7 +1629,7 @@ internal fun Composer(
             if (vh != null) {
                 val title = if (busy && !steerTarget.isNullOrBlank()) stringResource(R.string.voice_steer_to, steerTarget)
                 else stringResource(R.string.voice_listening)
-                VoiceFloat(vh, vState, title, backdrop, reduceMotion)
+                VoiceFloat(vh, vState, title, backdrop, reduceMotion, thinkVoiceMotion)
             }
             Box(Modifier.fillMaxWidth()) {
             GlassBar(Modifier.fillMaxWidth().keepsKeyboard(), backdrop) {
@@ -1671,7 +1677,11 @@ internal fun Composer(
                         }) else KeyboardActions.Default,
                     )
                     // 服务商松开后在转:输入框里转圈,转好的字填进来
-                    if (converting) VoiceConverting(Modifier.align(Alignment.CenterStart))
+                    if (converting) {
+                        if (thinkVoiceMotion) Box(Modifier.align(Alignment.CenterStart)) {
+                            ResearchThinkingOrb(OrbMotion.Connecting, 20.dp, animated = !reduceMotion)
+                        } else VoiceConverting(Modifier.align(Alignment.CenterStart))
+                    }
                     if (voiceGesture && vh != null) {
                         Box(Modifier.matchParentSize().holdToTalk(vh) { field.requestFocus(); keyboard?.show() })
                     }

@@ -50,6 +50,8 @@ internal class ModelCaller(
 
     /** 本任务的系统提示词:开工时按发给模型的同一份工具列表拼([SystemPrompt.assemble]),任务内不变。 */
     var systemPrompt: String = ""
+    private data class FixedOverhead(val prompt: String, val tools: List<ToolSpec>, val tokens: Int)
+    private var fixedOverhead: FixedOverhead? = null
 
     /** 最近一次调用在成功那次请求之前花掉的时间(失败的请求、退避)。 */
     var lastRetryWaitMs = 0L
@@ -65,6 +67,7 @@ internal class ModelCaller(
 
     fun reset(prompt: String) {
         systemPrompt = prompt
+        fixedOverhead = null
         compactions.clear()
         taskRetryWaitMs = 0
         compressors.values.forEach { it.forget() }
@@ -169,7 +172,10 @@ internal class ModelCaller(
         var retries = 0
         lastRetryWaitMs = 0
         var firstAttemptAt: Long? = null
-        val overhead = TokenEstimate.of(systemPrompt) + specs.sumOf { TokenEstimate.of(it.name + it.description + it.parametersJsonSchema) }
+        val overhead = fixedOverhead?.takeIf { it.prompt == systemPrompt && it.tools == specs }?.tokens
+            ?: (TokenEstimate.of(systemPrompt) + specs.sumOf {
+                TokenEstimate.of(it.name + it.description + it.parametersJsonSchema)
+            }).also { fixedOverhead = FixedOverhead(systemPrompt, specs.toList(), it) }
         val contextTokens = using.capabilities.contextTokens
         val compressor = compressorFor(using)
         var compaction = compactions[using] ?: CompactionState()

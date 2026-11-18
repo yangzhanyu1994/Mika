@@ -23,15 +23,41 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.wangzan101.mika.chat.ResearchPhase
+import com.wangzan101.mika.core.agent.RunProgress
+import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.ui.theme.MikaTheme
 import kotlinx.coroutines.flow.collect
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class OrbMotion {
+enum class OrbMotion {
     Idle, Listening, Connecting, Thinking, Searching, Observing, Working, Writing, Waiting, Complete,
 }
+
+internal fun toolOrbMotion(tool: String?): OrbMotion? = when (tool) {
+    null -> null
+    "web_search", "knowledge_search", "skill_search", "search_files" -> OrbMotion.Searching
+    "phone_find", "find_visually", "list_elements", "observe", "screenshot", "web_read_page" -> OrbMotion.Observing
+    else -> OrbMotion.Working
+}
+
+internal val TaskState.orbMotion: OrbMotion
+    get() = when (this) {
+        TaskState.Idle -> OrbMotion.Idle
+        is TaskState.Running -> when {
+            progress is RunProgress.WaitingForApp -> OrbMotion.Waiting
+            tool != null -> toolOrbMotion(tool) ?: OrbMotion.Working
+            progress != null -> OrbMotion.Working
+            !preview.isNullOrBlank() -> OrbMotion.Writing
+            step == 0 -> OrbMotion.Connecting
+            else -> OrbMotion.Thinking
+        }
+        is TaskState.Held, is TaskState.WaitingInput, is TaskState.WaitingConfirmation, is TaskState.WaitingTakeover ->
+            OrbMotion.Waiting
+        is TaskState.Succeeded -> OrbMotion.Complete
+        is TaskState.Failed, TaskState.Cancelled -> OrbMotion.Idle
+    }
 
 internal val ResearchPhase.orbMotion: OrbMotion
     get() = when (this) {
