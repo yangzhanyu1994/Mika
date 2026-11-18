@@ -11,6 +11,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal suspend fun assistantSpeech(
     voice: VoiceSource,
     finishRequested: () -> Boolean,
+    onSilence: () -> Unit = {},
     onEvent: (SpeechEvent) -> Unit,
 ) {
     val session = voice.start()
@@ -38,7 +39,8 @@ internal suspend fun assistantSpeech(
                     when (event) {
                         is SpeechEvent.Level -> endpoint.level(event.value, now)
                         is SpeechEvent.Partial -> endpoint.partial(event.stable + event.tail, now)
-                        SpeechEvent.EndOfSpeech -> release(now)
+                        // A recognizer's segment may end before the overlay's two-second window.
+                        SpeechEvent.EndOfSpeech -> Unit
                         else -> Unit
                     }
                     if (event != null && event != SpeechEvent.EndOfSpeech) onEvent(event)
@@ -47,7 +49,10 @@ internal suspend fun assistantSpeech(
                     if (releasedAt == null) {
                         when (endpoint.decision(now)) {
                             AssistantEndpoint.Decision.NoSpeech -> break
-                            AssistantEndpoint.Decision.Finish -> release(now)
+                            AssistantEndpoint.Decision.Finish -> {
+                                onSilence()
+                                release(now)
+                            }
                             AssistantEndpoint.Decision.Wait -> Unit
                         }
                     } else if (now - checkNotNull(releasedAt) >= 35_000) break

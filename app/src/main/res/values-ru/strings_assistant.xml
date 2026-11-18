@@ -22,4 +22,6 @@
     <string name="assistant_searching">Идёт поиск</string>
     <string name="assistant_looking">Проверяю</string>
     <string name="assistant_thinking">Думаю</string>
+    <string name="assistant_result_speech_setup">Чтобы прослушивать результаты задач, настройте голос Doubao в реальном времени в настройках голоса.</string>
+    <string name="assistant_result_speech_failed">Не удалось воспроизвести результат. Проверьте доступ к голосу Doubao в реальном времени в настройках голоса.</string>
 </resources>

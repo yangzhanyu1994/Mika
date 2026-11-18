@@ -22,4 +22,6 @@
     <string name="assistant_searching">Searching</string>
     <string name="assistant_looking">Looking up</string>
     <string name="assistant_thinking">Thinking</string>
+    <string name="assistant_result_speech_setup">Configure Doubao realtime speech in Voice settings to hear task results.</string>
+    <string name="assistant_result_speech_failed">Couldn’t play the result. Check Doubao realtime speech access in Voice settings.</string>
 </resources>

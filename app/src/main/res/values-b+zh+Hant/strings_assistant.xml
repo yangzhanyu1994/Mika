@@ -22,4 +22,6 @@
     <string name="assistant_searching">正在搜尋</string>
     <string name="assistant_looking">正在查找</string>
     <string name="assistant_thinking">思考中</string>
+    <string name="assistant_result_speech_setup">在語音設定中設定豆包即時語音後，即可播報任務結果。</string>
+    <string name="assistant_result_speech_failed">結果播報失敗，請在語音設定中檢查豆包即時語音權限。</string>
 </resources>
