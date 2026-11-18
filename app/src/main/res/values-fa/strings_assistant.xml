@@ -23,6 +23,17 @@
     <string name="assistant_looking">در حال بررسی</string>
     <string name="assistant_thinking">در حال فکر کردن</string>
     <string name="assistant_reading_result">در حال خواندن نتیجه</string>
-    <string name="assistant_readout_unavailable">خواندن نتیجه با صدای Doubao ممکن نشد. تنظیمات صدا در تلفن هوش مصنوعی را بررسی کنید.</string>
     <string name="drawer_calls_listening">در انتظار تماس</string>
+    <string name="assistant_readout_settings">خواندن صوتی</string>
+    <string name="assistant_readout_enable">خواندن نتیجه با صدا</string>
+    <string name="assistant_readout_compatible">سازگار با OpenAI</string>
+    <string name="assistant_readout_doubao">Doubao بلادرنگ ۳٫۰ (1.2.6.1)</string>
+    <string name="assistant_readout_model">مدل تبدیل متن به گفتار</string>
+    <string name="assistant_readout_voice">شناسه صدا</string>
+    <string name="assistant_readout_privacy">با فعال‌سازی، متن نتیجه به سرویس صدای انتخاب‌شده فرستاده می‌شود. اطلاعات ورود روی دستگاه رمزگذاری می‌شوند.</string>
+    <string name="assistant_readout_saved">تنظیمات صدا ذخیره شد.</string>
+    <string name="assistant_readout_save_error">مدل، نشانی و اطلاعات ورود را بررسی و پیش از فعال‌سازی ذخیره کنید.</string>
+    <string name="mode_reasoning_follow_work">پیروی از حالت کار</string>
+    <string name="mode_work_draft_pending">ابتدا کار یا پیش‌نویس موجود را تکمیل کنید.</string>
+    <string name="assistant_readout_unavailable">خواندن نتیجه ممکن نشد. تنظیمات خواندن صوتی را بررسی کنید.</string>
 </resources>

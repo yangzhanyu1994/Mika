@@ -23,6 +23,17 @@
     <string name="assistant_looking">確認中</string>
     <string name="assistant_thinking">考え中</string>
     <string name="assistant_reading_result">結果を読み上げています</string>
-    <string name="assistant_readout_unavailable">Doubao のリアルタイム音声で読み上げできません。AI 電話の音声設定を確認してください。</string>
     <string name="drawer_calls_listening">着信待機中</string>
+    <string name="assistant_readout_settings">音声読み上げ</string>
+    <string name="assistant_readout_enable">結果を読み上げる</string>
+    <string name="assistant_readout_compatible">OpenAI 互換</string>
+    <string name="assistant_readout_doubao">Doubao リアルタイム 3.0（1.2.6.1）</string>
+    <string name="assistant_readout_model">音声合成モデル</string>
+    <string name="assistant_readout_voice">音声 ID</string>
+    <string name="assistant_readout_privacy">有効にすると結果のテキストが選択したサービスに送られます。認証情報は端末で暗号化されます。</string>
+    <string name="assistant_readout_saved">音声合成設定を保存しました。</string>
+    <string name="assistant_readout_save_error">モデル、接続先、認証情報を確認し、保存してから有効にしてください。</string>
+    <string name="mode_reasoning_follow_work">作業設定に従う</string>
+    <string name="mode_work_draft_pending">作業中のタスクまたは下書きを処理してから送信してください。</string>
+    <string name="assistant_readout_unavailable">読み上げできません。設定の音声読み上げを確認してください。</string>
 </resources>

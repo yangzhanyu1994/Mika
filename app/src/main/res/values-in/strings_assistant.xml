@@ -23,6 +23,17 @@
     <string name="assistant_looking">Memeriksa</string>
     <string name="assistant_thinking">Sedang berpikir</string>
     <string name="assistant_reading_result">Membacakan hasil</string>
-    <string name="assistant_readout_unavailable">Doubao tidak dapat membacakan hasil. Periksa pengaturan suara di Telepon AI.</string>
     <string name="drawer_calls_listening">Sedang memantau</string>
+    <string name="assistant_readout_settings">Pembacaan suara</string>
+    <string name="assistant_readout_enable">Bacakan hasil</string>
+    <string name="assistant_readout_compatible">Kompatibel dengan OpenAI</string>
+    <string name="assistant_readout_doubao">Doubao Realtime 3.0 (1.2.6.1)</string>
+    <string name="assistant_readout_model">Model sintesis suara</string>
+    <string name="assistant_readout_voice">ID suara</string>
+    <string name="assistant_readout_privacy">Saat aktif, teks hasil dikirim ke layanan suara pilihan. Kredensial dienkripsi pada perangkat ini.</string>
+    <string name="assistant_readout_saved">Pengaturan suara tersimpan.</string>
+    <string name="assistant_readout_save_error">Periksa model, alamat, dan kredensial, lalu simpan sebelum mengaktifkan.</string>
+    <string name="mode_reasoning_follow_work">Ikuti mode Kerja</string>
+    <string name="mode_work_draft_pending">Selesaikan tugas atau draf Kerja terlebih dahulu.</string>
+    <string name="assistant_readout_unavailable">Hasil tidak dapat dibacakan. Periksa pengaturan Pembacaan suara.</string>
 </resources>

@@ -23,6 +23,17 @@
     <string name="assistant_looking">正在查找</string>
     <string name="assistant_thinking">思考中</string>
     <string name="assistant_reading_result">正在播报结果</string>
-    <string name="assistant_readout_unavailable">豆包实时语音暂时无法播报，请检查 AI 电话里的语音配置。</string>
     <string name="drawer_calls_listening">持续监听中</string>
+    <string name="assistant_readout_settings">语音播报</string>
+    <string name="assistant_readout_enable">开启播报</string>
+    <string name="assistant_readout_compatible">OpenAI 兼容接口</string>
+    <string name="assistant_readout_doubao">豆包实时语音 3.0（1.2.6.1）</string>
+    <string name="assistant_readout_model">语音合成模型</string>
+    <string name="assistant_readout_voice">音色 ID</string>
+    <string name="assistant_readout_privacy">开启后，播报的结果文字会发送到所选语音服务。凭据加密保存在本机。</string>
+    <string name="assistant_readout_saved">语音合成配置已保存。</string>
+    <string name="assistant_readout_save_error">请检查模型、接口和凭据，保存配置后再开启。</string>
+    <string name="mode_reasoning_follow_work">跟随工作模型</string>
+    <string name="mode_work_draft_pending">工作区有待处理的草稿或任务，请处理后再发送。</string>
+    <string name="assistant_readout_unavailable">暂时无法播报，请检查「设置 → 语音播报」。</string>
 </resources>

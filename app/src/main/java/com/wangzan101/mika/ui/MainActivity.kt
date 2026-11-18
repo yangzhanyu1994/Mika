@@ -63,6 +63,7 @@ import com.wangzan101.mika.cap.web.WebSites
 import com.wangzan101.mika.browser.UserBrowser
 import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.routeConversation
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.about.Diagnostics
 import com.wangzan101.mika.about.DiagnosticsCollector
@@ -466,7 +467,7 @@ private fun MikaRoot(
             app.chat.openPersonalTask(personalWorkId)
         }
     }
-    var selectedChat by rememberSaveable(conversationUi.conversationId) { mutableStateOf<Boolean?>(null) }
+    var selectedChat by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var transferredThread by rememberSaveable { mutableStateOf<String?>(null) }
     var requestedModelRole by rememberSaveable { mutableStateOf<ModelRole?>(null) }
     var transferConfirmation by remember { mutableStateOf<Turn?>(null) }
@@ -489,6 +490,67 @@ private fun MikaRoot(
         nav.push(Route.Models)
     }
     LaunchedEffect(nav.current) { if (nav.current != Route.Models) requestedModelRole = null }
+    suspend fun sendByIntent(question: String, inPersonal: Boolean, fromWork: Boolean): Boolean {
+        val before = app.chat.ui.value
+        val screen = nav.current
+        val personalMode = personalChat
+        val regularMode = selectedChat
+        // Attachments, quoted work drafts and replies to an ongoing task keep their existing semantics.
+        if (fromWork && (before.composer != ComposerMode.Idle || before.attachments.isNotEmpty() ||
+                before.quote != null || before.sharedDraft != null || before.importing)) {
+            return app.chat.send(question, check)
+        }
+        if (question.isBlank()) return false
+        val target = routeConversation(question, store)
+        val current = app.chat.ui.value
+        if (nav.current != screen || personalChat != personalMode || selectedChat != regularMode ||
+            current.conversationId != before.conversationId ||
+            (fromWork && (current.input != before.input || current.composer != before.composer ||
+                current.attachments != before.attachments || current.quote != before.quote ||
+                current.sharedDraft != before.sharedDraft || current.importing))
+        ) return false
+
+        if (store.configFor(target) == null) {
+            openModeModels(target)
+            return false
+        }
+        if (target == ModelRole.Main) {
+            if (inPersonal && !fromWork) showPersonalWork()
+            val work = app.chat.ui.value
+            if (!fromWork && (work.composer != ComposerMode.Idle || work.attachments.isNotEmpty() ||
+                    work.quote != null || work.sharedDraft != null || work.importing)) {
+                Toast.makeText(context, R.string.mode_work_draft_pending, Toast.LENGTH_SHORT).show()
+                if (!inPersonal) selectedChat = false
+                return false
+            }
+            if (!fromWork && work.input.isBlank()) app.chat.input(question)
+            val accepted = app.chat.send(question, check)
+            if (!inPersonal) selectedChat = false
+            return accepted
+        }
+
+        val accepted = if (inPersonal) {
+            app.researchChat.send("personal-main", question, app.personal::researchHistory, app.personal::recordResearch)
+        } else {
+            val id = current.conversationId ?: app.conversations.newConversation().also(app.chat::openConversation)
+            app.chat.ui.value.conversationId == id && app.researchChat.send(id, question)
+        }
+        if (accepted) {
+            if (fromWork && app.chat.ui.value.input == question) app.chat.input("")
+            if (inPersonal) personalChat = true else selectedChat = true
+        }
+        return accepted
+    }
+    val routingScope = rememberCoroutineScope()
+    var workRouting by remember { mutableStateOf(false) }
+    fun sendWorkInput(question: String, inPersonal: Boolean) {
+        if (workRouting) return
+        workRouting = true
+        routingScope.launch {
+            try { sendByIntent(question, inPersonal, fromWork = true) }
+            finally { workRouting = false }
+        }
+    }
     fun newModeConversation() {
         app.chat.newConversation()
         selectedChat = true
@@ -530,7 +592,7 @@ private fun MikaRoot(
         app.chat.input(text)
         // Do not accidentally send an existing draft, attachment, quote or shared content.
         if (sendRequested && ui.input.isBlank() && ui.attachments.isEmpty() && ui.quote == null && ui.sharedDraft == null) {
-            app.chat.send(text, check)
+            sendWorkInput(text, inPersonal = false)
         }
     }
     LaunchedEffect(requestedConversation) {
@@ -542,9 +604,12 @@ private fun MikaRoot(
                 }
                 personalWorkId -> showPersonalWork()
                 else -> {
+                    val latestIsChat = withContext(Dispatchers.IO) {
+                        app.conversations.turns(requestedConversation).lastOrNull()?.research == true
+                    }
                     app.chat.openConversation(requestedConversation)
                     nav.reset()
-                    selectedChat = false
+                    selectedChat = latestIsChat || requestedConversation in app.researchChat.pending.value
                 }
             }
             onConversationOpened()
@@ -693,8 +758,18 @@ private fun MikaRoot(
                 onReopened = nav::drawerReopened,
                 onPersonal = { nav.show(Route.Personal) },
                 onRegularChat = {
-                    if (app.chat.ui.value.conversationId == personalWorkId) showPersonalWork()
-                    else nav.reset()
+                    val id = app.chat.ui.value.conversationId
+                    if (id == personalWorkId) showPersonalWork()
+                    else {
+                        selectedChat = null
+                        nav.reset()
+                        if (id != null) routingScope.launch {
+                            val last = withContext(Dispatchers.IO) { app.conversations.turns(id).lastOrNull() }
+                            if (nav.current == Route.Chat && app.chat.ui.value.conversationId == id && selectedChat == null) {
+                                selectedChat = id in app.researchChat.pending.value || last?.research == true
+                            }
+                        }
+                    }
                 },
                 resetKey = nav.resetSerial,
             ) { openDrawer ->
@@ -724,17 +799,11 @@ private fun MikaRoot(
                                         onModel = { openModeModels(ModelRole.Chat) },
                                         onOpenDrawer = openDrawer,
                                         profile = personalProfile,
+                                        reasoning = { ConversationReasoning(store, ModelRole.Chat) },
                                     )
                                 },
                                 researchDraft = pending["personal-main"],
-                                onResearchSend = { question ->
-                                    if (selectedModel(ModelRole.Chat) == null) {
-                                        openModeModels(ModelRole.Chat)
-                                        false
-                                    } else app.researchChat.send(
-                                        "personal-main", question, app.personal::researchHistory, app.personal::recordResearch,
-                                    )
-                                },
+                                onResearchSend = { sendByIntent(it, inPersonal = true, fromWork = false) },
                                 onTransfer = { question, answer ->
                                     showPersonalWork()
                                     prepareWorkTransfer(Turn(question, answer, "succeeded"))
@@ -753,23 +822,14 @@ private fun MikaRoot(
                                     onNew = ::newModeConversation,
                                     onMode = { selectedChat = it },
                                     onModel = { openModeModels(ModelRole.Chat) },
-                                    onSend = { question ->
-                                        if (selectedModel(ModelRole.Chat) == null) {
-                                            openModeModels(ModelRole.Chat)
-                                            false
-                                        } else {
-                                            val thread = app.chat.ui.value.conversationId ?: app.conversations.newConversation().also {
-                                                app.chat.openConversation(it)
-                                            }
-                                            app.chat.ui.value.conversationId == thread && app.researchChat.send(thread, question)
-                                        }
-                                    },
+                                    onSend = { sendByIntent(it, inPersonal = false, fromWork = false) },
                                     onTransfer = ::prepareWorkTransfer,
                                 )
                             }
                         } else ChatScreen(
                             vm = app.chat,
                             check = check,
+                            onRouteSend = { sendWorkInput(it, inPersonal) },
                             modeHeader = { usage, otherRunning ->
                                 ConversationModeHeader(
                                     false, selectedModel(ModelRole.Main), usage,
@@ -780,6 +840,7 @@ private fun MikaRoot(
                                     runningElsewhere = otherRunning,
                                     profile = if (inPersonal) personalProfile else null,
                                     title = if (inPersonal) null else conversationUi.conversationId?.let(app.conversations::title),
+                                    reasoning = { ConversationReasoning(store, ModelRole.Main) },
                                 )
                             },
                             transferDraft = transferredThread != null && transferredThread == conversationUi.conversationId &&

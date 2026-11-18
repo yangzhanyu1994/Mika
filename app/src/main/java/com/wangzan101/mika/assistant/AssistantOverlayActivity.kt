@@ -23,6 +23,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.ResearchPhase
+import com.wangzan101.mika.chat.routeConversation
+import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.Attachments
 import com.wangzan101.mika.cap.sandbox.SandboxDirs
@@ -83,6 +86,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var history by mutableStateOf<List<AssistantExchange>>(emptyList())
     private var pendingQuestion by mutableStateOf<String?>(null)
     private var pendingAfter = 0
+    private var pendingChat = false
     private var revealTurn by mutableStateOf<Int?>(null)
     private var previousRun: String? = null
     private var replyJob: Job? = null
@@ -149,6 +153,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 text = savedInstanceState.getString("assistantQuestion").orEmpty()
                 pendingQuestion = savedInstanceState.getString("assistantPendingQuestion")
                 pendingAfter = savedInstanceState.getInt("assistantPendingAfter", 0)
+                pendingChat = savedInstanceState.getBoolean("assistantPendingChat")
                 revealTurn = pendingAfter.takeIf { pendingQuestion != null }
                 previousRun = savedInstanceState.getString("assistantPreviousRun")
                 showReply(id)
@@ -206,6 +211,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         outState.putString("assistantQuestion", text)
         outState.putString("assistantPendingQuestion", pendingQuestion)
         outState.putInt("assistantPendingAfter", pendingAfter)
+        outState.putBoolean("assistantPendingChat", pendingChat)
         outState.putString("assistantPreviousRun", previousRun)
     }
 
@@ -328,19 +334,17 @@ class AssistantOverlayActivity : ComponentActivity() {
 
     private fun playCompletedResult(answer: String) {
         if (!resumed || listening || converting || isFinishing || answer.isBlank()) return
-        val config = app.calls.settings.state.value
-        val credentials = app.calls.settings.credentials()
-        if (credentials == null) {
-            status = getString(R.string.assistant_readout_unavailable)
-            return
-        }
+        val readout = AssistantReadoutSettings(this)
+        if (!readout.enabled) return
         stopPlayback()
         val activityBefore = interactions
         playbackJob = lifecycleScope.launch {
             status = getString(R.string.assistant_reading_result)
             val played = try {
                 val words = withContext(Dispatchers.Default) { MarkdownModel.toPlainText(answer) }
-                words.isNotBlank() && speakAssistantResult(this@AssistantOverlayActivity, credentials, config.speaker, words)
+                val configured = withContext(Dispatchers.IO) { readout.configured() }
+                configured != null && words.isNotBlank() && readout.enabled &&
+                    speakAssistantResult(this@AssistantOverlayActivity, configured.first, configured.second, words)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -449,14 +453,6 @@ class AssistantOverlayActivity : ComponentActivity() {
         val screen = screenshot
         val cameraFile = photoUri?.let { AttachFiles.cameraFile(this, it) }
         if (words.isEmpty() && screen == null && cameraFile == null) return
-        if (app.providers.roles.value.main == null) {
-            status = getString(R.string.assistant_model_required)
-            return
-        }
-        if (app.teach.blocksTasks()) {
-            status = getString(R.string.teach_blocked_task)
-            return
-        }
         if (screen != null && invocation?.canShare(app) != true) {
             screenshot = null
             status = getString(R.string.appaccess_share_expired)
@@ -477,8 +473,23 @@ class AssistantOverlayActivity : ComponentActivity() {
                 }
             }
             try {
-                if (screen == null && cameraFile == null) withContext(Dispatchers.IO) { dispatch(words) }
-                else submitImages(id, words, screen, cameraFile, ::dispatch)
+                val target = if (screen != null || cameraFile != null) ModelRole.Main else routeConversation(words, app.providers)
+                if (!resumed || locked() || isFinishing) return@launch
+                if (app.providers.configFor(target) == null) {
+                    status = getString(R.string.assistant_model_required)
+                    return@launch
+                }
+                if (target == ModelRole.Chat) {
+                    if (!app.researchChat.send(id, words)) throw IOException("Chat submission failed")
+                } else {
+                    if (app.teach.blocksTasks()) {
+                        status = getString(R.string.teach_blocked_task)
+                        return@launch
+                    }
+                    if (screen == null && cameraFile == null) withContext(Dispatchers.IO) { dispatch(words) }
+                    else submitImages(id, words, screen, cameraFile, ::dispatch)
+                }
+                pendingChat = target == ModelRole.Chat
                 removeScreenshot()
                 removePhoto()
                 text = ""
@@ -503,12 +514,13 @@ class AssistantOverlayActivity : ComponentActivity() {
         conversationId = id
         replyJob?.cancel()
         if (pendingQuestion != null) reply = AssistantReply(getString(R.string.runtime_preparing), waiting = true)
+        val useChat = pendingChat
         val ignoredKey = previousRun
         val live = app.taskState.runs.map { runs ->
             runs.firstOrNull { it.conversationId == id && it.key != ignoredKey }
         }.distinctUntilChanged().flatMapLatest { run -> run?.state ?: flowOf(null) }
         val saved = app.conversations.changes.filter { it == id }.onStart { emit(id) }.map {
-            withContext(Dispatchers.IO) { app.conversations.turns(id).filterNot { it.research } }
+            withContext(Dispatchers.IO) { app.conversations.turns(id) }
         }
 
         replyJob = lifecycleScope.launch {
@@ -516,19 +528,31 @@ class AssistantOverlayActivity : ComponentActivity() {
                 delay(15_000)
                 if (pendingQuestion != null) reply = AssistantReply(getString(R.string.assistant_status_unavailable))
             }
-            combine(live, saved, ::Pair).collect { (state, turns) ->
+            combine(live, saved, app.researchChat.pending) { state, turns, chats ->
+                Triple(state, turns, chats[id])
+            }.collect { (state, turns, draft) ->
                 history = turns.map { AssistantExchange(AttachmentLines.words(it.userText), savedReply(it).body) }
-                if (pendingQuestion != null && turns.size <= pendingAfter) {
-                    if (state != null && state != TaskState.Idle) {
+                val finishedIndex = if (pendingQuestion != null) {
+                    (pendingAfter until turns.size).firstOrNull { turns[it].research == useChat }
+                } else null
+                if (pendingQuestion != null && finishedIndex == null) {
+                    revealTurn = turns.size
+                    if (useChat && draft != null) {
+                        startupTimeout.cancel()
+                        val searching = draft.phase == ResearchPhase.Searching
+                        reply = AssistantReply(getString(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
+                            body = draft.text, running = true, waiting = true, searching = searching)
+                    } else if (!useChat && state != null && state != TaskState.Idle) {
                         startupTimeout.cancel()
                         reply = liveReply(state)
                     }
                 } else {
                     startupTimeout.cancel()
-                    val finished = turns.getOrNull(pendingAfter).takeIf { pendingQuestion != null }
+                    val finished = finishedIndex?.let(turns::get)
+                    if (finishedIndex != null) revealTurn = finishedIndex
                     pendingQuestion = null
                     previousRun = null
-                    reply = turns.lastOrNull()?.let(::savedReply)
+                    reply = (finished ?: turns.lastOrNull())?.let(::savedReply)
                     if (finished != null && finished.status in setOf("succeeded", "unverified")) {
                         playCompletedResult(savedReply(finished).body)
                     }

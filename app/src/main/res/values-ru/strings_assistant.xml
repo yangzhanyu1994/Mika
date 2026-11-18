@@ -23,6 +23,17 @@
     <string name="assistant_looking">Проверяю</string>
     <string name="assistant_thinking">Думаю</string>
     <string name="assistant_reading_result">Озвучивание результата</string>
-    <string name="assistant_readout_unavailable">Не удалось озвучить результат через Doubao. Проверьте настройки голоса в ИИ-телефоне.</string>
     <string name="drawer_calls_listening">Ожидание звонков</string>
+    <string name="assistant_readout_settings">Озвучивание</string>
+    <string name="assistant_readout_enable">Озвучивать результаты</string>
+    <string name="assistant_readout_compatible">Совместимый с OpenAI</string>
+    <string name="assistant_readout_doubao">Doubao в реальном времени 3.0 (1.2.6.1)</string>
+    <string name="assistant_readout_model">Модель синтеза речи</string>
+    <string name="assistant_readout_voice">ID голоса</string>
+    <string name="assistant_readout_privacy">При включении текст результата передаётся выбранному сервису. Учётные данные шифруются на устройстве.</string>
+    <string name="assistant_readout_saved">Настройки синтеза речи сохранены.</string>
+    <string name="assistant_readout_save_error">Проверьте модель, адрес и данные доступа. Сохраните настройки перед включением.</string>
+    <string name="mode_reasoning_follow_work">Как в режиме работы</string>
+    <string name="mode_work_draft_pending">Завершите текущую задачу или обработайте черновик в режиме работы.</string>
+    <string name="assistant_readout_unavailable">Не удалось озвучить результат. Проверьте настройки озвучивания.</string>
 </resources>

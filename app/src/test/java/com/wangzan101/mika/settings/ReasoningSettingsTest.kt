@@ -54,6 +54,25 @@ class ReasoningSettingsTest {
         assertEquals("high", store().roles.value.reasoningEffort(ModelRole.Main))
     }
 
+    @Test fun chatCanOverrideOrInheritWorkEffortWithoutChangingModels() {
+        val s = store()
+        val p = connected(s)
+        assertTrue(s.use(ModelRole.Main, p.id, "m", caps))
+        assertTrue(s.setReasoningEffort(ModelRole.Main, "high"))
+        assertTrue(s.setReasoningEffort(ModelRole.Chat, "low"))
+        val reloaded = store()
+        assertEquals(RoleChoice.SameAsMain, reloaded.roles.value.chat)
+        reloaded.modelFor(ModelRole.Chat)
+        assertEquals("low", setups.last().reasoningEffort)
+        reloaded.modelFor(ModelRole.Main)
+        assertEquals("high", setups.last().reasoningEffort)
+        assertTrue(reloaded.setReasoningEffort(ModelRole.Chat, MODEL_DEFAULT_REASONING))
+        store().modelFor(ModelRole.Chat)
+        assertNull(setups.last().reasoningEffort)
+        assertTrue(reloaded.setReasoningEffort(ModelRole.Chat, null))
+        assertEquals("high", store().roles.value.reasoningEffort(ModelRole.Chat))
+    }
+
     @Test fun followingMainInheritsEffortAndChangingModelClearsOnlyItsOwnChoice() {
         val s = store()
         val p = connected(s)

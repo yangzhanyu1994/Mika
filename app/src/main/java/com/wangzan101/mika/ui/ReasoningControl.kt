@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,8 +26,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.core.model.ListedModel
 import com.wangzan101.mika.core.model.ModelRole
+import com.wangzan101.mika.settings.MODEL_DEFAULT_REASONING
+import com.wangzan101.mika.settings.ProviderConfig
+import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.settings.ReasoningOptions
+import com.wangzan101.mika.settings.RoleChoices
 import com.wangzan101.mika.settings.RoleChoice
 import com.wangzan101.mika.ui.components.FooterNote
 import com.wangzan101.mika.ui.components.MikaDialog
@@ -35,22 +41,45 @@ import com.wangzan101.mika.ui.components.SelectChip
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 
-/** 每个用途自己的档位;跟随主模型时说明继承,显式选同一个模型仍能独立设置。 */
-@OptIn(ExperimentalLayoutApi::class)
+/** Each mode has an independent override, even when Chat uses the Work model. */
 @Composable
 internal fun ReasoningControl(ui: ModelSetupUi, role: ModelRole, modifier: Modifier = Modifier, onSelect: (String?) -> Unit) {
     val cfg = ui.configFor(role) ?: return
     val listed = ui.providerOf(cfg)?.models?.firstOrNull { it.id == cfg.model }
+    ReasoningControl(cfg, listed, ui.roles, role, modifier, onSelect)
+}
+
+@Composable
+internal fun ConversationReasoning(store: ProviderStore, role: ModelRole, modifier: Modifier = Modifier) {
+    val roles by store.roles.collectAsState()
+    val catalog by store.providers.collectAsState()
+    val configs by store.configs.collectAsState()
+    val config = configs.firstOrNull { it.id == roles.resolve(role) } ?: return
+    val listed = catalog.firstOrNull { it.id == config.providerId }?.models?.firstOrNull { it.id == config.model }
+    ReasoningControl(config, listed, roles, role, modifier) { store.setReasoningEffort(role, it) }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReasoningControl(
+    cfg: ProviderConfig, listed: ListedModel?, roles: RoleChoices, role: ModelRole,
+    modifier: Modifier, onSelect: (String?) -> Unit,
+) {
     val options = ReasoningOptions.of(cfg, listed) ?: return
-    val selected = ui.roles.reasoningEffort(role)
+    val followMain = roles[role] == RoleChoice.SameAsMain
+    val selected = roles.reasoningEfforts[role]
     if (options.levels.isEmpty() && selected == null) return
-    if (ui.roles[role] == RoleChoice.SameAsMain) {
+    if (followMain && role != ModelRole.Chat) {
         FooterNote(stringResource(R.string.model_reasoning_inherit), modifier)
         return
     }
+    val choices = if (followMain) listOf(null, MODEL_DEFAULT_REASONING) + options.levels else listOf(null) + options.levels
+    @Composable fun label(effort: String?): String = if (followMain && effort == null) {
+        stringResource(R.string.mode_reasoning_follow_work)
+    } else reasoningLabel(effort)
     var open by remember(role, cfg.providerId, cfg.model) { mutableStateOf(false) }
     ModelOptionButton(
-        stringResource(R.string.model_reasoning_title, reasoningLabel(selected)),
+        stringResource(R.string.model_reasoning_title, label(selected)),
         "reasoning-${role.name.lowercase()}", modifier,
     ) { open = true }
     if (open) MikaDialog(
@@ -60,10 +89,10 @@ internal fun ReasoningControl(ui: ModelSetupUi, role: ModelRole, modifier: Modif
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.model_reasoning_note))
                 if (!options.fromProvider) Text(stringResource(R.string.model_reasoning_unknown))
-                if (selected != null && selected !in options.levels) Text(stringResource(R.string.model_reasoning_unavailable))
+                if (selected != null && selected !in choices) Text(stringResource(R.string.model_reasoning_unavailable))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (listOf<String?>(null) + options.levels).forEach { effort ->
-                        SelectChip(reasoningLabel(effort), selected == effort, {
+                    choices.forEach { effort ->
+                        SelectChip(label(effort), selected == effort, {
                             onSelect(effort)
                             open = false
                         }, Modifier.testTag("reasoning-option-${effort ?: "default"}"))
@@ -92,7 +121,7 @@ internal fun ModelOptionButton(text: String, tag: String, modifier: Modifier = M
 }
 
 internal fun hasReasoningAction(ui: ModelSetupUi, role: ModelRole): Boolean {
-    if (ui.roles[role] == RoleChoice.SameAsMain) return false
+    if (!ui.roles.hasOwnReasoning(role)) return false
     val cfg = ui.configFor(role) ?: return false
     val listed = ui.providerOf(cfg)?.models?.firstOrNull { it.id == cfg.model }
     val options = ReasoningOptions.of(cfg, listed) ?: return false
@@ -101,7 +130,7 @@ internal fun hasReasoningAction(ui: ModelSetupUi, role: ModelRole): Boolean {
 
 @Composable
 private fun reasoningLabel(effort: String?): String = when (effort) {
-    null -> stringResource(R.string.model_reasoning_default)
+    null, MODEL_DEFAULT_REASONING -> stringResource(R.string.model_reasoning_default)
     "none" -> stringResource(R.string.model_reasoning_none)
     "minimal" -> stringResource(R.string.model_reasoning_minimal)
     "low" -> stringResource(R.string.model_reasoning_low)
