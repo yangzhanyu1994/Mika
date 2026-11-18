@@ -58,6 +58,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.advanceResearchText
 import com.wangzan101.mika.ui.ResearchReplyHaptics
 import com.wangzan101.mika.ui.ResearchThinkingOrb
+import com.wangzan101.mika.ui.OrbMotion
 import kotlinx.coroutines.delay
 import com.wangzan101.mika.task.TaskEdgeLight
 import com.wangzan101.mika.ui.MarkdownText
@@ -70,8 +71,9 @@ internal data class AssistantReply(
     val body: String = "",
     val running: Boolean = false,
     val waiting: Boolean = false,
-    val searching: Boolean = false,
     val completed: Boolean = false,
+    val motion: OrbMotion = OrbMotion.Idle,
+    val progress: String? = null,
 )
 
 internal data class AssistantExchange(val question: String, val answer: String)
@@ -112,6 +114,7 @@ internal fun AssistantOverlay(
     revealTurn: Int? = null,
     awaitingReply: Boolean = false,
     mode: AssistantMode = AssistantMode.Auto,
+    resolvedMode: AssistantMode? = null,
     onMode: (AssistantMode) -> Unit = {},
 ) {
     val c = MikaTheme.colors
@@ -177,18 +180,28 @@ internal fun AssistantOverlay(
                             verticalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
                             ResearchThinkingOrb(
-                                searching = reply?.searching == true,
+                                phase = when {
+                                    listening -> OrbMotion.Listening
+                                    converting || sending -> OrbMotion.Connecting
+                                    reply?.completed == true -> OrbMotion.Complete
+                                    else -> reply?.motion ?: OrbMotion.Idle
+                                },
+                                level = level,
                                 diameter = 48.dp,
                                 animated = animateAvatar,
                             )
                             Text(displayName.ifBlank { stringResource(R.string.app_name) },
                                 style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            val currentStatus = reply?.title ?: when {
+                            val currentStatus = when {
                                 listening -> stringResource(R.string.voice_listening)
                                 converting -> stringResource(R.string.voice_converting)
-                                else -> null
+                                else -> reply?.title
                             }
                             if (currentStatus != null) Text(currentStatus, color = c.accent, style = MaterialTheme.typography.bodySmall)
+                            reply?.progress?.let {
+                                Text(it, color = c.ink2, style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                         IconButton(onClick = onClose, enabled = !sending, modifier = Modifier.align(Alignment.TopEnd)) {
                             Icon(MikaIcons.Close, stringResource(R.string.cancel), tint = c.ink2)
@@ -243,7 +256,11 @@ internal fun AssistantOverlay(
                                 onClick = { selectMode = true },
                                 enabled = !sending && !awaitingReply && !hasMedia,
                             ) {
-                                Text(stringResource((if (hasMedia) AssistantMode.Work else mode).label))
+                                val selected = if (hasMedia) AssistantMode.Work else mode
+                                val label = stringResource(selected.label)
+                                Text(if (selected == AssistantMode.Auto && resolvedMode != null) {
+                                    "$label → ${stringResource(resolvedMode.label)}"
+                                } else label)
                             }
                             DropdownMenu(expanded = selectMode, onDismissRequest = { selectMode = false }) {
                                 AssistantMode.entries.forEach { option ->
