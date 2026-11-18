@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">Criar uma automatização</string>
-    <string name="home_chip_call">Criar uma tarefa de chamada com IA</string>
-    <string name="home_chip_assistant">Assistente pessoal</string>
+    <string name="home_guide_plan">Configurar uma automação</string>
+    <string name="home_guide_plan_detail">Por exemplo, lembre-me de conferir minha agenda todo dia às 8 da manhã</string>
+    <string name="home_guide_call">Usar chamadas com IA</string>
+    <string name="home_guide_call_detail">Por exemplo, ligue para o entregador e transmita um recado</string>
+    <string name="home_guide_skills">Explorar habilidades</string>
+    <string name="home_guide_skills_detail">Veja em que mais posso ajudar</string>
+    <string name="home_guide_more">Descobrir mais</string>
+    <string name="home_guide_more_detail">Encontre outros recursos que podem ser úteis para você</string>
     <string name="hint_home_remind">Lembra-me da reunião às 8 de amanhã</string>
     <string name="hint_home_courier">Se o estafeta ligar, pede para deixar à porta</string>
     <string name="hint_home_property">Liga à administração e pergunta do estacionamento</string>

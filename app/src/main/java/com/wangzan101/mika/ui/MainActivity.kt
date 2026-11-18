@@ -30,6 +30,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.wangzan101.mika.confirm.ConfirmationNotifier
+import com.wangzan101.mika.memory.MemoryOpen
 import com.wangzan101.mika.memory.MemoryRuntime
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -555,8 +556,11 @@ private fun MikaRoot(
     }
     val phoneSetupNeeded by phoneSetup.needed.collectAsState()
     // 页面有自己的返回处理时(设置页里的子页、侧栏)由它们先接;这里只管退回上一页
-    BackHandler(enabled = nav.canGoBack) { nav.back() }
-    val back: () -> Unit = { nav.back() }
+    val back: () -> Unit = {
+        if (nav.current == Route.Memory) memoryRuntime.requestOpen(null)
+        nav.back()
+    }
+    BackHandler(enabled = nav.canGoBack, onBack = back)
     // 聊天页离开组合树时保留列表位置和输入内容，返回设置页等子页面后原样恢复。
     val screenStates = rememberSaveableStateHolder()
     when (nav.current) {
@@ -633,6 +637,10 @@ private fun MikaRoot(
                             openSettings = { nav.push(Route.Settings) },
                             onCreatePlan = { openPlanCreator = true; nav.push(Route.Plans) },
                             onCreateCall = { openCallComposer = true; nav.push(Route.Calls) },
+                            onExploreSkills = {
+                                memoryRuntime.requestOpen(MemoryOpen())
+                                nav.push(Route.Memory)
+                            },
                             openRun = { runId = it; nav.push(Route.Run) },
                             phoneSetupNeeded = phoneSetupNeeded && status.builtinShell != BuiltinShellStatus.Running,
                             openPhoneSetup = { onFix(Fix.OpenPhoneSetup) },
@@ -763,7 +771,7 @@ private fun MikaRoot(
                     onClearRoutes = {
                         vmScope.launch { routeCount = withContext(Dispatchers.IO) { routeStore.clear(); routeStore.count() } }
                     },
-                    onBack = { memoryRuntime.requestOpen(null); nav.back() },
+                    onBack = back,
                 )
             }
         }
@@ -793,7 +801,7 @@ private fun MikaRoot(
             app.teach,
             onBack = { nav.back() },
             onOpenDrafts = {
-                memoryRuntime.requestOpen(com.wangzan101.mika.memory.MemoryOpen(app.teach.ui.value.session?.draftId))
+                memoryRuntime.requestOpen(MemoryOpen(app.teach.ui.value.session?.draftId))
                 nav.push(Route.Memory)
             },
         )

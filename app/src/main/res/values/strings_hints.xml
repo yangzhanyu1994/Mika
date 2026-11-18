@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">Create an automation</string>
-    <string name="home_chip_call">Create an AI call task</string>
-    <string name="home_chip_assistant">Personal assistant</string>
+    <string name="home_guide_plan">Set up an automation</string>
+    <string name="home_guide_plan_detail">For example, remind me to check my schedule every morning at 8</string>
+    <string name="home_guide_call">Use AI calling</string>
+    <string name="home_guide_call_detail">For example, call the courier and pass along a message</string>
+    <string name="home_guide_skills">Explore skills</string>
+    <string name="home_guide_skills_detail">See what else I can help you do</string>
+    <string name="home_guide_more">Discover more</string>
+    <string name="home_guide_more_detail">Find more features you might use</string>
     <string name="hint_home_remind">Remind me about the meeting at 8 tomorrow morning</string>
     <string name="hint_home_courier">If a courier calls, ask them to leave it at the door</string>
     <string name="hint_home_property">Call the property office and ask about parking</string>

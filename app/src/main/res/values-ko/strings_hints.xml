@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">자동화 작업 만들기</string>
-    <string name="home_chip_call">AI 통화 작업 만들기</string>
-    <string name="home_chip_assistant">개인 비서</string>
+    <string name="home_guide_plan">자동화 작업 설정</string>
+    <string name="home_guide_plan_detail">예: 매일 아침 8시에 일정을 확인하라고 알려 줘</string>
+    <string name="home_guide_call">AI 통화 사용</string>
+    <string name="home_guide_call_detail">예: 배송 기사에게 연락해서 메시지를 전해 줘</string>
+    <string name="home_guide_skills">스킬 둘러보기</string>
+    <string name="home_guide_skills_detail">제가 또 어떤 일을 도울 수 있는지 알아보세요</string>
+    <string name="home_guide_more">더 알아보기</string>
+    <string name="home_guide_more_detail">나에게 맞는 다른 기능을 찾아보세요</string>
     <string name="hint_home_remind">내일 아침 8시에 회의 알려 줘</string>
     <string name="hint_home_courier">택배 전화가 오면 문 앞에 두라고 하기</string>
     <string name="hint_home_property">관리사무소에 전화해서 주차를 물어봐</string>

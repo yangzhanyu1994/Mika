@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">自動化タスクを作る</string>
-    <string name="home_chip_call">AI 通話タスクを作る</string>
-    <string name="home_chip_assistant">パーソナルアシスタント</string>
+    <string name="home_guide_plan">自動化タスクを設定</string>
+    <string name="home_guide_plan_detail">例：毎朝8時に予定を確認するよう知らせて</string>
+    <string name="home_guide_call">AI 電話を使う</string>
+    <string name="home_guide_call_detail">例：配達員に電話して伝言を伝えて</string>
+    <string name="home_guide_skills">スキルを探す</string>
+    <string name="home_guide_skills_detail">ほかにどんなお手伝いができるか見る</string>
+    <string name="home_guide_more">もっと見る</string>
+    <string name="home_guide_more_detail">自分に合った便利な機能を見つける</string>
     <string name="hint_home_remind">明日の朝 8 時に会議を知らせて</string>
     <string name="hint_home_courier">宅配便が電話したら玄関に置いてもらう</string>
     <string name="hint_home_property">管理会社に電話して駐車を聞いて</string>

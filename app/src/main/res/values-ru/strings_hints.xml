@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">Создать автоматизацию</string>
-    <string name="home_chip_call">Создать задачу звонка с ИИ</string>
-    <string name="home_chip_assistant">Личный помощник</string>
+    <string name="home_guide_plan">Настроить автоматизацию</string>
+    <string name="home_guide_plan_detail">Например, напоминай мне проверить расписание каждое утро в 8</string>
+    <string name="home_guide_call">Позвонить с помощью ИИ</string>
+    <string name="home_guide_call_detail">Например, позвони курьеру и передай сообщение</string>
+    <string name="home_guide_skills">Изучить навыки</string>
+    <string name="home_guide_skills_detail">Посмотрите, с чем ещё я могу помочь</string>
+    <string name="home_guide_more">Узнать больше</string>
+    <string name="home_guide_more_detail">Найдите другие функции, которые могут пригодиться</string>
     <string name="hint_home_remind">Напомни о встрече завтра в 8</string>
     <string name="hint_home_courier">Если позвонит курьер, пусть оставит у двери</string>
     <string name="hint_home_property">Позвони в управляющую и спроси про парковку</string>

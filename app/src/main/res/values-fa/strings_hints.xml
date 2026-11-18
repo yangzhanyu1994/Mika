@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">ساختن کار خودکار</string>
-    <string name="home_chip_call">ساختن کار تماس هوش مصنوعی</string>
-    <string name="home_chip_assistant">دستیار شخصی</string>
+    <string name="home_guide_plan">تنظیم یک کار خودکار</string>
+    <string name="home_guide_plan_detail">مثلاً هر روز ساعت ۸ صبح یادآوری کن برنامه‌ام را ببینم</string>
+    <string name="home_guide_call">استفاده از تماس هوش مصنوعی</string>
+    <string name="home_guide_call_detail">مثلاً با پیک تماس بگیر و پیامی را منتقل کن</string>
+    <string name="home_guide_skills">کاوش مهارت‌ها</string>
+    <string name="home_guide_skills_detail">ببین در انجام چه کارهای دیگری می‌توانم کمکت کنم</string>
+    <string name="home_guide_more">کشف بیشتر</string>
+    <string name="home_guide_more_detail">امکانات دیگری را که به کارت می‌آیند پیدا کن</string>
     <string name="hint_home_remind">فردا ساعت ۸ جلسه را یادآوری کن</string>
     <string name="hint_home_courier">اگر پیک زنگ زد، بگو دم در بگذارد</string>
     <string name="hint_home_property">به مدیریت زنگ بزن و پارکینگ را بپرس</string>

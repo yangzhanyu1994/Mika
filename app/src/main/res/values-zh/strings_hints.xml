@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_chip_plan">创建自动化任务</string>
-    <string name="home_chip_call">创建AI电话业务</string>
-    <string name="home_chip_assistant">主要聊天</string>
+    <string name="home_guide_plan">设置自动化任务</string>
+    <string name="home_guide_plan_detail">如每天早上 8 点提醒我看日程</string>
+    <string name="home_guide_call">使用 AI 电话</string>
+    <string name="home_guide_call_detail">如帮我联系快递员并转达事项</string>
+    <string name="home_guide_skills">探索技能</string>
+    <string name="home_guide_skills_detail">看看我还能帮你完成哪些事</string>
+    <string name="home_guide_more">发现更多</string>
+    <string name="home_guide_more_detail">发现更多适合你的常用功能</string>
     <string name="hint_home_remind">明早 8 点提醒我开会</string>
     <string name="hint_home_courier">快递来电就让他放门口</string>
     <string name="hint_home_property">帮我打电话给物业问停车</string>

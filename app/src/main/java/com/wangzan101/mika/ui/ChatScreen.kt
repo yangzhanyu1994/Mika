@@ -4,6 +4,8 @@ import androidx.compose.foundation.gestures.scrollBy
 import com.wangzan101.mika.core.agent.QuoteMessage
 import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.core.cap.web.AttachedPage
+import com.wangzan101.mika.ui.components.ListRow
+import com.wangzan101.mika.ui.components.RowChevron
 import com.wangzan101.mika.ui.components.DirectionalIcon
 import com.wangzan101.mika.ui.components.keepsKeyboard
 import com.wangzan101.mika.ui.components.pageBackground
@@ -206,6 +208,7 @@ fun ChatScreen(
     onCreateCall: () -> Unit = {},
     /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
     habitSuggestions: List<String>? = null,
+    onExploreSkills: () -> Unit = {},
 ) {
     if (recommendations != null) Unit
     val ui by vm.ui.collectAsState()
@@ -241,10 +244,8 @@ fun ChatScreen(
     var voiceHolding by remember { mutableStateOf(false) }
     var editRequest by remember { mutableIntStateOf(0) }
     var focusRequest by remember { mutableIntStateOf(0) }
-    var shortcutsDismissed by remember { mutableStateOf(false) }
     var deviceHabits by remember { mutableStateOf<List<String>>(emptyList()) }
     val habits = habitSuggestions ?: deviceHabits
-    LaunchedEffect(ui.conversationId) { shortcutsDismissed = false }
     LifecycleStartEffect(Unit) {
         focusRequest += 1
         onStopOrDispose {}
@@ -385,7 +386,8 @@ fun ChatScreen(
     PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
         CompositionLocalProvider(LocalMessageMenu provides menuHost) {
             LazyColumn(
-                Modifier.fillMaxSize().behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion).glassSource(backdrop),
+                Modifier.fillMaxSize().behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion)
+                    .glassSource(backdrop).testTag("chat-list"),
                 state = listState,
                 contentPadding = with(density) {
                     PaddingValues(
@@ -394,9 +396,17 @@ fun ChatScreen(
                 },
             ) {
                 if (ui.exchanges.isEmpty() && ui.blocked == null) {
-                    item("empty") {
-                        EmptyState(ui.conversationId, habits) { prompt ->
-                            if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
+                    item("empty") { HomeGreeting(ui.conversationId) }
+                    item("home-guides") {
+                        HomeGuides(onCreatePlan, onCreateCall, onExploreSkills, onOpenDrawer)
+                    }
+                    if (habits.isNotEmpty()) item("home-habits") {
+                        MikaCard(Modifier.padding(top = 12.dp).testTag("home-habits")) {
+                            habits.forEachIndexed { index, prompt ->
+                                ExampleRow(MikaIcons.Message, prompt, first = index == 0) {
+                                    if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
+                                }
+                            }
                         }
                     }
                 }
@@ -450,15 +460,9 @@ fun ChatScreen(
             )
         }
 
-        val showShortcuts = ui.exchanges.isEmpty() && ui.blocked == null && input.isBlank() && !shortcutsDismissed
         Column(
             Modifier.align(Alignment.BottomCenter).behindMenu(menuOpen) { lift.value }.onSizeChanged { composerHeight = it.height },
         ) {
-        if (showShortcuts) HomeShortcuts(
-            onPlan = onCreatePlan,
-            onCall = onCreateCall,
-            onChat = { shortcutsDismissed = true; focusRequest += 1 },
-        )
         Composer(
             Modifier,
             backdrop = backdrop,
@@ -671,53 +675,36 @@ private fun LazyListState.nearTail(thresholdPx: Int): Boolean {
 
 // ---------- 空对话 ----------
 
-/** 问候和副标题保留。下面只放本机用过的建议；没有记录就不显示卡片。点一条填进输入框，不直接发送。 */
 @Composable
-private fun EmptyState(conversation: String?, habits: List<String>, onPick: (String) -> Unit) {
+private fun HomeGreeting(conversation: String?) {
     val c = MikaTheme.colors
     val hour = remember(conversation) { LocalTime.now().hour }
-    Column(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 52.dp)) {
-            Text(ChatCopy.greeting(hour), style = MikaType.LargeTitle, color = c.ink)
-            Text(ChatCopy.EMPTY_PROMPT, Modifier.padding(top = 6.dp), style = EmptyLead, color = c.ink2)
-        }
-        if (habits.isNotEmpty()) {
-            MikaCard(Modifier.padding(top = 28.dp).testTag("home-habits")) {
-                habits.forEachIndexed { i, text ->
-                    ExampleRow(MikaIcons.Message, text, first = i == 0) { onPick(text) }
-                }
-            }
-        }
+    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 52.dp)) {
+        Text(ChatCopy.greeting(hour), style = MikaType.LargeTitle, color = c.ink)
+        Text(ChatCopy.EMPTY_PROMPT, Modifier.padding(top = 6.dp), style = EmptyLead, color = c.ink2)
     }
 }
 
 @Composable
-private fun HomeShortcuts(onPlan: () -> Unit, onCall: () -> Unit, onChat: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 32.dp, bottom = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.Start,
-    ) {
-        HomeChip(MikaIcons.Clock, stringResource(R.string.home_chip_plan), "home-chip-plan", onPlan)
-        HomeChip(MikaIcons.Phone, stringResource(R.string.home_chip_call), "home-chip-call", onCall)
-        HomeChip(MikaIcons.Chats, stringResource(R.string.home_chip_assistant), "home-chip-assistant", onChat)
+private fun HomeGuides(onPlan: () -> Unit, onCall: () -> Unit, onSkills: () -> Unit, onMore: () -> Unit) {
+    MikaCard(Modifier.padding(top = 20.dp)) {
+        HomeGuideRow(MikaIcons.Clock, R.string.home_guide_plan, R.string.home_guide_plan_detail, first = true, onClick = onPlan)
+        HomeGuideRow(MikaIcons.Phone, R.string.home_guide_call, R.string.home_guide_call_detail, onClick = onCall)
+        HomeGuideRow(MikaIcons.Spark, R.string.home_guide_skills, R.string.home_guide_skills_detail, onClick = onSkills)
+        HomeGuideRow(MikaIcons.Apps, R.string.home_guide_more, R.string.home_guide_more_detail, onClick = onMore)
     }
 }
 
 @Composable
-private fun HomeChip(icon: ImageVector, label: String, tag: String, onClick: () -> Unit) {
-    val c = MikaTheme.colors
-    val shape = RoundedCornerShape(22.dp)
-    Row(
-        Modifier.clip(shape).background(c.surface).border(0.5.dp, c.edge, shape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .testTag(tag),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(icon, null, Modifier.size(16.dp), tint = c.ink2)
-        Text(label, style = MikaType.Body, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun HomeGuideRow(
+    icon: ImageVector,
+    title: Int,
+    detail: Int,
+    first: Boolean = false,
+    onClick: () -> Unit,
+) {
+    ListRow(icon, stringResource(title), stringResource(detail), first = first, onClick = onClick) {
+        RowChevron()
     }
 }
 
