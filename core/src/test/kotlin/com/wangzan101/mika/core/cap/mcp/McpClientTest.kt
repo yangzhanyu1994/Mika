@@ -36,13 +36,18 @@ class McpClientTest {
         var offered = listOf(McpToolDescriptor("search", "Search", buildJsonObject { put("type", "object") }, McpAnnotations(readOnlyHint = true)))
         var result = McpResult("found")
         var calls = 0
+        var lastArguments: JsonObject? = null
         var offeredResources: List<McpResourceDescriptor> = emptyList()
         var offeredPrompts: List<McpPromptDescriptor> = emptyList()
         var resourcesError: Exception? = null
         override fun tools() = offered
         override fun resources() = resourcesError?.let { throw it } ?: offeredResources
         override fun prompts() = offeredPrompts
-        override suspend fun call(name: String, arguments: JsonObject): McpResult { calls++; return result }
+        override suspend fun call(name: String, arguments: JsonObject): McpResult {
+            calls++
+            lastArguments = arguments
+            return result
+        }
         override suspend fun readResource(uri: String) = McpResult("resource:$uri")
         override suspend fun getPrompt(name: String, arguments: JsonObject) =
             McpResult("prompt:$name\n$arguments")
@@ -63,6 +68,20 @@ class McpClientTest {
         val result = tools.execute(Part.ToolCall("c", "mcp_demo__search", "{}"), ActionPass())
         assertEquals(JsonPrimitive(true), result.content["ok"])
         assertEquals(1, endpoint.calls)
+    }
+
+    @Test fun forwardsOnlyServerArgumentsAndKeepsAnExplicitServerReason() = runBlocking {
+        val query = Part.ToolCall("c", "mcp_demo__search", """{"q":"lights","reason":"check status"}""")
+        for ((schema, expected) in listOf(
+            """{"properties":{"q":{}}}""" to """{"q":"lights"}""",
+            """{"properties":{"q":{},"reason":{}}}""" to query.argsJson,
+            """{"properties":{"q":{}},"required":["reason"]}""" to query.argsJson,
+        )) {
+            val endpoint = endpointWithSchema(schema)
+            val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(McpConnection(endpoint)))
+            assertEquals(JsonPrimitive(true), tools.execute(query, ActionPass()).content["ok"])
+            assertEquals(Json.parseToJsonElement(expected), endpoint.lastArguments)
+        }
     }
 
     @Test fun booleanPropertySchemaBecomesPermissiveObject() = runBlocking {

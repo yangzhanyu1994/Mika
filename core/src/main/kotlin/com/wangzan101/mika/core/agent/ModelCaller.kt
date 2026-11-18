@@ -168,7 +168,7 @@ internal class ModelCaller(
         onText: ((String) -> Unit)? = null): ModelReply {
         var retries = 0
         lastRetryWaitMs = 0
-        val began = now()
+        var firstAttemptAt: Long? = null
         val overhead = TokenEstimate.of(systemPrompt) + specs.sumOf { TokenEstimate.of(it.name + it.description + it.parametersJsonSchema) }
         val contextTokens = using.capabilities.contextTokens
         val compressor = compressorFor(using)
@@ -189,8 +189,10 @@ internal class ModelCaller(
             try {
                 // 差异的 base 被裁掉或折叠时,下一次写操作要发全量
                 if (tools.inlineScreen) tools.setVisibleObservations(visibleReads(sent.messages))
-                // 这一次之前花掉的(失败的请求、退避)都算重试等待
-                lastRetryWaitMs = now() - began
+                // Count time from the first actual request only once a new attempt is sent.
+                val sentAt = now()
+                lastRetryWaitMs = firstAttemptAt?.let { sentAt - it } ?: 0L
+                if (firstAttemptAt == null) firstAttemptAt = sentAt
                 suspend fun send(): ModelReply = if (onText == null) using.complete(systemPrompt, sent.messages, specs)
                     else if (using is StreamingChatModel) using.completeStreaming(systemPrompt, sent.messages, specs, onText)
                     else using.complete(systemPrompt, sent.messages, specs).also { result ->

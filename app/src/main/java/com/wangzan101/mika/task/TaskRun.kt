@@ -971,7 +971,8 @@ class TaskRun(
             } else null
             val agent = AgentLoop(
                 model, tools,
-                SystemPrompt.identity() + USER_REPLY_STYLE,
+                SystemPrompt.identity() + USER_REPLY_STYLE +
+                    (if (mcpEndpoints().isNotEmpty()) MCP_LOOKUP_STYLE else ""),
                 // 助手断开、被挪走只在这一步用的是手机时才查
                 gate = { w ->
                     if (phoneScreen.acquired && dispatcher?.surface != WEB) phone?.screen?.let { awaitUserPick(it, taskGate, w) }
@@ -1549,4 +1550,17 @@ User-facing progress and final replies:
 - For partial or blocked work, give the confirmed portion and the specific blocker.
 - Leave out generic advice, repeated context, a play-by-play and offers to do more unless asked.
 - Continue to follow any required output format for machine-readable results.
+"""
+
+private const val MCP_LOOKUP_STYLE = """
+
+Efficient read-only MCP lookups:
+- Start with the most direct read tool whose required arguments are already known.
+  Discover homes, rooms, or inventory only to resolve a missing identifier or requested detail.
+- Reuse IDs and results already established in the current task when they still apply.
+  If the tool supports a list of IDs, use the largest documented batch that fits the requested scope.
+- A second status lookup should cover missing IDs, a new page, a required refresh, or recovery
+  from a specific error. A repeated tool name alone does not mean the arguments are the same.
+- If a result includes a fullResult reference and its preview is truncated, read the saved result
+  when needed rather than repeating the same query. Stop reading when the requested scope is covered.
 """
