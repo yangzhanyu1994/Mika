@@ -965,7 +965,6 @@ fun ChatWithDrawer(
                     onActions = { item, bounds -> if (item.id != null) acting = item to bounds },
                     onOpen = { item ->
                         close {
-                            onRegularChat()
                             val id = item.id
                             when {
                                 id == null -> Unit
@@ -974,6 +973,7 @@ fun ChatWithDrawer(
                                 item.running -> vm.switchTo(id)
                                 else -> vm.openConversation(id)
                             }
+                            onRegularChat()
                         }
                     },
                     selecting = selecting,

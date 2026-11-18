@@ -1360,12 +1360,14 @@ class ChatViewModel(
     /** 个人助手打开其委派任务：只切换展示，不启动另一项工作。 */
     fun openPersonalTask(conversationId: String) {
         refreshParallel()
+        if (conversationId == _ui.value.conversationId) return
+        cancelPendingSharedDraft()
+        keepDraft()
         lingerJob?.cancel()
-        if (conversationId != _ui.value.conversationId) parkLive()
+        parkLive()
         val past = saved(conversationId)
         liveIndex = -1
-        // 没有任务的对话不带别的任务的接管进度
-        _ui.update { ChatUi(conversationId = conversationId, exchanges = past, takeoverStage = Takeover.Stage.None) }
+        _ui.update { restoreDraft(it.rebuildForConversation(conversationId = conversationId, exchanges = past)) }
         markCurrent(CurrentChat.Open(conversationId))
         if (conversationId !in activeConversations.value) { unpark(conversationId); return }
         follow(conversationId, unpark(conversationId))
