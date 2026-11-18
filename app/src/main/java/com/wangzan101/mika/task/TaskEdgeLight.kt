@@ -1,30 +1,17 @@
 package com.wangzan101.mika.task
 
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.os.SystemClock
 import android.view.Gravity
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
+import android.view.View
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.wangzan101.mika.cap.phone.a11y.OverlayPlacement
 import com.wangzan101.mika.cap.phone.a11y.OverlayWindow
 import com.wangzan101.mika.cap.phone.a11y.ScreenAccessibility
@@ -56,7 +43,8 @@ internal object TaskEdgeLight {
     private const val FLASH_LIT_MS = 560L
     internal const val SUCCESS_DURATION_MS = SUCCESS_FLASHES * FLASH_PERIOD_MS
 
-    private const val BREATH_MIN_ALPHA = 0.24f
+    private const val BREATH_PERIOD_MS = 2_900L
+    private const val BREATH_MIN_ALPHA = 0.14f
 
     internal data class Completion(val runKey: String, val startedAt: Long) {
         fun remainingMs(now: Long): Long = (SUCCESS_DURATION_MS - (now - startedAt)).coerceIn(0, SUCCESS_DURATION_MS)
@@ -104,7 +92,11 @@ internal object TaskEdgeLight {
                             window = null
                         } else if (window == null) {
                             window = service.overlays().open(OverlayPlacement(Gravity.TOP or Gravity.LEFT), touchable = false) {
-                                Edge(successCue.value)
+                                AndroidView(
+                                    factory = { context -> EdgeView(context) },
+                                    modifier = Modifier.fillMaxSize(),
+                                    update = { it.completion = successCue.value },
+                                )
                             }?.also { it.setFullScreen(true) }
                         }
                     }
@@ -115,55 +107,69 @@ internal object TaskEdgeLight {
         }
     }
 
-    @Composable
-    private fun Edge(cue: Completion?) {
-        val reducedMotion = animationsOff(LocalContext.current)
-        val elapsed = remember(cue) { mutableLongStateOf(0L) }
-        LaunchedEffect(cue, reducedMotion) {
-            if (cue != null && !reducedMotion) {
-                while (elapsed.longValue < SUCCESS_DURATION_MS) {
-                    withFrameNanos { elapsed.longValue = SystemClock.uptimeMillis() - cue.startedAt }
-                }
+    // Keep brightness on the overlay View's own frame loop. A non-focusable accessibility
+    // window does not need a Compose animation to keep requesting redraws.
+    private class EdgeView(context: Context) : View(context) {
+        private val reducedMotion = animationsOff(context)
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var startedAt = SystemClock.uptimeMillis()
+        private var radius = 1f
+        private var scaleY = 1f
+        private var blue: Shader? = null
+        private var green: Shader? = null
+
+        var completion: Completion? = null
+            set(value) {
+                if (field == value) return
+                field = value
+                if (value == null) startedAt = SystemClock.uptimeMillis()
+                invalidate()
+            }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            radius = (84f * resources.displayMetrics.density).coerceAtMost(w * 0.2f).coerceAtLeast(1f)
+            scaleY = (h * 0.58f).coerceAtLeast(1f) / radius
+            blue = gradient(0x9E16C7FF, 0x572877E9, 0x142877E9, 0x002877E9)
+            green = gradient(0x9E48F49E, 0x5718BD77, 0x1418BD77, 0x0018BD77)
+        }
+
+        private fun gradient(vararg colors: Long): Shader = RadialGradient(
+            0f, 0f, radius, colors.map(Long::toInt).toIntArray(),
+            floatArrayOf(0f, 0.32f, 0.72f, 1f), Shader.TileMode.CLAMP,
+        )
+
+        override fun onDraw(canvas: Canvas) {
+            val now = SystemClock.uptimeMillis()
+            val cue = completion
+            val elapsed = now - (cue?.startedAt ?: startedAt)
+            val brightness = when {
+                reducedMotion -> 1f
+                cue != null -> completionAlpha(elapsed)
+                else -> breathingAlpha(elapsed)
+            }
+            paint.shader = (if (cue == null) blue else green) ?: return
+            paint.alpha = (brightness * 255).toInt()
+            drawSide(canvas, 0f)
+            drawSide(canvas, width.toFloat())
+            if (!reducedMotion && (cue == null || elapsed < SUCCESS_DURATION_MS)) {
+                postInvalidateOnAnimation()
             }
         }
-        val breathing = if (cue != null || reducedMotion) null else {
-            rememberInfiniteTransition(label = "task side glow").animateFloat(
-                initialValue = 1f,
-                targetValue = BREATH_MIN_ALPHA,
-                animationSpec = infiniteRepeatable(tween(1_450, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                label = "side glow brightness",
-            )
+
+        private fun drawSide(canvas: Canvas, x: Float) {
+            val saved = canvas.save()
+            canvas.translate(x, 0.23f * height)
+            canvas.scale(1f, scaleY)
+            canvas.drawCircle(0f, 0f, radius, paint)
+            canvas.restoreToCount(saved)
         }
-        val color = if (cue == null) Color(0xFF16C7FF) else Color(0xFF48F49E)
-        val haze = if (cue == null) Color(0xFF2877E9) else Color(0xFF18BD77)
-        Box(
-            Modifier.fillMaxSize().drawWithCache {
-                // The same tall gradient lights both sides, with its brightest area above mid-screen.
-                val depth = 84.dp.toPx().coerceAtMost(size.width * 0.2f).coerceAtLeast(1f)
-                val verticalScale = (size.height * 0.58f).coerceAtLeast(1f) / depth
-                val sides = floatArrayOf(0f, size.width)
-                val glow = Brush.radialGradient(
-                    0f to color.copy(alpha = 0.62f), 0.32f to haze.copy(alpha = 0.34f),
-                    0.72f to haze.copy(alpha = 0.08f), 1f to haze.copy(alpha = 0f),
-                    center = Offset.Zero, radius = depth,
-                )
-                onDrawBehind {
-                    val alpha = when {
-                        reducedMotion -> 1f
-                        cue != null -> completionAlpha(elapsed.longValue)
-                        else -> breathing?.value ?: 1f
-                    }
-                    val y = 0.23f * size.height
-                    for (x in sides) {
-                        translate(x, y) {
-                            scale(scaleX = 1f, scaleY = verticalScale, pivot = Offset.Zero) {
-                                drawCircle(glow, depth, Offset.Zero, alpha)
-                            }
-                        }
-                    }
-                }
-            },
-        )
+    }
+
+    internal fun breathingAlpha(elapsedMs: Long): Float {
+        val phase = (elapsedMs.coerceAtLeast(0) % BREATH_PERIOD_MS).toDouble() / BREATH_PERIOD_MS
+        val wave = ((1.0 + cos(2 * PI * phase)) / 2).toFloat()
+        return BREATH_MIN_ALPHA + (1f - BREATH_MIN_ALPHA) * wave
     }
 
     internal fun completionAlpha(elapsedMs: Long): Float {

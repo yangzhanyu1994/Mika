@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika couldn’t start the task. Your draft is still here.</string>
     <string name="assistant_model_required">Set up a model in Mika before sending a task.</string>
     <string name="assistant_clear">Clear draft</string>
+    <string name="assistant_reply">Mika’s reply</string>
+    <string name="assistant_open_conversation">View full conversation</string>
+    <string name="assistant_status_unavailable">Waiting for a task status update</string>
 </resources>

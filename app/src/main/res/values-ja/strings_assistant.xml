@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika はタスクを開始できませんでした。下書きは残っています。</string>
     <string name="assistant_model_required">送信する前に Mika でモデルを設定してください。</string>
     <string name="assistant_clear">下書きを消去</string>
+    <string name="assistant_reply">Mika の返信</string>
+    <string name="assistant_open_conversation">会話全体を表示</string>
+    <string name="assistant_status_unavailable">タスクの状態更新を待っています</string>
 </resources>

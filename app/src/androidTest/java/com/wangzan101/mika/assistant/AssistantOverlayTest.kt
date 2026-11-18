@@ -12,12 +12,39 @@ import com.wangzan101.mika.ChineseUi
 import com.wangzan101.mika.ui.theme.MikaTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 class AssistantOverlayTest {
     @get:Rule(order = Int.MIN_VALUE) val chinese = ChineseUi()
     @get:Rule val compose = createComposeRule()
+
+    @Test fun replyReplacesWaitingStatusBelowTheSubmittedQuestion() {
+        val reply = mutableStateOf(AssistantReply("正在准备"))
+        val question = "帮我看看今天下午的日程"
+        var opened = false
+        compose.setContent {
+            MikaTheme(dark = true, reduceMotion = true) {
+                AssistantOverlay(
+                    text = question, partial = "", status = null,
+                    listening = false, converting = false, level = { 0f },
+                    screenshot = null, photo = null, sending = false, reply = reply.value,
+                    onOpenConversation = { opened = true },
+                    onText = {}, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
+                    onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = {}, onClose = {},
+                )
+            }
+        }
+        compose.onNodeWithText("正在准备").assertIsDisplayed()
+        compose.runOnIdle { reply.value = AssistantReply("Mika 的回复", "**14:00** 项目同步会") }
+        compose.onNodeWithText("正在准备").assertDoesNotExist()
+        val result = compose.onNodeWithText("14:00 项目同步会").assertIsDisplayed()
+        assertTrue(result.fetchSemanticsNode().boundsInRoot.top >
+            compose.onNodeWithText(question).fetchSemanticsNode().boundsInRoot.bottom)
+        compose.onNodeWithText("查看完整对话").performClick()
+        compose.runOnIdle { assertTrue(opened) }
+    }
 
     @Test fun previewAndRemoveMediaWithoutSendingTheVoiceDraft() {
         val screen = mutableStateOf<Bitmap?>(null)

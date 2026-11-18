@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika не удалось запустить задачу. Черновик сохранён.</string>
     <string name="assistant_model_required">Настройте модель в Mika перед отправкой задачи.</string>
     <string name="assistant_clear">Очистить черновик</string>
+    <string name="assistant_reply">Ответ Mika</string>
+    <string name="assistant_open_conversation">Открыть весь разговор</string>
+    <string name="assistant_status_unavailable">Ожидание обновления статуса задачи</string>
 </resources>

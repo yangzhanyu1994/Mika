@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika가 작업을 시작하지 못했습니다. 초안은 그대로 있습니다.</string>
     <string name="assistant_model_required">작업을 보내기 전에 Mika에서 모델을 설정하세요.</string>
     <string name="assistant_clear">초안 지우기</string>
+    <string name="assistant_reply">Mika의 답변</string>
+    <string name="assistant_open_conversation">전체 대화 보기</string>
+    <string name="assistant_status_unavailable">작업 상태가 업데이트되기를 기다리는 중</string>
 </resources>

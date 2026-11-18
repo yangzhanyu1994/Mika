@@ -10,4 +10,7 @@
     <string name="assistant_send_failed">Mika 未能啟動任務，草稿已保留。</string>
     <string name="assistant_model_required">請先在 Mika 裡設定模型，再傳送任務。</string>
     <string name="assistant_clear">清空草稿</string>
+    <string name="assistant_reply">Mika 的回覆</string>
+    <string name="assistant_open_conversation">查看完整對話</string>
+    <string name="assistant_status_unavailable">暫未收到任務狀態</string>
 </resources>
