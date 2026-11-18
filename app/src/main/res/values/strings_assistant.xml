@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Type or speak to Aura</string>
+    <string name="assistant_input">Type or speak to Mika</string>
     <string name="assistant_take_screenshot">Attach screen</string>
-    <string name="assistant_screenshot_unavailable">The screen couldn’t be attached. Check the system’s assistant screenshot setting and Aura’s accessibility access.</string>
+    <string name="assistant_screenshot_unavailable">The screen couldn’t be attached. Check the system’s assistant screenshot setting and Mika’s accessibility access.</string>
     <string name="assistant_camera_permission">Allow camera access to take a photo.</string>
     <string name="assistant_stop_listening">Finish dictation</string>
     <string name="assistant_preview_photo">Photo preview</string>
     <string name="assistant_preview_screen">Screen preview</string>
-    <string name="assistant_send_failed">Aura couldn’t start the task. Your draft is still here.</string>
-    <string name="assistant_model_required">Set up a model in Aura before sending a task.</string>
+    <string name="assistant_send_failed">Mika couldn’t start the task. Your draft is still here.</string>
+    <string name="assistant_model_required">Set up a model in Mika before sending a task.</string>
     <string name="assistant_clear">Clear draft</string>
 </resources>

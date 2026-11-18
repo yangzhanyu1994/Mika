@@ -50,7 +50,7 @@ fun WelcomeScreen(onStart: () -> Unit) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 Column(Modifier.fillMaxWidth().padding(top = 40.dp, start = 8.dp, end = 8.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(
-                        painterResource(R.drawable.aura_launcher_art), null,
+                        painterResource(R.drawable.mika_launcher_art), null,
                         Modifier.size(76.dp).shadow(14.dp, LogoShape, clip = false).clip(LogoShape),
                         contentScale = ContentScale.Crop,
                     )

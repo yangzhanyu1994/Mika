@@ -170,39 +170,6 @@ val DarkColors = MikaColors(
     isDark = true,
 )
 
-internal val AuraHomeColors = MikaColors(
-    bg = Color.Black,
-    surface = Color(0xFF090909),
-    fill = Color(0xFF222222),
-    ink = Color(0xFFF5F5F5),
-    ink2 = Color(0xFFD0D0D0),
-    ink3 = Color(0xFFABABAB),
-    hair = Color(0xFF2E2E2E),
-    edge = Color(0xFF4B4B4B),
-    accent = Color(0xFF70B6FF),
-    accentSoft = Color(0xFF15293F),
-    onAccent = Color(0xFF00172B),
-    ok = DarkColors.ok,
-    okSoft = DarkColors.okSoft,
-    warn = DarkColors.warn,
-    warnSolid = DarkColors.warnSolid,
-    warnSoft = DarkColors.warnSoft,
-    bad = DarkColors.bad,
-    badSoft = DarkColors.badSoft,
-    neutralSoft = DarkColors.neutralSoft,
-    answer = DarkColors.answer,
-    greySoft = Color(0xFF222222),
-    glass = Color(0xFF090909),
-    glassEdge = Color(0xFF4B4B4B),
-    cardShadow = Color.Transparent,
-    floatShadow = Color.Black,
-    thumb = DarkColors.thumb,
-    series = DarkColors.series,
-    seriesOther = DarkColors.seriesOther,
-    grid = DarkColors.grid,
-    isDark = true,
-)
-
 /** 按深浅色和强调色取整套颜色。蓝色就是 [LightColors] / [DarkColors] 本身;别的颜色只换强调色那三项。 */
 fun palette(dark: Boolean, accent: ThemeAccent): MikaColors {
     val base = if (dark) DarkColors else LightColors

@@ -24,9 +24,7 @@ import com.wangzan101.mika.voice.assistantSpeech
 
 /** One opt-in invocation from the system assistant gesture. */
 @Composable
-internal fun AssistantVoiceCapture(
-    request: Int, voice: VoiceSource, sendOnConfirm: Boolean = true, onText: (String, Boolean) -> Unit,
-) {
+internal fun AssistantVoiceCapture(request: Int, voice: VoiceSource, onText: (String, Boolean) -> Unit) {
     val context = LocalContext.current
     var visible by remember { mutableStateOf(false) }
     var run by remember { mutableIntStateOf(0) }
@@ -58,7 +56,7 @@ internal fun AssistantVoiceCapture(
                 is SpeechEvent.Final -> {
                     val text = event.text.trim()
                     if (text.isEmpty()) status = VoiceCopy.NO_MATCH
-                    else { visible = false; onText(text, sendRequested && sendOnConfirm) }
+                    else { visible = false; onText(text, sendRequested) }
                 }
                 is SpeechEvent.Failed -> status = VoiceCopy.failure(event.why)
                 else -> Unit
@@ -72,7 +70,7 @@ internal fun AssistantVoiceCapture(
         text = { Text(status ?: if (transcript.isBlank()) stringResource(R.string.voice_say_now) else transcript) },
         confirmButton = {
             if (status == null) TextButton(onClick = { sendRequested = true }, enabled = !sendRequested) {
-                Text(stringResource(if (sendOnConfirm) R.string.chat_send else R.string.done))
+                Text(stringResource(R.string.chat_send))
             }
         },
         dismissButton = { TextButton(onClick = { visible = false }) { Text(stringResource(R.string.cancel)) } },

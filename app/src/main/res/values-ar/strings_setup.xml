@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">مرحبًا، أنا Aura</string>
+    <string name="welcome_title">مرحبًا، أنا Mika</string>
     <string name="welcome_lead">مساعدك الشخصي على هاتفك.\nأخبرني بما تريد وسأنجزه في الخلفية.</string>
     <string name="welcome_note">قبل البدء: أعد إعداد نموذج وفعّل التحكم بالهاتف. يستغرق ذلك نحو 3 دقائق.</string>
     <string name="welcome_start">ابدأ</string>

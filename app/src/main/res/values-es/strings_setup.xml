@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">Hola, soy Aura</string>
+    <string name="welcome_title">Hola, soy Mika</string>
     <string name="welcome_lead">Tu asistente personal en el teléfono.\nDime qué hacer y lo resuelvo en segundo plano.</string>
     <string name="welcome_note">Antes de empezar: configura un modelo y activa el control del teléfono. Unos 3 minutos.</string>
     <string name="welcome_start">Empezar</string>

@@ -22,6 +22,7 @@ import com.wangzan101.mika.about.ReleaseInfo
 import com.wangzan101.mika.about.UpdateState
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.settings.AccessibilityState
+import com.wangzan101.mika.settings.Prerequisites
 import com.wangzan101.mika.settings.SystemStatus
 import com.wangzan101.mika.ui.theme.MikaTheme
 import org.junit.Assert.assertEquals
@@ -261,18 +262,18 @@ class AboutScreenTest {
         compose.setContent {
             MikaTheme {
                 ChatDrawer(
-                    DrawerSections(emptyList(), emptyList()), canSwitch = true,
+                    Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
                     onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {},
                     onSettings = { calls += "settings" }, onOpen = {},
                     aboutDot = true,
                 )
             }
         }
-        compose.onNodeWithText("设置").assertIsDisplayed()
+        compose.onNodeWithText("应用设置").assertIsDisplayed()
         compose.onNodeWithText("关于应用").assertDoesNotExist()
         compose.onNodeWithText("退出应用").assertDoesNotExist()
         compose.onNodeWithText("有新版本可用").assertExists()
-        compose.onNodeWithText("设置").performClick()
+        compose.onNodeWithText("应用设置").performClick()
         assertEquals(listOf("settings"), calls)
     }
 
@@ -281,15 +282,15 @@ class AboutScreenTest {
         compose.setContent {
             MikaTheme {
                 ChatDrawer(
-                    DrawerSections(emptyList(), emptyList()), canSwitch = true,
-                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, onOpen = {},
+                    Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
+                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, onOpen = {}, currentVersion = "0.1.46",
                 )
             }
         }
-        compose.onNodeWithText("设置").assertIsDisplayed()
+        compose.onNodeWithText("应用设置").assertIsDisplayed()
         compose.onNodeWithText("关于应用").assertDoesNotExist()
         compose.onAllNodesWithTag("update-dot", useUnmergedTree = true).assertCountEquals(0)
-        compose.onNodeWithText("有新版本可用").assertDoesNotExist()
+        compose.onNodeWithText("0.1.46").assertExists()
     }
 
     /** 设置首页「关于 Mika」一行:有新版写「x 可更新」带红点。 */

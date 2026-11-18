@@ -90,7 +90,7 @@ class ChatDeleteAndSelectTest {
     private fun show(vm: ChatViewModel, drawerOpen: Boolean) {
         compose.setContent {
             ChatWithDrawer(
-                vm, reduceMotion = true,
+                vm, Prerequisites.Check(emptyList()), reduceMotion = true,
                 conversations = { store.list() }, conversationChanges = store.changes, conversationTitle = store::title,
                 onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, reopen = drawerOpen,
             ) { open ->

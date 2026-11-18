@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">こんにちは、Aura です</string>
+    <string name="welcome_title">こんにちは、Mika です</string>
     <string name="welcome_lead">スマホの中のあなた専用アシスタントです。\nやってほしいことを伝えてください。バックグラウンドで片付けます。</string>
     <string name="welcome_note">はじめる前に: モデルを設定して、スマホの操作をオンにします。約 3 分かかります。</string>
     <string name="welcome_start">はじめる</string>

@@ -2,12 +2,11 @@ package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
+import com.wangzan101.mika.ui.components.DirectionalIcon
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
-import androidx.core.view.WindowCompat
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +31,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +39,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,14 +49,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.Text
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
@@ -69,8 +66,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -79,12 +76,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wangzan101.mika.automation.EnvironmentSceneStore
-import com.wangzan101.mika.automation.SceneStore
-import com.wangzan101.mika.task.TriggerRuntime
 import com.wangzan101.mika.chat.ConversationHit
 import com.wangzan101.mika.chat.ConversationSearch
 import com.wangzan101.mika.chat.ConversationSummary
+import com.wangzan101.mika.settings.Prerequisites
 import com.wangzan101.mika.ui.components.GlassBlurSupported
 import com.wangzan101.mika.ui.components.KeyboardDismissArea
 import androidx.compose.animation.core.Animatable
@@ -93,6 +88,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
@@ -113,8 +109,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import com.wangzan101.mika.ui.components.ButtonSize
+import com.wangzan101.mika.ui.components.MikaButton
+import com.wangzan101.mika.ui.components.cardSurface
 import com.wangzan101.mika.ui.components.lazyListScrollbar
 import com.wangzan101.mika.ui.theme.MikaIcons
+import com.wangzan101.mika.ui.theme.MikaSize
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import kotlinx.coroutines.launch
@@ -228,14 +228,22 @@ fun conversationTime(at: Long, now: Long, zone: ZoneId = ZoneId.systemDefault())
     }
 }
 
+/** 侧栏顶上 Mika 名字下面那行状态,和它是不是好的(绿点)还是要处理(橙点)。 */
+fun readiness(check: Prerequisites.Check): Pair<String, Boolean> = when {
+    !check.canStartTask -> tr(R.string.chat_cannot_start) to false
+    !check.phoneReady -> tr(R.string.drawer_phone_not_ready) to false
+    else -> tr(R.string.all_ready) to true
+}
+
 private const val MAX_RECENT = 50
 
 /**
- * 侧栏从左侧滑出。顶部是标志、新建任务和搜索，中间显示任务分组与工具，底部固定设置入口。
+ * 侧栏:从左边滑出、右边圆角。顶部是标志和状态;新建对话按钮和入口;中间是进行中、置顶和最近会话;最底下只有应用设置。
  * 打开和关上由外面的抽屉管,这里只摆内容,点了什么交给回调。
  */
 @Composable
 fun ChatDrawer(
+    check: Prerequisites.Check,
     sections: DrawerSections,
     canSwitch: Boolean,
     /** 搜索框里的字;非空时侧栏进入搜索结果,入口区让位给结果。 */
@@ -258,6 +266,7 @@ fun ChatDrawer(
     /** 有新版本:「应用设置」带小红点,关于页在设置里。 */
     aboutDot: Boolean = false,
     unhandledCalls: Int = 0,
+    currentVersion: String = "",
     reduceMotion: Boolean = false,
     /** 长按一条存过的对话:在它原地弹出操作菜单(置顶、改名、删除);带上那一行在窗口里的位置和大小。 */
     onActions: (DrawerConversation, Rect) -> Unit = { _, _ -> },
@@ -272,68 +281,75 @@ fun ChatDrawer(
     onDeleteSelected: () -> Unit = {},
     /** 批量删除的进度和结果;在底部显示,删完过几秒由外面清掉。 */
     deleteBatch: DeleteBatch? = null,
-    needsAttention: Set<String> = emptySet(),
-    appointments: List<String> = emptyList(),
-    scenes: List<String> = emptyList(),
 ) {
     val c = MikaTheme.colors
-    var toolsExpanded by rememberSaveable { mutableStateOf(false) }
-    val attention = sections.running.filter { it.id in needsAttention }
-    val backgroundRuns = sections.running.filterNot { it.id in needsAttention }
     // 能勾的就是列在侧栏里、已经存过的对话(还没存过的当前草稿没有编号,删不了)
     val selectableIds = remember(sections) {
         (sections.running + sections.pinned + sections.recent).mapNotNull { it.id }.toSet()
     }
     val selectedCount = selected.count { it in selectableIds }
     val allSelected = selectableIds.isNotEmpty() && selectedCount == selectableIds.size
+    // 搜索时把几个入口收起来，把高度让给结果;清空后原样回来。搜索框在入口上面，位置不跳
     val searchActive = canSearch && !selecting && query.isNotBlank()
     Column(
-        Modifier.fillMaxHeight().widthIn(max = 460.dp).fillMaxWidth(0.84f)
-            .background(if (c.isDark) Color(0xFF141D2C) else Color(0xFFFFFFFF))
+        Modifier.fillMaxHeight().widthIn(max = DrawerWidth).fillMaxWidth()
+            .clip(DrawerShape).background(
+                if (c.isDark) Brush.verticalGradient(listOf(c.surface, c.bg))
+                else Brush.verticalGradient(listOf(c.surface.copy(alpha = 0.92f), c.bg.copy(alpha = 0.88f))), DrawerShape)
             .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars))
             .testTag("drawer"),
     ) {
+        val (state, ok) = readiness(check)
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 20.dp),
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MikaLogo(58.dp, corner = 14.dp)
-            Text(stringResource(R.string.app_name), Modifier.weight(1f), style = DrawerBrand,
-                color = drawerInk(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            MikaLogo(36.dp, corner = 10.dp)
+            Column(Modifier.weight(1f)) {
+                Text("Mika", style = MikaType.Title, color = c.ink)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Box(Modifier.size(6.dp).background(if (ok) c.ok else c.warnSolid, CircleShape))
+                    Text(state, style = MikaType.Hint, fontWeight = FontWeight.Medium, color = c.ink3)
+                }
+            }
+            // 多选从顶上这个按钮进;进去以后这里换成「取消」,返回键同样能退出
             when {
                 selecting -> HeaderAction(stringResource(R.string.cancel), "drawer-select-cancel", c.ink2, onExitSelect)
                 selectableIds.isNotEmpty() && !searchActive ->
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape)
-                            .clickable(role = Role.Button, onClick = onStartSelect).testTag("drawer-select"),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(MikaIcons.ListChecks, stringResource(R.string.drawer_select),
-                            Modifier.size(18.dp), tint = drawerMutedInk())
-                    }
+                    HeaderAction(stringResource(R.string.drawer_select), "drawer-select", c.accent, onStartSelect)
             }
         }
-        if (!selecting) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 15.dp).clip(NavShape)
-                    .background(if (canSwitch) drawerBlue() else c.fill)
-                    .clickable(enabled = canSwitch, role = Role.Button, onClick = onNew)
-                    .heightIn(min = 48.dp).padding(horizontal = 22.dp, vertical = 8.dp)
-                    .testTag("drawer-new"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                val contentColor = if (canSwitch) Color.White else c.ink3
-                Icon(MikaIcons.Plus, null, Modifier.size(25.dp), tint = contentColor)
-                Text(stringResource(R.string.aura_new), style = DrawerLabel, color = contentColor)
-            }
-            if (canSearch) DrawerSearchField(query, onQueryChange)
+        if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
+        // 搜索、多选时把几个入口收起来，把高度让给列表;退出后原样回来。入口本身不再分组。
+        if (!searchActive && !selecting) Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            MikaButton(
+                stringResource(R.string.drawer_new_chat), onNew,
+                Modifier.fillMaxWidth().testTag("drawer-new"),
+                size = ButtonSize.Medium, enabled = canSwitch,
+            )
+            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
+            NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans), onClick = onPlans)
+            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
+            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
+            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
+            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
+            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
+                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
+                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
         }
+        // 侧栏关着时列表只剩末尾那一项;打开时对话插在它前面,列表会按原来那一项停在最底下。最上面一项变了就回到顶上
         val list = rememberLazyListState()
-        LaunchedEffect(searchActive) { list.scrollToItem(0) }
+        val first = when {
+            searchActive -> "h-search"
+            sections.running.isNotEmpty() -> "h-running"
+            sections.pinned.isNotEmpty() -> "h-pinned"
+            sections.recent.isNotEmpty() -> "h-recent"
+            else -> "end"
+        }
+        LaunchedEffect(first) { list.scrollToItem(0) }
         val terms = remember(query) { ConversationSearch.termsOf(query) }
-        LazyColumn(Modifier.fillMaxWidth().weight(1f).lazyListScrollbar(list).testTag("drawer-list"), state = list) {
+        LazyColumn(Modifier.fillMaxWidth().weight(1f).lazyListScrollbar(list), state = list) {
             if (searchActive) {
                 item("h-search") { SectionLabel(stringResource(R.string.drawer_search_results)) }
                 if (!canSwitch) {
@@ -354,54 +370,36 @@ fun ChatDrawer(
                     item("search-more") { SearchHint(stringResource(R.string.drawer_search_truncated, ConversationSearch.MAX_HITS)) }
                 }
             } else {
-                item("h-attention") { SectionLabel(stringResource(R.string.aura_drawer_attention)) }
-                if (attention.isEmpty()) item("no-attention") { DrawerEmpty() }
-                items(attention, key = { "a-${it.id}" }) {
-                    ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected,
-                        onToggleSelect = onToggleSelect, compact = true, leading = MikaIcons.PaperPlane, showRunningDot = false)
-                }
-                item("h-running") { SectionLabel(stringResource(R.string.drawer_running)) }
-                if (backgroundRuns.isEmpty()) item("no-running") { DrawerEmpty() }
-                items(backgroundRuns, key = { "r-${it.id}" }) {
-                    ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected,
-                        onToggleSelect = onToggleSelect, compact = true, leading = MikaIcons.Calendar)
-                }
-                if (!selecting) {
-                    item("h-appointments") { SectionLabel(stringResource(R.string.aura_drawer_appointments)) }
-                    item("appointments") { AutomationPreview(MikaIcons.Clock, appointments, onPlans) }
-                    item("h-scenes") { SectionLabel(stringResource(R.string.aura_drawer_automations)) }
-                    item("scenes") { AutomationPreview(MikaIcons.Layers, scenes, onScenes) }
-                }
-                val recent = sections.pinned + sections.recent
-                item("h-recent") { SectionLabel(stringResource(R.string.aura_drawer_recent)) }
-                if (!canSwitch && recent.isNotEmpty()) {
-                    item("busy") {
-                        Text(stringResource(R.string.drawer_busy), Modifier.padding(horizontal = 20.dp),
-                            style = MikaType.Hint, color = drawerMutedInk())
+                if (sections.running.isNotEmpty()) {
+                    // 「进行中」这一段的右边进「后台屏」页:看每个在跑的任务正在用哪个 App、实时画面
+                    item("h-running") { RunningLabel(onScreens) }
+                    items(sections.running, key = { "r-${it.id}" }) {
+                        ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
                     }
                 }
-                if (recent.isEmpty()) item("no-recent") { DrawerEmpty() }
-                items(recent, key = { "c-${it.id}" }) {
-                    ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected,
-                        onToggleSelect = onToggleSelect, compact = true)
+                // 换不了对话时的说明放在第一段存着的对话(置顶或最近)上面
+                val busyNote: LazyListScope.() -> Unit = {
+                    if (!canSwitch) {
+                        item("busy") {
+                            Text(
+                                stringResource(R.string.drawer_busy), Modifier.padding(start = 24.dp, end = 24.dp, bottom = 6.dp),
+                                style = MikaType.Hint, color = c.ink3,
+                            )
+                        }
+                    }
                 }
-            }
-            if (!searchActive && !selecting) {
-                item("aura-tools") {
-                    Column(Modifier.padding(horizontal = 15.dp, vertical = 16.dp)) {
-                        NavEntry(MikaIcons.Layers, stringResource(R.string.aura_tools), Modifier.fillMaxWidth().testTag("drawer-tools"),
-                            expanded = toolsExpanded) {
-                            toolsExpanded = !toolsExpanded
-                        }
-                        if (toolsExpanded) {
-                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
-                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
-                                trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null, onClick = onCalls)
-                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
-                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
-                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
-                            NavEntry(MikaIcons.Screens, stringResource(R.string.drawer_screens), onClick = onScreens)
-                        }
+                if (sections.pinned.isNotEmpty()) {
+                    item("h-pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
+                    busyNote()
+                    items(sections.pinned, key = { "p-${it.id}" }) {
+                        ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
+                    }
+                }
+                if (sections.recent.isNotEmpty()) {
+                    item("h-recent") { SectionLabel(stringResource(R.string.drawer_recent)) }
+                    if (sections.pinned.isEmpty()) busyNote()
+                    items(sections.recent, key = { "c-${it.id}" }) {
+                        ConversationEntry(it, onOpen, onActions, selecting = selecting, selected = it.id in selected, onToggleSelect = onToggleSelect)
                     }
                 }
             }
@@ -414,12 +412,11 @@ fun ChatDrawer(
         } else {
             // 应用设置固定在侧栏最底下,对话再多也不被挤走。关于和退出在设置页里。
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 15.dp)
-                    .drawBehind { drawLine(c.hair, Offset.Zero, Offset(size.width, 0f), 0.5.dp.toPx()) }
-                    .padding(vertical = 6.dp).testTag("drawer-footer"),
+                Modifier.fillMaxWidth().drawBehind { drawLine(c.hair, Offset(0f, 0f), Offset(size.width, 0f), 0.5.dp.toPx()) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp).testTag("drawer-footer"),
             ) {
-                NavEntry(MikaIcons.Gear, stringResource(R.string.aura_settings), Modifier.fillMaxWidth(),
-                    trailing = if (aboutDot) stringResource(R.string.drawer_update_available) else null,
+                NavEntry(MikaIcons.Gear, stringResource(R.string.settings_title), Modifier.fillMaxWidth(),
+                    trailing = if (aboutDot) stringResource(R.string.drawer_update_available) else currentVersion.takeIf { it.isNotBlank() },
                     flashing = aboutDot, reduceMotion = reduceMotion, onClick = onSettings)
             }
         }
@@ -487,27 +484,24 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
 private fun NavEntry(
     icon: ImageVector, text: String, modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true, dot: Boolean = false, trailing: String? = null,
-    flashing: Boolean = false, reduceMotion: Boolean = false, expanded: Boolean? = null, onClick: () -> Unit,
+    flashing: Boolean = false, reduceMotion: Boolean = false, onClick: () -> Unit,
 ) {
     val c = MikaTheme.colors
     Row(
-        modifier.heightIn(min = 52.dp).clip(NavShape)
+        modifier.height(46.dp).clip(NavShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.4f)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = drawerInk())
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text, style = DrawerLabel, color = drawerInk(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Icon(icon, null, Modifier.size(MikaSize.Icon), tint = c.ink2)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text, style = MikaType.Body, color = c.ink, maxLines = 1, softWrap = false)
             if (dot) UpdateDot()
         }
-        if (expanded != null) {
-            val label = stringResource(if (expanded) R.string.aura_hide_tools else R.string.aura_show_tools)
-            Icon(MikaIcons.Chevron, label, Modifier.size(18.dp).rotate(if (expanded) -90f else 90f), tint = drawerInk())
-        }
         if (trailing != null) {
+            Spacer(Modifier.weight(1f))
             val opacity = if (flashing && !reduceMotion) {
                 val transition = rememberInfiniteTransition(label = "drawer-notice")
                 transition.animateFloat(1f, 0.38f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "notice-opacity").value
@@ -518,27 +512,30 @@ private fun NavEntry(
     }
 }
 
+/** 「进行中」的段标题,右边一个「后台屏 ›」进后台屏页(只有有任务在跑时才有这一段)。 */
 @Composable
-private fun AutomationPreview(icon: ImageVector, entries: List<String>, onOpen: () -> Unit) {
-    NavEntry(
-        icon, entries.firstOrNull() ?: stringResource(R.string.aura_all),
-        Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-        trailing = if (entries.size > 1) "+${entries.size - 1}" else null,
-        onClick = onOpen,
-    )
-}
-
-@Composable
-private fun DrawerEmpty() {
-    Text(stringResource(R.string.proactive_inbox_empty), Modifier.padding(horizontal = 20.dp, vertical = 7.dp),
-        style = MikaType.Hint, color = drawerMutedInk())
+private fun RunningLabel(onScreens: () -> Unit) {
+    val c = MikaTheme.colors
+    Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.Bottom) {
+        Box(Modifier.weight(1f)) { SectionLabel(stringResource(R.string.drawer_running)) }
+        Row(
+            Modifier.clip(NavShape).clickable(role = Role.Button, onClick = onScreens)
+                .padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 4.dp).testTag("drawer-screens"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(MikaIcons.Screens, null, Modifier.size(14.dp), tint = c.ink3)
+            Text(stringResource(R.string.drawer_screens), style = MikaType.Hint, color = c.ink2)
+            DirectionalIcon(MikaIcons.Chevron, null, Modifier.size(10.dp), tint = c.ink3)
+        }
+    }
 }
 
 @Composable
 private fun SectionLabel(text: String) {
     Text(
-        text, Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 3.dp),
-        style = SectionText, color = drawerMutedInk(),
+        text, Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 6.dp),
+        style = SectionText, color = MikaTheme.colors.ink3,
     )
 }
 
@@ -558,9 +555,6 @@ internal fun ConversationEntry(
     selecting: Boolean = false,
     selected: Boolean = false,
     onToggleSelect: (DrawerConversation) -> Unit = {},
-    compact: Boolean = false,
-    leading: ImageVector? = null,
-    showRunningDot: Boolean = true,
 ) {
     val c = MikaTheme.colors
     val deletable = item.id != null
@@ -569,10 +563,10 @@ internal fun ConversationEntry(
     // 这一行在窗口里的位置和大小(不裁掉滚出列表的部分),菜单照它摆出抬起的那一行;只在回调里读,不引起重组
     val bounds = remember { mutableStateOf(Rect.Zero) }
     Column(
-        Modifier.padding(horizontal = 15.dp).fillMaxWidth()
+        Modifier.padding(horizontal = 12.dp).fillMaxWidth()
             .onGloballyPositioned { bounds.value = Rect(it.positionInWindow(), it.size.toSize()) }
+            .then(if (item.current) Modifier.cardSurface(c, NavShape) else Modifier)
             .clip(NavShape)
-            .then(if (item.current && !compact) Modifier.background(c.fill) else Modifier)
             .then(
                 when {
                     selectable -> Modifier.toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggleSelect(item) })
@@ -590,34 +584,11 @@ internal fun ConversationEntry(
             )
             .testTag("conversation-row")
             .alpha(if (item.enabled || selectable) 1f else 0.45f)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (selectable) SelectMark(selected)
-            if (compact) {
-                val icon = leading ?: when {
-                    item.pinned -> MikaIcons.Pin
-                    item.branch -> MikaIcons.Route
-                    item.site != null -> MikaIcons.Globe
-                    else -> MikaIcons.TaskList
-                }
-                Icon(icon, if (item.pinned) stringResource(R.string.drawer_pinned_mark) else null,
-                    Modifier.size(24.dp).then(if (item.pinned) Modifier.testTag("conversation-pin") else Modifier),
-                    tint = drawerInk())
-                Text(item.title, Modifier.weight(1f), style = DrawerLabel, color = drawerInk(),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (item.running && showRunningDot) {
-                    Box(Modifier.padding(end = 4.dp).size(8.dp).background(drawerBlue(), CircleShape))
-                }
-                if (item.site != null) Text(PageAskCopy.WEB, Modifier.testTag("conversation-web"),
-                    style = ConversationTag, color = drawerMutedInk(), maxLines = 1)
-            } else {
-                Box(Modifier.weight(1f)) { ConversationRowContent(item, terms) }
-            }
+            Box(Modifier.weight(1f)) { ConversationRowContent(item, terms) }
         }
     }
 }
@@ -753,17 +724,10 @@ internal fun DeleteManyConversationsDialog(
 
 internal const val MENU_IN_MS = 200
 internal const val MENU_OUT_MS = 140
+private val DrawerWidth = 304.dp
+private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 internal val NavShape = RoundedCornerShape(12.dp)
-private val DrawerBrand = TextStyle(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
-private val DrawerLabel = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)
-private val SectionText = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
-
-@Composable
-internal fun drawerInk() = if (MikaTheme.colors.isDark) Color(0xFFF1F5FC) else Color(0xFF111F33)
-@Composable
-internal fun drawerMutedInk() = if (MikaTheme.colors.isDark) Color(0xFFA9B8CD) else Color(0xFF546173)
-@Composable
-internal fun drawerBlue() = if (MikaTheme.colors.isDark) Color(0xFF2868BC) else Color(0xFF185FBE)
+private val SectionText = TextStyle(fontSize = 12.5.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium)
 private val ConversationTitle = TextStyle(fontSize = 14.5.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
 private val ConversationTime = TextStyle(fontSize = 12.5.sp, lineHeight = 17.sp)
 private val ConversationTag = TextStyle(fontSize = 10.5.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
@@ -775,6 +739,7 @@ private val ConversationTag = TextStyle(fontSize = 10.5.sp, lineHeight = 16.sp, 
 @Composable
 fun ChatWithDrawer(
     vm: ChatViewModel,
+    check: Prerequisites.Check,
     reduceMotion: Boolean,
     conversations: () -> List<ConversationSummary>,
     /** 存储里改过的对话(见 `ConversationStore.changes`);侧栏开着时别处存进来的对话也当场列出。 */
@@ -794,16 +759,14 @@ fun ChatWithDrawer(
     /** 有新版本:侧栏「应用设置」带小红点。关于页在设置里。 */
     updateAvailable: Boolean = false,
     unhandledCalls: Int = 0,
+    currentVersion: String = "",
     /** 从侧栏进去的页面刚退回来:当场打开侧栏,回到进去之前的样子。 */
     reopen: Boolean = false,
     onReopened: () -> Unit = {},
     onPersonal: () -> Unit = {},
     onRegularChat: () -> Unit = {},
-    onNewHome: () -> Unit = onRegularChat,
-    needsAttention: Set<String> = emptySet(),
     /** 外部跳回对话页时变化:若之前因返回键留在展开的侧栏,当场收起侧栏。 */
     resetKey: Int = 0,
-    blackHome: Boolean = false,
     content: @Composable (openDrawer: () -> Unit) -> Unit,
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -828,39 +791,6 @@ fun ChatWithDrawer(
         go()
     }
     val open = drawer.targetValue == DrawerValue.Open || drawer.isOpen
-    val view = LocalView.current
-    val themeDark = MikaTheme.colors.isDark
-    if (blackHome || open) {
-        val lightBars = open && !themeDark
-        DisposableEffect(view, lightBars) {
-            val controller = view.context.findActivity()?.window?.let { WindowCompat.getInsetsController(it, view) }
-            val priorStatus = controller?.isAppearanceLightStatusBars
-            val priorNav = controller?.isAppearanceLightNavigationBars
-            controller?.isAppearanceLightStatusBars = lightBars
-            controller?.isAppearanceLightNavigationBars = lightBars
-            onDispose {
-                if (priorStatus != null) controller?.isAppearanceLightStatusBars = priorStatus
-                if (priorNav != null) controller?.isAppearanceLightNavigationBars = priorNav
-            }
-        }
-    }
-    val context = LocalContext.current
-    var appointments by remember { mutableStateOf(emptyList<String>()) }
-    var sceneNames by remember { mutableStateOf(emptyList<String>()) }
-    LaunchedEffect(open, context) {
-        if (!open) return@LaunchedEffect
-        val (scheduled, scenes) = withContext(Dispatchers.IO) {
-            val triggers = runCatching { TriggerRuntime.snapshot(context).triggers }.getOrDefault(emptyList())
-                .filter { it.enabled }.sortedBy { it.nextAtMs }
-                .map { ChatCopy.plainTitle(it.reminderText ?: it.goal) }.filter(String::isNotBlank)
-            val bluetooth = SceneStore.get(context).also { it.load() }
-            val environment = EnvironmentSceneStore.get(context).also { it.load() }
-            triggers to (bluetooth.rules.value.filter { it.enabled }.map { it.title } +
-                environment.rules.value.filter { it.enabled }.map { it.title })
-        }
-        appointments = scheduled
-        sceneNames = scenes
-    }
     /** 搜索框里的字和已经拿到的结果;侧栏关掉就清空。 */
     var query by remember { mutableStateOf("") }
     var searchOutcome by remember { mutableStateOf<SearchOutcome?>(null) }
@@ -1013,15 +943,12 @@ fun ChatWithDrawer(
                 }
                 LaunchedEffect(selectableIds) { selected = selected intersect selectableIds }
                 ChatDrawer(
-                    sections, canSwitch,
+                    check, sections, canSwitch,
                     query = query,
                     onQueryChange = { query = it },
                     search = searchView,
                     canSearch = candidates.isNotEmpty(),
-                    onNew = { close { vm.newConversation(); onNewHome() } },
-                    needsAttention = needsAttention,
-                    appointments = appointments,
-                    scenes = sceneNames,
+                    onNew = { close { vm.newConversation(); onRegularChat() } },
                     onPersonal = { leave(onPersonal) },
                     onPlans = { leave(onPlans) },
                     onScenes = { leave(onScenes) },
@@ -1033,6 +960,7 @@ fun ChatWithDrawer(
                     onScreens = { leave(onScreens) },
                     aboutDot = updateAvailable,
                     unhandledCalls = unhandledCalls,
+                    currentVersion = currentVersion,
                     reduceMotion = reduceMotion,
                     onActions = { item, bounds -> if (item.id != null) acting = item to bounds },
                     onOpen = { item ->
@@ -1072,7 +1000,7 @@ fun ChatWithDrawer(
             // 对话页上从左往右划拉出侧栏(拖着跟手);能左右滚的内容(宽表格、代码块等)先自己滚。
             // 从左边缘往里滑是系统的返回手势,上面的返回处理同样是打开侧栏
             gesturesEnabled = true,
-            scrimColor = Color(0xFF253E61).copy(alpha = 0.56f),
+            scrimColor = MikaTheme.colors.floatShadow.copy(alpha = 0.28f),
         ) {
             content { scope.launch { if (reduceMotion) drawer.snapTo(DrawerValue.Open) else drawer.open() } }
         }
