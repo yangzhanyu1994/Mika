@@ -22,4 +22,7 @@
     <string name="assistant_searching">در حال جستجو</string>
     <string name="assistant_looking">در حال بررسی</string>
     <string name="assistant_thinking">در حال فکر کردن</string>
+    <string name="assistant_reading_result">در حال خواندن نتیجه</string>
+    <string name="assistant_readout_unavailable">خواندن نتیجه با صدای Doubao ممکن نشد. تنظیمات صدا در تلفن هوش مصنوعی را بررسی کنید.</string>
+    <string name="drawer_calls_listening">در انتظار تماس</string>
 </resources>

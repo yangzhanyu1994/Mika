@@ -271,6 +271,7 @@ internal fun ChatDrawer(
     /** 有新版本:「应用设置」带小红点,关于页在设置里。 */
     aboutDot: Boolean = false,
     unhandledCalls: Int = 0,
+    callsListening: Boolean = false,
     currentVersion: String = "",
     reduceMotion: Boolean = false,
     /** 长按一条存过的对话:在它原地弹出操作菜单(置顶、改名、删除);带上那一行在窗口里的位置和大小。 */
@@ -371,13 +372,14 @@ internal fun ChatDrawer(
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
                             MikaButton(stringResource(R.string.drawer_new_chat), onNew,
                                 Modifier.fillMaxWidth().testTag("drawer-new"), size = ButtonSize.Medium, enabled = canSwitch)
-                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), onClick = onPersonal)
-                            NavEntry(MikaIcons.Clock, stringResource(R.string.plans_add), onClick = onCreatePlan)
-                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title), onClick = onCreateCall)
-                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), onClick = onScenes)
-                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = onBrowser)
-                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = onFiles)
-                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), onClick = onMemory)
+                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), compact = true, onClick = onPersonal)
+                            NavEntry(MikaIcons.Clock, stringResource(R.string.plans_add), compact = true, onClick = onCreatePlan)
+                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
+                                listening = callsListening, compact = true, onClick = onCreateCall)
+                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), compact = true, onClick = onScenes)
+                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), compact = true, onClick = onBrowser)
+                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), compact = true, onClick = onFiles)
+                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), compact = true, onClick = onMemory)
                         }
                     }
                     item("h-running") {
@@ -393,7 +395,7 @@ internal fun ChatDrawer(
                     }
                     if (!selecting && sections.running.isNotEmpty()) item("running-screens") {
                         NavEntry(MikaIcons.Screens, stringResource(R.string.drawer_screens),
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("drawer-screens"), onClick = onScreens)
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("drawer-screens"), compact = true, onClick = onScreens)
                     }
                 }
                 if (!selecting) {
@@ -408,7 +410,7 @@ internal fun ChatDrawer(
                         }
                         item("scheduled-manage") {
                             NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans),
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onPlans)
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), compact = true, onClick = onPlans)
                         }
                     }
                     item("h-automation") {
@@ -424,7 +426,7 @@ internal fun ChatDrawer(
                         }
                         item("automation-manage") {
                             NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title),
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onScenes)
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), compact = true, onClick = onScenes)
                         }
                     }
                     item("h-calls") {
@@ -440,7 +442,8 @@ internal fun ChatDrawer(
                             NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
                                 Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                                 trailing = if (unhandledCalls > 0) stringResource(R.string.drawer_calls_unread) else null,
-                                flashing = unhandledCalls > 0, reduceMotion = reduceMotion, onClick = onCalls)
+                                flashing = unhandledCalls > 0, reduceMotion = reduceMotion,
+                                listening = callsListening, compact = true, onClick = onCalls)
                         }
                     }
                 }
@@ -551,7 +554,8 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
 private fun NavEntry(
     icon: ImageVector, text: String, modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true, dot: Boolean = false, trailing: String? = null,
-    flashing: Boolean = false, reduceMotion: Boolean = false, onClick: () -> Unit,
+    flashing: Boolean = false, reduceMotion: Boolean = false,
+    listening: Boolean = false, compact: Boolean = false, onClick: () -> Unit,
 ) {
     val c = MikaTheme.colors
     Row(
@@ -563,12 +567,17 @@ private fun NavEntry(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Icon(icon, null, Modifier.size(MikaSize.Icon), tint = c.ink2)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text, style = MikaType.Body, color = c.ink, maxLines = 1, softWrap = false)
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text, Modifier.weight(1f, fill = false), style = if (compact) MikaType.Caption else MikaType.Body,
+                color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (dot) UpdateDot()
         }
-        if (trailing != null) {
-            Spacer(Modifier.weight(1f))
+        if (listening) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(Modifier.size(7.dp).background(c.ok, CircleShape))
+                Text(stringResource(R.string.drawer_calls_listening), style = MikaType.Hint, color = c.ok, maxLines = 1)
+            }
+        } else if (trailing != null) {
             val opacity = if (flashing && !reduceMotion) {
                 val transition = rememberInfiniteTransition(label = "drawer-notice")
                 transition.animateFloat(1f, 0.38f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "notice-opacity").value
@@ -811,6 +820,7 @@ fun ChatWithDrawer(
     /** 有新版本:侧栏「应用设置」带小红点。关于页在设置里。 */
     updateAvailable: Boolean = false,
     unhandledCalls: Int = 0,
+    callsListening: Boolean = false,
     currentVersion: String = "",
     /** 从侧栏进去的页面刚退回来:当场打开侧栏,回到进去之前的样子。 */
     reopen: Boolean = false,
@@ -1017,6 +1027,7 @@ fun ChatWithDrawer(
                     onScreens = { leave(onScreens) },
                     aboutDot = updateAvailable,
                     unhandledCalls = unhandledCalls,
+                    callsListening = callsListening,
                     currentVersion = currentVersion,
                     reduceMotion = reduceMotion,
                     onActions = { item, bounds -> if (item.id != null) acting = item to bounds },

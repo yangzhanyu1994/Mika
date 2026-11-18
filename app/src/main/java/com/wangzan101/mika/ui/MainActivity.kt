@@ -513,6 +513,7 @@ private fun MikaRoot(
     // 查到的新版本:侧栏、设置首页、关于页的红点都看它
     val updateState by app.updates.state.collectAsState()
     val callHistory by app.calls.history.collectAsState()
+    val callState by app.calls.state.collectAsState()
     val autoUpdate by app.automaticUpdates.enabled.collectAsState()
     val readyUpdate by app.automaticUpdates.ready.collectAsState()
     LaunchedEffect(requestedAssistant) {
@@ -686,6 +687,7 @@ private fun MikaRoot(
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
                 updateAvailable = AboutCopy.drawerDot(updateState),
                 unhandledCalls = callHistory.count { !it.handled },
+                callsListening = callState.autoAnswerStage == com.wangzan101.mika.calls.CallAutoAnswerStage.STANDBY,
                 currentVersion = com.wangzan101.mika.BuildConfig.VERSION_NAME,
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,

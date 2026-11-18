@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -200,6 +202,24 @@ class VolcRealtimeSession internal constructor(
         if (phase != Phase.ACTIVE || text.isBlank() || text.length > 1024) return false
         return send(VolcRealtimeProtocol.greeting(nextId(), text))
     }
+
+    /** Synthesize the supplied text verbatim, independently of the call conversation. */
+    @Synchronized internal fun synthesize(text: String): Boolean {
+        if (phase != Phase.ACTIVE || text.isBlank()) return false
+        var start = 0
+        while (start < text.length) {
+            val end = text.offsetByCodePoints(start, minOf(512, text.codePointCount(start, text.length)))
+            if (!send(speechFrame("speech_text_buffer.replacement.append", text.substring(start, end)))) return false
+            start = end
+        }
+        return send(speechFrame("speech_text_buffer.replacement.commit"))
+    }
+
+    private fun speechFrame(type: String, text: String? = null): String = buildJsonObject {
+        put("type", type)
+        put("event_id", nextId())
+        if (text != null) put("text", text)
+    }.toString()
 
     @Synchronized fun setMuted(muted: Boolean): Boolean {
         if (phase != Phase.ACTIVE) return false

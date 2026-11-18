@@ -22,4 +22,7 @@
     <string name="assistant_searching">Buscando</string>
     <string name="assistant_looking">Consultando</string>
     <string name="assistant_thinking">Pensando</string>
+    <string name="assistant_reading_result">Leyendo el resultado en voz alta</string>
+    <string name="assistant_readout_unavailable">Doubao no pudo leer el resultado. Comprueba la configuración de voz en Teléfono con IA.</string>
+    <string name="drawer_calls_listening">En escucha</string>
 </resources>

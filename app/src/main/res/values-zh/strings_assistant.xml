@@ -22,4 +22,7 @@
     <string name="assistant_searching">正在搜索</string>
     <string name="assistant_looking">正在查找</string>
     <string name="assistant_thinking">思考中</string>
+    <string name="assistant_reading_result">正在播报结果</string>
+    <string name="assistant_readout_unavailable">豆包实时语音暂时无法播报，请检查 AI 电话里的语音配置。</string>
+    <string name="drawer_calls_listening">持续监听中</string>
 </resources>

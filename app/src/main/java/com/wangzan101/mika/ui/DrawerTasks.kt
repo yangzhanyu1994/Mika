@@ -26,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.MikaApp
@@ -127,7 +128,7 @@ internal fun DrawerTaskLabel(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = MikaType.Label)
+        Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = MikaType.Title.copy(fontWeight = FontWeight.Bold))
         if (unread) Text(stringResource(R.string.drawer_calls_unread), color = c.accent, style = MikaType.Hint)
         if (count != null) Text(count.toString(), color = c.ink3, style = MikaType.Hint)
         Icon(MikaIcons.Chevron, null, Modifier.size(14.dp).rotate(if (expanded) 90f else 0f), tint = c.ink3)
@@ -141,7 +142,7 @@ internal fun DrawerTaskEntry(title: String, detail: String, onClick: () -> Unit)
         Modifier.fillMaxWidth().padding(horizontal = 12.dp).heightIn(min = 48.dp).clip(MikaShapes.Tile)
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 18.dp, vertical = 7.dp),
     ) {
-        Text(title, color = c.ink, style = MikaType.Body, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, color = c.ink, style = MikaType.Caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (detail.isNotBlank()) Text(detail, color = c.ink3, style = MikaType.Hint, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

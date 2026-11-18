@@ -22,4 +22,7 @@
     <string name="assistant_searching">検索中</string>
     <string name="assistant_looking">確認中</string>
     <string name="assistant_thinking">考え中</string>
+    <string name="assistant_reading_result">結果を読み上げています</string>
+    <string name="assistant_readout_unavailable">Doubao のリアルタイム音声で読み上げできません。AI 電話の音声設定を確認してください。</string>
+    <string name="drawer_calls_listening">着信待機中</string>
 </resources>
