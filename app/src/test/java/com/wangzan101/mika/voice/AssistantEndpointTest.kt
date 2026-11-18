@@ -9,6 +9,7 @@ class AssistantEndpointTest {
         endpoint.level(0.3f, 1000)
         assertEquals(AssistantEndpoint.Decision.Wait, endpoint.decision(2999))
         endpoint.partial("你好", 2500)
+        endpoint.partial("你好", 4300)
         assertEquals(AssistantEndpoint.Decision.Wait, endpoint.decision(4499))
         assertEquals(AssistantEndpoint.Decision.Finish, endpoint.decision(4500))
     }

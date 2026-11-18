@@ -35,11 +35,13 @@ import com.wangzan101.mika.i18n.AppLanguage
 import com.wangzan101.mika.quit.MikaQuit
 import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.ui.AttachFiles
+import com.wangzan101.mika.ui.MarkdownModel
 import com.wangzan101.mika.ui.VoiceCopy
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.voice.HoldToTalk
+import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.SpeechEvent
 import com.wangzan101.mika.voice.assistantSpeech
 import kotlinx.coroutines.CancellationException
@@ -84,6 +86,9 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var revealTurn by mutableStateOf<Int?>(null)
     private var previousRun: String? = null
     private var replyJob: Job? = null
+    private var playbackJob: Job? = null
+    private var closeAfterPlayback: Job? = null
+    private var interactions = 0L
     private var pendingPhoto: Uri? = null
     private var photoUri: Uri? = null
     private var voiceJob: Job? = null
@@ -179,7 +184,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                         sending = sending,
                         reply = reply,
                         onOpenConversation = ::openConversation,
-                        onText = { text = it },
+                        onText = { noteInteraction(); text = it },
                         onEdit = { stopSpeech(keepText = true) },
                         onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
                         onScreenshot = ::attachScreenshot,
@@ -215,8 +220,21 @@ class AssistantOverlayActivity : ComponentActivity() {
         }
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        noteInteraction()
+    }
+
+    private fun noteInteraction() {
+        interactions++
+        closeAfterPlayback?.cancel()
+        closeAfterPlayback = null
+    }
+
     override fun onPause() {
         resumed = false
+        noteInteraction()
+        stopPlayback()
         stopSpeech(keepText = true)
         super.onPause()
     }
@@ -251,6 +269,7 @@ class AssistantOverlayActivity : ComponentActivity() {
 
     private fun startSpeech() {
         if (listening || converting || isFinishing || sending) return
+        stopPlayback()
         partial = ""
         status = null
         finishSpeech = false
@@ -260,11 +279,20 @@ class AssistantOverlayActivity : ComponentActivity() {
             try {
                 assistantSpeech(app.voice, { finishSpeech }) { event ->
                     when (event) {
-                        is SpeechEvent.Level -> level = event.value
-                        is SpeechEvent.Partial -> partial = event.stable + event.tail
+                        is SpeechEvent.Level -> {
+                            level = event.value
+                            if (level >= 0.12f && closeAfterPlayback != null) noteInteraction()
+                        }
+                        is SpeechEvent.Partial -> {
+                            partial = event.stable + event.tail
+                            if (partial.isNotBlank() && closeAfterPlayback != null) noteInteraction()
+                        }
                         SpeechEvent.Converting -> { converting = true; listening = false }
                         is SpeechEvent.Final -> finalText = event.text.trim()
-                        is SpeechEvent.Failed -> status = VoiceCopy.failure(event.why)
+                        is SpeechEvent.Failed -> {
+                            if (closeAfterPlayback != null) noteInteraction()
+                            status = VoiceCopy.failure(event.why)
+                        }
                         SpeechEvent.EndOfSpeech -> Unit
                     }
                 }
@@ -275,6 +303,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 status = getString(R.string.voice_mic_unavailable)
             }
             val recognized = finalText?.ifBlank { partial } ?: partial
+            if (recognized.isNotBlank() && closeAfterPlayback != null) noteInteraction()
             if (recognized.isNotBlank()) text = HoldToTalk.join(text, recognized)
             partial = ""
             level = 0f
@@ -282,8 +311,58 @@ class AssistantOverlayActivity : ComponentActivity() {
             converting = false
             val action = afterSpeech
             afterSpeech = null
-            if (resumed) action?.invoke()
+            if (resumed) {
+                if (action != null) action()
+                else if (!finishSpeech && !finalText.isNullOrBlank()) send()
+            }
         }
+    }
+
+    private fun stopPlayback() {
+        if (playbackJob?.isActive == true) {
+            playbackJob?.cancel()
+            status = null
+        }
+        playbackJob = null
+    }
+
+    private fun playCompletedResult(answer: String) {
+        if (!resumed || listening || converting || isFinishing || answer.isBlank()) return
+        val config = app.calls.settings.state.value
+        val credentials = app.calls.settings.credentials()
+        if (credentials == null) {
+            status = getString(R.string.assistant_readout_unavailable)
+            return
+        }
+        stopPlayback()
+        val activityBefore = interactions
+        playbackJob = lifecycleScope.launch {
+            status = getString(R.string.assistant_reading_result)
+            val played = try {
+                val words = withContext(Dispatchers.Default) { MarkdownModel.toPlainText(answer) }
+                words.isNotBlank() && speakAssistantResult(this@AssistantOverlayActivity, credentials, config.speaker, words)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                false
+            }
+            playbackJob = null
+            status = if (played) null else getString(R.string.assistant_readout_unavailable)
+            if (played && activityBefore == interactions) offerVoiceFollowUp()
+        }
+    }
+
+    private fun offerVoiceFollowUp() {
+        if (!resumed || listening || converting || sending || isFinishing || text.isNotBlank() ||
+            screenshot != null || photo != null ||
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
+            app.voice.spec() is SpeechEngineSpec.Unavailable
+        ) return
+        closeAfterPlayback = lifecycleScope.launch {
+            delay(3_000)
+            if (resumed && !isFinishing && !sending && text.isBlank() && partial.isBlank()) finish()
+        }
+        startSpeech()
     }
 
     private fun stopSpeech(keepText: Boolean) {
@@ -383,6 +462,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             status = getString(R.string.appaccess_share_expired)
             return
         }
+        stopPlayback()
         sending = true
         status = null
         lifecycleScope.launch {
@@ -445,9 +525,13 @@ class AssistantOverlayActivity : ComponentActivity() {
                     }
                 } else {
                     startupTimeout.cancel()
+                    val finished = turns.getOrNull(pendingAfter).takeIf { pendingQuestion != null }
                     pendingQuestion = null
                     previousRun = null
                     reply = turns.lastOrNull()?.let(::savedReply)
+                    if (finished != null && finished.status in setOf("succeeded", "unverified")) {
+                        playCompletedResult(savedReply(finished).body)
+                    }
                 }
             }
         }

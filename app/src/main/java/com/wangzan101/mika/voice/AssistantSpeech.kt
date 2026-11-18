@@ -38,11 +38,23 @@ internal suspend fun assistantSpeech(
                     when (event) {
                         is SpeechEvent.Level -> endpoint.level(event.value, now)
                         is SpeechEvent.Partial -> endpoint.partial(event.stable + event.tail, now)
-                        SpeechEvent.EndOfSpeech -> release(now)
+                        // The system recognizer can finish a segment early and reopen it while held.
+                        SpeechEvent.EndOfSpeech -> Unit
+                        is SpeechEvent.Final -> if (releasedAt == null) endpoint.partial(event.text, now)
                         else -> Unit
                     }
                     if (event != null && event != SpeechEvent.EndOfSpeech) onEvent(event)
-                    if (event is SpeechEvent.Final || event is SpeechEvent.Failed) break
+                    if (event is SpeechEvent.Failed) break
+                    if (event is SpeechEvent.Final) {
+                        if (releasedAt == null && event.text.isNotBlank() &&
+                            endpoint.decision(now) == AssistantEndpoint.Decision.Wait
+                        ) {
+                            while (!finishRequested() &&
+                                endpoint.decision(SystemClock.elapsedRealtime()) == AssistantEndpoint.Decision.Wait
+                            ) kotlinx.coroutines.delay(50)
+                        }
+                        break
+                    }
                     if (finishRequested()) release(now)
                     if (releasedAt == null) {
                         when (endpoint.decision(now)) {

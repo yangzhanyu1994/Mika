@@ -22,4 +22,7 @@
     <string name="assistant_searching">Mencari</string>
     <string name="assistant_looking">Memeriksa</string>
     <string name="assistant_thinking">Sedang berpikir</string>
+    <string name="assistant_reading_result">Membacakan hasil</string>
+    <string name="assistant_readout_unavailable">Doubao tidak dapat membacakan hasil. Periksa pengaturan suara di Telepon AI.</string>
+    <string name="drawer_calls_listening">Sedang memantau</string>
 </resources>

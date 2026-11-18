@@ -22,4 +22,7 @@
     <string name="assistant_searching">جارٍ البحث</string>
     <string name="assistant_looking">جارٍ التحقق</string>
     <string name="assistant_thinking">جارٍ التفكير</string>
+    <string name="assistant_reading_result">جارٍ قراءة النتيجة بصوت عالٍ</string>
+    <string name="assistant_readout_unavailable">تعذرت قراءة النتيجة عبر Doubao. تحقّق من إعدادات الصوت في هاتف الذكاء الاصطناعي.</string>
+    <string name="drawer_calls_listening">في وضع الاستماع</string>
 </resources>

@@ -22,4 +22,7 @@
     <string name="assistant_searching">Searching</string>
     <string name="assistant_looking">Looking up</string>
     <string name="assistant_thinking">Thinking</string>
+    <string name="assistant_reading_result">Reading the result aloud</string>
+    <string name="assistant_readout_unavailable">Could not read the result aloud with Doubao Realtime. Check the voice credentials in AI Phone.</string>
+    <string name="drawer_calls_listening">Listening</string>
 </resources>

@@ -82,6 +82,14 @@ class VolcRealtimeClientTest {
             val greet = withTimeout(3_000) { messages.receive() }
             assertEquals("speech_text_buffer.commit", greet.type)
             assertEquals("你好", greet.getValue("text").jsonPrimitive.content)
+            val result = "查找完成。" + "呀".repeat(506) + "🎉" + "下次开会是周三。"
+            assertTrue(session.synthesize(result))
+            val firstChunk = withTimeout(3_000) { messages.receive() }
+            val secondChunk = withTimeout(3_000) { messages.receive() }
+            assertEquals("speech_text_buffer.replacement.append", firstChunk.type)
+            assertEquals(firstChunk.type, secondChunk.type)
+            assertEquals(result, firstChunk.getValue("text").jsonPrimitive.content + secondChunk.getValue("text").jsonPrimitive.content)
+            assertEquals("speech_text_buffer.replacement.commit", withTimeout(3_000) { messages.receive() }.type)
             val pcm = ByteArray(VolcRealtimeClient.INPUT_CHUNK_BYTES + 4) { it.toByte() }
             assertFalse(session.sendPcm16(pcm, 3))
             assertTrue(session.sendPcm16(pcm, VolcRealtimeClient.INPUT_CHUNK_BYTES))

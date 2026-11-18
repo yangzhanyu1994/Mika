@@ -22,4 +22,7 @@
     <string name="assistant_searching">Идёт поиск</string>
     <string name="assistant_looking">Проверяю</string>
     <string name="assistant_thinking">Думаю</string>
+    <string name="assistant_reading_result">Озвучивание результата</string>
+    <string name="assistant_readout_unavailable">Не удалось озвучить результат через Doubao. Проверьте настройки голоса в ИИ-телефоне.</string>
+    <string name="drawer_calls_listening">Ожидание звонков</string>
 </resources>
