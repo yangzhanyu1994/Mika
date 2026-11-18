@@ -52,21 +52,28 @@ internal class ResearchChat(
     private val _pending = MutableStateFlow<Map<String, ResearchDraft>>(emptyMap())
     val pending = _pending.asStateFlow()
 
+    fun send(id: String, question: String): Boolean = send(
+        id, question,
+        history = { store.turns(id).filter { it.research && it.status == "succeeded" } },
+        persist = { turn ->
+            store.appendResearch(id, turn)
+            if (turn.status == "succeeded") store.setTitle(id, question.lineSequence().first().take(40))
+        },
+    )
+
     @Synchronized
-    fun send(id: String, question: String): Boolean {
+    fun send(id: String, question: String, history: () -> List<Turn>, persist: (Turn) -> Unit): Boolean {
         if (question.isBlank() || id in _pending.value || providers.configFor(ModelRole.Chat) == null) return false
         val draft = ResearchDraft(question, System.currentTimeMillis())
         _pending.update { it + (id to draft) }
         scope.launch(Dispatchers.IO) {
             try {
-                val history = store.turns(id).filter { it.research && it.status == "succeeded" }.takeLast(12)
-                val answer = present(id, draft, history)
-                store.appendResearch(id, Turn(question, answer, "succeeded", atMs = draft.startedAt))
-                store.setTitle(id, question.lineSequence().first().take(40))
+                val answer = present(id, draft, history().takeLast(12))
+                persist(Turn(question, answer, "succeeded", atMs = draft.startedAt))
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                runCatching { store.appendResearch(id, Turn(question, app.getString(R.string.mode_chat_error), "failed", atMs = draft.startedAt)) }
+                runCatching { persist(Turn(question, app.getString(R.string.mode_chat_error), "failed", atMs = draft.startedAt)) }
             } finally {
                 _pending.update { it - id }
             }

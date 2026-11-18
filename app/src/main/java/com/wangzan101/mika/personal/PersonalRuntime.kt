@@ -6,6 +6,7 @@ import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.capsule.previewFrames
 import com.wangzan101.mika.capsule.sameFrame
 import com.wangzan101.mika.core.agent.TaskState
+import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.memory.*
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.core.model.ModelSession
@@ -154,6 +155,22 @@ class PersonalRuntime(private val app: MikaApp) {
             replays.end(id)
         }
     }
+    internal fun researchHistory(): List<Turn> = store.state.value.messages.zipWithNext().mapNotNull { (question, answer) ->
+        if (question.role == "user" && answer.role == "assistant" && !answer.error && answer.taskId == null) {
+            Turn(question.text, answer.conversationText(), "succeeded", atMs = question.at)
+        } else null
+    }
+
+    internal fun recordResearch(turn: Turn) {
+        val at = turn.atMs ?: System.currentTimeMillis()
+        store.update {
+            it.copy(messages = it.messages + listOf(
+                PersonalMessage(UUID.randomUUID().toString(), "user", turn.userText, at),
+                PersonalMessage(UUID.randomUUID().toString(), "assistant", turn.outcome, at, error = turn.status != "succeeded"),
+            ))
+        }
+    }
+
     private val submit = Mutex()
     suspend fun send(text: String) = submit.withLock {
         val clean = text.trim()

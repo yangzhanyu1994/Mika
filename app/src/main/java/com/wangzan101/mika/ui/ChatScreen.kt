@@ -251,7 +251,7 @@ fun ChatScreen(
     var deviceHabits by remember { mutableStateOf<List<String>>(emptyList()) }
     val habits = habitSuggestions ?: deviceHabits
     LifecycleStartEffect(Unit) {
-        focusRequest += 1
+        if (modeHeader == null) focusRequest += 1
         onStopOrDispose {}
     }
     var composerHeight by rememberSaveable { mutableIntStateOf(0) }
@@ -387,15 +387,21 @@ fun ChatScreen(
         last?.waitingForModel == true -> AmbientMode.Thinking
         else -> AmbientMode.Executing
     }
+    val pinnedHeader = modeHeader != null
+    val headerHeight = with(density) { topHeight.toDp() }
     PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
         CompositionLocalProvider(LocalMessageMenu provides menuHost) {
             LazyColumn(
-                Modifier.fillMaxSize().behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion)
+                Modifier.fillMaxSize()
+                    .then(if (pinnedHeader) Modifier.padding(top = headerHeight).clipToBounds() else Modifier)
+                    .behindMenu(menuOpen) { lift.value }.voiceDim(voiceHolding, reduceMotion)
                     .glassSource(backdrop).testTag("chat-list"),
                 state = listState,
                 contentPadding = with(density) {
                     PaddingValues(
-                        start = 16.dp, end = 16.dp, top = topHeight.toDp() + 4.dp, bottom = composerHeight.toDp() + 12.dp,
+                        start = 16.dp, end = 16.dp,
+                        top = if (pinnedHeader) 4.dp else headerHeight + 4.dp,
+                        bottom = composerHeight.toDp() + 12.dp,
                     )
                 },
             ) {
@@ -463,15 +469,19 @@ fun ChatScreen(
         val sub: Pair<String, ChatCopy.Tone?>? = ChatCopy.subtitle(last, last?.let(vm::livePlace))
             ?: kept?.let { ChatCopy.KEPT_PAGE to ChatCopy.Tone.Ok }
             ?: ChatTokensCopy.conversationSubtitle(endedRuns, runMetrics)?.let { it to null }
-        Column(Modifier.behindMenu(menuOpen) { lift.value }.onSizeChanged { topHeight = it.height }) {
+        Column(
+            Modifier.behindMenu(menuOpen) { lift.value }
+                .then(if (pinnedHeader) Modifier.fillMaxWidth().pageBackground(c.bg) else Modifier)
+                .onSizeChanged { topHeight = it.height },
+        ) {
             TopBar(
                 modeTitle ?: ChatCopy.APP_TITLE,
                 right = onNewConversation?.let { start ->
                     { BarIconButton(MikaIcons.New, stringResource(R.string.mode_new_thread), start) }
                 },
-                background = if (c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
+                background = if (pinnedHeader || c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
                 left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
-                leftGlass = true,
+                leftGlass = !pinnedHeader,
                 // 别的对话里还有任务在跑(并行时):菜单上一个小圆点,侧栏「进行中」里能切过去
                 leftBadge = others.isNotEmpty(),
                 subtitle = sub?.first,
@@ -541,7 +551,7 @@ fun ChatScreen(
             onVoiceHolding = { voiceHolding = it },
             editRequest = editRequest,
             focusRequest = focusRequest,
-            rotatingHintIds = if (ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
+            rotatingHintIds = if (!pinnedHeader && ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
         )
         }
 
@@ -1622,10 +1632,12 @@ internal fun Composer(
                 Box(Modifier.weight(1f).padding(start = if (showAttach) 2.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                     val converting = vState is HoldToTalk.State.Converting
                     if (text.isEmpty() && !converting) {
-                        if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
+                        if (mode == ComposerMode.Idle && idlePlaceholder != null) {
+                            Text(idlePlaceholder, style = MikaType.Body, color = c.ink3, maxLines = 1)
+                        } else if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
                             RotatingPlaceholder(rotating, active = !fieldFocused, reduceMotion = reduceMotion, Modifier.fillMaxWidth())
                         } else if (vh != null) VoicePlaceholder(mode, followUpMode)
-                        else Text(if (mode == ComposerMode.Idle && idlePlaceholder != null) idlePlaceholder else ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
+                        else Text(ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
                     }
                     BasicTextField(
                         shownValue,

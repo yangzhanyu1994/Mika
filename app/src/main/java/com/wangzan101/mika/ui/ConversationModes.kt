@@ -43,9 +43,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.ResearchDraft
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.ui.components.TopBar
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
@@ -59,7 +61,7 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun ConversationModeHeader(chat: Boolean, model: String?, onMode: (Boolean) -> Unit, onModel: () -> Unit) {
     val c = MikaTheme.colors
-    Column(Modifier.fillMaxWidth().background(c.bg).padding(bottom = 6.dp)) {
+    Column(Modifier.fillMaxWidth().pageBackground(c.bg).padding(bottom = 6.dp)) {
         Row(
             Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(1f / 3)
                 .clip(RoundedCornerShape(24.dp)).background(c.fill).selectableGroup(),
@@ -151,21 +153,7 @@ internal fun ResearchConversationScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
             ) {
                 if (working != null) item {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ResearchQuestion(working.question, Modifier.align(Alignment.End))
-                        if (working.text.isEmpty()) {
-                            val searching = working.phase == ResearchPhase.Searching
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                ResearchThinkingOrb(searching)
-                                Text(
-                                    stringResource(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
-                                    style = MikaType.Caption, color = c.ink2,
-                                )
-                            }
-                        } else {
-                            MarkdownText(working.text, MikaType.Body.copy(color = c.ink), streaming = true)
-                        }
-                    }
+                    ResearchPendingReply(working)
                 }
                 if (stored.isEmpty() && working == null) item {
                     ConversationModeGuidance(true) { draft = it }
@@ -206,6 +194,26 @@ internal fun ResearchConversationScreen(
                     onClick = { if (onSend(draft.trim())) draft = "" },
                 ) { Icon(MikaIcons.Up, stringResource(R.string.chat_send)) }
             }
+        }
+    }
+}
+
+@Composable
+internal fun ResearchPendingReply(draft: ResearchDraft) {
+    val c = MikaTheme.colors
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        ResearchQuestion(draft.question, Modifier.align(Alignment.End))
+        if (draft.text.isEmpty()) {
+            val searching = draft.phase == ResearchPhase.Searching
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ResearchThinkingOrb(searching)
+                Text(
+                    stringResource(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
+                    style = MikaType.Caption, color = c.ink2,
+                )
+            }
+        } else {
+            MarkdownText(draft.text, MikaType.Body.copy(color = c.ink), streaming = true)
         }
     }
 }

@@ -44,10 +44,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.wangzan101.mika.R
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wangzan101.mika.chat.ResearchDraft
 import com.wangzan101.mika.core.personal.PersonalTask
 import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.personal.PersonalPhonePreview
@@ -55,6 +55,7 @@ import com.wangzan101.mika.personal.PersonalRuntime
 import com.wangzan101.mika.ui.components.ActivitySizedDialog
 import com.wangzan101.mika.ui.components.AmbientMode
 import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.MikaLogo
@@ -154,17 +155,23 @@ internal fun personalStatus(task: PersonalTask): String = when (task.status) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PersonalAgentScreen(
+internal fun PersonalAgentScreen(
     runtime: PersonalRuntime,
     voice: VoiceSource,
     onOpenDrawer: () -> Unit,
     onOpenTask: (String) -> Unit,
     memoryRuntime: MemoryRuntime,
-    onModels: () -> Unit,
     onPickSpeech: () -> Unit,
+    modeHeader: @Composable () -> Unit,
+    researchDraft: ResearchDraft?,
+    onResearchSend: (String) -> Boolean,
+    onTransfer: (String, String) -> Unit,
 ) {
     val state by runtime.state.collectAsState()
-    val thinking by runtime.agent.busy.collectAsState()
+    val legacyThinking by runtime.agent.busy.collectAsState()
+    val pending = researchDraft?.takeUnless { draft -> state.messages.any { it.at == draft.startedAt } }
+    val thinking = legacyThinking || pending != null
+    ResearchReplyHaptics("personal-main", pending?.text.orEmpty())
     val actionError by runtime.error.collectAsState()
     val c = MikaTheme.colors
     val reduceMotion = MikaTheme.reduceMotion
@@ -176,7 +183,6 @@ fun PersonalAgentScreen(
     var selectedTask by rememberSaveable { mutableStateOf<String?>(null) }
     var replayTask by rememberSaveable { mutableStateOf<String?>(null) }
     var openingPreview by remember { mutableStateOf<PersonalPhonePreview?>(null) }
-    var sendError by remember { mutableStateOf<String?>(null) }
     var followLatest by rememberSaveable { mutableStateOf(true) }
     var composerHeight by remember { mutableIntStateOf(0) }
     var previousComposerHeight by remember { mutableIntStateOf(0) }
@@ -187,8 +193,9 @@ fun PersonalAgentScreen(
             }
         }
     }
-    // The spacer after the last message is the bottom anchor, at index messages.size.
-    val list = rememberLazyListState(initialFirstVisibleItemIndex = messages.size)
+    val showGuide = messages.isEmpty() && !thinking
+    val bottomIndex = messages.size + if (thinking || showGuide) 1 else 0
+    val list = rememberLazyListState(initialFirstVisibleItemIndex = bottomIndex)
     var previousMessageCount by rememberSaveable { mutableIntStateOf(messages.size) }
     val active = state.tasks.filterNot { it.terminal }
     val activeIds = active.map { it.conversationId }
@@ -197,24 +204,20 @@ fun PersonalAgentScreen(
     val dayFormat = remember { DateTimeFormatter.ofPattern("M 月 d 日") }
     fun send(value: String = draft) {
         val text = value.trim()
-        if (text.isEmpty()) return
+        if (text.isEmpty() || thinking || !onResearchSend(text)) return
         draft = ""
         keyboard?.hide()
         followLatest = true
-        scope.launch {
-            runCatching { runtime.send(text) }
-                .onFailure { draft = text; sendError = it.message ?: "发送失败，请再试一次。" }
-        }
     }
     LaunchedEffect(list) {
         snapshotFlow { list.isScrollInProgress to list.layoutInfo }.collect { (scrolling, layout) ->
             if (scrolling) followLatest = (layout.visibleItemsInfo.lastOrNull()?.index ?: 0) >= layout.totalItemsCount - 3
         }
     }
-    LaunchedEffect(messages.size, thinking) {
+    LaunchedEffect(messages.size, pending?.text, thinking) {
         val countChanged = previousMessageCount != messages.size
         previousMessageCount = messages.size
-        if ((countChanged || thinking) && followLatest) list.scrollToItem(messages.size + if (thinking) 1 else 0)
+        if ((countChanged || thinking) && followLatest && !list.isScrollInProgress) list.scrollToItem(bottomIndex)
     }
     LaunchedEffect(composerHeight) {
         val growth = composerHeight - previousComposerHeight
@@ -228,25 +231,23 @@ fun PersonalAgentScreen(
         else -> AmbientMode.Idle
     }
     PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
-    Column(Modifier.fillMaxSize().statusBarsPadding().testTag("personal-screen")) {
-        PersonalHeader(
-            active, phonePreview, onOpenDrawer, { profile = true }, { selectedTask = it.id },
-            onOpenPreview = { preview ->
-                openingPreview = preview
-                replayTask = preview.conversationId
-            },
-        )
+    Column(Modifier.fillMaxSize().testTag("personal-screen")) {
+        Column(Modifier.fillMaxWidth().pageBackground(c.bg).statusBarsPadding()) {
+            PersonalHeader(
+                active, phonePreview, onOpenDrawer, { profile = true }, { selectedTask = it.id },
+                onOpenPreview = { preview ->
+                    openingPreview = preview
+                    replayTask = preview.conversationId
+                },
+            )
+            modeHeader()
+        }
         Box(Modifier.weight(1f).fillMaxWidth().voiceDim(voiceHolding, reduceMotion)) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag("personal-timeline"),
                 contentPadding = PaddingValues(horizontal = MikaSpace.Page, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (messages.isEmpty()) item("welcome") {
-                    Column(Modifier.fillMaxWidth().padding(top = 60.dp, bottom = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("从这里，一直聊下去。", style = MikaType.LargeTitle, color = c.ink, textAlign = TextAlign.Center)
-                        Text("想法、日常，和你交给我的事。\n随时回来，都能接着讲。",
-                            Modifier.padding(top = 12.dp), color = c.ink2, style = MikaType.Body, textAlign = TextAlign.Center)
-                        TextButton(onClick = onModels, Modifier.padding(top = 16.dp)) { Text("查看当前模型") }
-                    }
+                if (showGuide) item("welcome") {
+                    ConversationModeGuidance(true) { draft = it }
                 }
                 itemsIndexed(messages, key = { _, message -> message.id }) { index, message ->
                     val date = Instant.ofEpochMilli(message.at).atZone(zone).toLocalDate()
@@ -278,11 +279,19 @@ fun PersonalAgentScreen(
                         } else {
                             MarkdownText(message.text, MikaType.Body.copy(color = if (message.error) c.bad else c.ink), bubble)
                         }
+                        val question = messages.getOrNull(index - 1)?.takeIf { it.role == "user" }
+                        if (message.role == "assistant" && !message.error && task == null && question != null) {
+                            TextButton(onClick = { onTransfer(question.text, message.text) }) {
+                                Text(stringResource(R.string.mode_transfer), color = c.accent)
+                            }
+                        }
                         if (!message.handled) Text("已收到", Modifier.padding(top = 4.dp, end = 5.dp), fontSize = 10.sp, color = c.ink3)
                         if (task != null) TextButton(onClick = { selectedTask = task.id }) { Text("查看任务", fontSize = 12.sp) }
                     } }
                 }
-                if (thinking) item("thinking") {
+                if (pending != null) item("research-pending") {
+                    ResearchPendingReply(pending)
+                } else if (thinking) item("thinking") {
                     Row(Modifier.padding(start = 14.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ThinkingDots(reduceMotion)
                         Text(stringResource(R.string.capsule_thinking), style = MikaType.Caption, color = c.ink2)
@@ -291,7 +300,7 @@ fun PersonalAgentScreen(
                 item("bottom") { Spacer(Modifier.height(4.dp)) }
             }
             if (!followLatest && messages.isNotEmpty()) TextButton(
-                onClick = { followLatest = true; scope.launch { list.scrollToItem(messages.size) } },
+                onClick = { followLatest = true; scope.launch { list.scrollToItem(bottomIndex) } },
                 modifier = Modifier.align(Alignment.BottomCenter).background(c.surface, CircleShape)) { Text("回到最新消息") }
         }
         Composer(
@@ -300,6 +309,7 @@ fun PersonalAgentScreen(
             onText = { draft = it },
             mode = ComposerMode.Idle,
             hasHistory = messages.isNotEmpty(),
+            idlePlaceholder = stringResource(R.string.mode_chat_input),
             onSend = { send() },
             onStop = {},
             reduceMotion = reduceMotion,
@@ -342,8 +352,8 @@ fun PersonalAgentScreen(
             }
         }
     }
-    (sendError ?: actionError)?.let { error -> AlertDialog(onDismissRequest = { sendError = null; runtime.clearError() }, text = { Text(error) },
-        confirmButton = { TextButton(onClick = { sendError = null; runtime.clearError() }) { Text("知道了") } }) }
+    actionError?.let { error -> AlertDialog(onDismissRequest = runtime::clearError, text = { Text(error) },
+        confirmButton = { TextButton(onClick = runtime::clearError) { Text("知道了") } }) }
 }
 
 private enum class PersonalProfileTab(val label: String, val icon: ImageVector) {

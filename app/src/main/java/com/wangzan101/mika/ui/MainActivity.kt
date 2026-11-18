@@ -452,15 +452,33 @@ private fun MikaRoot(
     val check = Prerequisites.check(status, hasMain)
     val app = context.applicationContext as MikaApp
     val conversationUi by app.chat.ui.collectAsState()
+    val personalWorkId = "personal-main-work"
+    var personalChat by rememberSaveable { mutableStateOf(true) }
+    fun showPersonalWork() {
+        app.chat.openPersonalTask(personalWorkId)
+        personalChat = false
+        nav.show(Route.Personal)
+    }
+    LaunchedEffect(nav.current, personalChat) {
+        if (nav.current == Route.Personal && !personalChat && app.chat.ui.value.conversationId != personalWorkId) {
+            app.chat.openPersonalTask(personalWorkId)
+        }
+    }
     var selectedChat by rememberSaveable(conversationUi.conversationId) { mutableStateOf<Boolean?>(null) }
     var transferredThread by rememberSaveable { mutableStateOf<String?>(null) }
     var requestedModelRole by rememberSaveable { mutableStateOf<ModelRole?>(null) }
-    var transferConfirmation by remember(conversationUi.conversationId) { mutableStateOf<Turn?>(null) }
+    var transferConfirmation by remember { mutableStateOf<Turn?>(null) }
     fun transferToWork(turn: Turn) {
         app.chat.input(turn.userText)
         app.chat.quote(QuoteMessage.From.Mika, turn.outcome)
         transferredThread = app.chat.ui.value.conversationId
-        selectedChat = false
+        if (app.chat.ui.value.conversationId != personalWorkId) selectedChat = false
+    }
+    fun prepareWorkTransfer(turn: Turn) {
+        val work = app.chat.ui.value
+        if (work.input.isBlank() && work.quote == null && work.attachments.isEmpty() && work.sharedDraft == null) {
+            transferToWork(turn)
+        } else transferConfirmation = turn
     }
     val models by store.configs.collectAsState()
     fun selectedModel(role: ModelRole) = models.firstOrNull { it.id == roles.resolve(role) }?.model
@@ -514,11 +532,17 @@ private fun MikaRoot(
     }
     LaunchedEffect(requestedConversation) {
         if (requestedConversation != null) {
-            if (requestedConversation == "personal-main") nav.show(Route.Personal)
-            else {
-                app.chat.openConversation(requestedConversation)
-                nav.reset()
-                selectedChat = false
+            when (requestedConversation) {
+                "personal-main" -> {
+                    personalChat = true
+                    nav.show(Route.Personal)
+                }
+                personalWorkId -> showPersonalWork()
+                else -> {
+                    app.chat.openConversation(requestedConversation)
+                    nav.reset()
+                    selectedChat = false
+                }
             }
             onConversationOpened()
         }
@@ -660,23 +684,48 @@ private fun MikaRoot(
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,
                 onPersonal = { nav.show(Route.Personal) },
-                onRegularChat = nav::reset,
+                onRegularChat = {
+                    if (app.chat.ui.value.conversationId == personalWorkId) showPersonalWork()
+                    else nav.reset()
+                },
                 resetKey = nav.resetSerial,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
                     val updateBackdrop = if (readyRelease != null) rememberGlassBackdrop() else null
                     Box(Modifier.fillMaxSize().glassSource(updateBackdrop)) {
-                        if (nav.current == Route.Personal) PersonalAgentScreen(
-                            runtime = app.personal,
-                            voice = app.voice,
-                            onOpenDrawer = openDrawer,
-                            onOpenTask = { id -> app.chat.openPersonalTask(id); nav.reset() },
-                            memoryRuntime = memoryRuntime,
-                            onModels = { nav.push(Route.Models) },
-                            onPickSpeech = { nav.push(Route.SpeechModel) },
-                        ) else if (selectedChat ?: (conversationUi.exchanges.isEmpty() && conversationUi.sharedDraft == null &&
-                                conversationUi.attachments.isEmpty() && conversationUi.input.isBlank())) {
+                        val inPersonal = nav.current == Route.Personal
+                        if (inPersonal && personalChat) screenStates.SaveableStateProvider("personal-chat") {
+                            val pending by app.researchChat.pending.collectAsState()
+                            PersonalAgentScreen(
+                                runtime = app.personal,
+                                voice = app.voice,
+                                onOpenDrawer = openDrawer,
+                                onOpenTask = { id -> app.chat.openPersonalTask(id); nav.reset() },
+                                memoryRuntime = memoryRuntime,
+                                onPickSpeech = { nav.push(Route.SpeechModel) },
+                                modeHeader = {
+                                    ConversationModeHeader(true, selectedModel(ModelRole.Chat), { chat ->
+                                        if (!chat) showPersonalWork()
+                                    }) { openModeModels(ModelRole.Chat) }
+                                },
+                                researchDraft = pending["personal-main"],
+                                onResearchSend = { question ->
+                                    if (selectedModel(ModelRole.Chat) == null) {
+                                        openModeModels(ModelRole.Chat)
+                                        false
+                                    } else app.researchChat.send(
+                                        "personal-main", question, app.personal::researchHistory, app.personal::recordResearch,
+                                    )
+                                },
+                                onTransfer = { question, answer ->
+                                    showPersonalWork()
+                                    prepareWorkTransfer(Turn(question, answer, "succeeded"))
+                                },
+                            )
+                        } else if (!inPersonal && (selectedChat ?: (conversationUi.exchanges.isEmpty() &&
+                                conversationUi.sharedDraft == null && conversationUi.attachments.isEmpty() &&
+                                conversationUi.input.isBlank()))) {
                             val id = conversationUi.conversationId
                             screenStates.SaveableStateProvider("research:$id") {
                                 ResearchConversationScreen(
@@ -698,24 +747,21 @@ private fun MikaRoot(
                                             app.chat.ui.value.conversationId == thread && app.researchChat.send(thread, question)
                                         }
                                     },
-                                    onTransfer = { turn ->
-                                        val work = app.chat.ui.value
-                                        if (work.input.isBlank() && work.quote == null) transferToWork(turn)
-                                        else transferConfirmation = turn
-                                    },
+                                    onTransfer = ::prepareWorkTransfer,
                                 )
                             }
                         } else ChatScreen(
                             vm = app.chat,
                             check = check,
-                            modeTitle = conversationUi.conversationId?.let { app.conversations.title(it) }
-                                ?: stringResource(R.string.mode_new_thread),
+                            modeTitle = if (inPersonal) stringResource(R.string.drawer_personal)
+                                else conversationUi.conversationId?.let { app.conversations.title(it) }
+                                    ?: stringResource(R.string.mode_new_thread),
                             modeHeader = {
-                                ConversationModeHeader(false, selectedModel(ModelRole.Main), { selectedChat = it }) {
-                                    openModeModels(ModelRole.Main)
-                                }
+                                ConversationModeHeader(false, selectedModel(ModelRole.Main), { chat ->
+                                    if (inPersonal) personalChat = chat else selectedChat = chat
+                                }) { openModeModels(ModelRole.Main) }
                             },
-                            onNewConversation = ::newModeConversation,
+                            onNewConversation = if (inPersonal) null else ::newModeConversation,
                             transferDraft = transferredThread != null && transferredThread == conversationUi.conversationId &&
                                 conversationUi.quote != null,
                             frames = app.taskState.frames,
