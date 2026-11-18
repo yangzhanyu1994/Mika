@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">输入文字或对 Mika 说话</string>
+    <string name="assistant_input">消息</string>
     <string name="assistant_take_screenshot">附上当前画面</string>
     <string name="assistant_screenshot_unavailable">无法附上当前画面。请检查系统的助理截图设置和 Mika 的无障碍权限。</string>
     <string name="assistant_camera_permission">请允许使用相机后拍照。</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">Mika 的回复</string>
     <string name="assistant_open_conversation">查看完整对话</string>
     <string name="assistant_status_unavailable">暂未收到任务状态</string>
+    <string name="assistant_appearance">助手外观</string>
+    <string name="assistant_avatar">头像</string>
+    <string name="assistant_change_avatar">更换头像</string>
+    <string name="assistant_default_avatar">恢复默认头像</string>
+    <string name="assistant_display_name">显示名称</string>
+    <string name="assistant_wait_animation">等待动效</string>
+    <string name="assistant_searching">正在搜索</string>
+    <string name="assistant_looking">正在查找</string>
 </resources>

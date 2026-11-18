@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.wangzan101.mika.settings.ProviderConnection
 import android.app.ActivityManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import com.wangzan101.mika.ui.components.MikaDialog
 import androidx.compose.material3.AlertDialog
@@ -67,7 +68,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
+private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -194,6 +195,7 @@ fun SettingsScreen(
             capsuleMode = capsuleMode, onOpenCapsule = { page = SettingsPage.Capsule },
             onOpenNotifications = { page = SettingsPage.Notifications },
             language = language, onOpenLanguage = { page = SettingsPage.Language },
+            onOpenAssistantAppearance = { page = SettingsPage.AssistantAppearance },
             personalStart = personalStart,
             onPersonalStart = { flags.setPersonalStart(it); personalStart = it },
             onOpenMemory = onOpenMemory,
@@ -240,6 +242,9 @@ fun SettingsScreen(
             deviceSettings = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.settings,
             deviceAccess = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.access,
         )
+        SettingsPage.AssistantAppearance -> MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = MikaTheme.reduceMotion) {
+            com.wangzan101.mika.ui.theme.SettingsAppearance { AssistantAppearanceScreen(onBack = toHome) }
+        }
         SettingsPage.Language -> LanguageScreen(language, onLanguage = { AppLanguage.set(context, it) }, onBack = toHome)
         SettingsPage.Recommendations -> RecommendedTasksScreen(recommendedTasks, onBack = toHome)
         SettingsPage.Capsule -> CapsuleScreen(
@@ -364,6 +369,7 @@ fun SettingsContent(
     personalStart: Boolean = false,
     onPersonalStart: ((Boolean) -> Unit)? = null,
     onQuit: () -> Unit = {},
+    onOpenAssistantAppearance: (() -> Unit)? = null,
 ) {
     var pickingHome by remember { mutableStateOf(false) }
     val check = Prerequisites.check(status, hasMainModel = mainModel != null)
@@ -407,6 +413,9 @@ fun SettingsContent(
             ListRow(MikaIcons.Globe, stringResource(R.string.settings_language_appearance), onClick = onOpenLanguage) {
                 RowValue(languageLabel(language))
                 RowChevron()
+            }
+            onOpenAssistantAppearance?.let {
+                ListRow(MikaIcons.Spark, stringResource(R.string.assistant_appearance), onClick = it) { RowChevron() }
             }
             val homeLabel = stringResource(R.string.settings_home_title)
             ListRow(MikaIcons.Spark, homeLabel, stringResource(R.string.settings_personal_start_sub), onClick = onPersonalStart?.let { { pickingHome = true } }) {

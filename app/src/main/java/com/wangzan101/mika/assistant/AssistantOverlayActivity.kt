@@ -14,6 +14,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +38,7 @@ import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.ui.AttachFiles
 import com.wangzan101.mika.ui.VoiceCopy
 import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.SpeechEvent
@@ -144,31 +147,38 @@ class AssistantOverlayActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(transparent),
         )
         window.isNavigationBarContrastEnforced = false
+        val appearance = AssistantAppearance(this)
         setContent {
-            MikaTheme(dark = true, reduceMotion = animationsOff(this)) {
-                AssistantOverlay(
-                    text = text,
-                    partial = partial,
-                    status = status,
-                    listening = listening,
-                    converting = converting,
-                    level = { level },
-                    screenshot = screenshot,
-                    photo = photo,
-                    sending = sending,
-                    reply = reply,
-                    onOpenConversation = ::openConversation,
-                    onText = { text = it },
-                    onEdit = { stopSpeech(keepText = true) },
-                    onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
-                    onScreenshot = ::attachScreenshot,
-                    onPhoto = { finishThen(::requestCamera) },
-                    onRemoveScreenshot = ::removeScreenshot,
-                    onRemovePhoto = ::removePhoto,
-                    onClear = ::clear,
-                    onSend = { finishThen(::send) },
-                    onClose = { finish() },
-                )
+            val avatar by produceState<Bitmap?>(null) { value = appearance.avatar() }
+            MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = animationsOff(this)) {
+                SettingsAppearance {
+                    AssistantOverlay(
+                        avatar = avatar,
+                        displayName = appearance.name,
+                        animateAvatar = appearance.animate,
+                        text = text,
+                        partial = partial,
+                        status = status,
+                        listening = listening,
+                        converting = converting,
+                        level = { level },
+                        screenshot = screenshot,
+                        photo = photo,
+                        sending = sending,
+                        reply = reply,
+                        onOpenConversation = ::openConversation,
+                        onText = { text = it },
+                        onEdit = { stopSpeech(keepText = true) },
+                        onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
+                        onScreenshot = ::attachScreenshot,
+                        onPhoto = { finishThen(::requestCamera) },
+                        onRemoveScreenshot = ::removeScreenshot,
+                        onRemovePhoto = ::removePhoto,
+                        onClear = ::clear,
+                        onSend = { finishThen(::send) },
+                        onClose = { finish() },
+                    )
+                }
             }
         }
     }
@@ -383,7 +393,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun showReply(id: String) {
         conversationId = id
-        reply = AssistantReply(getString(R.string.runtime_preparing))
+        reply = AssistantReply(getString(R.string.runtime_preparing), waiting = true)
         val live = app.taskState.runs.map { runs -> runs.firstOrNull { it.conversationId == id } }
             .distinctUntilChanged()
             .flatMapLatest { run -> run?.state ?: flowOf(null) }
@@ -411,9 +421,14 @@ class AssistantOverlayActivity : ComponentActivity() {
         val (title, body) = TaskService.describe(state)
         return when (state) {
             is TaskState.Succeeded -> AssistantReply(
-                if (state.doubtful) title else getString(R.string.assistant_reply), body,
+                if (state.doubtful) title else getString(R.string.task_done), body,
             )
-            is TaskState.Running -> AssistantReply(title, running = true)
+            is TaskState.Running -> AssistantReply(
+                getString(assistantProgressLabel(state.tool)),
+                running = true,
+                waiting = true,
+            )
+            is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued)
             else -> AssistantReply(title, body)
         }
     }
@@ -428,7 +443,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             getString(R.string.task_stopped),
             Conversation.stopSummary(turn) ?: getString(R.string.task_stopped_body),
         )
-        else -> AssistantReply(getString(R.string.assistant_reply), turn.outcome)
+        else -> AssistantReply(getString(R.string.task_done), turn.outcome)
     }
 
     private fun openConversation() {
@@ -460,4 +475,10 @@ class AssistantOverlayActivity : ComponentActivity() {
             temporary?.delete()
         }
     }
+}
+
+internal fun assistantProgressLabel(tool: String?): Int = when (tool) {
+    "web_search", "knowledge_search", "skill_search", "search_files" -> R.string.assistant_searching
+    "phone_find", "find_visually", "list_elements", "observe", "screenshot" -> R.string.assistant_looking
+    else -> R.string.task_running
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Escribe o habla con Mika</string>
+    <string name="assistant_input">Mensaje</string>
     <string name="assistant_take_screenshot">Adjuntar pantalla</string>
     <string name="assistant_screenshot_unavailable">No se pudo adjuntar la pantalla. Comprueba el ajuste de captura del asistente y el acceso de accesibilidad de Mika.</string>
     <string name="assistant_camera_permission">Permite el acceso a la cámara para hacer una foto.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">Respuesta de Mika</string>
     <string name="assistant_open_conversation">Ver conversación completa</string>
     <string name="assistant_status_unavailable">Esperando una actualización del estado de la tarea</string>
+    <string name="assistant_appearance">Apariencia del asistente</string>
+    <string name="assistant_avatar">Avatar</string>
+    <string name="assistant_change_avatar">Cambiar avatar</string>
+    <string name="assistant_default_avatar">Usar avatar predeterminado</string>
+    <string name="assistant_display_name">Nombre visible</string>
+    <string name="assistant_wait_animation">Animación de espera</string>
+    <string name="assistant_searching">Buscando</string>
+    <string name="assistant_looking">Consultando</string>
 </resources>

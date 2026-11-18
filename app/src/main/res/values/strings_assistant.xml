@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Type or speak to Mika</string>
+    <string name="assistant_input">Message</string>
     <string name="assistant_take_screenshot">Attach screen</string>
     <string name="assistant_screenshot_unavailable">The screen couldn’t be attached. Check the system’s assistant screenshot setting and Mika’s accessibility access.</string>
     <string name="assistant_camera_permission">Allow camera access to take a photo.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">Mika’s reply</string>
     <string name="assistant_open_conversation">View full conversation</string>
     <string name="assistant_status_unavailable">Waiting for a task status update</string>
+    <string name="assistant_appearance">Assistant appearance</string>
+    <string name="assistant_avatar">Avatar</string>
+    <string name="assistant_change_avatar">Change avatar</string>
+    <string name="assistant_default_avatar">Use default avatar</string>
+    <string name="assistant_display_name">Display name</string>
+    <string name="assistant_wait_animation">Waiting animation</string>
+    <string name="assistant_searching">Searching</string>
+    <string name="assistant_looking">Looking up</string>
 </resources>
