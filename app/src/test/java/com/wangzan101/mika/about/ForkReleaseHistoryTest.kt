@@ -37,9 +37,9 @@ class ForkReleaseHistoryTest {
     @Test fun bundledHistoryContainsRecentVersionsInOrder() {
         val source = File("src/main/assets/fork-release-history.md").readText()
         val entries = ForkReleaseHistory.parse(source)
-        assertEquals("0.1.75", entries.first().version)
+        assertEquals("0.1.76", entries.first().version)
         assertEquals("0.1.40", entries.last().version)
-        assertEquals(36, entries.size)
-        assertTrue(entries.first().notes.contains("闪绿光五次"))
+        assertEquals(37, entries.size)
+        assertTrue(entries.first().notes.contains("明暗呼吸"))
     }
 }

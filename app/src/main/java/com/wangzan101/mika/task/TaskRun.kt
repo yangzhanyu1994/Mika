@@ -542,6 +542,7 @@ class TaskRun(
                 CoroutineExceptionHandler { _, e -> Log.w(TAG, "task side job failed", e) },
         )
         sideScope = side
+        var deferRelockForCompletion = false
         try {
             // 用户在「干活时」关掉了常亮就不拿唤醒锁;开跑就按此刻的状态(准备中)拿上:
             // 开模型、读知识、选路线、判断意图这些第一步之前的准备和推理期间屏幕也不熄
@@ -1105,7 +1106,10 @@ class TaskRun(
             }
             val end = withContext(tally) { agent.run(runSpec, inbox) }
             resultReadyAtMs = SystemClock.elapsedRealtime()
-            return end.also { usedGroups = agent.usedGroups.toList() }.let(::withRetestHint)
+            usedGroups = agent.usedGroups.toList()
+            val result = withRetestHint(end)
+            deferRelockForCompletion = TaskEdgeLight.showsCompletion(result, conditionCheck)
+            return result
         } finally {
             if (resultReadyAtMs == 0L) resultReadyAtMs = SystemClock.elapsedRealtime()
             handoffUnconsumed()
@@ -1158,7 +1162,10 @@ class TaskRun(
             _pipInput.value = null
             _appShown.value = false
             if (connection != null) phoneServices.sharedShell.release()
-            withContext(Dispatchers.Main + NonCancellable) { service.finishLocalUnlock(this@TaskRun) }
+            // A normal result publishes its completion light in TaskService before re-locking.
+            if (!deferRelockForCompletion) {
+                withContext(Dispatchers.Main + NonCancellable) { service.finishLocalUnlock(this@TaskRun) }
+            }
         }
     }
 

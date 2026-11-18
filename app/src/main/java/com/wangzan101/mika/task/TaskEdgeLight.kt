@@ -2,6 +2,7 @@ package com.wangzan101.mika.task
 
 import android.os.SystemClock
 import android.view.Gravity
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -35,7 +36,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -43,8 +43,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -57,7 +56,14 @@ internal object TaskEdgeLight {
     private const val FLASH_LIT_MS = 560L
     internal const val SUCCESS_DURATION_MS = SUCCESS_FLASHES * FLASH_PERIOD_MS
 
-    private data class SuccessCue(val startedAt: Long)
+    private const val BREATH_MIN_ALPHA = 0.24f
+
+    internal data class Completion(val runKey: String, val startedAt: Long) {
+        fun remainingMs(now: Long): Long = (SUCCESS_DURATION_MS - (now - startedAt)).coerceIn(0, SUCCESS_DURATION_MS)
+    }
+
+    internal fun showsCompletion(end: TaskState, conditionCheck: Boolean): Boolean =
+        !conditionCheck && end is TaskState.Succeeded && !end.doubtful && end.unconfirmed.isEmpty()
 
     fun start(
         scope: CoroutineScope,
@@ -72,21 +78,26 @@ internal object TaskEdgeLight {
             }
             if (states.isEmpty()) flowOf(false) else combine(states) { it.any { active -> active } }
         }.distinctUntilChanged()
-        val success = tasks.edgeLightSuccesses.buffer().transform<String, SuccessCue?> {
-            emit(SuccessCue(SystemClock.uptimeMillis()))
-            delay(SUCCESS_DURATION_MS)
+        val success = tasks.edgeLightCompletion.transformLatest<Completion?, Completion?> { cue ->
+            val remaining = cue?.remainingMs(SystemClock.uptimeMillis()) ?: 0L
+            if (remaining > 0) {
+                emit(cue)
+                delay(remaining)
+            }
             emit(null)
-        }.onStart { emit(null) }
+        }
 
         scope.launch(Dispatchers.Main) {
-            combine(mikaVisible, locked, quit, ScreenAccessibility.instance) { visible, isLocked, exited, service ->
-                service?.takeUnless { visible || isLocked || exited }
+            combine(locked, quit, ScreenAccessibility.instance) { isLocked, exited, service ->
+                service?.takeUnless { isLocked || exited }
             }.distinctUntilChanged().collectLatest { service ->
                 if (service == null) return@collectLatest
                 var window: OverlayWindow? = null
-                val successCue = mutableStateOf<SuccessCue?>(null)
+                val successCue = mutableStateOf<Completion?>(null)
                 try {
-                    combine(running, success) { active, completed -> active to completed }.collect { (active, completed) ->
+                    combine(running, success, mikaVisible) { active, completed, visible ->
+                        (active && !visible) to completed
+                    }.collect { (active, completed) ->
                         successCue.value = completed
                         if (!active && completed == null) {
                             window?.close()
@@ -105,7 +116,7 @@ internal object TaskEdgeLight {
     }
 
     @Composable
-    private fun Edge(cue: SuccessCue?) {
+    private fun Edge(cue: Completion?) {
         val reducedMotion = animationsOff(LocalContext.current)
         val elapsed = remember(cue) { mutableLongStateOf(0L) }
         LaunchedEffect(cue, reducedMotion) {
@@ -115,11 +126,12 @@ internal object TaskEdgeLight {
                 }
             }
         }
-        val center = if (cue != null || reducedMotion) null else {
+        val breathing = if (cue != null || reducedMotion) null else {
             rememberInfiniteTransition(label = "task side glow").animateFloat(
-                initialValue = 0.19f, targetValue = 0.29f,
-                animationSpec = infiniteRepeatable(tween(3_200), RepeatMode.Reverse),
-                label = "side glow height",
+                initialValue = 1f,
+                targetValue = BREATH_MIN_ALPHA,
+                animationSpec = infiniteRepeatable(tween(1_450, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                label = "side glow brightness",
             )
         }
         val color = if (cue == null) Color(0xFF16C7FF) else Color(0xFF48F49E)
@@ -136,8 +148,12 @@ internal object TaskEdgeLight {
                     center = Offset.Zero, radius = depth,
                 )
                 onDrawBehind {
-                    val alpha = if (cue == null || reducedMotion) 1f else completionAlpha(elapsed.longValue)
-                    val y = (center?.value ?: 0.23f) * size.height
+                    val alpha = when {
+                        reducedMotion -> 1f
+                        cue != null -> completionAlpha(elapsed.longValue)
+                        else -> breathing?.value ?: 1f
+                    }
+                    val y = 0.23f * size.height
                     for (x in sides) {
                         translate(x, y) {
                             scale(scaleX = 1f, scaleY = verticalScale, pivot = Offset.Zero) {

@@ -1,9 +1,32 @@
 package com.wangzan101.mika.task
 
+import com.wangzan101.mika.core.agent.FailKind
+import com.wangzan101.mika.core.agent.TaskState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaskEdgeLightTest {
+    @Test fun completedTaskIsEligibleWithoutWaitingForBackgroundJudgment() {
+        val result = TaskState.Succeeded("done")
+        assertTrue(TaskEdgeLight.showsCompletion(result, conditionCheck = false))
+        assertFalse(TaskEdgeLight.showsCompletion(result, conditionCheck = true))
+        assertFalse(TaskEdgeLight.showsCompletion(result.copy(verified = false), conditionCheck = false))
+        assertFalse(TaskEdgeLight.showsCompletion(result.copy(unconfirmed = listOf("unverified")), conditionCheck = false))
+        assertFalse(TaskEdgeLight.showsCompletion(TaskState.Failed("error", FailKind.Environment), conditionCheck = false))
+        assertFalse(TaskEdgeLight.showsCompletion(TaskState.Cancelled, conditionCheck = false))
+    }
+
+    @Test fun relockWaitUsesTheSameDeadlineAsTheCompletionLight() {
+        val cue = TaskEdgeLight.Completion("run", startedAt = 1_000L)
+        val duration = TaskEdgeLight.SUCCESS_DURATION_MS
+        assertEquals(duration, cue.remainingMs(1_000L))
+        assertEquals(1L, cue.remainingMs(999L + duration))
+        assertEquals(0L, cue.remainingMs(1_000L + duration))
+        assertEquals(0L, cue.remainingMs(2_000L + duration))
+    }
+
     @Test fun completionHasFiveDistinctFlashesThenGoesDark() {
         var flashes = 0
         var wasLit = false

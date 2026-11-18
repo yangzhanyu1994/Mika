@@ -33,7 +33,6 @@ import com.wangzan101.mika.core.agent.Conversation
 import com.wangzan101.mika.core.model.ModelSession
 import com.wangzan101.mika.core.agent.FailKind
 import com.wangzan101.mika.core.agent.RunOutcome
-import com.wangzan101.mika.core.agent.LearnGate
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.trigger.ConditionOutcome
@@ -63,6 +62,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
@@ -237,6 +237,11 @@ class TaskService : Service() {
             LocalRelock.Decision.WAIT -> return@withLock
             LocalRelock.Decision.WARN, LocalRelock.Decision.WAIT_IDLE -> { notifyLocalRelockFailed(); return@withLock }
             LocalRelock.Decision.LOCK -> Unit
+        }
+        while (decision() == LocalRelock.Decision.LOCK) {
+            val remaining = taskState.edgeLightCompletion.value?.remainingMs(SystemClock.uptimeMillis()) ?: 0L
+            if (remaining == 0L || FeatureFlags.get(this).quitRequested()) break
+            delay(remaining)
         }
         repeat(2) {
             // A new task or user activity during a retry must never be interrupted by this lock.
@@ -582,6 +587,9 @@ class TaskService : Service() {
             stopRunId?.let { id -> taskState._summarizing.update { it + id } }
             run.mcpExternalId?.let { (application as com.wangzan101.mika.MikaApp).remoteTasks.ended(it, end, run.steers.value, run.runId.value, run.sharedFiles.value) }
             run.end(end)
+            if (TaskEdgeLight.showsCompletion(end, run.conditionCheck)) {
+                taskState.edgeLightCompletion.value = TaskEdgeLight.Completion(run.key, SystemClock.uptimeMillis())
+            }
             if (!run.conditionCheck) recordTurn(store, run, end, run.runId.value, run.sharedFiles.value, run.joinedSteers(), run.usedGroups, run.joinedInterrupted(), run.joinedFinished())
             stopRunId?.let { summarizeStop(run, it, draft, store) }
             if (end is TaskState.Failed && !run.conditionCheck) run.runId.value?.let { summarizeFailure(run, it, end.reason, store) }
@@ -623,7 +631,6 @@ class TaskService : Service() {
                 }) {
                     // 交出之后:回答按用户的要求判结局(记进运行记录和这一轮对话),只从办成的学
                     val judged = runCatching { run.settleOutcome(end, store) }.onFailure { Log.w(TAG, "outcome judging failed", it) }.getOrNull()
-                    if (judged != null && LearnGate.done(end, judged.outcome)) taskState.edgeLightSuccesses.emit(run.key)
                     // 回答如实说没办成、只办了一部分的,和放弃一样记成没办成;没判成的照交出算
                     val notDone = judged?.outcome == RunOutcome.Partial || judged?.outcome == RunOutcome.NotPossible
                     if (delivered && notDone && end is TaskState.Succeeded) run.triggerWindowKey?.let { key ->
