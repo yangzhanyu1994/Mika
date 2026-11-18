@@ -27,6 +27,7 @@ class AssistantOverlayTest {
         val question = "帮我看看今天下午的日程"
         val draft = mutableStateOf("")
         val pending = mutableStateOf<String?>(question)
+        val resolvedMode = mutableStateOf<AssistantMode?>(null)
         val history = mutableStateOf(emptyList<AssistantExchange>())
         var sent = ""
         var opened = false
@@ -37,6 +38,7 @@ class AssistantOverlayTest {
                     listening = false, converting = false, level = { 0f },
                     screenshot = null, photo = null, sending = false, reply = reply.value, displayName = "小蓝",
                     pendingQuestion = pending.value, history = history.value, revealTurn = 0,
+                    resolvedMode = resolvedMode.value,
                     onOpenConversation = { opened = true },
                     onText = { draft.value = it }, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
                     onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = { sent = draft.value }, onClose = {},
@@ -45,7 +47,11 @@ class AssistantOverlayTest {
         }
         compose.onNodeWithText("小蓝").assertIsDisplayed()
         compose.onNodeWithText("正在准备").assertIsDisplayed()
-        compose.runOnIdle { reply.value = AssistantReply("正在思考", "**14:00**", running = true) }
+        compose.runOnIdle {
+            resolvedMode.value = AssistantMode.Work
+            reply.value = AssistantReply("正在思考", "**14:00**", running = true)
+        }
+        compose.onNodeWithText("自动 → 工作").assertIsDisplayed()
         compose.onNodeWithText("14:00").assertIsDisplayed()
         compose.runOnIdle {
             reply.value = AssistantReply("任务完成", "**14:00** 项目同步会")

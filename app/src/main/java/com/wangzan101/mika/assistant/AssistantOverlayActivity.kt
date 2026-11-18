@@ -25,6 +25,8 @@ import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.chat.routeAssistantConversation
+import com.wangzan101.mika.ui.OrbMotion
+import com.wangzan101.mika.ui.orbMotion
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.Attachments
@@ -88,6 +90,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var pendingQuestion by mutableStateOf<String?>(null)
     private var pendingAfter = 0
     private var pendingChat = false
+    private var resolvedMode by mutableStateOf<AssistantMode?>(null)
     private var revealTurn by mutableStateOf<Int?>(null)
     private var previousRun: String? = null
     private var replyJob: Job? = null
@@ -151,6 +154,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         if (savedInstanceState != null) {
             mode = AssistantMode.entries.firstOrNull { it.name == savedInstanceState.getString("assistantMode") }
                 ?: AssistantMode.Auto
+            resolvedMode = AssistantMode.entries.firstOrNull { it.name == savedInstanceState.getString("assistantResolvedMode") }
             text = savedInstanceState.getString("assistantQuestion").orEmpty()
             if (text.isNotBlank()) autoListen = false
             savedInstanceState.getString("assistantConversation")?.let { id ->
@@ -192,6 +196,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                         photo = photo,
                         sending = sending,
                         mode = mode,
+                        resolvedMode = resolvedMode,
                         onMode = {
                             noteInteraction()
                             mode = it
@@ -220,6 +225,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         outState.putString("assistantConversation", conversationId)
         outState.putString("assistantQuestion", text)
         outState.putString("assistantMode", mode.name)
+        outState.putString("assistantResolvedMode", resolvedMode?.name)
         outState.putString("assistantPendingQuestion", pendingQuestion)
         outState.putInt("assistantPendingAfter", pendingAfter)
         outState.putBoolean("assistantPendingChat", pendingChat)
@@ -484,12 +490,21 @@ class AssistantOverlayActivity : ComponentActivity() {
                 }
             }
             try {
+                val adaptive = mode == AssistantMode.Auto && screen == null && cameraFile == null &&
+                    app.researchChat.canDelegate()
                 val target = when {
                     screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
-                    mode == AssistantMode.Chat -> ModelRole.Chat
+                    mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
                     else -> {
                         status = getString(R.string.assistant_routing)
-                        routeAssistantConversation(words, app.providers)
+                        val latestWork = existing?.let {
+                            withContext(Dispatchers.IO) {
+                                app.conversations.turns(it).lastOrNull()?.takeIf { turn ->
+                                    !turn.research && turn.status in setOf("succeeded", "unverified")
+                                }
+                            }
+                        }
+                        routeAssistantConversation(words, app.providers, latestWork)
                     }
                 }
                 status = null
@@ -503,7 +518,10 @@ class AssistantOverlayActivity : ComponentActivity() {
                     return@launch
                 }
                 if (target == ModelRole.Chat) {
-                    if (!app.researchChat.send(id, words)) throw IOException("Chat submission failed")
+                    val handoff: (() -> Boolean)? = if (adaptive) {
+                        { handOffToWork(id, words, ::dispatch) }
+                    } else null
+                    if (!app.researchChat.send(id, words, onWork = handoff)) throw IOException("Chat submission failed")
                 } else {
                     if (app.teach.blocksTasks()) {
                         status = getString(R.string.teach_blocked_task)
@@ -513,6 +531,11 @@ class AssistantOverlayActivity : ComponentActivity() {
                     else submitImages(id, words, screen, cameraFile, ::dispatch)
                 }
                 pendingChat = target == ModelRole.Chat
+                resolvedMode = when {
+                    adaptive -> null
+                    pendingChat -> AssistantMode.Chat
+                    else -> AssistantMode.Work
+                }
                 removeScreenshot()
                 removePhoto()
                 text = ""
@@ -532,11 +555,40 @@ class AssistantOverlayActivity : ComponentActivity() {
         }
     }
 
+    private fun handOffToWork(id: String, words: String, dispatch: (String) -> Unit): Boolean {
+        if (isDestroyed || isFinishing || conversationId != id || pendingQuestion != words) return false
+        val problem = when {
+            !resumed || locked() -> R.string.assistant_send_failed
+            app.providers.configFor(ModelRole.Main) == null -> R.string.assistant_model_required
+            app.teach.blocksTasks() -> R.string.teach_blocked_task
+            else -> try {
+                dispatch(words)
+                null
+            } catch (e: Exception) {
+                Log.w("MikaAssistant", "Work handoff failed", e)
+                R.string.assistant_send_failed
+            }
+        }
+        if (problem != null) {
+            pendingQuestion = null
+            text = words
+            reply = null
+            status = getString(problem)
+        } else {
+            pendingChat = false
+            resolvedMode = AssistantMode.Work
+            showReply(id)
+        }
+        return true
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun showReply(id: String) {
         conversationId = id
         replyJob?.cancel()
-        if (pendingQuestion != null) reply = AssistantReply(getString(R.string.runtime_preparing), waiting = true)
+        if (pendingQuestion != null) reply = AssistantReply(
+            getString(R.string.runtime_preparing), waiting = true, motion = OrbMotion.Connecting,
+        )
         val useChat = pendingChat
         val ignoredKey = previousRun
         val live = app.taskState.runs.map { runs ->
@@ -562,9 +614,11 @@ class AssistantOverlayActivity : ComponentActivity() {
                     revealTurn = turns.size
                     if (useChat && draft != null) {
                         startupTimeout.cancel()
-                        val searching = draft.phase == ResearchPhase.Searching
-                        reply = AssistantReply(getString(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
-                            body = draft.text, running = true, waiting = true, searching = searching)
+                        if (draft.phase != ResearchPhase.Thinking) resolvedMode = AssistantMode.Chat
+                        reply = AssistantReply(
+                            getString(if (draft.phase == ResearchPhase.Searching) R.string.assistant_searching else R.string.assistant_thinking),
+                            body = draft.text, running = true, waiting = true, motion = draft.phase.orbMotion,
+                        )
                     } else if (!useChat && state != null && state != TaskState.Idle) {
                         startupTimeout.cancel()
                         reply = liveReply(state)
@@ -572,7 +626,10 @@ class AssistantOverlayActivity : ComponentActivity() {
                 } else {
                     startupTimeout.cancel()
                     val finished = finishedIndex?.let(turns::get)
-                    if (finishedIndex != null) revealTurn = finishedIndex
+                    if (finishedIndex != null) {
+                        revealTurn = finishedIndex
+                        resolvedMode = if (useChat) AssistantMode.Chat else AssistantMode.Work
+                    }
                     pendingQuestion = null
                     previousRun = null
                     reply = (finished ?: turns.lastOrNull())?.let(::savedReply)
@@ -591,15 +648,23 @@ class AssistantOverlayActivity : ComponentActivity() {
             is TaskState.Succeeded -> AssistantReply(
                 if (state.doubtful) title else getString(R.string.task_done), body, completed = true,
             )
-            is TaskState.Running -> AssistantReply(
-                getString(assistantProgressLabel(state.tool)),
-                body = state.preview.orEmpty(),
-                running = true,
-                waiting = true,
-                searching = assistantProgressLabel(state.tool) == R.string.assistant_searching ||
-                    assistantProgressLabel(state.tool) == R.string.assistant_looking,
-            )
-            is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued)
+            is TaskState.Running -> {
+                val label = assistantProgressLabel(state.tool)
+                AssistantReply(
+                    getString(label), body = state.preview.orEmpty(), running = true, waiting = true,
+                    motion = when {
+                        label == R.string.assistant_searching -> OrbMotion.Searching
+                        label == R.string.assistant_looking -> OrbMotion.Observing
+                        state.tool != null || state.progress != null -> OrbMotion.Working
+                        !state.preview.isNullOrBlank() -> OrbMotion.Writing
+                        else -> OrbMotion.Thinking
+                    },
+                    progress = state.narration?.takeIf(String::isNotBlank) ?: state.reason?.takeIf(String::isNotBlank),
+                )
+            }
+            is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued, motion = OrbMotion.Waiting)
+            is TaskState.WaitingInput, is TaskState.WaitingConfirmation, is TaskState.WaitingTakeover ->
+                AssistantReply(title, body, motion = OrbMotion.Waiting)
             else -> AssistantReply(title, body)
         }
     }

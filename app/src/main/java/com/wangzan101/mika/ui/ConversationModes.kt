@@ -259,14 +259,19 @@ internal fun ResearchPendingReply(draft: ResearchDraft) {
         if (draft.text.isEmpty()) {
             val searching = draft.phase == ResearchPhase.Searching
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ResearchThinkingOrb(searching)
+                ResearchThinkingOrb(draft.phase.orbMotion)
                 Text(
                     stringResource(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
                     style = MikaType.Caption, color = c.ink2,
                 )
             }
         } else {
-            MarkdownText(draft.text, MikaType.Body.copy(color = c.ink), streaming = true)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ResearchThinkingOrb(draft.phase.orbMotion)
+                Column(Modifier.weight(1f)) {
+                    MarkdownText(draft.text, MikaType.Body.copy(color = c.ink), streaming = true)
+                }
+            }
         }
     }
 }
