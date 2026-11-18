@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">Chat</string>
+    <string name="mode_work">Work</string>
+    <string name="mode_chat_model">Chat model</string>
+    <string name="mode_work_model">Work model</string>
+    <string name="mode_chat_description">Search for information, ask questions, or just chat.</string>
+    <string name="mode_work_description">Let Mika carry out actions on your phone.</string>
+    <string name="mode_chat_prompt1">Find weekend trains to Suzhou</string>
+    <string name="mode_chat_prompt2">Explain dynamic colors</string>
+    <string name="mode_chat_prompt3">Summarize this text</string>
+    <string name="mode_work_prompt1">Open the railway app and check Saturday availability</string>
+    <string name="mode_work_prompt2">Open Calendar and add a meeting tomorrow afternoon</string>
+    <string name="mode_work_prompt3">Open Settings and check battery usage</string>
+    <string name="mode_chat_input">Ask anything</string>
+    <string name="mode_work_input">Enter a task</string>
+    <string name="mode_transfer">Move to Work</string>
+    <string name="mode_from_chat">From Chat</string>
+    <string name="mode_start_work">Start task</string>
+    <string name="mode_new_thread">New conversation</string>
+    <string name="mode_chat_error">Mika could not finish this reply. Try again.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

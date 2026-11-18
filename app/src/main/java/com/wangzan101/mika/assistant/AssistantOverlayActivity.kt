@@ -431,7 +431,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             runs.firstOrNull { it.conversationId == id && it.key != ignoredKey }
         }.distinctUntilChanged().flatMapLatest { run -> run?.state ?: flowOf(null) }
         val saved = app.conversations.changes.filter { it == id }.onStart { emit(id) }.map {
-            withContext(Dispatchers.IO) { app.conversations.turns(id) }
+            withContext(Dispatchers.IO) { app.conversations.turns(id).filterNot { it.research } }
         }
 
         replyJob = lifecycleScope.launch {

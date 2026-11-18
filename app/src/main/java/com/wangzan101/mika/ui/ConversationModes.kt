@@ -1,0 +1,189 @@
+package com.wangzan101.mika.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.wangzan101.mika.MikaApp
+import com.wangzan101.mika.R
+import com.wangzan101.mika.core.agent.Turn
+import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.TopBar
+import com.wangzan101.mika.ui.theme.MikaIcons
+import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.ui.theme.MikaType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
+
+@Composable
+internal fun ConversationModeHeader(chat: Boolean, model: String?, onMode: (Boolean) -> Unit, onModel: () -> Unit) {
+    val c = MikaTheme.colors
+    Column(Modifier.fillMaxWidth().background(c.bg).padding(bottom = 6.dp)) {
+        Row(
+            Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(1f / 3)
+                .clip(RoundedCornerShape(24.dp)).background(c.fill).selectableGroup(),
+        ) {
+            listOf(true to R.string.mode_chat, false to R.string.mode_work).forEach { (value, label) ->
+                Box(
+                    Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
+                        .then(if (value == chat) Modifier.background(c.accentSoft) else Modifier)
+                        .selectable(selected = value == chat, onClick = { onMode(value) }, role = Role.Tab),
+                    contentAlignment = Alignment.Center,
+                ) { Text(stringResource(label), color = c.ink, style = MikaType.Caption) }
+            }
+        }
+        TextButton(onClick = onModel, modifier = Modifier.padding(start = 6.dp)) {
+            val label = stringResource(if (chat) R.string.mode_chat_model else R.string.mode_work_model)
+            Text(stringResource(R.string.mode_model_value, label, model ?: stringResource(R.string.settings_not_set)),
+                color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+internal fun ConversationModeGuidance(chat: Boolean, onPrompt: (String) -> Unit) {
+    val c = MikaTheme.colors
+    val prompts = if (chat) listOf(R.string.mode_chat_prompt1, R.string.mode_chat_prompt2, R.string.mode_chat_prompt3)
+        else listOf(R.string.mode_work_prompt1, R.string.mode_work_prompt2, R.string.mode_work_prompt3)
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(
+            stringResource(if (chat) R.string.mode_chat_description else R.string.mode_work_description),
+            color = c.ink2, style = MikaType.Caption, modifier = Modifier.padding(bottom = 6.dp),
+        )
+        prompts.forEach { res ->
+            val prompt = stringResource(res)
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.fill)
+                    .clickable(role = Role.Button) { onPrompt(prompt) }.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(prompt, Modifier.weight(1f), color = c.ink2, style = MikaType.Body)
+                Icon(MikaIcons.Chevron, contentDescription = null, tint = c.ink3)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ResearchConversationScreen(
+    app: MikaApp,
+    id: String?,
+    model: String?,
+    onOpenDrawer: () -> Unit,
+    onNew: () -> Unit,
+    onMode: (Boolean) -> Unit,
+    onModel: () -> Unit,
+    onSend: (String) -> Boolean,
+    onTransfer: (Turn) -> Unit,
+) {
+    val c = MikaTheme.colors
+    val stored by produceState(emptyList<Turn>(), id) {
+        if (id == null) return@produceState
+        app.conversations.changes.filter { it == id }.onStart { emit(id) }.collect {
+            value = withContext(Dispatchers.IO) { app.conversations.turns(id).filter { it.research } }
+        }
+    }
+    val pending by app.researchChat.pending.collectAsState()
+    val working = id?.let(pending::get)
+    var draft by rememberSaveable { mutableStateOf("") }
+    PageBackground {
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
+            TopBar(
+                id?.let { app.conversations.title(it) } ?: stringResource(R.string.mode_new_thread),
+                left = MikaIcons.Menu, onLeft = onOpenDrawer, leftLabel = stringResource(R.string.chat_menu),
+                right = {
+                    IconButton(onClick = onNew) { Icon(MikaIcons.New, stringResource(R.string.mode_new_thread)) }
+                },
+            )
+            ConversationModeHeader(true, model, onMode, onModel)
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (stored.isEmpty() && working == null) item {
+                    ConversationModeGuidance(true) { draft = it }
+                }
+                items(stored) { turn ->
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(turn.userText, Modifier.align(Alignment.End).clip(RoundedCornerShape(16.dp))
+                            .background(c.accentSoft).padding(10.dp), style = MikaType.Body, color = c.ink)
+                        MarkdownText(turn.outcome, MikaType.Body.copy(color = c.ink))
+                        if (turn.status == "succeeded") {
+                            TextButton(onClick = { onTransfer(turn) }) {
+                                Text(stringResource(R.string.mode_transfer), color = c.accent)
+                            }
+                        }
+                    }
+                }
+                if (working != null) item {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(working, Modifier.align(Alignment.End).padding(8.dp), style = MikaType.Body, color = c.ink)
+                        Text(stringResource(R.string.assistant_thinking), Modifier.padding(8.dp), style = MikaType.Caption, color = c.ink2)
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(24.dp)).background(c.fill).padding(start = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 4,
+                    textStyle = MikaType.Body.copy(color = c.ink),
+                    cursorBrush = SolidColor(c.accent),
+                    decorationBox = { field ->
+                        Box {
+                            if (draft.isEmpty()) Text(stringResource(R.string.mode_chat_input), color = c.ink2, style = MikaType.Body)
+                            field()
+                        }
+                    },
+                )
+                IconButton(
+                    enabled = draft.isNotBlank() && working == null,
+                    onClick = { if (onSend(draft.trim())) draft = "" },
+                ) { Icon(MikaIcons.Up, stringResource(R.string.chat_send)) }
+            }
+        }
+    }
+}

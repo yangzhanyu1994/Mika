@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">채팅</string>
+    <string name="mode_work">작업</string>
+    <string name="mode_chat_model">채팅 모델</string>
+    <string name="mode_work_model">작업 모델</string>
+    <string name="mode_chat_description">자료를 검색하거나 질문하고 대화할 수 있어요.</string>
+    <string name="mode_work_description">Mika가 휴대전화에서 작업을 실행해요.</string>
+    <string name="mode_chat_prompt1">주말에 쑤저우로 가는 기차를 찾아 줘</string>
+    <string name="mode_chat_prompt2">동적 색상을 설명해 줘</string>
+    <string name="mode_chat_prompt3">이 글을 요약해 줘</string>
+    <string name="mode_work_prompt1">기차 앱을 열고 토요일 좌석을 확인해 줘</string>
+    <string name="mode_work_prompt2">캘린더를 열고 내일 오후 회의를 추가해 줘</string>
+    <string name="mode_work_prompt3">설정을 열고 배터리 사용량을 확인해 줘</string>
+    <string name="mode_chat_input">질문을 입력하세요</string>
+    <string name="mode_work_input">작업을 입력하세요</string>
+    <string name="mode_transfer">작업으로 전환</string>
+    <string name="mode_from_chat">채팅에서</string>
+    <string name="mode_start_work">작업 시작</string>
+    <string name="mode_new_thread">새 대화</string>
+    <string name="mode_chat_error">Mika가 답변을 완료하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

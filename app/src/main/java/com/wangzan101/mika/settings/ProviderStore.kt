@@ -195,10 +195,12 @@ data class RoleChoices(
     val light: RoleChoice = RoleChoice.SameAsMain,
     /** 按用途保存,同一个模型可在不同用途选不同档位;「用主模型」连同它的档位一起跟随。 */
     val reasoningEfforts: Map<ModelRole, String> = emptyMap(),
+    val chat: RoleChoice = RoleChoice.SameAsMain,
 ) {
     /** 这个用途的选择;主模型没选时为 null。 */
     operator fun get(role: ModelRole): RoleChoice? = when (role) {
         ModelRole.Main -> main?.let(RoleChoice::Model)
+        ModelRole.Chat -> chat
         ModelRole.Vision -> vision
         ModelRole.Light -> light
     }
@@ -222,6 +224,7 @@ data class RoleChoices(
     /** 改一个用途;这个用途不接受的选择(主模型只能是具体模型,轻量不能不用)返回 null。 */
     fun with(role: ModelRole, choice: RoleChoice): RoleChoices? = (when (role) {
         ModelRole.Main -> (choice as? RoleChoice.Model)?.let { copy(main = it.configId) }
+        ModelRole.Chat -> if (choice == RoleChoice.Off) null else copy(chat = choice)
         ModelRole.Vision -> copy(vision = choice)
         ModelRole.Light -> if (choice == RoleChoice.Off) null else copy(light = choice)
     })?.let { next ->
@@ -241,6 +244,7 @@ data class RoleChoices(
             main = main?.takeIf { it in valid },
             vision = if (vision.gone()) RoleChoice.Off else vision,
             light = if (light.gone()) RoleChoice.SameAsMain else light,
+            chat = if (chat.gone()) RoleChoice.SameAsMain else chat,
             reasoningEfforts = reasoningEfforts.filterKeys { role -> (get(role) as? RoleChoice.Model)?.configId in valid },
         )
     }

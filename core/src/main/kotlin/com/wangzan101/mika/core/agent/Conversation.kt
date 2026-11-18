@@ -39,6 +39,7 @@ data class Turn(
     val verified: Boolean? = null,
     /** 电脑派发时的任务编号，在运行记录创建前也可用。 */
     val remoteTaskId: String? = null,
+    val research: Boolean = false,
 )
 
 object Conversation {

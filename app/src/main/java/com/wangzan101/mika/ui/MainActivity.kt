@@ -27,9 +27,16 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.wangzan101.mika.confirm.ConfirmationNotifier
+import com.wangzan101.mika.ui.components.MikaDialog
+import com.wangzan101.mika.core.agent.Turn
+import com.wangzan101.mika.core.agent.QuoteMessage
+import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.memory.MemoryOpen
 import com.wangzan101.mika.memory.MemoryRuntime
 import androidx.compose.runtime.rememberCoroutineScope
@@ -444,6 +451,44 @@ private fun MikaRoot(
     val hasMain = roles.main != null
     val check = Prerequisites.check(status, hasMain)
     val app = context.applicationContext as MikaApp
+    val conversationUi by app.chat.ui.collectAsState()
+    var selectedChat by rememberSaveable(conversationUi.conversationId) { mutableStateOf<Boolean?>(null) }
+    var transferredThread by rememberSaveable { mutableStateOf<String?>(null) }
+    var requestedModelRole by rememberSaveable { mutableStateOf<ModelRole?>(null) }
+    var transferConfirmation by remember(conversationUi.conversationId) { mutableStateOf<Turn?>(null) }
+    fun transferToWork(turn: Turn) {
+        app.chat.input(turn.userText)
+        app.chat.quote(QuoteMessage.From.Mika, turn.outcome)
+        transferredThread = app.chat.ui.value.conversationId
+        selectedChat = false
+    }
+    val models by store.configs.collectAsState()
+    fun selectedModel(role: ModelRole) = models.firstOrNull { it.id == roles.resolve(role) }?.model
+    fun openModeModels(role: ModelRole) {
+        requestedModelRole = role
+        nav.push(Route.Models)
+    }
+    LaunchedEffect(nav.current) { if (nav.current != Route.Models) requestedModelRole = null }
+    fun newModeConversation() {
+        app.chat.newConversation()
+        selectedChat = true
+        transferredThread = null
+    }
+    transferConfirmation?.let { turn ->
+        MikaDialog(
+            onDismissRequest = { transferConfirmation = null },
+            title = { Text(stringResource(R.string.chat_example_replace_title)) },
+            text = { Text(stringResource(R.string.chat_example_replace_body)) },
+            confirmButton = {
+                TextButton(onClick = { transferConfirmation = null; transferToWork(turn) }) {
+                    Text(stringResource(R.string.chat_example_replace_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transferConfirmation = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
     var assistantVoiceRequest by remember { mutableIntStateOf(0) }
     // 查到的新版本:侧栏、设置首页、关于页的红点都看它
     val updateState by app.updates.state.collectAsState()
@@ -453,6 +498,7 @@ private fun MikaRoot(
     LaunchedEffect(requestedAssistant) {
         if (requestedAssistant) {
             nav.reset()
+            selectedChat = false
             assistantVoiceRequest++
             onAssistantOpened()
         }
@@ -487,7 +533,10 @@ private fun MikaRoot(
         val draft = sharedDraft?.draft
         if (draft != null) {
             val accepted = app.chat.openSharedDraft(draft, inCurrentConversation = sharedDraft.inCurrentConversation)
-            if (accepted) nav.reset()
+            if (accepted) {
+                nav.reset()
+                selectedChat = false
+            }
             onSharedDraftOpened(accepted, draft)
         }
     }
@@ -625,9 +674,49 @@ private fun MikaRoot(
                             memoryRuntime = memoryRuntime,
                             onModels = { nav.push(Route.Models) },
                             onPickSpeech = { nav.push(Route.SpeechModel) },
-                        ) else ChatScreen(
+                        ) else if (selectedChat ?: (conversationUi.exchanges.isEmpty() && conversationUi.sharedDraft == null &&
+                                conversationUi.attachments.isEmpty() && conversationUi.input.isBlank())) {
+                            val id = conversationUi.conversationId
+                            screenStates.SaveableStateProvider("research:$id") {
+                                ResearchConversationScreen(
+                                    app = app,
+                                    id = id,
+                                    model = selectedModel(ModelRole.Chat),
+                                    onOpenDrawer = openDrawer,
+                                    onNew = ::newModeConversation,
+                                    onMode = { selectedChat = it },
+                                    onModel = { openModeModels(ModelRole.Chat) },
+                                    onSend = { question ->
+                                        if (selectedModel(ModelRole.Chat) == null) {
+                                            openModeModels(ModelRole.Chat)
+                                            false
+                                        } else {
+                                            val thread = app.chat.ui.value.conversationId ?: app.conversations.newConversation().also {
+                                                app.chat.openConversation(it)
+                                            }
+                                            app.chat.ui.value.conversationId == thread && app.researchChat.send(thread, question)
+                                        }
+                                    },
+                                    onTransfer = { turn ->
+                                        val work = app.chat.ui.value
+                                        if (work.input.isBlank() && work.quote == null) transferToWork(turn)
+                                        else transferConfirmation = turn
+                                    },
+                                )
+                            }
+                        } else ChatScreen(
                             vm = app.chat,
                             check = check,
+                            modeTitle = conversationUi.conversationId?.let { app.conversations.title(it) }
+                                ?: stringResource(R.string.mode_new_thread),
+                            modeHeader = {
+                                ConversationModeHeader(false, selectedModel(ModelRole.Main), { selectedChat = it }) {
+                                    openModeModels(ModelRole.Main)
+                                }
+                            },
+                            onNewConversation = ::newModeConversation,
+                            transferDraft = transferredThread != null && transferredThread == conversationUi.conversationId &&
+                                conversationUi.quote != null,
                             frames = app.taskState.frames,
                             webOpen = app.tasks.webScreenOpen,
                             pipInput = app.taskState.pipInput,
@@ -690,7 +779,8 @@ private fun MikaRoot(
                 mcpServers = app.mcpServers)
         }
         Route.Models -> SettingsAppearance {
-            ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) }, onOpenUsage = { nav.push(Route.Usage) })
+            ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) },
+                onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
         Route.Usage -> SettingsAppearance { UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) }) }
         Route.SpeechModel -> SettingsAppearance { SpeechModelScreen(store, onBack = back) }

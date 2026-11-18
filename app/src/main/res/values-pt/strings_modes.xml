@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">Chat</string>
+    <string name="mode_work">Tarefas</string>
+    <string name="mode_chat_model">Modelo de chat</string>
+    <string name="mode_work_model">Modelo de tarefas</string>
+    <string name="mode_chat_description">Pesquise informações, faça perguntas ou converse.</string>
+    <string name="mode_work_description">Peça ao Mika para realizar ações no celular.</string>
+    <string name="mode_chat_prompt1">Encontre trens para Suzhou no fim de semana</string>
+    <string name="mode_chat_prompt2">Explique as cores dinâmicas</string>
+    <string name="mode_chat_prompt3">Resuma este texto</string>
+    <string name="mode_work_prompt1">Abra o aplicativo de trens e veja as vagas de sábado</string>
+    <string name="mode_work_prompt2">Abra a agenda e adicione uma reunião amanhã à tarde</string>
+    <string name="mode_work_prompt3">Abra os ajustes e confira o uso da bateria</string>
+    <string name="mode_chat_input">Pergunte o que quiser</string>
+    <string name="mode_work_input">Digite uma tarefa</string>
+    <string name="mode_transfer">Mover para Tarefas</string>
+    <string name="mode_from_chat">Do chat</string>
+    <string name="mode_start_work">Iniciar tarefa</string>
+    <string name="mode_new_thread">Nova conversa</string>
+    <string name="mode_chat_error">O Mika não conseguiu concluir a resposta. Tente novamente.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

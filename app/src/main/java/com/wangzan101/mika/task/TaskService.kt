@@ -560,7 +560,7 @@ class TaskService : Service() {
         run.job = scope.launch {
             center.markRunning(run)
             val result = try {
-                run.execute(runCatching { store.turns(run.conversationId) }.getOrDefault(emptyList()).map(::withKeptState))
+                run.execute(runCatching { store.turns(run.conversationId) }.getOrDefault(emptyList()).filterNot { it.research }.map(::withKeptState))
             } catch (e: CancellationException) {
                 TaskState.Cancelled
             } catch (e: RemoteException) {

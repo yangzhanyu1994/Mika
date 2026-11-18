@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">Obrolan</string>
+    <string name="mode_work">Tugas</string>
+    <string name="mode_chat_model">Model obrolan</string>
+    <string name="mode_work_model">Model tugas</string>
+    <string name="mode_chat_description">Cari informasi, ajukan pertanyaan, atau mengobrol.</string>
+    <string name="mode_work_description">Minta Mika menjalankan tindakan di ponsel.</string>
+    <string name="mode_chat_prompt1">Cari kereta akhir pekan ke Suzhou</string>
+    <string name="mode_chat_prompt2">Jelaskan warna dinamis</string>
+    <string name="mode_chat_prompt3">Ringkas teks ini</string>
+    <string name="mode_work_prompt1">Buka aplikasi kereta dan periksa kursi hari Sabtu</string>
+    <string name="mode_work_prompt2">Buka kalender dan tambahkan rapat besok sore</string>
+    <string name="mode_work_prompt3">Buka Pengaturan dan periksa penggunaan baterai</string>
+    <string name="mode_chat_input">Tanyakan sesuatu</string>
+    <string name="mode_work_input">Masukkan tugas</string>
+    <string name="mode_transfer">Pindah ke Tugas</string>
+    <string name="mode_from_chat">Dari obrolan</string>
+    <string name="mode_start_work">Mulai tugas</string>
+    <string name="mode_new_thread">Percakapan baru</string>
+    <string name="mode_chat_error">Mika tidak dapat menyelesaikan balasan. Coba lagi.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

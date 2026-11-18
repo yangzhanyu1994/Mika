@@ -16,7 +16,7 @@ enum class UsagePurpose(val key: String) {
 
     companion object {
         fun of(role: ModelRole): UsagePurpose = when (role) {
-            ModelRole.Main -> Main
+            ModelRole.Main, ModelRole.Chat -> Main
             ModelRole.Vision -> Vision
             ModelRole.Light -> Light
         }
