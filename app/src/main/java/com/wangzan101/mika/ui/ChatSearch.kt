@@ -61,17 +61,17 @@ internal fun DrawerSearchField(query: String, onQueryChange: (String) -> Unit) {
     val focus = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(start = 15.dp, end = 15.dp, top = 15.dp, bottom = 4.dp)
-            .heightIn(min = 48.dp)
+        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 8.dp)
+            .heightIn(min = 40.dp)
             .keepsKeyboard()
             .clip(NavShape)
             .background(if (c.isDark) Color(0xFF233045) else Color(0xFFF0F4F8))
             .then(if (focused) Modifier.border(1.dp, drawerBlue(), NavShape) else Modifier)
-            .padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 11.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(MikaIcons.Search, null, Modifier.size(23.dp), tint = drawerInk())
+        Icon(MikaIcons.Search, null, Modifier.size(17.dp), tint = drawerMutedInk())
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.isEmpty()) {
                 Text(stringResource(R.string.drawer_search_hint), style = SearchText, color = drawerMutedInk(), maxLines = 1)
@@ -166,4 +166,4 @@ internal fun matchRanges(text: String, terms: List<String>): List<IntRange> {
     return merged
 }
 
-private val SearchText = MikaType.Body.copy(fontSize = 16.sp, lineHeight = 22.sp)
+private val SearchText = MikaType.Body.copy(fontSize = 14.sp, lineHeight = 20.sp)
