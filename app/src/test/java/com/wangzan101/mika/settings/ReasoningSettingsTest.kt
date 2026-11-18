@@ -35,11 +35,18 @@ class ReasoningSettingsTest {
         ModelRole.entries.forEach { assertTrue(s.use(it, p.id, "m", caps)) }
         assertEquals(1, s.list().size)
         assertTrue(s.setReasoningEffort(ModelRole.Main, "high"))
+        assertTrue(s.setReasoningEffort(ModelRole.Chat, "low"))
         assertTrue(s.setReasoningEffort(ModelRole.Vision, "medium"))
         assertTrue(s.setReasoningEffort(ModelRole.Light, "low"))
         val reloaded = store()
-        ModelRole.entries.forEach { reloaded.modelFor(it) }
-        assertEquals(listOf("high", "medium", "low"), setups.map { it.reasoningEffort })
+        val effortByRole = ModelRole.entries.associateWith { role ->
+            reloaded.modelFor(role)
+            setups.last().reasoningEffort
+        }
+        assertEquals(mapOf(
+            ModelRole.Main to "high", ModelRole.Chat to "low",
+            ModelRole.Vision to "medium", ModelRole.Light to "low",
+        ), effortByRole)
         assertEquals(listOf("low", "medium", "high"), reloaded.provider(p.id)!!.models!!.first().reasoningEfforts)
         assertEquals(emptyList<String>(), reloaded.provider(p.id)!!.models!![1].reasoningEfforts)
         assertTrue(reloaded.setReasoningEffort(ModelRole.Light, null))
