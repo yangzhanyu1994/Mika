@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">聊天</string>
+    <string name="mode_work">工作</string>
+    <string name="mode_chat_model">聊天模型</string>
+    <string name="mode_work_model">工作模型</string>
+    <string name="mode_chat_description">搜尋資料、回答問題，也可以隨便聊聊。</string>
+    <string name="mode_work_description">讓 Mika 在手機上幫你執行具體操作。</string>
+    <string name="mode_chat_prompt1">查一下週末去蘇州的高鐵</string>
+    <string name="mode_chat_prompt2">解釋什麼是動態配色</string>
+    <string name="mode_chat_prompt3">幫我總結這段文字</string>
+    <string name="mode_work_prompt1">打開 12306，查看週六的餘票</string>
+    <string name="mode_work_prompt2">打開行事曆，新增明天下午的會議</string>
+    <string name="mode_work_prompt3">打開設定，查看電池用量</string>
+    <string name="mode_chat_input">問點什麼</string>
+    <string name="mode_work_input">輸入要執行的任務</string>
+    <string name="mode_transfer">轉入工作</string>
+    <string name="mode_from_chat">來自聊天</string>
+    <string name="mode_start_work">開始執行</string>
+    <string name="mode_new_thread">新對話</string>
+    <string name="mode_chat_error">Mika 未能完成這次回覆，請重試。</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

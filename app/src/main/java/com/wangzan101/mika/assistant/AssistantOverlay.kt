@@ -71,7 +71,11 @@ internal data class AssistantReply(
     val body: String = "",
     val running: Boolean = false,
     val waiting: Boolean = false,
+    val thinking: Boolean = false,
+    val completed: Boolean = false,
 )
+
+internal data class AssistantExchange(val question: String, val answer: String)
 
 @Composable
 internal fun AssistantOverlay(
@@ -99,6 +103,10 @@ internal fun AssistantOverlay(
     avatar: Bitmap? = null,
     displayName: String = "",
     animateAvatar: Boolean = true,
+    face: AvatarEyes? = null,
+    history: List<AssistantExchange> = emptyList(),
+    pendingQuestion: String? = null,
+    awaitingReply: Boolean = false,
 ) {
     val c = MikaTheme.colors
     val glow by animateFloatAsState(if (listening) 1f else 0.48f, label = "assistant glow")
@@ -133,8 +141,7 @@ internal fun AssistantOverlay(
         )
         Column(
             Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp).widthIn(max = 540.dp).fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 16.dp, vertical = 12.dp).widthIn(max = 540.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Surface(
@@ -151,7 +158,16 @@ internal fun AssistantOverlay(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(3.dp),
                         ) {
-                            AssistantAvatar(avatar, 48.dp)
+                            AssistantAvatar(
+                                avatar, 48.dp, eyes = face,
+                                motion = when {
+                                    !animateAvatar || reducedMotion -> null
+                                    reply?.waiting == true && reply.thinking -> AvatarExpression.Thinking
+                                    reply?.waiting == true -> AvatarExpression.Working
+                                    reply?.completed == true -> AvatarExpression.Done
+                                    else -> null
+                                },
+                            )
                             Text(displayName.ifBlank { stringResource(R.string.app_name) },
                                 style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             val currentStatus = reply?.title ?: when {
@@ -171,91 +187,92 @@ internal fun AssistantOverlay(
                             if (photo != null) MediaPreview(photo, photoLabel, !sending, { preview = photo to photoLabel }, onRemovePhoto)
                         }
                     }
-                    if (reply != null) {
-                        if (text.isNotBlank()) {
-                            Text(
-                                text, Modifier.align(Alignment.End).widthIn(max = 300.dp)
-                                    .padding(top = 6.dp).background(c.accentSoft, RoundedCornerShape(18.dp))
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.bodyMedium, maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                    if (reply != null || history.isNotEmpty()) {
+                        val scroll = rememberScrollState()
+                        LaunchedEffect(pendingQuestion) {
+                            if (pendingQuestion != null) {
+                                withFrameNanos {}
+                                scroll.scrollTo(scroll.maxValue)
+                            }
                         }
-                        if (reply.waiting) {
-                            AssistantWaiting(avatar, animateAvatar && !reducedMotion)
-                        }
-                        if (reply.body.isNotBlank()) {
-                            MarkdownText(
-                                reply.body.take(6_000).let { if (reply.body.length > it.length) "$it…" else it },
-                                MaterialTheme.typography.bodyMedium.copy(color = c.ink),
-                                Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(max = 144.dp)
-                                    .verticalScroll(rememberScrollState())
-                                    .background(c.fill, RoundedCornerShape(16.dp)).padding(10.dp),
-                            )
+                        Column(
+                            Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(scroll),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            history.forEach { turn ->
+                                AssistantQuestion(turn.question, Modifier.align(Alignment.End))
+                                AssistantAnswer(turn.answer)
+                            }
+                            if (pendingQuestion != null) {
+                                AssistantQuestion(pendingQuestion, Modifier.align(Alignment.End))
+                                if (reply?.waiting == true) {
+                                    AssistantWaiting(avatar, face, animateAvatar && !reducedMotion, reply.thinking)
+                                }
+                                if (reply?.body?.isNotBlank() == true) AssistantAnswer(reply.body)
+                            }
                         }
                         TextButton(onClick = onOpenConversation) {
                             Text(stringResource(R.string.assistant_open_conversation), color = c.accent)
                         }
-                    } else {
-                        if (text.isNotBlank() || screenshot != null || photo != null) {
-                            IconButton(onClick = onClear, enabled = !sending,
-                                modifier = Modifier.align(Alignment.End).size(36.dp)) {
-                                Icon(MikaIcons.Trash, stringResource(R.string.assistant_clear), tint = c.ink2)
-                            }
+                    }
+                    if (text.isNotBlank() || screenshot != null || photo != null) {
+                        IconButton(onClick = onClear, enabled = !sending,
+                            modifier = Modifier.align(Alignment.End).size(36.dp)) {
+                            Icon(MikaIcons.Trash, stringResource(R.string.assistant_clear), tint = c.ink2)
                         }
-                        if (partial.isNotBlank()) {
-                            Text(partial, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.accent,
-                                maxLines = 3, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (partial.isNotBlank()) {
+                        Text(partial, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.accent,
+                            maxLines = 3, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (status != null || sending) {
+                        Text(status ?: stringResource(R.string.attach_importing),
+                            Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.ink2,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                            .background(c.fill, RoundedCornerShape(24.dp)).padding(horizontal = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onPhoto, enabled = !sending, modifier = Modifier.size(42.dp)) {
+                            Icon(MikaIcons.PhotoCamera, stringResource(R.string.attach_camera))
                         }
-                        if (status != null || sending) {
-                            Text(status ?: stringResource(R.string.attach_importing),
-                                Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.ink2,
-                                style = MaterialTheme.typography.bodySmall)
+                        IconButton(onClick = onScreenshot, enabled = !sending, modifier = Modifier.size(42.dp)) {
+                            Icon(MikaIcons.Camera, stringResource(R.string.assistant_take_screenshot))
                         }
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                                .background(c.fill, RoundedCornerShape(24.dp)).padding(horizontal = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            IconButton(onClick = onPhoto, enabled = !sending, modifier = Modifier.size(42.dp)) {
-                                Icon(MikaIcons.PhotoCamera, stringResource(R.string.attach_camera))
-                            }
-                            IconButton(onClick = onScreenshot, enabled = !sending, modifier = Modifier.size(42.dp)) {
-                                Icon(MikaIcons.Camera, stringResource(R.string.assistant_take_screenshot))
-                            }
-                            BasicTextField(
-                                value = text,
-                                onValueChange = onText,
-                                enabled = !sending,
-                                minLines = 1,
-                                singleLine = true,
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.ink),
-                                cursorBrush = SolidColor(c.accent),
-                                modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 7.dp)
-                                    .onFocusChanged { if (it.isFocused) onEdit() },
-                                decorationBox = { field ->
-                                    Box {
-                                        if (text.isEmpty()) Text(stringResource(R.string.assistant_input), color = c.ink2)
-                                        field()
-                                    }
-                                },
+                        BasicTextField(
+                            value = text,
+                            onValueChange = onText,
+                            enabled = !sending,
+                            minLines = 1,
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.ink),
+                            cursorBrush = SolidColor(c.accent),
+                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 7.dp)
+                                .onFocusChanged { if (it.isFocused) onEdit() },
+                            decorationBox = { field ->
+                                Box {
+                                    if (text.isEmpty()) Text(stringResource(R.string.assistant_input), color = c.ink2)
+                                    field()
+                                }
+                            },
+                        )
+                        IconButton(onClick = onVoice, enabled = !converting && !sending, modifier = Modifier.size(42.dp)) {
+                            Icon(
+                                if (listening) MikaIcons.Check else MikaIcons.Mic,
+                                stringResource(if (listening) R.string.assistant_stop_listening else R.string.voice_listening),
+                                tint = if (listening) c.accent else c.ink,
                             )
-                            IconButton(onClick = onVoice, enabled = !converting && !sending, modifier = Modifier.size(42.dp)) {
-                                Icon(
-                                    if (listening) MikaIcons.Check else MikaIcons.Mic,
-                                    stringResource(if (listening) R.string.assistant_stop_listening else R.string.voice_listening),
-                                    tint = if (listening) c.accent else c.ink,
-                                )
-                            }
-                            val canSend = !sending && (text.isNotBlank() || partial.isNotBlank() || screenshot != null || photo != null)
-                            IconButton(
-                                onClick = onSend,
-                                enabled = canSend,
-                                modifier = Modifier.size(42.dp).clip(CircleShape)
-                                    .background(if (canSend) c.accent else c.fill),
-                            ) {
-                                Icon(MikaIcons.Up, stringResource(R.string.chat_send), tint = if (canSend) c.onAccent else c.ink2)
-                            }
+                        }
+                        val canSend = !sending && !awaitingReply && (text.isNotBlank() || partial.isNotBlank() || screenshot != null || photo != null)
+                        IconButton(
+                            onClick = onSend,
+                            enabled = canSend,
+                            modifier = Modifier.size(42.dp).clip(CircleShape)
+                                .background(if (canSend) c.accent else c.fill),
+                        ) {
+                            Icon(MikaIcons.Up, stringResource(R.string.chat_send), tint = if (canSend) c.onAccent else c.ink2)
                         }
                     }
                 }
@@ -276,7 +293,28 @@ internal fun AssistantOverlay(
 }
 
 @Composable
-private fun AssistantWaiting(avatar: Bitmap?, animate: Boolean) {
+private fun AssistantQuestion(question: String, modifier: Modifier = Modifier) {
+    if (question.isBlank()) return
+    val c = MikaTheme.colors
+    Text(
+        question, modifier.widthIn(max = 300.dp).padding(top = 6.dp)
+            .background(c.accentSoft, RoundedCornerShape(18.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun AssistantAnswer(answer: String) {
+    if (answer.isBlank()) return
+    val c = MikaTheme.colors
+    MarkdownText(
+        answer, MaterialTheme.typography.bodyMedium.copy(color = c.ink),
+        Modifier.fillMaxWidth().background(c.fill, RoundedCornerShape(16.dp)).padding(10.dp),
+    )
+}
+
+@Composable
+private fun AssistantWaiting(avatar: Bitmap?, eyes: AvatarEyes?, animate: Boolean, thinking: Boolean) {
     val c = MikaTheme.colors
     val lift = if (animate) rememberInfiniteTransition(label = "assistant waiting avatar").animateFloat(
         initialValue = 0f, targetValue = 1f,
@@ -287,9 +325,14 @@ private fun AssistantWaiting(avatar: Bitmap?, animate: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AssistantAvatar(avatar, 30.dp, Modifier.graphicsLayer {
-            translationY = -(lift?.value ?: 0f) * 3.dp.toPx()
-        }.border(1.dp, c.accent.copy(alpha = 0.6f), CircleShape))
+        AssistantAvatar(
+            avatar, 30.dp, Modifier.border(1.dp, c.accent.copy(alpha = 0.6f), CircleShape), eyes,
+            when {
+                !animate -> null
+                thinking -> AvatarExpression.Thinking
+                else -> AvatarExpression.Working
+            },
+        )
         repeat(3) { index ->
             Box(Modifier.size(4.dp).graphicsLayer {
                 alpha = if (lift == null) 0.65f else (0.3f + 0.7f *

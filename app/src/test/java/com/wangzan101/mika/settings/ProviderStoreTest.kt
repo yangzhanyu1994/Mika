@@ -770,6 +770,17 @@ class ProviderStoreTest {
         assertEquals(RoleChoices(main = null, vision = RoleChoice.SameAsMain, light = RoleChoice.SameAsMain), r.keepOnly(emptySet()))
     }
 
+    @Test
+    fun chatCanUseADifferentModelWithoutChangingPhoneWork() {
+        val legacy = RoleChoices(main = "work")
+        assertEquals("work", legacy.resolve(ModelRole.Chat))
+        val separate = checkNotNull(legacy.with(ModelRole.Chat, RoleChoice.Model("chat")))
+        assertEquals("chat", separate.resolve(ModelRole.Chat))
+        assertEquals("work", separate.resolve(ModelRole.Main))
+        assertEquals(setOf("chat", "work"), separate.referenced)
+        assertEquals("work", separate.keepOnly(setOf("work")).resolve(ModelRole.Chat))
+    }
+
     // ---------- 按模型指定的接口 ----------
 
     private val chat = ModelEndpoint(ModelProtocol.ChatCompletions, "https://x.test/openai/v1", "reasoning_content")

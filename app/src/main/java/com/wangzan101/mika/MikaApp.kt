@@ -316,6 +316,8 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         private set
     val teachReady: Boolean get() = ::teach.isInitialized
 
+    internal val researchChat by lazy { com.wangzan101.mika.chat.ResearchChat(this, conversations, providers, scope) }
+
     /** 对话页的状态跟进程走:界面关了再打开,正在跑的任务的步骤还在。 */
     val chat: ChatViewModel by lazy {
         val app = this

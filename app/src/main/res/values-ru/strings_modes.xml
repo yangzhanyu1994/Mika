@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">Чат</string>
+    <string name="mode_work">Задачи</string>
+    <string name="mode_chat_model">Модель чата</string>
+    <string name="mode_work_model">Модель задач</string>
+    <string name="mode_chat_description">Ищите информацию, задавайте вопросы или общайтесь.</string>
+    <string name="mode_work_description">Попросите Mika выполнить действие на телефоне.</string>
+    <string name="mode_chat_prompt1">Найди поезда в Сучжоу на выходные</string>
+    <string name="mode_chat_prompt2">Объясни, что такое динамические цвета</string>
+    <string name="mode_chat_prompt3">Кратко перескажи этот текст</string>
+    <string name="mode_work_prompt1">Открой приложение поездов и проверь места на субботу</string>
+    <string name="mode_work_prompt2">Открой календарь и добавь встречу на завтра после обеда</string>
+    <string name="mode_work_prompt3">Открой настройки и проверь расход батареи</string>
+    <string name="mode_chat_input">Задайте вопрос</string>
+    <string name="mode_work_input">Введите задачу</string>
+    <string name="mode_transfer">Перенести в задачи</string>
+    <string name="mode_from_chat">Из чата</string>
+    <string name="mode_start_work">Начать задачу</string>
+    <string name="mode_new_thread">Новый разговор</string>
+    <string name="mode_chat_error">Mika не удалось завершить ответ. Попробуйте ещё раз.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

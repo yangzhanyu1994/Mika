@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">دردشة</string>
+    <string name="mode_work">عمل</string>
+    <string name="mode_chat_model">نموذج الدردشة</string>
+    <string name="mode_work_model">نموذج العمل</string>
+    <string name="mode_chat_description">ابحث عن معلومات أو اطرح الأسئلة أو دردش.</string>
+    <string name="mode_work_description">اطلب من Mika تنفيذ إجراءات على هاتفك.</string>
+    <string name="mode_chat_prompt1">ابحث عن قطارات عطلة نهاية الأسبوع إلى سوتشو</string>
+    <string name="mode_chat_prompt2">اشرح الألوان الديناميكية</string>
+    <string name="mode_chat_prompt3">لخّص هذا النص</string>
+    <string name="mode_work_prompt1">افتح تطبيق القطارات وتحقق من مقاعد السبت</string>
+    <string name="mode_work_prompt2">افتح التقويم وأضف اجتماعًا بعد ظهر الغد</string>
+    <string name="mode_work_prompt3">افتح الإعدادات وافحص استخدام البطارية</string>
+    <string name="mode_chat_input">اسأل ما تريد</string>
+    <string name="mode_work_input">أدخل مهمة</string>
+    <string name="mode_transfer">انقل إلى العمل</string>
+    <string name="mode_from_chat">من الدردشة</string>
+    <string name="mode_start_work">بدء المهمة</string>
+    <string name="mode_new_thread">محادثة جديدة</string>
+    <string name="mode_chat_error">لم يتمكن Mika من إكمال الرد. حاول مجددًا.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

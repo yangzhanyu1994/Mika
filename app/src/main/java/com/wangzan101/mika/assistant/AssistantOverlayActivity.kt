@@ -63,6 +63,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.IOException
+import java.util.UUID
 
 class AssistantOverlayActivity : ComponentActivity() {
     private val app get() = application as MikaApp
@@ -78,6 +79,11 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var sending by mutableStateOf(false)
     private var conversationId: String? = null
     private var reply by mutableStateOf<AssistantReply?>(null)
+    private var history by mutableStateOf<List<AssistantExchange>>(emptyList())
+    private var pendingQuestion by mutableStateOf<String?>(null)
+    private var pendingAfter = 0
+    private var previousRun: String? = null
+    private var replyJob: Job? = null
     private var pendingPhoto: Uri? = null
     private var photoUri: Uri? = null
     private var voiceJob: Job? = null
@@ -136,6 +142,9 @@ class AssistantOverlayActivity : ComponentActivity() {
             savedInstanceState.getString("assistantConversation")?.let { id ->
                 autoListen = false
                 text = savedInstanceState.getString("assistantQuestion").orEmpty()
+                pendingQuestion = savedInstanceState.getString("assistantPendingQuestion")
+                pendingAfter = savedInstanceState.getInt("assistantPendingAfter", 0)
+                previousRun = savedInstanceState.getString("assistantPreviousRun")
                 showReply(id)
             }
         }
@@ -150,10 +159,17 @@ class AssistantOverlayActivity : ComponentActivity() {
         val appearance = AssistantAppearance(this)
         setContent {
             val avatar by produceState<Bitmap?>(null) { value = appearance.avatar() }
+            val face by produceState<AvatarEyes?>(null, avatar) {
+                value = withContext(Dispatchers.Default) { avatar?.let { AvatarEyes.detect(it) } }
+            }
             MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = animationsOff(this)) {
                 SettingsAppearance {
                     AssistantOverlay(
                         avatar = avatar,
+                        face = face,
+                        history = history,
+                        pendingQuestion = pendingQuestion,
+                        awaitingReply = pendingQuestion != null,
                         displayName = appearance.name,
                         animateAvatar = appearance.animate,
                         text = text,
@@ -187,6 +203,9 @@ class AssistantOverlayActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString("assistantConversation", conversationId)
         outState.putString("assistantQuestion", text)
+        outState.putString("assistantPendingQuestion", pendingQuestion)
+        outState.putInt("assistantPendingAfter", pendingAfter)
+        outState.putString("assistantPreviousRun", previousRun)
     }
 
     override fun onResume() {
@@ -226,7 +245,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     private fun requestSpeech() {
-        if (!resumed || isFinishing || sending || conversationId != null) return
+        if (!resumed || isFinishing || sending) return
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startSpeech()
         else {
             permissionPending = true
@@ -350,7 +369,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun send() {
-        if (sending || conversationId != null || screenJob?.isActive == true || locked() || isFinishing) return
+        if (sending || pendingQuestion != null || screenJob?.isActive == true || locked() || isFinishing) return
         val words = text.trim()
         val screen = screenshot
         val cameraFile = photoUri?.let { AttachFiles.cameraFile(this, it) }
@@ -371,13 +390,25 @@ class AssistantOverlayActivity : ComponentActivity() {
         sending = true
         status = null
         lifecycleScope.launch {
-            val id = app.conversations.newConversation()
+            val existing = conversationId
+            val id = existing ?: app.conversations.newConversation()
+            val baseline = history.size
+            val oldRun = app.taskState.run(id)?.key
+            fun dispatch(goal: String) {
+                if (existing == null) TaskService.start(this@AssistantOverlayActivity, goal, id)
+                else if (!TaskService.enqueueFollowUp(this@AssistantOverlayActivity, id, UUID.randomUUID().toString(), goal)) {
+                    throw IOException("Could not enqueue the follow-up")
+                }
+            }
             try {
-                if (screen == null && cameraFile == null) TaskService.start(this@AssistantOverlayActivity, words, id)
-                else submitImages(id, words, screen, cameraFile)
+                if (screen == null && cameraFile == null) withContext(Dispatchers.IO) { dispatch(words) }
+                else submitImages(id, words, screen, cameraFile, ::dispatch)
                 removeScreenshot()
                 removePhoto()
-                invocation?.screenshot?.value = null
+                text = ""
+                pendingQuestion = words
+                pendingAfter = baseline
+                previousRun = oldRun
                 if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) showReply(id) else finish()
             } catch (e: CancellationException) {
                 throw e
@@ -393,26 +424,35 @@ class AssistantOverlayActivity : ComponentActivity() {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun showReply(id: String) {
         conversationId = id
-        reply = AssistantReply(getString(R.string.runtime_preparing), waiting = true)
-        val live = app.taskState.runs.map { runs -> runs.firstOrNull { it.conversationId == id } }
-            .distinctUntilChanged()
-            .flatMapLatest { run -> run?.state ?: flowOf(null) }
+        replyJob?.cancel()
+        if (pendingQuestion != null) reply = AssistantReply(getString(R.string.runtime_preparing), waiting = true)
+        val ignoredKey = previousRun
+        val live = app.taskState.runs.map { runs ->
+            runs.firstOrNull { it.conversationId == id && it.key != ignoredKey }
+        }.distinctUntilChanged().flatMapLatest { run -> run?.state ?: flowOf(null) }
         val saved = app.conversations.changes.filter { it == id }.onStart { emit(id) }.map {
-            withContext(Dispatchers.IO) { app.conversations.turns(id).firstOrNull() }
+            withContext(Dispatchers.IO) { app.conversations.turns(id).filterNot { it.research } }
         }
 
-        val startupTimeout = lifecycleScope.launch {
-            delay(15_000)
-            reply = AssistantReply(getString(R.string.assistant_status_unavailable))
-        }
-        lifecycleScope.launch {
-            combine(live, saved) { state, turn -> turn?.let(::savedReply) ?: state?.let(::liveReply) }
-                .collect { next ->
-                    if (next != null) {
+        replyJob = lifecycleScope.launch {
+            val startupTimeout = launch {
+                delay(15_000)
+                if (pendingQuestion != null) reply = AssistantReply(getString(R.string.assistant_status_unavailable))
+            }
+            combine(live, saved, ::Pair).collect { (state, turns) ->
+                history = turns.map { AssistantExchange(AttachmentLines.words(it.userText), savedReply(it).body) }
+                if (pendingQuestion != null && turns.size <= pendingAfter) {
+                    if (state != null && state != TaskState.Idle) {
                         startupTimeout.cancel()
-                        reply = next
+                        reply = liveReply(state)
                     }
+                } else {
+                    startupTimeout.cancel()
+                    pendingQuestion = null
+                    previousRun = null
+                    reply = turns.lastOrNull()?.let(::savedReply)
                 }
+            }
         }
     }
 
@@ -421,12 +461,13 @@ class AssistantOverlayActivity : ComponentActivity() {
         val (title, body) = TaskService.describe(state)
         return when (state) {
             is TaskState.Succeeded -> AssistantReply(
-                if (state.doubtful) title else getString(R.string.task_done), body,
+                if (state.doubtful) title else getString(R.string.task_done), body, completed = true,
             )
             is TaskState.Running -> AssistantReply(
                 getString(assistantProgressLabel(state.tool)),
                 running = true,
                 waiting = true,
+                thinking = state.tool == null,
             )
             is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued)
             else -> AssistantReply(title, body)
@@ -443,7 +484,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             getString(R.string.task_stopped),
             Conversation.stopSummary(turn) ?: getString(R.string.task_stopped_body),
         )
-        else -> AssistantReply(getString(R.string.task_done), turn.outcome)
+        else -> AssistantReply(getString(R.string.task_done), turn.outcome, completed = true)
     }
 
     private fun openConversation() {
@@ -452,7 +493,9 @@ class AssistantOverlayActivity : ComponentActivity() {
         finish()
     }
 
-    private suspend fun submitImages(id: String, words: String, screen: Bitmap?, cameraFile: File?) = withContext(Dispatchers.IO) {
+    private suspend fun submitImages(
+        id: String, words: String, screen: Bitmap?, cameraFile: File?, dispatch: (String) -> Unit,
+    ) = withContext(Dispatchers.IO) {
         val temporary = screen?.let { File.createTempFile("assistant-screen-", ".jpg", cacheDir) }
         try {
             val files = buildList {
@@ -469,7 +512,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 room = { sandbox.freeBytes() >= Attachments.MIN_FREE && sandbox.workspaceBytes(id) <= Attachments.WORKSPACE_MAX },
             ) { imported ->
                 if (screen != null && invocation?.canShare(app) != true) throw IOException("Screen sharing permission changed")
-                TaskService.start(this@AssistantOverlayActivity, AttachmentLines.composeBytes(words, imported), id)
+                dispatch(AttachmentLines.composeBytes(words, imported))
             }
         } finally {
             temporary?.delete()
@@ -478,6 +521,7 @@ class AssistantOverlayActivity : ComponentActivity() {
 }
 
 internal fun assistantProgressLabel(tool: String?): Int = when (tool) {
+    null -> R.string.assistant_thinking
     "web_search", "knowledge_search", "skill_search", "search_files" -> R.string.assistant_searching
     "phone_find", "find_visually", "list_elements", "observe", "screenshot" -> R.string.assistant_looking
     else -> R.string.task_running

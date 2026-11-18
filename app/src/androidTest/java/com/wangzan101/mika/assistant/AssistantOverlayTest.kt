@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.hasSetTextAction
 import com.wangzan101.mika.ChineseUi
 import com.wangzan101.mika.ui.theme.MikaTheme
 import org.junit.Assert.assertEquals
@@ -23,16 +25,19 @@ class AssistantOverlayTest {
     @Test fun replyReplacesWaitingStatusBelowTheSubmittedQuestion() {
         val reply = mutableStateOf(AssistantReply("正在准备", waiting = true))
         val question = "帮我看看今天下午的日程"
+        val draft = mutableStateOf("")
+        var sent = ""
         var opened = false
         compose.setContent {
             MikaTheme(dark = true, reduceMotion = true) {
                 AssistantOverlay(
-                    text = question, partial = "", status = null,
+                    text = draft.value, partial = "", status = null,
                     listening = false, converting = false, level = { 0f },
                     screenshot = null, photo = null, sending = false, reply = reply.value, displayName = "小蓝",
+                    pendingQuestion = question,
                     onOpenConversation = { opened = true },
-                    onText = {}, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
-                    onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = {}, onClose = {},
+                    onText = { draft.value = it }, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
+                    onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = { sent = draft.value }, onClose = {},
                 )
             }
         }
@@ -45,6 +50,14 @@ class AssistantOverlayTest {
             compose.onNodeWithText(question).fetchSemanticsNode().boundsInRoot.bottom)
         compose.onNodeWithText("查看完整对话").performClick()
         compose.runOnIdle { assertTrue(opened) }
+        compose.onNode(hasSetTextAction()).performTextInput("再说一下地点")
+        compose.onNodeWithContentDescription("发送").performClick()
+        compose.runOnIdle { assertEquals("再说一下地点", sent) }
+        compose.runOnIdle {
+            reply.value = AssistantReply("任务完成", List(45) { "第 ${it + 1} 段回复。" }.joinToString("\n\n"))
+        }
+        compose.onNode(hasSetTextAction()).assertIsDisplayed()
+        compose.onNodeWithContentDescription("发送").assertIsDisplayed()
     }
 
     @Test fun previewAndRemoveMediaWithoutSendingTheVoiceDraft() {

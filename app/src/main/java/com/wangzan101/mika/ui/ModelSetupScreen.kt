@@ -102,6 +102,7 @@ fun ModelSetupScreen(
     onOpenSpeech: (() -> Unit)? = null,
     /** 设置里查看 Token 用量;上手流程不传。 */
     onOpenUsage: (() -> Unit)? = null,
+    initialRole: ModelRole? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -117,7 +118,7 @@ fun ModelSetupScreen(
         )
     }
     val ui by vm.state.collectAsState()
-    var picking by rememberSaveable { mutableStateOf<ModelRole?>(null) }
+    var picking by rememberSaveable { mutableStateOf(initialRole) }
     var openProvider by rememberSaveable { mutableStateOf<String?>(null) }
     var allModels by rememberSaveable { mutableStateOf(false) }
     // 账号登录的面板:在添加表单和服务商详情里都能打开,登录中关掉也不打断登录

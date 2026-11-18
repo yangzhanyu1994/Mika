@@ -1423,7 +1423,7 @@ class ChatViewModel(
 
     /** 这个对话存下的轮次,连同各轮导出的文件和此刻的记忆与技能提示。 */
     private fun saved(conversationId: String): List<Exchange> =
-        runCatching { store.records(conversationId) }.getOrDefault(emptyList()).map { (t, files) -> withSummarizing(withNotes(fromTurn(t).copy(files = files), runNotes.value)) }
+        runCatching { store.records(conversationId) }.getOrDefault(emptyList()).filterNot { it.first.research }.map { (t, files) -> withSummarizing(withNotes(fromTurn(t).copy(files = files), runNotes.value)) }
 
     /**
      * 存储里这个对话变了(别处跑完存进一轮、改了某一轮):屏上按存下的那份重排。这里跟过的那几轮按运行编号认

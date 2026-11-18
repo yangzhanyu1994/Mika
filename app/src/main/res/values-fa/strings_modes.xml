@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">گفت‌وگو</string>
+    <string name="mode_work">کار</string>
+    <string name="mode_chat_model">مدل گفت‌وگو</string>
+    <string name="mode_work_model">مدل کار</string>
+    <string name="mode_chat_description">اطلاعات پیدا کنید، سؤال بپرسید یا گپ بزنید.</string>
+    <string name="mode_work_description">از Mika بخواهید کارهایی را روی گوشی انجام دهد.</string>
+    <string name="mode_chat_prompt1">قطارهای آخر هفته به سوژو را پیدا کن</string>
+    <string name="mode_chat_prompt2">رنگ‌های پویا را توضیح بده</string>
+    <string name="mode_chat_prompt3">این متن را خلاصه کن</string>
+    <string name="mode_work_prompt1">برنامه قطار را باز کن و ظرفیت شنبه را بررسی کن</string>
+    <string name="mode_work_prompt2">تقویم را باز کن و برای فردا بعدازظهر جلسه بگذار</string>
+    <string name="mode_work_prompt3">تنظیمات را باز کن و مصرف باتری را بررسی کن</string>
+    <string name="mode_chat_input">هرچه می‌خواهید بپرسید</string>
+    <string name="mode_work_input">وظیفه‌ای وارد کنید</string>
+    <string name="mode_transfer">انتقال به کار</string>
+    <string name="mode_from_chat">از گفت‌وگو</string>
+    <string name="mode_start_work">شروع کار</string>
+    <string name="mode_new_thread">گفت‌وگوی جدید</string>
+    <string name="mode_chat_error">Mika نتوانست پاسخ را کامل کند. دوباره تلاش کنید.</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

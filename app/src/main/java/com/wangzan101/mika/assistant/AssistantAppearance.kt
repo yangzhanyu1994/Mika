@@ -11,6 +11,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -22,6 +23,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.ui.theme.MikaTheme
@@ -81,10 +84,23 @@ internal class AssistantAppearance(context: Context) {
 }
 
 @Composable
-internal fun AssistantAvatar(bitmap: Bitmap?, diameter: Dp, modifier: Modifier = Modifier) {
+internal fun AssistantAvatar(
+    bitmap: Bitmap?,
+    diameter: Dp,
+    modifier: Modifier = Modifier,
+    eyes: AvatarEyes? = null,
+    motion: AvatarExpression? = null,
+) {
     val c = MikaTheme.colors
     Box(modifier.size(diameter).clip(CircleShape).background(c.accentSoft)) {
-        if (bitmap != null) {
+        if (bitmap != null && eyes != null && motion != null) {
+            val phase = rememberAvatarPhase(motion)
+            val mesh = remember(bitmap, eyes) { AvatarFaceMesh(bitmap, eyes) }
+            val label = stringResource(R.string.assistant_avatar)
+            Canvas(Modifier.fillMaxSize().semantics { contentDescription = label }) {
+                mesh.draw(this, motion, phase())
+            }
+        } else if (bitmap != null) {
             Image(
                 remember(bitmap) { bitmap.asImageBitmap() },
                 contentDescription = stringResource(R.string.assistant_avatar),
@@ -92,10 +108,18 @@ internal fun AssistantAvatar(bitmap: Bitmap?, diameter: Dp, modifier: Modifier =
                 contentScale = ContentScale.Crop,
             )
         } else {
+            val phase = if (motion != null) rememberAvatarPhase(motion) else null
             Canvas(Modifier.matchParentSize()) {
                 val d = size.minDimension
+                val progress = phase?.invoke() ?: 0f
+                val blink = if (motion != null) blinkAmount(progress, motion) else 0f
+                val gaze = if (motion == AvatarExpression.Thinking) kotlin.math.sin(progress * Math.PI.toFloat()) * 0.045f else 0f
+                val eyeHeight = d * (0.19f - blink * 0.165f)
                 for (x in listOf(0.34f, 0.56f)) {
-                    drawRoundRect(c.accent, Offset(d * x, d * 0.34f), Size(d * 0.10f, d * 0.19f), CornerRadius(d * 0.05f))
+                    drawRoundRect(
+                        c.accent, Offset(d * (x + gaze), d * (0.435f - gaze) - eyeHeight / 2),
+                        Size(d * 0.10f, eyeHeight), CornerRadius(d * 0.05f),
+                    )
                 }
                 drawArc(c.accent, 10f, 160f, false, Offset(d * 0.39f, d * 0.51f),
                     Size(d * 0.22f, d * 0.15f), style = androidx.compose.ui.graphics.drawscope.Stroke(d * 0.035f))

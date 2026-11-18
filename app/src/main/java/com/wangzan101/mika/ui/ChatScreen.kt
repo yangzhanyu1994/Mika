@@ -209,6 +209,10 @@ fun ChatScreen(
     /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
     habitSuggestions: List<String>? = null,
     onExploreSkills: () -> Unit = {},
+    modeHeader: (@Composable () -> Unit)? = null,
+    modeTitle: String? = null,
+    onNewConversation: (() -> Unit)? = null,
+    transferDraft: Boolean = false,
 ) {
     if (recommendations != null) Unit
     val ui by vm.ui.collectAsState()
@@ -395,8 +399,25 @@ fun ChatScreen(
                     )
                 },
             ) {
+                if (transferDraft && input.isNotBlank() && ui.composer == ComposerMode.Idle) {
+                    item("transfer-draft") {
+                        MikaCard(Modifier.padding(bottom = 12.dp)) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(stringResource(R.string.mode_from_chat), color = c.ink2, style = MikaType.Caption)
+                                Text(input, color = c.ink, style = MikaType.Body, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                                TextButton(onClick = { vm.send(input, check) }) {
+                                    Text(stringResource(R.string.mode_start_work))
+                                }
+                            }
+                        }
+                    }
+                }
                 if (ui.exchanges.isEmpty() && ui.blocked == null) {
-                    item("empty") { HomeGreeting(ui.conversationId) }
+                    if (modeHeader != null && !transferDraft) item("work-guidance") {
+                        ConversationModeGuidance(false) { prompt ->
+                            if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
+                        }
+                    } else if (modeHeader == null) item("empty") { HomeGreeting(ui.conversationId) }
                     item("home-guides") {
                         HomeGuides(onCreatePlan, onCreateCall, onExploreSkills, onOpenDrawer)
                     }
@@ -444,7 +465,10 @@ fun ChatScreen(
             ?: ChatTokensCopy.conversationSubtitle(endedRuns, runMetrics)?.let { it to null }
         Column(Modifier.behindMenu(menuOpen) { lift.value }.onSizeChanged { topHeight = it.height }) {
             TopBar(
-                ChatCopy.APP_TITLE,
+                modeTitle ?: ChatCopy.APP_TITLE,
+                right = onNewConversation?.let { start ->
+                    { BarIconButton(MikaIcons.New, stringResource(R.string.mode_new_thread), start) }
+                },
                 background = if (c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
                 left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
                 leftGlass = true,
@@ -458,6 +482,7 @@ fun ChatScreen(
                     null -> Color.Unspecified
                 },
             )
+            modeHeader?.invoke()
         }
 
         Column(
@@ -471,6 +496,7 @@ fun ChatScreen(
             onText = vm::input,
             mode = ui.composer,
             hasHistory = ui.exchanges.isNotEmpty(),
+            idlePlaceholder = if (modeHeader == null) null else stringResource(R.string.mode_work_input),
             onSend = { vm.send(input, check) },
             onTeach = if (ui.composer == ComposerMode.Idle) ({ onOpenTeach(input.trim()) }) else null,
             onStop = vm::cancel,
@@ -1461,6 +1487,7 @@ internal fun Composer(
     onVoiceHolding: (Boolean) -> Unit = {},
     sendFromIme: Boolean = false,
     draftKey: String? = null,
+    idlePlaceholder: String? = null,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1598,7 +1625,7 @@ internal fun Composer(
                         if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
                             RotatingPlaceholder(rotating, active = !fieldFocused, reduceMotion = reduceMotion, Modifier.fillMaxWidth())
                         } else if (vh != null) VoicePlaceholder(mode, followUpMode)
-                        else Text(ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
+                        else Text(if (mode == ComposerMode.Idle && idlePlaceholder != null) idlePlaceholder else ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
                     }
                     BasicTextField(
                         shownValue,

@@ -17,6 +17,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
@@ -361,6 +362,7 @@ class ConversationStore(
                 atMs = field("atMs")?.toLongOrNull(),
                 verified = field("verified")?.toBooleanStrictOrNull(),
                 remoteTaskId = field("remoteTaskId"),
+                research = (o["research"] as? JsonPrimitive)?.booleanOrNull == true,
             )
             turn to (o["files"] as? JsonArray).orEmpty().mapNotNull(::fileOf)
         }
@@ -385,6 +387,11 @@ class ConversationStore(
         }
         val stored = if (turn.atMs == null) turn.copy(atMs = clock()) else turn
         write(conversationId, prior.orEmpty() + (stored to files))
+    }
+
+    @Synchronized
+    fun appendResearch(conversationId: String, turn: Turn) {
+        if (safe(conversationId) !in deleted) append(conversationId, turn.copy(research = true))
     }
 
     /** 改运行编号为 [runId] 的那一轮(任务结束后补上判的结局、记忆与技能提示);找不到就不动。 */
@@ -416,6 +423,7 @@ class ConversationStore(
                 it.note?.let { n -> put("note", n) }; it.runId?.let { r -> put("runId", r) }; it.result?.let { r -> put("result", r) }
                 it.verified?.let { v -> put("verified", v) }
                 it.remoteTaskId?.let { id -> put("remoteTaskId", id) }
+                if (it.research) put("research", true)
                 // 只存种类和编号:记忆内容只在加密的记忆文件里,界面现取
                 if (it.memoryNotes.isNotEmpty()) put("memoryNotes", JsonArray(it.memoryNotes.map { n ->
                     buildJsonObject {

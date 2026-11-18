@@ -33,7 +33,7 @@ class ModelsCopyTest {
     @Test fun inUseModelsComeFirstAndPickedIgnoresSameAsMain() {
         val u = ui(RoleChoices(main = "c1", vision = RoleChoice.SameAsMain))
         assertEquals(listOf("deepseek-reasoner", "deepseek-chat", "deepseek-coder"), u.sortedOptions(ds).map { it.id })
-        assertEquals(listOf(ModelRole.Main, ModelRole.Vision, ModelRole.Light), u.rolesOf(ds.id, "deepseek-reasoner"))
+        assertEquals(listOf(ModelRole.Main, ModelRole.Chat, ModelRole.Vision, ModelRole.Light), u.rolesOf(ds.id, "deepseek-reasoner"))
         assertTrue(u.picked(ModelRole.Main, ds.id, "deepseek-reasoner"))
         assertFalse("用主模型不算明确选了它", u.picked(ModelRole.Vision, ds.id, "deepseek-reasoner"))
     }
@@ -42,5 +42,6 @@ class ModelsCopyTest {
         assertEquals(emptyList<RoleChoice>(), fixedChoices(ModelRole.Main))
         assertEquals(listOf(RoleChoice.SameAsMain, RoleChoice.Off), fixedChoices(ModelRole.Vision))
         assertEquals(listOf(RoleChoice.SameAsMain), fixedChoices(ModelRole.Light))
+        assertEquals(listOf(RoleChoice.SameAsMain), fixedChoices(ModelRole.Chat))
     }
 }

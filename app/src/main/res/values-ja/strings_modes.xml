@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">チャット</string>
+    <string name="mode_work">作業</string>
+    <string name="mode_chat_model">チャット用モデル</string>
+    <string name="mode_work_model">作業用モデル</string>
+    <string name="mode_chat_description">情報検索や質問、ちょっとした会話に使えます。</string>
+    <string name="mode_work_description">Mika がスマートフォンの操作を実行します。</string>
+    <string name="mode_chat_prompt1">週末に蘇州へ行く列車を調べて</string>
+    <string name="mode_chat_prompt2">動的カラーを説明して</string>
+    <string name="mode_chat_prompt3">この文章を要約して</string>
+    <string name="mode_work_prompt1">鉄道アプリを開いて土曜日の空席を確認して</string>
+    <string name="mode_work_prompt2">カレンダーを開いて明日の午後に会議を追加して</string>
+    <string name="mode_work_prompt3">設定を開いてバッテリー使用量を確認して</string>
+    <string name="mode_chat_input">質問を入力</string>
+    <string name="mode_work_input">タスクを入力</string>
+    <string name="mode_transfer">作業に移す</string>
+    <string name="mode_from_chat">チャットから</string>
+    <string name="mode_start_work">実行する</string>
+    <string name="mode_new_thread">新規会話</string>
+    <string name="mode_chat_error">返信を完了できませんでした。もう一度お試しください。</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

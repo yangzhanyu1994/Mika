@@ -97,8 +97,8 @@ import com.wangzan101.mika.voice.SpeechOptions
 
 /** 设置 › 模型:和上手时的配置模型是同一页([ModelSetupScreen]),不在引导流程里。 */
 @Composable
-fun ModelsScreen(store: ProviderStore, onBack: () -> Unit, onOpenSpeech: (() -> Unit)? = null, onOpenUsage: (() -> Unit)? = null) {
-    ModelSetupScreen(store, onboarding = false, onBack = onBack, onDone = onBack, onOpenSpeech = onOpenSpeech, onOpenUsage = onOpenUsage)
+fun ModelsScreen(store: ProviderStore, onBack: () -> Unit, onOpenSpeech: (() -> Unit)? = null, onOpenUsage: (() -> Unit)? = null, initialRole: ModelRole? = null) {
+    ModelSetupScreen(store, onboarding = false, onBack = onBack, onDone = onBack, onOpenSpeech = onOpenSpeech, onOpenUsage = onOpenUsage, initialRole = initialRole)
 }
 
 /** 子页面共用的骨架:顶栏 + 可滚动内容。 */
@@ -187,7 +187,7 @@ class RolePickerActions(
 internal fun fixedChoices(role: ModelRole): List<RoleChoice> = when (role) {
     ModelRole.Main -> emptyList()
     ModelRole.Vision -> listOf(RoleChoice.SameAsMain, RoleChoice.Off)
-    ModelRole.Light -> listOf(RoleChoice.SameAsMain)
+    ModelRole.Light, ModelRole.Chat -> listOf(RoleChoice.SameAsMain)
 }
 
 /**
@@ -815,14 +815,16 @@ object ModelsCopy {
     )
 
     fun roleName(role: ModelRole) = when (role) {
-        ModelRole.Main -> tr(R.string.role_main)
+        ModelRole.Main -> tr(R.string.mode_work_model)
+        ModelRole.Chat -> tr(R.string.mode_chat_model)
         ModelRole.Vision -> tr(R.string.role_vision)
         ModelRole.Light -> tr(R.string.role_light)
     }
 
     /** 这个用途做什么。 */
     fun roleWhat(role: ModelRole) = when (role) {
-        ModelRole.Main -> tr(R.string.role_main_what)
+        ModelRole.Main -> tr(R.string.mode_work_description)
+        ModelRole.Chat -> tr(R.string.mode_chat_description)
         ModelRole.Vision -> tr(R.string.role_vision_what)
         ModelRole.Light -> tr(R.string.role_light_what)
     }
@@ -832,6 +834,7 @@ object ModelsCopy {
     /** 选择页顶上的说明。 */
     fun roleHint(role: ModelRole) = when (role) {
         ModelRole.Main -> tr(R.string.role_main_hint)
+        ModelRole.Chat -> tr(R.string.mode_chat_description)
         ModelRole.Vision -> tr(R.string.role_vision_hint)
         ModelRole.Light -> tr(R.string.role_light_hint)
     }
@@ -848,6 +851,7 @@ object ModelsCopy {
 
     fun roleIcon(role: ModelRole): ImageVector = when (role) {
         ModelRole.Main -> MikaIcons.Spark
+        ModelRole.Chat -> MikaIcons.Message
         ModelRole.Vision -> MikaIcons.Eye
         ModelRole.Light -> MikaIcons.Leaf
     }
@@ -870,6 +874,7 @@ object ModelsCopy {
     fun choiceNote(role: ModelRole, choice: RoleChoice) = when {
         choice == RoleChoice.Off -> OFF_NOTE
         role == ModelRole.Vision -> VISION_SAME_NOTE
+        role == ModelRole.Chat -> tr(R.string.mode_work_model)
         else -> LIGHT_SAME_NOTE
     }
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_chat">聊天</string>
+    <string name="mode_work">工作</string>
+    <string name="mode_chat_model">聊天模型</string>
+    <string name="mode_work_model">工作模型</string>
+    <string name="mode_chat_description">搜索资料、回答问题，也可以随便聊聊。</string>
+    <string name="mode_work_description">让 Mika 在手机上帮你执行具体操作。</string>
+    <string name="mode_chat_prompt1">查一下周末去苏州的高铁</string>
+    <string name="mode_chat_prompt2">解释一下什么是动态配色</string>
+    <string name="mode_chat_prompt3">帮我总结这段文字</string>
+    <string name="mode_work_prompt1">打开 12306，查看周六的余票</string>
+    <string name="mode_work_prompt2">打开日历，添加明天下午的会议</string>
+    <string name="mode_work_prompt3">打开设置，查看电池用量</string>
+    <string name="mode_chat_input">问点什么</string>
+    <string name="mode_work_input">输入要执行的任务</string>
+    <string name="mode_transfer">转入工作</string>
+    <string name="mode_from_chat">来自聊天</string>
+    <string name="mode_start_work">开始执行</string>
+    <string name="mode_new_thread">新对话</string>
+    <string name="mode_chat_error">Mika 没能完成这次回复，请重试。</string>
+    <string name="mode_model_value">%1$s · %2$s</string>
+</resources>

@@ -21,4 +21,5 @@
     <string name="assistant_wait_animation">حركة الانتظار</string>
     <string name="assistant_searching">جارٍ البحث</string>
     <string name="assistant_looking">جارٍ التحقق</string>
+    <string name="assistant_thinking">جارٍ التفكير</string>
 </resources>
