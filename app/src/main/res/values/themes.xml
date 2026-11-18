@@ -16,5 +16,4 @@
         <item name="android:enforceNavigationBarContrast">false</item>
     </style>
     <color name="mika_bg">#F7F7F8</color>
-    <color name="aura_launcher_background">#061027</color>
 </resources>

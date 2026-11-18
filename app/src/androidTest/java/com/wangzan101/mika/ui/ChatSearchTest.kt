@@ -64,7 +64,7 @@ class ChatSearchTest {
     private fun show(vm: ChatViewModel) {
         compose.setContent {
             ChatWithDrawer(
-                vm, reduceMotion = true,
+                vm, Prerequisites.Check(emptyList()), reduceMotion = true,
                 conversations = { store.list() }, conversationChanges = store.changes, conversationTitle = store::title,
                 search = store.search,
                 onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, reopen = true,

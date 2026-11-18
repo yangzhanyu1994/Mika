@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">안녕하세요, Aura예요</string>
+    <string name="welcome_title">안녕하세요, Mika예요</string>
     <string name="welcome_lead">내 휴대전화 속 개인 비서예요.\n할 일을 말씀하시면 백그라운드에서 처리해 드릴게요.</string>
     <string name="welcome_note">시작하기 전에 모델을 설정하고 휴대전화 제어를 켜세요. 3분 정도 걸려요.</string>
     <string name="welcome_start">시작하기</string>

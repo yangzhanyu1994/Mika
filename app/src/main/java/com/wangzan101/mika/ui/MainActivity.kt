@@ -443,15 +443,6 @@ private fun MikaRoot(
     val hasMain = roles.main != null
     val check = Prerequisites.check(status, hasMain)
     val app = context.applicationContext as MikaApp
-    var showAuraHome by rememberSaveable { mutableStateOf(true) }
-    fun openChat() {
-        showAuraHome = false
-        nav.reset()
-    }
-    fun startAuraTask() {
-        showAuraHome = true
-        nav.reset()
-    }
     var assistantVoiceRequest by remember { mutableIntStateOf(0) }
     // 查到的新版本:侧栏、设置首页、关于页的红点都看它
     val updateState by app.updates.state.collectAsState()
@@ -460,7 +451,7 @@ private fun MikaRoot(
     val readyUpdate by app.automaticUpdates.ready.collectAsState()
     LaunchedEffect(requestedAssistant) {
         if (requestedAssistant) {
-            openChat()
+            nav.reset()
             assistantVoiceRequest++
             onAssistantOpened()
         }
@@ -479,7 +470,7 @@ private fun MikaRoot(
             if (requestedConversation == "personal-main") nav.show(Route.Personal)
             else {
                 app.chat.openConversation(requestedConversation)
-                openChat()
+                nav.reset()
             }
             onConversationOpened()
         }
@@ -495,7 +486,7 @@ private fun MikaRoot(
         val draft = sharedDraft?.draft
         if (draft != null) {
             val accepted = app.chat.openSharedDraft(draft, inCurrentConversation = sharedDraft.inCurrentConversation)
-            if (accepted) openChat()
+            if (accepted) nav.reset()
             onSharedDraftOpened(accepted, draft)
         }
     }
@@ -554,7 +545,7 @@ private fun MikaRoot(
             OnboardingStep.Welcome -> nav.show(Route.Welcome)
             OnboardingStep.Model -> nav.show(Route.ModelSetup)
             OnboardingStep.Phone -> { setupRepair = false; nav.show(Route.PhoneSetup) }
-            null -> startAuraTask()
+            null -> nav.reset()
         }
     }
     LaunchedEffect(Unit) {
@@ -593,10 +584,9 @@ private fun MikaRoot(
                 app.chat.refresh()
                 onStopOrDispose {}
             }
-            val overview = auraTasks(app.taskState)
-            val completed by app.taskState.edgeLightCompletion.collectAsState()
             ChatWithDrawer(
                 vm = app.chat,
+                check = check,
                 reduceMotion = MikaTheme.reduceMotion,
                 conversations = { ConversationStore.shared(context).list() },
                 conversationChanges = ConversationStore.shared(context).changes,
@@ -612,14 +602,12 @@ private fun MikaRoot(
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
                 updateAvailable = AboutCopy.drawerDot(updateState),
                 unhandledCalls = callHistory.count { !it.handled },
+                currentVersion = com.wangzan101.mika.BuildConfig.VERSION_NAME,
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,
                 onPersonal = { nav.show(Route.Personal) },
-                onRegularChat = ::openChat,
-                onNewHome = ::startAuraTask,
-                needsAttention = overview.filter { it.needsYou }.map { it.conversation }.toSet(),
+                onRegularChat = nav::reset,
                 resetKey = nav.resetSerial,
-                blackHome = nav.current == Route.Chat && showAuraHome,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
@@ -629,7 +617,7 @@ private fun MikaRoot(
                             runtime = app.personal,
                             voice = app.voice,
                             onOpenDrawer = openDrawer,
-                            onOpenTask = { id -> app.chat.openPersonalTask(id); openChat() },
+                            onOpenTask = { id -> app.chat.openPersonalTask(id); nav.reset() },
                             memoryRuntime = memoryRuntime,
                             onModels = { nav.push(Route.Models) },
                             onPickSpeech = { nav.push(Route.SpeechModel) },
@@ -645,21 +633,6 @@ private fun MikaRoot(
                             openSettings = { nav.push(Route.Settings) },
                             onCreatePlan = { openPlanCreator = true; nav.push(Route.Plans) },
                             onCreateCall = { openCallComposer = true; nav.push(Route.Calls) },
-                            showAuraHome = showAuraHome,
-                            auraTasks = overview,
-                            auraCompletedAt = completed?.startedAt,
-                            onAuraNew = { app.chat.newConversation(); startAuraTask() },
-                            onAuraTask = { item ->
-                                app.chat.openConversation(item.conversation)
-                                if (app.chat.ui.value.conversationId == item.conversation) openChat()
-                                else item.runId?.let { runId = it; nav.push(Route.Run) }
-                            },
-                            onAuraConversation = ::openChat,
-                            onAuraHome = ::startAuraTask,
-                            onAuraModelSetup = { nav.push(Route.Models) },
-                            onAuraPlans = { nav.push(Route.Plans) },
-                            onAuraCalls = { nav.push(Route.Calls) },
-                            onAuraScenes = { nav.push(Route.Scenes) },
                             openRun = { runId = it; nav.push(Route.Run) },
                             phoneSetupNeeded = phoneSetupNeeded && status.builtinShell != BuiltinShellStatus.Running,
                             openPhoneSetup = { onFix(Fix.OpenPhoneSetup) },
@@ -742,12 +715,12 @@ private fun MikaRoot(
         Route.Files -> FileLibraryScreen(app.chat, filesConversation, filesFromDrawer, onBack = back, onAdded = { id ->
             app.chat.openConversation(id)
             val opened = app.chat.ui.value.conversationId == id
-            if (opened) openChat()
+            if (opened) nav.reset()
             opened
         }, onOpenSource = { id, target ->
             app.chat.openConversationAt(id, target)
             val opened = app.chat.ui.value.conversationId == id
-            if (opened) openChat()
+            if (opened) nav.reset()
             opened
         })
         Route.Memory -> {
@@ -810,11 +783,11 @@ private fun MikaRoot(
         }
         Route.Plans -> PlansScreen(context, onBack = back, onOpenConversation = {
             app.chat.openConversation(it)
-            openChat()
+            nav.reset()
         }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false })
         Route.Scenes -> ScenesScreen(context, onBack = back, onPlans = { nav.push(Route.Plans) }, onOpenConversation = {
             app.chat.openConversation(it)
-            openChat()
+            nav.reset()
         })
         Route.Teach -> TeachScreen(
             app.teach,
@@ -826,13 +799,9 @@ private fun MikaRoot(
         )
         Route.Screens -> ScreensScreen(app.taskState, onBack = back, onOpenConversation = {
             app.chat.openConversation(it)
-            openChat()
+            nav.reset()
         })
-        Route.Calls -> SettingsAppearance {
-            CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId,
-                voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer,
-                onTaskComposerOpened = { openCallComposer = false })
-        }
+        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer, onTaskComposerOpened = { openCallComposer = false })
     }
 }
 

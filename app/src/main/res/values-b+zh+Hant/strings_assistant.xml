@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">輸入文字或對 Aura 說話</string>
+    <string name="assistant_input">輸入文字或對 Mika 說話</string>
     <string name="assistant_take_screenshot">附上目前畫面</string>
-    <string name="assistant_screenshot_unavailable">無法附上目前畫面。請檢查系統的助理截圖設定和 Aura 的無障礙權限。</string>
+    <string name="assistant_screenshot_unavailable">無法附上目前畫面。請檢查系統的助理截圖設定和 Mika 的無障礙權限。</string>
     <string name="assistant_camera_permission">請允許使用相機後拍照。</string>
     <string name="assistant_stop_listening">結束聽寫</string>
     <string name="assistant_preview_photo">照片預覽</string>
     <string name="assistant_preview_screen">截圖預覽</string>
-    <string name="assistant_send_failed">Aura 未能啟動任務，草稿已保留。</string>
-    <string name="assistant_model_required">請先在 Aura 裡設定模型，再傳送任務。</string>
+    <string name="assistant_send_failed">Mika 未能啟動任務，草稿已保留。</string>
+    <string name="assistant_model_required">請先在 Mika 裡設定模型，再傳送任務。</string>
     <string name="assistant_clear">清空草稿</string>
 </resources>

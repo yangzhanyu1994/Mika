@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -53,7 +53,7 @@ data class DrawerSearch(
     val truncated: Boolean = false,
 )
 
-/** 侧栏顶部的搜索框:浅底圆角条,聚焦时一圈强调色;键盘上是「搜索」。 */
+/** 侧栏顶部的搜索框:38 高的浅底圆角条,聚焦时一圈强调色;键盘上是「搜索」。 */
 @Composable
 internal fun DrawerSearchField(query: String, onQueryChange: (String) -> Unit) {
     val c = MikaTheme.colors
@@ -61,28 +61,28 @@ internal fun DrawerSearchField(query: String, onQueryChange: (String) -> Unit) {
     val focus = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(start = 15.dp, end = 15.dp, top = 15.dp, bottom = 4.dp)
-            .heightIn(min = 48.dp)
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+            .height(38.dp)
             .keepsKeyboard()
             .clip(NavShape)
-            .background(if (c.isDark) Color(0xFF233045) else Color(0xFFF0F4F8))
-            .then(if (focused) Modifier.border(1.dp, drawerBlue(), NavShape) else Modifier)
-            .padding(start = 18.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            .background(c.fill)
+            .then(if (focused) Modifier.border(1.dp, c.accent, NavShape) else Modifier)
+            .padding(start = 12.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(MikaIcons.Search, null, Modifier.size(23.dp), tint = drawerInk())
+        Icon(MikaIcons.Search, null, Modifier.size(16.dp), tint = c.ink3)
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.isEmpty()) {
-                Text(stringResource(R.string.drawer_search_hint), style = SearchText, color = drawerMutedInk(), maxLines = 1)
+                Text(stringResource(R.string.drawer_search_hint), style = SearchText, color = c.ink3, maxLines = 1)
             }
             BasicTextField(
                 query, onQueryChange,
                 Modifier.fillMaxWidth().testTag("drawer-search")
                     .onFocusChanged { focused = it.isFocused },
                 singleLine = true,
-                textStyle = SearchText.copy(color = drawerInk()),
-                cursorBrush = SolidColor(drawerBlue()),
+                textStyle = SearchText.copy(color = c.ink),
+                cursorBrush = SolidColor(c.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
             )
@@ -166,4 +166,4 @@ internal fun matchRanges(text: String, terms: List<String>): List<IntRange> {
     return merged
 }
 
-private val SearchText = MikaType.Body.copy(fontSize = 16.sp, lineHeight = 22.sp)
+private val SearchText = MikaType.Body.copy(fontSize = 14.sp)

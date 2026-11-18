@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Digite ou fale com a Aura</string>
+    <string name="assistant_input">Digite ou fale com a Mika</string>
     <string name="assistant_take_screenshot">Anexar tela</string>
-    <string name="assistant_screenshot_unavailable">Não foi possível anexar a tela. Confira a configuração de captura do assistente e o acesso de acessibilidade da Aura.</string>
+    <string name="assistant_screenshot_unavailable">Não foi possível anexar a tela. Confira a configuração de captura do assistente e o acesso de acessibilidade da Mika.</string>
     <string name="assistant_camera_permission">Permita o acesso à câmera para tirar uma foto.</string>
     <string name="assistant_stop_listening">Concluir ditado</string>
     <string name="assistant_preview_photo">Prévia da foto</string>
     <string name="assistant_preview_screen">Prévia da captura de tela</string>
-    <string name="assistant_send_failed">A Aura não conseguiu iniciar a tarefa. O rascunho ainda está aqui.</string>
-    <string name="assistant_model_required">Configure um modelo na Aura antes de enviar a tarefa.</string>
+    <string name="assistant_send_failed">A Mika não conseguiu iniciar a tarefa. O rascunho ainda está aqui.</string>
+    <string name="assistant_model_required">Configure um modelo na Mika antes de enviar a tarefa.</string>
     <string name="assistant_clear">Limpar rascunho</string>
 </resources>

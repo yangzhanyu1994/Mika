@@ -66,14 +66,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
  * 设了背景图片时铺满图片、再盖一层同色遮罩(见 [SkinBackdrop]),卡片和文字照旧。
  */
 @Composable
-fun PageBackground(
-    modifier: Modifier = Modifier,
-    ambient: AmbientMode = AmbientMode.Idle,
-    reduceMotion: Boolean = MikaTheme.reduceMotion,
-    solid: Boolean = false,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val backdrop = if (solid || LocalSettingsAppearance.current) null else rememberSkinBackdrop()
+fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = AmbientMode.Idle, reduceMotion: Boolean = MikaTheme.reduceMotion, content: @Composable BoxScope.() -> Unit) {
+    val backdrop = if (LocalSettingsAppearance.current) null else rememberSkinBackdrop()
     val glassBackground: GlassBackdrop? = null
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(

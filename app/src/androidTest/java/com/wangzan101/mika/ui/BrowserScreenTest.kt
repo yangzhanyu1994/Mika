@@ -14,9 +14,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
@@ -38,6 +35,7 @@ import com.wangzan101.mika.browser.SearchEngine
 import com.wangzan101.mika.browser.SiteLook
 import com.wangzan101.mika.browser.SiteLooks
 import com.wangzan101.mika.browser.StartPageModel
+import com.wangzan101.mika.settings.Prerequisites
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import org.junit.Assert.assertEquals
@@ -89,16 +87,13 @@ class BrowserScreenTest {
         compose.setContent {
             MikaTheme {
                 ChatDrawer(
-                    DrawerSections(emptyList(), emptyList()), canSwitch = true,
+                    Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
                     onNew = {}, onPlans = {}, onMemory = {},
                     onBrowser = { calls += "browser" },
                     onSettings = {}, onOpen = {},
                 )
             }
         }
-        compose.onNodeWithTag("drawer-list").performScrollToNode(hasTestTag("drawer-tools"))
-        compose.onNodeWithTag("drawer-tools").performClick()
-        compose.onNodeWithTag("drawer-list").performScrollToNode(hasText("网页浏览"))
         compose.onNodeWithText("网页浏览").assertIsDisplayed().performClick()
         assertEquals(listOf("browser"), calls)
     }
