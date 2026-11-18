@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.ui.components.PageBackground
 import com.wangzan101.mika.ui.components.TopBar
@@ -122,7 +125,14 @@ internal fun ResearchConversationScreen(
         }
     }
     val pending by app.researchChat.pending.collectAsState()
-    val working = id?.let(pending::get)
+    val working = id?.let(pending::get)?.takeUnless { live ->
+        stored.lastOrNull()?.atMs == live.startedAt
+    }
+    ResearchReplyHaptics(id, working?.text.orEmpty())
+    val scroll = rememberLazyListState()
+    LaunchedEffect(working?.startedAt) {
+        if (working != null) scroll.scrollToItem(0)
+    }
     var draft by rememberSaveable { mutableStateOf("") }
     PageBackground {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
@@ -136,27 +146,39 @@ internal fun ResearchConversationScreen(
             ConversationModeHeader(true, model, onMode, onModel)
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                state = scroll,
+                reverseLayout = true,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
             ) {
+                if (working != null) item {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ResearchQuestion(working.question, Modifier.align(Alignment.End))
+                        if (working.text.isEmpty()) {
+                            val searching = working.phase == ResearchPhase.Searching
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ResearchThinkingOrb(searching)
+                                Text(
+                                    stringResource(if (searching) R.string.assistant_searching else R.string.assistant_thinking),
+                                    style = MikaType.Caption, color = c.ink2,
+                                )
+                            }
+                        } else {
+                            MarkdownText(working.text, MikaType.Body.copy(color = c.ink), streaming = true)
+                        }
+                    }
+                }
                 if (stored.isEmpty() && working == null) item {
                     ConversationModeGuidance(true) { draft = it }
                 }
-                items(stored) { turn ->
+                items(stored.asReversed()) { turn ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(turn.userText, Modifier.align(Alignment.End).clip(RoundedCornerShape(16.dp))
-                            .background(c.accentSoft).padding(10.dp), style = MikaType.Body, color = c.ink)
+                        ResearchQuestion(turn.userText, Modifier.align(Alignment.End))
                         MarkdownText(turn.outcome, MikaType.Body.copy(color = c.ink))
                         if (turn.status == "succeeded") {
                             TextButton(onClick = { onTransfer(turn) }) {
                                 Text(stringResource(R.string.mode_transfer), color = c.accent)
                             }
                         }
-                    }
-                }
-                if (working != null) item {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(working, Modifier.align(Alignment.End).padding(8.dp), style = MikaType.Body, color = c.ink)
-                        Text(stringResource(R.string.assistant_thinking), Modifier.padding(8.dp), style = MikaType.Caption, color = c.ink2)
                     }
                 }
             }
@@ -180,10 +202,17 @@ internal fun ResearchConversationScreen(
                     },
                 )
                 IconButton(
-                    enabled = draft.isNotBlank() && working == null,
+                    enabled = draft.isNotBlank() && id?.let(pending::containsKey) != true,
                     onClick = { if (onSend(draft.trim())) draft = "" },
                 ) { Icon(MikaIcons.Up, stringResource(R.string.chat_send)) }
             }
         }
     }
+}
+
+@Composable
+private fun ResearchQuestion(question: String, modifier: Modifier = Modifier) {
+    val c = MikaTheme.colors
+    Text(question, modifier.clip(RoundedCornerShape(16.dp)).background(c.accentSoft).padding(10.dp),
+        style = MikaType.Body, color = c.ink)
 }
