@@ -21,9 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +53,7 @@ import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
+import com.wangzan101.mika.voice.HoldToTalk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -154,6 +152,7 @@ internal fun ResearchConversationScreen(
     onModel: () -> Unit,
     onSend: suspend (String) -> Boolean,
     onTransfer: (Turn) -> Unit,
+    onPickSpeech: () -> Unit,
 ) {
     val c = MikaTheme.colors
     val loaded by produceState<List<Turn>?>(null, id) {
@@ -176,6 +175,18 @@ internal fun ResearchConversationScreen(
     var draft by rememberSaveable { mutableStateOf("") }
     var routing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    fun send() {
+        val submitted = draft
+        if (submitted.isBlank() || routing || id?.let { it in app.researchChat.pending.value } == true) return
+        routing = true
+        scope.launch {
+            try {
+                if (onSend(submitted.trim()) && draft == submitted) draft = ""
+            } finally {
+                routing = false
+            }
+        }
+    }
     PageBackground {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
             val usage = if (id == null || loaded != null) {
@@ -213,40 +224,26 @@ internal fun ResearchConversationScreen(
                     }
                 }
             }
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(24.dp)).background(c.fill).padding(start = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BasicTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    modifier = Modifier.weight(1f),
-                    maxLines = 4,
-                    textStyle = MikaType.Body.copy(color = c.ink),
-                    cursorBrush = SolidColor(c.accent),
-                    decorationBox = { field ->
-                        Box {
-                            if (draft.isEmpty()) Text(stringResource(R.string.mode_chat_input), color = c.ink2, style = MikaType.Body)
-                            field()
-                        }
-                    },
-                )
-                IconButton(
-                    enabled = !routing && draft.isNotBlank() && id?.let(pending::containsKey) != true,
-                    onClick = {
-                        val submitted = draft
-                        routing = true
-                        scope.launch {
-                            try {
-                                if (onSend(submitted.trim()) && draft == submitted) draft = ""
-                            } finally {
-                                routing = false
-                            }
-                        }
-                    },
-                ) { Icon(MikaIcons.Up, stringResource(R.string.chat_send)) }
-            }
+            Composer(
+                modifier = Modifier,
+                text = draft,
+                onText = { draft = it },
+                mode = ComposerMode.Idle,
+                hasHistory = stored.isNotEmpty(),
+                idlePlaceholder = stringResource(R.string.mode_chat_input),
+                onSend = ::send,
+                onStop = {},
+                reduceMotion = MikaTheme.reduceMotion,
+                voice = app.voice,
+                onVoiceText = { draft = HoldToTalk.join(draft, it) },
+                onVoiceSend = { words ->
+                    draft = HoldToTalk.join(draft, words)
+                    send()
+                },
+                onPickSpeech = onPickSpeech,
+                draftKey = id,
+                sendEnabled = !routing && id?.let(pending::containsKey) != true,
+            )
         }
     }
 }

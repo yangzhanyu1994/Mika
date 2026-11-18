@@ -41,11 +41,17 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
@@ -60,6 +66,7 @@ import com.wangzan101.mika.ui.ResearchReplyHaptics
 import com.wangzan101.mika.ui.ResearchThinkingOrb
 import com.wangzan101.mika.ui.OrbMotion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import com.wangzan101.mika.task.TaskEdgeLight
 import com.wangzan101.mika.ui.MarkdownText
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -215,18 +222,32 @@ internal fun AssistantOverlay(
                     }
                     if (reply != null || history.isNotEmpty()) {
                         val scroll = rememberScrollState()
-                        var previousMax by remember { mutableStateOf(0) }
-                        var previousTurn by remember { mutableStateOf<Int?>(null) }
-                        LaunchedEffect(pendingQuestion, revealTurn, revealed, history.size) {
-                            val newTurn = previousTurn != revealTurn
-                            previousTurn = revealTurn
-                            val follow = newTurn || (!scroll.isScrollInProgress && scroll.value >= previousMax)
-                            withFrameNanos {}
-                            if (follow) scroll.scrollTo(scroll.maxValue)
-                            previousMax = scroll.maxValue
+                        var followLatest by remember { mutableStateOf(true) }
+                        val userScroll = remember(scroll) {
+                            object : NestedScrollConnection {
+                                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                                    if (source == NestedScrollSource.UserInput && consumed.y != 0f) {
+                                        followLatest = !scroll.canScrollForward
+                                    }
+                                    return Offset.Zero
+                                }
+
+                                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                                    if (consumed.y < 0f && !scroll.canScrollForward) followLatest = true
+                                    return Velocity.Zero
+                                }
+                            }
+                        }
+                        LaunchedEffect(pendingQuestion) {
+                            if (pendingQuestion != null) followLatest = true
+                        }
+                        LaunchedEffect(scroll) {
+                            snapshotFlow { scroll.maxValue to followLatest }.collectLatest { (end, following) ->
+                                if (following && end != Int.MAX_VALUE && scroll.value != end) scroll.scrollTo(end)
+                            }
                         }
                         Column(
-                            Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(scroll),
+                            Modifier.weight(1f, fill = false).fillMaxWidth().nestedScroll(userScroll).verticalScroll(scroll),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             history.forEachIndexed { index, turn ->

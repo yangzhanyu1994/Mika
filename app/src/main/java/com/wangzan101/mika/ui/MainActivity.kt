@@ -824,6 +824,7 @@ private fun MikaRoot(
                                     onModel = { openModeModels(ModelRole.Chat) },
                                     onSend = { sendByIntent(it, inPersonal = false, fromWork = false) },
                                     onTransfer = ::prepareWorkTransfer,
+                                    onPickSpeech = { nav.push(Route.SpeechModel) },
                                 )
                             }
                         } else ChatScreen(

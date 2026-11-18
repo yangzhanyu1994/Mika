@@ -349,8 +349,8 @@ class AssistantOverlayActivity : ComponentActivity() {
         playbackJob = null
     }
 
-    private fun playCompletedResult(answer: String) {
-        if (!resumed || listening || converting || isFinishing || answer.isBlank()) return
+    private fun playCompletedResult(turn: Turn) {
+        if (!resumed || listening || converting || isFinishing || turn.outcome.isBlank()) return
         val readout = AssistantReadoutSettings(this)
         if (!readout.enabled) return
         stopPlayback()
@@ -358,7 +358,12 @@ class AssistantOverlayActivity : ComponentActivity() {
         playbackJob = lifecycleScope.launch {
             status = getString(R.string.assistant_reading_result)
             val played = try {
-                val words = withContext(Dispatchers.Default) { MarkdownModel.toPlainText(answer) }
+                val uncertain = turn.status == "unverified"
+                val fallback = getString(if (uncertain) R.string.chat_unverified else R.string.task_done)
+                val headline = if (uncertain) turn.note.orEmpty() else turn.outcome
+                val words = withContext(Dispatchers.Default) {
+                    assistantSpokenSummary(MarkdownModel.toPlainText(headline), fallback)
+                }
                 val configured = withContext(Dispatchers.IO) { readout.playbackConfiguration() }
                 configured != null && words.isNotBlank() && readout.enabled &&
                     speakAssistantResult(this@AssistantOverlayActivity, configured.first, configured.second, words)
@@ -634,7 +639,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                     previousRun = null
                     reply = (finished ?: turns.lastOrNull())?.let(::savedReply)
                     if (finished != null && finished.status in setOf("succeeded", "unverified")) {
-                        playCompletedResult(savedReply(finished).body)
+                        playCompletedResult(finished)
                     }
                 }
             }
@@ -720,4 +725,14 @@ internal fun assistantProgressLabel(tool: String?): Int = when (tool) {
     "web_search", "knowledge_search", "skill_search", "search_files" -> R.string.assistant_searching
     "phone_find", "find_visually", "list_elements", "observe", "screenshot" -> R.string.assistant_looking
     else -> R.string.task_running
+}
+
+/** Use the opening result or verification note, with a status fallback for long unbroken text. */
+internal fun assistantSpokenSummary(plain: String, fallback: String): String {
+    val opening = plain.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+    val sentences = opening.split(Regex("(?<=[。！？!?])\\s*|(?<=\\.)\\s+")).filter(String::isNotBlank)
+    val short = sentences.take(2).joinToString(" ")
+    return short.takeIf { it.isNotBlank() && it.length <= 120 }
+        ?: sentences.firstOrNull()?.takeIf { it.length <= 120 }
+        ?: fallback
 }
