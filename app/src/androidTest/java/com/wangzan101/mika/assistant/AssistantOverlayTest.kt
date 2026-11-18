@@ -21,7 +21,7 @@ class AssistantOverlayTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun replyReplacesWaitingStatusBelowTheSubmittedQuestion() {
-        val reply = mutableStateOf(AssistantReply("正在准备"))
+        val reply = mutableStateOf(AssistantReply("正在准备", waiting = true))
         val question = "帮我看看今天下午的日程"
         var opened = false
         compose.setContent {
@@ -29,15 +29,16 @@ class AssistantOverlayTest {
                 AssistantOverlay(
                     text = question, partial = "", status = null,
                     listening = false, converting = false, level = { 0f },
-                    screenshot = null, photo = null, sending = false, reply = reply.value,
+                    screenshot = null, photo = null, sending = false, reply = reply.value, displayName = "小蓝",
                     onOpenConversation = { opened = true },
                     onText = {}, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
                     onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = {}, onClose = {},
                 )
             }
         }
+        compose.onNodeWithText("小蓝").assertIsDisplayed()
         compose.onNodeWithText("正在准备").assertIsDisplayed()
-        compose.runOnIdle { reply.value = AssistantReply("Mika 的回复", "**14:00** 项目同步会") }
+        compose.runOnIdle { reply.value = AssistantReply("任务完成", "**14:00** 项目同步会") }
         compose.onNodeWithText("正在准备").assertDoesNotExist()
         val result = compose.onNodeWithText("14:00 项目同步会").assertIsDisplayed()
         assertTrue(result.fetchSemanticsNode().boundsInRoot.top >

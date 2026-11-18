@@ -37,12 +37,13 @@ class ForkReleaseHistoryTest {
     @Test fun bundledHistoryContainsRecentVersionsInOrder() {
         val source = File("src/main/assets/fork-release-history.md").readText()
         val entries = ForkReleaseHistory.parse(source)
-        assertEquals(listOf("0.1.81", "0.1.80", "0.1.77"), entries.take(3).map { it.version })
+        assertEquals(listOf("0.1.82", "0.1.81", "0.1.80", "0.1.77"), entries.take(4).map { it.version })
         assertEquals("0.1.40", entries.last().version)
-        assertEquals(40, entries.size)
-        assertTrue(entries.first().notes.contains("数字助理浮窗"))
-        assertTrue(entries.first().notes.contains("后台蓝光"))
-        assertTrue(entries[1].notes.contains("首页引导"))
-        assertTrue(entries[2].notes.contains("系统动态配色"))
+        assertEquals(41, entries.size)
+        assertTrue(entries.first().notes.contains("助手外观"))
+        assertTrue(entries.first().notes.contains("浮窗状态"))
+        assertTrue(entries[1].notes.contains("后台蓝光"))
+        assertTrue(entries[2].notes.contains("首页引导"))
+        assertTrue(entries[3].notes.contains("系统动态配色"))
     }
 }

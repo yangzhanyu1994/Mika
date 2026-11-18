@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Ketik atau bicara dengan Mika</string>
+    <string name="assistant_input">Pesan</string>
     <string name="assistant_take_screenshot">Lampirkan layar</string>
     <string name="assistant_screenshot_unavailable">Layar tidak dapat dilampirkan. Periksa setelan tangkapan layar asisten dan aksesibilitas Mika.</string>
     <string name="assistant_camera_permission">Izinkan akses kamera untuk mengambil foto.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">Balasan Mika</string>
     <string name="assistant_open_conversation">Lihat percakapan lengkap</string>
     <string name="assistant_status_unavailable">Menunggu pembaruan status tugas</string>
+    <string name="assistant_appearance">Tampilan asisten</string>
+    <string name="assistant_avatar">Avatar</string>
+    <string name="assistant_change_avatar">Ganti avatar</string>
+    <string name="assistant_default_avatar">Gunakan avatar bawaan</string>
+    <string name="assistant_display_name">Nama tampilan</string>
+    <string name="assistant_wait_animation">Animasi menunggu</string>
+    <string name="assistant_searching">Mencari</string>
+    <string name="assistant_looking">Memeriksa</string>
 </resources>

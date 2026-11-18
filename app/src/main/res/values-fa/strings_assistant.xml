@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">بنویسید یا با Mika صحبت کنید</string>
+    <string name="assistant_input">پیام</string>
     <string name="assistant_take_screenshot">پیوست کردن صفحه</string>
     <string name="assistant_screenshot_unavailable">پیوست کردن صفحه ممکن نشد. تنظیم عکس صفحه دستیار و دسترسی دسترس‌پذیری Mika را بررسی کنید.</string>
     <string name="assistant_camera_permission">برای گرفتن عکس، اجازه دسترسی به دوربین را بدهید.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">پاسخ Mika</string>
     <string name="assistant_open_conversation">دیدن گفت‌وگوی کامل</string>
     <string name="assistant_status_unavailable">در انتظار به‌روزرسانی وضعیت کار</string>
+    <string name="assistant_appearance">ظاهر دستیار</string>
+    <string name="assistant_avatar">تصویر نمایه</string>
+    <string name="assistant_change_avatar">تغییر تصویر نمایه</string>
+    <string name="assistant_default_avatar">استفاده از تصویر پیش‌فرض</string>
+    <string name="assistant_display_name">نام نمایشی</string>
+    <string name="assistant_wait_animation">پویانمایی انتظار</string>
+    <string name="assistant_searching">در حال جستجو</string>
+    <string name="assistant_looking">در حال بررسی</string>
 </resources>

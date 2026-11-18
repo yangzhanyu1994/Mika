@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">Введите текст или скажите Mika</string>
+    <string name="assistant_input">Сообщение</string>
     <string name="assistant_take_screenshot">Прикрепить снимок экрана</string>
     <string name="assistant_screenshot_unavailable">Не удалось прикрепить экран. Проверьте настройки снимков экрана для ассистента и доступ Mika к специальным возможностям.</string>
     <string name="assistant_camera_permission">Разрешите доступ к камере, чтобы сделать фото.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">Ответ Mika</string>
     <string name="assistant_open_conversation">Открыть весь разговор</string>
     <string name="assistant_status_unavailable">Ожидание обновления статуса задачи</string>
+    <string name="assistant_appearance">Внешний вид ассистента</string>
+    <string name="assistant_avatar">Аватар</string>
+    <string name="assistant_change_avatar">Изменить аватар</string>
+    <string name="assistant_default_avatar">Использовать стандартный аватар</string>
+    <string name="assistant_display_name">Отображаемое имя</string>
+    <string name="assistant_wait_animation">Анимация ожидания</string>
+    <string name="assistant_searching">Идёт поиск</string>
+    <string name="assistant_looking">Проверяю</string>
 </resources>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="assistant_input">اكتب أو تحدّث إلى Mika</string>
+    <string name="assistant_input">رسالة</string>
     <string name="assistant_take_screenshot">إرفاق الشاشة</string>
     <string name="assistant_screenshot_unavailable">تعذّر إرفاق الشاشة. تحقّق من إعداد لقطة شاشة المساعد وإمكانية وصول Mika.</string>
     <string name="assistant_camera_permission">اسمح باستخدام الكاميرا لالتقاط صورة.</string>
@@ -13,4 +13,12 @@
     <string name="assistant_reply">رد Mika</string>
     <string name="assistant_open_conversation">عرض المحادثة كاملة</string>
     <string name="assistant_status_unavailable">في انتظار تحديث حالة المهمة</string>
+    <string name="assistant_appearance">مظهر المساعد</string>
+    <string name="assistant_avatar">الصورة الرمزية</string>
+    <string name="assistant_change_avatar">تغيير الصورة الرمزية</string>
+    <string name="assistant_default_avatar">استخدام الصورة الافتراضية</string>
+    <string name="assistant_display_name">الاسم المعروض</string>
+    <string name="assistant_wait_animation">حركة الانتظار</string>
+    <string name="assistant_searching">جارٍ البحث</string>
+    <string name="assistant_looking">جارٍ التحقق</string>
 </resources>
