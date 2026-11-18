@@ -39,32 +39,40 @@ internal class AssistantReadoutSettings(context: Context) {
     private val cipher = KeystoreKeyCipher("mika-assistant-readout")
     val enabled get() = prefs.getBoolean("enabled", false)
 
-    @Synchronized
-    fun setEnabled(enabled: Boolean): Boolean =
-        (!enabled || configured() != null) && prefs.edit().putBoolean("enabled", enabled).commit()
+    fun setEnabled(enabled: Boolean): Boolean = synchronized(SAVE_LOCK) {
+        val snapshot = prefs.all
+        (!enabled || credentials(snapshot, model(snapshot).provider) != null) &&
+            prefs.edit().putBoolean("enabled", enabled).commit()
+    }
 
-    fun model(): ReadoutModel {
+    fun model(): ReadoutModel = model(prefs.all)
+
+    private fun model(snapshot: Map<String, *>): ReadoutModel {
         val defaults = ReadoutModel()
         return ReadoutModel(
-            provider = ReadoutProvider.entries.firstOrNull { it.name == prefs.getString("provider", null) } ?: defaults.provider,
-            model = prefs.getString("model", defaults.model).orEmpty(),
-            voice = prefs.getString("voice", defaults.voice).orEmpty(),
-            baseUrl = prefs.getString("base_url", "").orEmpty(),
+            provider = ReadoutProvider.entries.firstOrNull { it.name == snapshot["provider"] } ?: defaults.provider,
+            model = snapshot["model"] as? String ?: defaults.model,
+            voice = snapshot["voice"] as? String ?: defaults.voice,
+            baseUrl = snapshot["base_url"] as? String ?: "",
         )
     }
 
-    @Synchronized
-    fun configured(): Pair<ReadoutModel, ReadoutCredentials>? =
-        credentials()?.let { model() to it }
+    /** Pair a provider and its credentials from a single atomic SharedPreferences snapshot. */
+    fun playbackConfiguration(): Pair<ReadoutModel, ReadoutCredentials>? {
+        val snapshot = prefs.all
+        if (snapshot["enabled"] != true) return null
+        val selected = model(snapshot)
+        return credentials(snapshot, selected.provider)?.let { selected to it }
+    }
 
-    @Synchronized
-    fun save(model: ReadoutModel, replacement: ReadoutCredentials?) {
+    fun save(model: ReadoutModel, replacement: ReadoutCredentials?) = synchronized(SAVE_LOCK) {
         require(model.model.isNotBlank() && model.model.length <= 128 && model.model.none(Char::isISOControl))
         require(model.voice.isNotBlank() && model.voice.length <= 128 && model.voice.none(Char::isISOControl))
         require(if (model.provider == ReadoutProvider.Doubao) model.model == VolcRealtimeConfig.MODEL else model.speechUrl() != null)
-        val previous = this.model()
+        val snapshot = prefs.all
+        val previous = this.model(snapshot)
         val sameTarget = previous.provider == model.provider && previous.speechUrl() == model.speechUrl()
-        val credential = replacement ?: credentials()?.takeIf { sameTarget }
+        val credential = replacement ?: if (sameTarget) credentials(snapshot, previous.provider) else null
         require(credential?.valid(model.provider) == true)
         val edit = prefs.edit().putString("provider", model.provider.name).putString("model", model.model)
             .putString("voice", model.voice).putString("base_url", model.baseUrl)
@@ -79,15 +87,19 @@ internal class AssistantReadoutSettings(context: Context) {
         check(edit.commit())
     }
 
-    private fun credentials(): ReadoutCredentials? = runCatching {
-        val stored = prefs.getString("credential", null) ?: return null
+    private fun credentials(snapshot: Map<String, *>, provider: ReadoutProvider): ReadoutCredentials? = runCatching {
+        val stored = snapshot["credential"] as? String ?: return null
         val plain = cipher.decrypt(Base64.decode(stored, Base64.NO_WRAP))
         try {
             val fields = plain.toString(Charsets.UTF_8).split('\n')
             if (fields.size != 3) return null
-            ReadoutCredentials(fields[0], fields[1], fields[2]).takeIf { it.valid(model().provider) }
+            ReadoutCredentials(fields[0], fields[1], fields[2]).takeIf { it.valid(provider) }
         } finally {
             plain.fill(0)
         }
     }.getOrNull()
+
+    private companion object {
+        val SAVE_LOCK = Any()
+    }
 }
