@@ -628,8 +628,8 @@ class ProviderStore(
         meteredFor(role, session, UsagePurpose.of(role), ::checkDailyBudget)
 
     /** Use only the configured conversation providers and do not inherit the reply's chosen effort. */
-    internal fun conversationRoutingModel(): ChatModel? {
-        val role = if (configFor(ModelRole.Chat) != null) ModelRole.Chat else ModelRole.Main
+    internal fun conversationRoutingModel(preferredRole: ModelRole? = null): ChatModel? {
+        val role = preferredRole ?: if (configFor(ModelRole.Chat) != null) ModelRole.Chat else ModelRole.Main
         val cfg = configFor(role) ?: return null
         return meteredWith(cfg, role, ModelSession.fresh(), UsagePurpose.of(role), ::checkDailyBudget, routing = true)
     }

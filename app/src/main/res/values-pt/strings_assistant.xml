@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">Seguir Trabalho</string>
     <string name="mode_work_draft_pending">Conclua a tarefa ou o rascunho de Trabalho antes de enviar.</string>
     <string name="assistant_readout_unavailable">Não foi possível ler o resultado. Confira Configurações › Leitura em voz alta.</string>
+    <string name="assistant_mode_auto">Automático</string>
+    <string name="assistant_mode_chat">Conversa</string>
+    <string name="assistant_mode_work">Trabalho</string>
+    <string name="assistant_routing">Escolhendo um modo…</string>
+    <string name="assistant_routing_unavailable">Não foi possível selecionar um modo. Escolha Conversa ou Trabalho e envie a mensagem novamente.</string>
 </resources>

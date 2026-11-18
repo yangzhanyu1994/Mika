@@ -24,7 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
-import com.wangzan101.mika.chat.routeConversation
+import com.wangzan101.mika.chat.routeAssistantConversation
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.Attachments
@@ -81,6 +81,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var screenshot by mutableStateOf<Bitmap?>(null)
     private var photo by mutableStateOf<Bitmap?>(null)
     private var sending by mutableStateOf(false)
+    private var mode by mutableStateOf(AssistantMode.Auto)
     private var conversationId: String? = null
     private var reply by mutableStateOf<AssistantReply?>(null)
     private var history by mutableStateOf<List<AssistantExchange>>(emptyList())
@@ -148,9 +149,12 @@ class AssistantOverlayActivity : ComponentActivity() {
         }
         invocation = active
         if (savedInstanceState != null) {
+            mode = AssistantMode.entries.firstOrNull { it.name == savedInstanceState.getString("assistantMode") }
+                ?: AssistantMode.Auto
+            text = savedInstanceState.getString("assistantQuestion").orEmpty()
+            if (text.isNotBlank()) autoListen = false
             savedInstanceState.getString("assistantConversation")?.let { id ->
                 autoListen = false
-                text = savedInstanceState.getString("assistantQuestion").orEmpty()
                 pendingQuestion = savedInstanceState.getString("assistantPendingQuestion")
                 pendingAfter = savedInstanceState.getInt("assistantPendingAfter", 0)
                 pendingChat = savedInstanceState.getBoolean("assistantPendingChat")
@@ -187,6 +191,12 @@ class AssistantOverlayActivity : ComponentActivity() {
                         screenshot = screenshot,
                         photo = photo,
                         sending = sending,
+                        mode = mode,
+                        onMode = {
+                            noteInteraction()
+                            mode = it
+                            status = null
+                        },
                         reply = reply,
                         onOpenConversation = ::openConversation,
                         onText = { noteInteraction(); text = it },
@@ -209,6 +219,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString("assistantConversation", conversationId)
         outState.putString("assistantQuestion", text)
+        outState.putString("assistantMode", mode.name)
         outState.putString("assistantPendingQuestion", pendingQuestion)
         outState.putInt("assistantPendingAfter", pendingAfter)
         outState.putBoolean("assistantPendingChat", pendingChat)
@@ -473,8 +484,20 @@ class AssistantOverlayActivity : ComponentActivity() {
                 }
             }
             try {
-                val target = if (screen != null || cameraFile != null) ModelRole.Main else routeConversation(words, app.providers)
+                val target = when {
+                    screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
+                    mode == AssistantMode.Chat -> ModelRole.Chat
+                    else -> {
+                        status = getString(R.string.assistant_routing)
+                        routeAssistantConversation(words, app.providers)
+                    }
+                }
+                status = null
                 if (!resumed || locked() || isFinishing) return@launch
+                if (target == null) {
+                    status = getString(R.string.assistant_routing_unavailable)
+                    return@launch
+                }
                 if (app.providers.configFor(target) == null) {
                     status = getString(R.string.assistant_model_required)
                     return@launch

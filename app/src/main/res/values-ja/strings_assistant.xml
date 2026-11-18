@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">作業設定に従う</string>
     <string name="mode_work_draft_pending">作業中のタスクまたは下書きを処理してから送信してください。</string>
     <string name="assistant_readout_unavailable">読み上げできません。設定の音声読み上げを確認してください。</string>
+    <string name="assistant_mode_auto">自動</string>
+    <string name="assistant_mode_chat">チャット</string>
+    <string name="assistant_mode_work">作業</string>
+    <string name="assistant_routing">モードを選択しています…</string>
+    <string name="assistant_routing_unavailable">モードを自動で選べませんでした。チャットか作業を選び、もう一度送信してください。</string>
 </resources>

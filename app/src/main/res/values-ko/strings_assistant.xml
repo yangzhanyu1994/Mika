@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">작업 설정 따르기</string>
     <string name="mode_work_draft_pending">기존 작업이나 초안을 먼저 처리하세요.</string>
     <string name="assistant_readout_unavailable">읽어 줄 수 없습니다. 설정에서 음성 읽어 주기를 확인하세요.</string>
+    <string name="assistant_mode_auto">자동</string>
+    <string name="assistant_mode_chat">채팅</string>
+    <string name="assistant_mode_work">작업</string>
+    <string name="assistant_routing">모드를 선택하는 중…</string>
+    <string name="assistant_routing_unavailable">모드를 자동으로 선택하지 못했습니다. 채팅 또는 작업을 선택한 뒤 다시 보내세요.</string>
 </resources>

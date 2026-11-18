@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">اتّباع إعدادات العمل</string>
     <string name="mode_work_draft_pending">أكمل مهمة العمل أو مسودته قبل الإرسال.</string>
     <string name="assistant_readout_unavailable">تعذرت قراءة النتيجة. تحقّق من إعدادات القراءة الصوتية.</string>
+    <string name="assistant_mode_auto">تلقائي</string>
+    <string name="assistant_mode_chat">دردشة</string>
+    <string name="assistant_mode_work">عمل</string>
+    <string name="assistant_routing">جارٍ اختيار الوضع…</string>
+    <string name="assistant_routing_unavailable">تعذّر اختيار الوضع تلقائيًا. اختر الدردشة أو العمل وأعد الإرسال.</string>
 </resources>

@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">پیروی از حالت کار</string>
     <string name="mode_work_draft_pending">ابتدا کار یا پیش‌نویس موجود را تکمیل کنید.</string>
     <string name="assistant_readout_unavailable">خواندن نتیجه ممکن نشد. تنظیمات خواندن صوتی را بررسی کنید.</string>
+    <string name="assistant_mode_auto">خودکار</string>
+    <string name="assistant_mode_chat">گفت‌وگو</string>
+    <string name="assistant_mode_work">کار</string>
+    <string name="assistant_routing">در حال انتخاب حالت…</string>
+    <string name="assistant_routing_unavailable">انتخاب خودکار حالت ممکن نبود. گفت‌وگو یا کار را انتخاب کنید و دوباره بفرستید.</string>
 </resources>
