@@ -17,6 +17,15 @@ class ConversationRouterTest {
             assertNull(parseConversationRoute(answer))
         }
     }
+    @Test fun nearbyWeatherNeedsWorkWhilePublicWeatherDoesNot() {
+        for (request in listOf("我附近天气如何", "帮我查一下我附近今天的天气", "What is the weather near me today?")) {
+            assertTrue(request, isNearbyWeatherRequest(request))
+        }
+        for (request in listOf("北京今天天气如何", "怎么查我附近的天气", "把「我附近天气如何」翻成英文")) {
+            assertFalse(request, isNearbyWeatherRequest(request))
+        }
+    }
+
     @Test fun onlyAnOfferedWorkHandoffCanDelegate() {
         val request = Part.ToolCall("work-1", "request_work", "{}")
         val search = Part.ToolCall("search-1", "web_search", """{"query":"附近水果店"}""")

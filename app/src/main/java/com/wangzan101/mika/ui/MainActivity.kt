@@ -64,6 +64,7 @@ import com.wangzan101.mika.browser.UserBrowser
 import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.routeConversation
+import com.wangzan101.mika.chat.isNearbyWeatherRequest
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.about.Diagnostics
 import com.wangzan101.mika.about.DiagnosticsCollector
@@ -501,24 +502,20 @@ private fun MikaRoot(
             return app.chat.send(question, check)
         }
         if (question.isBlank()) return false
-        val target = routeConversation(question, store)
-        val current = app.chat.ui.value
-        if (nav.current != screen || personalChat != personalMode || selectedChat != regularMode ||
-            current.conversationId != before.conversationId ||
-            (fromWork && (current.input != before.input || current.composer != before.composer ||
-                current.attachments != before.attachments || current.quote != before.quote ||
-                current.sharedDraft != before.sharedDraft || current.importing))
-        ) return false
+        fun onOriginalScreen(conversationId: String?): Boolean =
+            nav.current == screen && personalChat == personalMode && selectedChat == regularMode &&
+                app.chat.ui.value.conversationId == conversationId
 
-        if (store.configFor(target) == null) {
-            openModeModels(target)
-            return false
-        }
-        if (target == ModelRole.Main) {
+        fun sendToWork(): Boolean {
+            if (store.configFor(ModelRole.Main) == null) {
+                openModeModels(ModelRole.Main)
+                return false
+            }
             if (inPersonal && !fromWork) showPersonalWork()
             val work = app.chat.ui.value
             if (!fromWork && (work.composer != ComposerMode.Idle || work.attachments.isNotEmpty() ||
-                    work.quote != null || work.sharedDraft != null || work.importing)) {
+                    work.quote != null || work.sharedDraft != null || work.importing ||
+                    work.input.isNotBlank() && work.input != question)) {
                 Toast.makeText(context, R.string.mode_work_draft_pending, Toast.LENGTH_SHORT).show()
                 if (!inPersonal) selectedChat = false
                 return false
@@ -527,6 +524,33 @@ private fun MikaRoot(
             val accepted = app.chat.send(question, check)
             if (!inPersonal) selectedChat = false
             return accepted
+        }
+
+        if (!fromWork && !isNearbyWeatherRequest(question) && app.researchChat.canDelegate()) {
+            if (inPersonal) {
+                return app.researchChat.send("personal-main", question, app.personal::researchHistory,
+                    app.personal::recordResearch, onWork = {
+                        onOriginalScreen(before.conversationId) && sendToWork()
+                    })
+            }
+            val id = before.conversationId ?: app.conversations.newConversation().also(app.chat::openConversation)
+            return app.chat.ui.value.conversationId == id && app.researchChat.send(id, question, onWork = {
+                onOriginalScreen(id) && sendToWork()
+            })
+        }
+
+        val target = routeConversation(question, store)
+        val current = app.chat.ui.value
+        if (!onOriginalScreen(before.conversationId) ||
+            (fromWork && (current.input != before.input || current.composer != before.composer ||
+                current.attachments != before.attachments || current.quote != before.quote ||
+                current.sharedDraft != before.sharedDraft || current.importing))
+        ) return false
+
+        if (target == ModelRole.Main) return sendToWork()
+        if (store.configFor(target) == null) {
+            openModeModels(target)
+            return false
         }
 
         val accepted = if (inPersonal) {

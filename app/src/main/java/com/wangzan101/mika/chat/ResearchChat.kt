@@ -71,13 +71,10 @@ internal class ResearchChat(
         onWork = onWork,
     )
 
-    fun send(id: String, question: String, history: () -> List<Turn>, persist: (Turn) -> Unit): Boolean =
-        send(id, question, history, persist, null)
-
     @Synchronized
-    private fun send(
+    fun send(
         id: String, question: String, history: () -> List<Turn>, persist: (Turn) -> Unit,
-        onWork: (() -> Boolean)?,
+        onWork: (() -> Boolean)? = null,
     ): Boolean {
         if (question.isBlank() || id in _pending.value || providers.configFor(ModelRole.Chat) == null) return false
         val draft = ResearchDraft(question, System.currentTimeMillis())
@@ -217,6 +214,8 @@ You are Mika. Answer in the user's language. Use web_search when available for p
 Use request_work before replying when the user asks you to do something that requires their phone,
 an app-specific workflow, personalized app results, private data, or performing an action.
 This includes read-only checks, such as “我想买点水果帮我看看美团附近水果店” or “帮我看看我的日历”.
+A request for weather near the user, such as “我附近天气如何”, needs the current location. Hand it to Work.
+For weather in a city the user named, use public information.
 Use recent turns to understand follow-ups like “第二家有车厘子吗？” after looking up app listings.
 Answer advice, public information, drafts and instructions yourself. “美团里怎么找水果店？” asks for instructions.
 If the intended app or action is materially ambiguous, ask one short question.

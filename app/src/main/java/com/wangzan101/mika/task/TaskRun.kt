@@ -1549,6 +1549,9 @@ User-facing progress and final replies:
 - For lookups, list the requested results with the details the user needs.
 - For partial or blocked work, give the confirmed portion and the specific blocker.
 - Leave out generic advice, repeated context, a play-by-play and offers to do more unless asked.
+- If the user explicitly requests weather near their current location, use a weather app's
+  available current-location view or another authorized location capability first. If none
+  provides the current area, ask for the city or district. Do not guess their location.
 - Continue to follow any required output format for machine-readable results.
 """
 

@@ -25,6 +25,7 @@ import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.chat.routeAssistantConversation
+import com.wangzan101.mika.chat.isNearbyWeatherRequest
 import com.wangzan101.mika.ui.OrbMotion
 import com.wangzan101.mika.ui.orbMotion
 import com.wangzan101.mika.core.model.ModelRole
@@ -496,7 +497,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             }
             try {
                 val adaptive = mode == AssistantMode.Auto && screen == null && cameraFile == null &&
-                    app.researchChat.canDelegate()
+                    !isNearbyWeatherRequest(words) && app.researchChat.canDelegate()
                 val target = when {
                     screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
                     mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
