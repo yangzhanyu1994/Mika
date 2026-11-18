@@ -363,6 +363,8 @@ class ConversationStore(
                 verified = field("verified")?.toBooleanStrictOrNull(),
                 remoteTaskId = field("remoteTaskId"),
                 research = (o["research"] as? JsonPrimitive)?.booleanOrNull == true,
+                reportedTokens = field("reportedTokens")?.toLongOrNull(),
+                usageIncomplete = (o["usageIncomplete"] as? JsonPrimitive)?.booleanOrNull == true,
             )
             turn to (o["files"] as? JsonArray).orEmpty().mapNotNull(::fileOf)
         }
@@ -424,6 +426,8 @@ class ConversationStore(
                 it.verified?.let { v -> put("verified", v) }
                 it.remoteTaskId?.let { id -> put("remoteTaskId", id) }
                 if (it.research) put("research", true)
+                it.reportedTokens?.let { n -> put("reportedTokens", n) }
+                if (it.usageIncomplete) put("usageIncomplete", true)
                 // 只存种类和编号:记忆内容只在加密的记忆文件里,界面现取
                 if (it.memoryNotes.isNotEmpty()) put("memoryNotes", JsonArray(it.memoryNotes.map { n ->
                     buildJsonObject {

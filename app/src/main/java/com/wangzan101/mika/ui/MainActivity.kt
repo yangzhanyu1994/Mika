@@ -427,6 +427,8 @@ private fun MikaRoot(
     val nav = rememberNavStack(if (personalStart && requestedConversation == null && !requestedAssistant) Route.Personal else Route.Chat)
     var filesFromDrawer by rememberSaveable { mutableStateOf(false) }
     var openPlanCreator by rememberSaveable { mutableStateOf(false) }
+    var focusedPlan by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedCallTask by rememberSaveable { mutableStateOf<String?>(null) }
     var openCallComposer by rememberSaveable { mutableStateOf(false) }
     var filesConversation by rememberSaveable { mutableStateOf<String?>(null) }
     // 从设置页「重新配对」进来时先回到配对一步
@@ -671,6 +673,10 @@ private fun MikaRoot(
                 conversationTitle = { ConversationStore.shared(context).title(it) },
                 search = ConversationStore.shared(context).search,
                 onPlans = { nav.pushFromDrawer(Route.Plans) },
+                onCreatePlan = { openPlanCreator = true; nav.pushFromDrawer(Route.Plans) },
+                onCreateCall = { openCallComposer = true; nav.pushFromDrawer(Route.Calls) },
+                onOpenPlan = { id -> focusedPlan = id; nav.pushFromDrawer(Route.Plans) },
+                onOpenCallTask = { id -> focusedCallTask = id; nav.pushFromDrawer(Route.Calls) },
                 onScenes = { nav.pushFromDrawer(Route.Scenes) },
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
@@ -695,19 +701,28 @@ private fun MikaRoot(
                     val updateBackdrop = if (readyRelease != null) rememberGlassBackdrop() else null
                     Box(Modifier.fillMaxSize().glassSource(updateBackdrop)) {
                         val inPersonal = nav.current == Route.Personal
+                        var personalTask by rememberSaveable { mutableStateOf<String?>(null) }
+                        val personalProfile: @Composable () -> Unit = {
+                            PersonalConversationProfile(
+                                app.personal, memoryRuntime, personalTask, { personalTask = it },
+                                onOpenTask = { id -> app.chat.openPersonalTask(id); nav.reset() },
+                            )
+                        }
                         if (inPersonal && personalChat) screenStates.SaveableStateProvider("personal-chat") {
                             val pending by app.researchChat.pending.collectAsState()
                             PersonalAgentScreen(
                                 runtime = app.personal,
                                 voice = app.voice,
-                                onOpenDrawer = openDrawer,
-                                onOpenTask = { id -> app.chat.openPersonalTask(id); nav.reset() },
-                                memoryRuntime = memoryRuntime,
+                                onSelectTask = { personalTask = it.id },
                                 onPickSpeech = { nav.push(Route.SpeechModel) },
-                                modeHeader = {
-                                    ConversationModeHeader(true, selectedModel(ModelRole.Chat), { chat ->
-                                        if (!chat) showPersonalWork()
-                                    }) { openModeModels(ModelRole.Chat) }
+                                modeHeader = { usage ->
+                                    ConversationModeHeader(
+                                        true, selectedModel(ModelRole.Chat), usage,
+                                        onMode = { chat -> if (!chat) showPersonalWork() },
+                                        onModel = { openModeModels(ModelRole.Chat) },
+                                        onOpenDrawer = openDrawer,
+                                        profile = personalProfile,
+                                    )
                                 },
                                 researchDraft = pending["personal-main"],
                                 onResearchSend = { question ->
@@ -753,15 +768,18 @@ private fun MikaRoot(
                         } else ChatScreen(
                             vm = app.chat,
                             check = check,
-                            modeTitle = if (inPersonal) stringResource(R.string.drawer_personal)
-                                else conversationUi.conversationId?.let { app.conversations.title(it) }
-                                    ?: stringResource(R.string.mode_new_thread),
-                            modeHeader = {
-                                ConversationModeHeader(false, selectedModel(ModelRole.Main), { chat ->
-                                    if (inPersonal) personalChat = chat else selectedChat = chat
-                                }) { openModeModels(ModelRole.Main) }
+                            modeHeader = { usage, otherRunning ->
+                                ConversationModeHeader(
+                                    false, selectedModel(ModelRole.Main), usage,
+                                    onMode = { chat -> if (inPersonal) personalChat = chat else selectedChat = chat },
+                                    onModel = { openModeModels(ModelRole.Main) },
+                                    onOpenDrawer = openDrawer,
+                                    onNew = if (inPersonal) null else ::newModeConversation,
+                                    runningElsewhere = otherRunning,
+                                    profile = if (inPersonal) personalProfile else null,
+                                    title = if (inPersonal) null else conversationUi.conversationId?.let(app.conversations::title),
+                                )
                             },
-                            onNewConversation = if (inPersonal) null else ::newModeConversation,
                             transferDraft = transferredThread != null && transferredThread == conversationUi.conversationId &&
                                 conversationUi.quote != null,
                             frames = app.taskState.frames,
@@ -771,12 +789,6 @@ private fun MikaRoot(
                             reduceMotion = MikaTheme.reduceMotion,
                             onOpenDrawer = openDrawer,
                             openSettings = { nav.push(Route.Settings) },
-                            onCreatePlan = { openPlanCreator = true; nav.push(Route.Plans) },
-                            onCreateCall = { openCallComposer = true; nav.push(Route.Calls) },
-                            onExploreSkills = {
-                                memoryRuntime.requestOpen(MemoryOpen())
-                                nav.push(Route.Memory)
-                            },
                             openRun = { runId = it; nav.push(Route.Run) },
                             phoneSetupNeeded = phoneSetupNeeded && status.builtinShell != BuiltinShellStatus.Running,
                             openPhoneSetup = { onFix(Fix.OpenPhoneSetup) },
@@ -929,7 +941,7 @@ private fun MikaRoot(
         Route.Plans -> PlansScreen(context, onBack = back, onOpenConversation = {
             app.chat.openConversation(it)
             nav.reset()
-        }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false })
+        }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false }, focusPlanId = focusedPlan, onFocusPlanConsumed = { focusedPlan = null })
         Route.Scenes -> ScenesScreen(context, onBack = back, onPlans = { nav.push(Route.Plans) }, onOpenConversation = {
             app.chat.openConversation(it)
             nav.reset()
@@ -946,7 +958,7 @@ private fun MikaRoot(
             app.chat.openConversation(it)
             nav.reset()
         })
-        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer, onTaskComposerOpened = { openCallComposer = false })
+        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer, onTaskComposerOpened = { openCallComposer = false }, focusTaskId = focusedCallTask, onFocusTaskConsumed = { focusedCallTask = null })
     }
 }
 

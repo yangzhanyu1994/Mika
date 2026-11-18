@@ -14,7 +14,10 @@ import kotlin.coroutines.CoroutineContext
  * 适配器内部的兼容重发增加实际请求数,但不增加逻辑调用数。不在这个上下文里的调用(交出回答后的结局判定、记忆提取)不算,
  * Token 用量页照样都记。只在内存里加,多线程安全。
  */
-class RunUsageTally(val tokenBudget: Long? = null) : AbstractCoroutineContextElement(Key) {
+class RunUsageTally(
+    val tokenBudget: Long? = null,
+    private val onUsage: ((Usage?, Int) -> Unit)? = null,
+) : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<RunUsageTally>
 
     init { require(tokenBudget == null || tokenBudget > 0) }
@@ -34,10 +37,12 @@ class RunUsageTally(val tokenBudget: Long? = null) : AbstractCoroutineContextEle
         val attempts = httpAttempts.coerceAtLeast(0)
         calls.addAndGet(attempts)
         httpUnreported.addAndGet((attempts - if (usage == null) 0 else 1).coerceAtLeast(0))
-        if (usage == null) return
-        input.addAndGet(usage.inputTokens.toLong())
-        output.addAndGet(usage.outputTokens.toLong())
-        cached.addAndGet(usage.cachedInputTokens.toLong())
+        if (usage != null) {
+            input.addAndGet(usage.inputTokens.toLong())
+            output.addAndGet(usage.outputTokens.toLong())
+            cached.addAndGet(usage.cachedInputTokens.toLong())
+        }
+        onUsage?.invoke(usage, attempts)
     }
 
     /** 已报告的输入加输出；缓存命中已包含在输入里，不能重复相加。 */

@@ -20,4 +20,16 @@
     <string name="mode_new_thread">Percakapan baru</string>
     <string name="mode_chat_error">Mika tidak dapat menyelesaikan balasan. Coba lagi.</string>
     <string name="mode_model_value">%1$s · %2$s</string>
+    <string name="mode_current_model">Model saat ini: %1$s</string>
+    <string name="mode_current_tokens">Token yang digunakan di percakapan ini: %1$s</string>
+    <string name="mode_tokens_partial">Setidaknya %1$s</string>
+    <string name="mode_tokens_unavailable">Tidak tersedia</string>
+    <string name="drawer_task_new">Tugas baru</string>
+    <string name="drawer_task_running">Sedang berjalan</string>
+    <string name="drawer_task_scheduled">Tugas terjadwal</string>
+    <string name="drawer_task_automation">Otomatisasi</string>
+    <string name="drawer_task_calls">Tugas panggilan</string>
+    <string name="drawer_task_empty">Tidak ada tugas</string>
+    <string name="drawer_task_expanded">Diperluas</string>
+    <string name="drawer_task_collapsed">Diciutkan</string>
 </resources>

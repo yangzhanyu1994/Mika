@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import java.text.NumberFormat
 import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.core.record.RunMetrics
 import com.wangzan101.mika.record.RunStore
@@ -31,6 +33,29 @@ object ChatTokensCopy {
      */
     fun conversationSubtitle(endedRuns: List<String>, metrics: Map<String, RunMetrics>): String? =
         ConversationTokens.of(endedRuns, metrics)?.let(::conversation)
+}
+
+internal fun conversationUsage(
+    reported: List<Long?>, incomplete: Int = 0,
+): ConversationTokens = ConversationTokens(
+    reported.sumOf { it ?: 0L }, reported.size, reported.count { it == null } + incomplete,
+)
+
+internal fun RunMetrics.conversationReportedTokens(): Long =
+    if ((allCalls ?: 0) > 0) (allInputTokens ?: 0L) + (allOutputTokens ?: 0L) else tokens
+
+internal fun RunMetrics.conversationUsageIncomplete(): Boolean =
+    (allCallsWithoutUsage?.takeIf { (allCalls ?: 0) > 0 } ?: callsWithoutUsage) > 0
+
+@Composable
+internal fun currentConversationTokenText(usage: ConversationTokens?): String {
+    val sum = usage?.tokens ?: 0L
+    val label = when {
+        usage == null || (usage.partial && sum == 0L) -> stringResource(R.string.mode_tokens_unavailable)
+        usage.partial -> stringResource(R.string.mode_tokens_partial, NumberFormat.getIntegerInstance().format(sum))
+        else -> NumberFormat.getIntegerInstance().format(sum)
+    }
+    return stringResource(R.string.mode_current_tokens, label)
 }
 
 /**

@@ -71,6 +71,8 @@ fun PlansScreen(
     onPickSpeech: () -> Unit = {},
     startCreating: Boolean = false,
     onCreateConsumed: () -> Unit = {},
+    focusPlanId: String? = null,
+    onFocusPlanConsumed: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     var snapshot by remember { mutableStateOf(TriggerRuntime.snapshot(context)) }
@@ -92,6 +94,13 @@ fun PlansScreen(
         if (startCreating) {
             creating = ConversationStore.shared(context).newConversation()
             onCreateConsumed()
+        }
+    }
+    LaunchedEffect(focusPlanId) {
+        if (focusPlanId != null) {
+            acting = snapshot.triggers.firstOrNull { it.id == focusPlanId }
+            if (acting?.enabled == false) segment = 1
+            onFocusPlanConsumed()
         }
     }
     fun act(block: () -> Unit = {}): Boolean =
@@ -267,7 +276,7 @@ private fun PlanRow(plan: TriggerDefinition, last: TriggerWindow?, first: Boolea
 }
 
 private val PLAN_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-private fun formatPlanTime(ms: Long): String = PLAN_TIME.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+internal fun formatPlanTime(ms: Long): String = PLAN_TIME.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /** 计划是谁建的,列表里标出来源好追溯。 */
 private fun planSourceLabel(source: TriggerSource): String = when (source) {

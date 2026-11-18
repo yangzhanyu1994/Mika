@@ -20,4 +20,16 @@
     <string name="mode_new_thread">محادثة جديدة</string>
     <string name="mode_chat_error">لم يتمكن Mika من إكمال الرد. حاول مجددًا.</string>
     <string name="mode_model_value">%1$s · %2$s</string>
+    <string name="mode_current_model">النموذج الحالي: %1$s</string>
+    <string name="mode_current_tokens">الرموز المستخدمة في هذه المحادثة: %1$s</string>
+    <string name="mode_tokens_partial">%1$s على الأقل</string>
+    <string name="mode_tokens_unavailable">غير متوفر</string>
+    <string name="drawer_task_new">مهمة جديدة</string>
+    <string name="drawer_task_running">قيد التنفيذ</string>
+    <string name="drawer_task_scheduled">المهام المجدولة</string>
+    <string name="drawer_task_automation">الأتمتة</string>
+    <string name="drawer_task_calls">مهام المكالمات</string>
+    <string name="drawer_task_empty">لا توجد مهام</string>
+    <string name="drawer_task_expanded">موسّع</string>
+    <string name="drawer_task_collapsed">مطوي</string>
 </resources>

@@ -49,13 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.chat.ResearchDraft
 import com.wangzan101.mika.core.personal.PersonalTask
+import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.personal.PersonalPhonePreview
 import com.wangzan101.mika.personal.PersonalRuntime
 import com.wangzan101.mika.ui.components.ActivitySizedDialog
 import com.wangzan101.mika.ui.components.AmbientMode
 import com.wangzan101.mika.ui.components.PageBackground
-import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.MikaLogo
@@ -158,11 +158,9 @@ internal fun personalStatus(task: PersonalTask): String = when (task.status) {
 internal fun PersonalAgentScreen(
     runtime: PersonalRuntime,
     voice: VoiceSource,
-    onOpenDrawer: () -> Unit,
-    onOpenTask: (String) -> Unit,
-    memoryRuntime: MemoryRuntime,
+    onSelectTask: (PersonalTask) -> Unit,
     onPickSpeech: () -> Unit,
-    modeHeader: @Composable () -> Unit,
+    modeHeader: @Composable (ConversationTokens) -> Unit,
     researchDraft: ResearchDraft?,
     onResearchSend: (String) -> Boolean,
     onTransfer: (String, String) -> Unit,
@@ -172,17 +170,12 @@ internal fun PersonalAgentScreen(
     val pending = researchDraft?.takeUnless { draft -> state.messages.any { it.at == draft.startedAt } }
     val thinking = legacyThinking || pending != null
     ResearchReplyHaptics("personal-main", pending?.text.orEmpty())
-    val actionError by runtime.error.collectAsState()
     val c = MikaTheme.colors
     val reduceMotion = MikaTheme.reduceMotion
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     var draft by rememberSaveable { mutableStateOf("") }
     var voiceHolding by remember { mutableStateOf(false) }
-    var profile by rememberSaveable { mutableStateOf(false) }
-    var selectedTask by rememberSaveable { mutableStateOf<String?>(null) }
-    var replayTask by rememberSaveable { mutableStateOf<String?>(null) }
-    var openingPreview by remember { mutableStateOf<PersonalPhonePreview?>(null) }
     var followLatest by rememberSaveable { mutableStateOf(true) }
     var composerHeight by remember { mutableIntStateOf(0) }
     var previousComposerHeight by remember { mutableIntStateOf(0) }
@@ -198,8 +191,6 @@ internal fun PersonalAgentScreen(
     val list = rememberLazyListState(initialFirstVisibleItemIndex = bottomIndex)
     var previousMessageCount by rememberSaveable { mutableIntStateOf(messages.size) }
     val active = state.tasks.filterNot { it.terminal }
-    val activeIds = active.map { it.conversationId }
-    val phonePreview = remember(runtime, activeIds) { runtime.phonePreview(activeIds) }
     val zone = remember { ZoneId.systemDefault() }
     val dayFormat = remember { DateTimeFormatter.ofPattern("M 月 d 日") }
     fun send(value: String = draft) {
@@ -232,16 +223,12 @@ internal fun PersonalAgentScreen(
     }
     PageBackground(ambient = ambient, reduceMotion = reduceMotion) {
     Column(Modifier.fillMaxSize().testTag("personal-screen")) {
-        Column(Modifier.fillMaxWidth().pageBackground(c.bg).statusBarsPadding()) {
-            PersonalHeader(
-                active, phonePreview, onOpenDrawer, { profile = true }, { selectedTask = it.id },
-                onOpenPreview = { preview ->
-                    openingPreview = preview
-                    replayTask = preview.conversationId
-                },
-            )
-            modeHeader()
-        }
+        val answers = state.messages.filter { it.role == "assistant" }
+        modeHeader(conversationUsage(
+            answers.map { it.reportedTokens } + listOfNotNull(pending?.reportedTokens),
+            answers.count { it.usageIncomplete && it.reportedTokens != null } +
+                if (pending != null && (pending.reportedTokens == null || pending.usageIncomplete)) 1 else 0,
+        ))
         Box(Modifier.weight(1f).fillMaxWidth().voiceDim(voiceHolding, reduceMotion)) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag("personal-timeline"),
                 contentPadding = PaddingValues(horizontal = MikaSpace.Page, vertical = 12.dp),
@@ -286,7 +273,7 @@ internal fun PersonalAgentScreen(
                             }
                         }
                         if (!message.handled) Text("已收到", Modifier.padding(top = 4.dp, end = 5.dp), fontSize = 10.sp, color = c.ink3)
-                        if (task != null) TextButton(onClick = { selectedTask = task.id }) { Text("查看任务", fontSize = 12.sp) }
+                        if (task != null) TextButton(onClick = { onSelectTask(task) }) { Text("查看任务", fontSize = 12.sp) }
                     } }
                 }
                 if (pending != null) item("research-pending") {
@@ -323,11 +310,37 @@ internal fun PersonalAgentScreen(
         )
     }
     }
+}
+
+@Composable
+internal fun PersonalConversationProfile(
+    runtime: PersonalRuntime,
+    memoryRuntime: MemoryRuntime,
+    selectedTask: String?,
+    onSelectTask: (String?) -> Unit,
+    onOpenTask: (String) -> Unit,
+) {
+    val state by runtime.state.collectAsState()
+    val actionError by runtime.error.collectAsState()
+    val active = state.tasks.filterNot { it.terminal }
+    val activeIds = active.map { it.conversationId }
+    val phonePreview = remember(runtime, activeIds) { runtime.phonePreview(activeIds) }
+    var profile by rememberSaveable { mutableStateOf(false) }
+    var replayTask by rememberSaveable { mutableStateOf<String?>(null) }
+    var openingPreview by remember { mutableStateOf<PersonalPhonePreview?>(null) }
+    PersonalHeader(
+        active, phonePreview, onOpenDrawer = null, onActivity = { profile = true },
+        onTask = { onSelectTask(it.id) },
+        onOpenPreview = { preview ->
+            openingPreview = preview
+            replayTask = preview.conversationId
+        },
+    )
     if (profile) {
         PersonalProfileDialog(
             state.tasks, memoryRuntime,
             onDismiss = { profile = false },
-            onTask = { task -> profile = false; selectedTask = task.id },
+            onTask = { task -> profile = false; onSelectTask(task.id) },
         )
     }
     selectedTask?.let { id -> state.tasks.find { it.id == id } }?.let { task ->
@@ -338,10 +351,10 @@ internal fun PersonalAgentScreen(
                     if (!task.terminal && !value) delay(1_000)
                 } while (!task.terminal && !value)
             }
-            PersonalTaskSheet(task, onDismiss = { selectedTask = null },
-                onOpen = { selectedTask = null; onOpenTask(task.conversationId) },
+            PersonalTaskSheet(task, onDismiss = { onSelectTask(null) },
+                onOpen = { onSelectTask(null); onOpenTask(task.conversationId) },
                 onStop = { runtime.stop(task.id) },
-                onReplay = if (hasReplay) ({ selectedTask = null; replayTask = task.conversationId }) else null)
+                onReplay = if (hasReplay) ({ onSelectTask(null); replayTask = task.conversationId }) else null)
         }
     }
     replayTask?.let { id ->
@@ -497,7 +510,7 @@ private fun PersonalProfileTabs(selected: PersonalProfileTab, showIcons: Boolean
 internal fun PersonalHeader(
     active: List<PersonalTask>,
     phonePreview: Flow<PersonalPhonePreview?>,
-    onOpenDrawer: () -> Unit,
+    onOpenDrawer: (() -> Unit)?,
     onActivity: () -> Unit,
     onTask: (PersonalTask) -> Unit,
     onOpenPreview: (PersonalPhonePreview) -> Unit,
@@ -509,7 +522,7 @@ internal fun PersonalHeader(
     val frame = preview?.frame?.takeUnless { previewTask == null || it.isRecycled }
     val previewWidth = frame?.let { minOf(76.dp, 104.dp * (it.width.toFloat() / it.height)) } ?: 0.dp
     Box(Modifier.fillMaxWidth().padding(horizontal = MikaSpace.Page, vertical = 6.dp)) {
-        Box(Modifier.align(Alignment.TopStart).padding(top = 4.dp)) {
+        if (onOpenDrawer != null) Box(Modifier.align(Alignment.TopStart).padding(top = 4.dp)) {
             BarIconButton(MikaIcons.Menu, "打开侧栏", onOpenDrawer, glass = true)
         }
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 250.dp),

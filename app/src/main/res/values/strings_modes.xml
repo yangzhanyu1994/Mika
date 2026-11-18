@@ -20,4 +20,16 @@
     <string name="mode_new_thread">New conversation</string>
     <string name="mode_chat_error">Mika could not finish this reply. Try again.</string>
     <string name="mode_model_value">%1$s · %2$s</string>
+    <string name="mode_current_model">Current model: %1$s</string>
+    <string name="mode_current_tokens">Tokens used in this conversation: %1$s</string>
+    <string name="mode_tokens_partial">At least %1$s</string>
+    <string name="mode_tokens_unavailable">Unavailable</string>
+    <string name="drawer_task_new">New task</string>
+    <string name="drawer_task_running">In progress</string>
+    <string name="drawer_task_scheduled">Scheduled tasks</string>
+    <string name="drawer_task_automation">Automations</string>
+    <string name="drawer_task_calls">Call tasks</string>
+    <string name="drawer_task_empty">No tasks</string>
+    <string name="drawer_task_expanded">Expanded</string>
+    <string name="drawer_task_collapsed">Collapsed</string>
 </resources>

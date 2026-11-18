@@ -9,6 +9,7 @@ import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.core.model.ModelSession
 import com.wangzan101.mika.core.model.Part
 import com.wangzan101.mika.core.model.Role
+import com.wangzan101.mika.core.model.Usage
 import com.wangzan101.mika.core.model.ToolSpec
 import com.wangzan101.mika.core.model.StreamingChatModel
 import com.wangzan101.mika.core.observation.Untrusted
@@ -39,6 +40,8 @@ internal data class ResearchDraft(
     val startedAt: Long,
     val text: String = "",
     val phase: ResearchPhase = ResearchPhase.Thinking,
+    val reportedTokens: Long? = null,
+    val usageIncomplete: Boolean = false,
 )
 
 /** Chat requests have only the read-only search tool, independently of the phone task runtime. */
@@ -69,16 +72,34 @@ internal class ResearchChat(
         scope.launch(Dispatchers.IO) {
             try {
                 val answer = present(id, draft, history().takeLast(12))
-                persist(Turn(question, answer, "succeeded", atMs = draft.startedAt))
+                persist(researchTurn(id, draft, answer, "succeeded"))
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                runCatching { persist(Turn(question, app.getString(R.string.mode_chat_error), "failed", atMs = draft.startedAt)) }
+                recordUsage(id, null)
+                runCatching { persist(researchTurn(id, draft, app.getString(R.string.mode_chat_error), "failed")) }
             } finally {
                 _pending.update { it - id }
             }
         }
         return true
+    }
+
+    private fun researchTurn(id: String, draft: ResearchDraft, answer: String, status: String): Turn {
+        val live = _pending.value[id]
+        return Turn(draft.question, answer, status, atMs = draft.startedAt,
+            reportedTokens = live?.reportedTokens, usageIncomplete = live?.usageIncomplete == true)
+    }
+
+    private fun recordUsage(id: String, usage: Usage?) {
+        _pending.update { drafts ->
+            val live = drafts[id] ?: return@update drafts
+            val total = usage?.let { (live.reportedTokens ?: 0L) + it.inputTokens + it.outputTokens }
+            drafts + (id to live.copy(
+                reportedTokens = total ?: live.reportedTokens,
+                usageIncomplete = live.usageIncomplete || usage == null,
+            ))
+        }
     }
 
     private suspend fun present(id: String, draft: ResearchDraft, history: List<Turn>): String = coroutineScope {
@@ -88,7 +109,10 @@ internal class ResearchChat(
             while (isActive) {
                 val next = target.first { it != shown }
                 shown = next.copy(text = advanceResearchText(shown.text, next.text))
-                _pending.update { it + (id to shown) }
+                _pending.update { drafts ->
+                    val live = drafts[id] ?: return@update drafts
+                    drafts + (id to shown.copy(reportedTokens = live.reportedTokens, usageIncomplete = live.usageIncomplete))
+                }
                 if (shown.text.isNotEmpty()) delay(24)
             }
         }
@@ -119,11 +143,13 @@ internal class ResearchChat(
         }.toMutableList()
         suspend fun request(specs: List<ToolSpec>): com.wangzan101.mika.core.model.ModelReply {
             onDraft(ResearchPhase.Thinking, "")
-            return if (model is StreamingChatModel) {
+            val reply = if (model is StreamingChatModel) {
                 model.completeStreaming(SYSTEM, messages, specs) { text ->
                     if (text.isNotBlank()) onDraft(ResearchPhase.Writing, text)
                 }
             } else model.complete(SYSTEM, messages, specs)
+            recordUsage(id, reply.usage)
+            return reply
         }
         repeat(3) {
             val reply = request(tools)

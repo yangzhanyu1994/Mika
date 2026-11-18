@@ -134,7 +134,6 @@ import com.wangzan101.mika.task.SteerNote
 import com.wangzan101.mika.task.SteerState
 import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.task.unconsumed
-import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.ButtonKind
 import com.wangzan101.mika.ui.components.ButtonSize
 import com.wangzan101.mika.ui.components.GlassBackdrop
@@ -209,9 +208,7 @@ fun ChatScreen(
     /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
     habitSuggestions: List<String>? = null,
     onExploreSkills: () -> Unit = {},
-    modeHeader: (@Composable () -> Unit)? = null,
-    modeTitle: String? = null,
-    onNewConversation: (() -> Unit)? = null,
+    modeHeader: (@Composable (ConversationTokens?, Boolean) -> Unit)? = null,
     transferDraft: Boolean = false,
 ) {
     if (recommendations != null) Unit
@@ -348,8 +345,8 @@ fun ChatScreen(
     val c = MikaTheme.colors
     val backdrop = rememberGlassBackdrop()
     val context = LocalContext.current
-    LaunchedEffect(habitSuggestions, ui.exchanges.isEmpty()) {
-        if (habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
+    LaunchedEffect(modeHeader != null, habitSuggestions, ui.exchanges.isEmpty()) {
+        if (modeHeader != null || habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
         deviceHabits = withContext(Dispatchers.IO) { HabitSuggestions.fromDevice(context) }
     }
     /** 长按了的那条消息;菜单开着(收起的动画放完才清掉)。 */
@@ -424,10 +421,10 @@ fun ChatScreen(
                             if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
                         }
                     } else if (modeHeader == null) item("empty") { HomeGreeting(ui.conversationId) }
-                    item("home-guides") {
+                    if (modeHeader == null) item("home-guides") {
                         HomeGuides(onCreatePlan, onCreateCall, onExploreSkills, onOpenDrawer)
                     }
-                    if (habits.isNotEmpty()) item("home-habits") {
+                    if (modeHeader == null && habits.isNotEmpty()) item("home-habits") {
                         MikaCard(Modifier.padding(top = 12.dp).testTag("home-habits")) {
                             habits.forEachIndexed { index, prompt ->
                                 ExampleRow(MikaIcons.Message, prompt, first = index == 0) {
@@ -474,25 +471,39 @@ fun ChatScreen(
                 .then(if (pinnedHeader) Modifier.fillMaxWidth().pageBackground(c.bg) else Modifier)
                 .onSizeChanged { topHeight = it.height },
         ) {
-            TopBar(
-                modeTitle ?: ChatCopy.APP_TITLE,
-                right = onNewConversation?.let { start ->
-                    { BarIconButton(MikaIcons.New, stringResource(R.string.mode_new_thread), start) }
-                },
-                background = if (pinnedHeader || c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
-                left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
-                leftGlass = !pinnedHeader,
-                // 别的对话里还有任务在跑(并行时):菜单上一个小圆点,侧栏「进行中」里能切过去
-                leftBadge = others.isNotEmpty(),
-                subtitle = sub?.first,
-                subtitleColor = when (sub?.second) {
-                    ChatCopy.Tone.Accent -> c.accent
-                    ChatCopy.Tone.Warn -> c.warn
-                    ChatCopy.Tone.Ok -> c.ok
-                    null -> Color.Unspecified
-                },
-            )
-            modeHeader?.invoke()
+            if (modeHeader != null) {
+                val runs = (context.applicationContext as? MikaApp)?.taskState?.runs?.collectAsState()?.value.orEmpty()
+                val activeRun = runs.firstOrNull { it.conversationId == ui.conversationId }
+                    ?.takeIf { last?.status?.isActive() == true }
+                val live = activeRun?.conversationUsage?.collectAsState()?.value
+                val measured = endedRuns.distinct().map { runMetrics[it] }
+                val completed = measured.map { it?.conversationReportedTokens() }
+                val unrecorded = ui.exchanges.count { !it.status.isActive() && it.runId == null }
+                val usage = conversationUsage(
+                    completed + listOfNotNull(live?.tokens),
+                    unrecorded + measured.count { it?.conversationUsageIncomplete() == true } +
+                        if (live?.partial == true) 1 else 0,
+                )
+                modeHeader(usage, others.isNotEmpty())
+                if (sub != null && (last?.status?.isActive() == true || kept != null)) {
+                    Text(sub.first, Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+                        color = c.ink2, style = MikaType.Caption)
+                }
+            } else {
+                TopBar(
+                    ChatCopy.APP_TITLE,
+                    background = if (c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
+                    left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
+                    leftGlass = true, leftBadge = others.isNotEmpty(),
+                    subtitle = sub?.first,
+                    subtitleColor = when (sub?.second) {
+                        ChatCopy.Tone.Accent -> c.accent
+                        ChatCopy.Tone.Warn -> c.warn
+                        ChatCopy.Tone.Ok -> c.ok
+                        null -> Color.Unspecified
+                    },
+                )
+            }
         }
 
         Column(

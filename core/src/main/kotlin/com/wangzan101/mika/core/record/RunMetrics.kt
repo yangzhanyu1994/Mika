@@ -53,6 +53,7 @@ data class RunMetrics(
     val outcome: String = UNFINISHED,
     val failKind: String? = null,
     val judged: String? = null,
+    val allCallsWithoutUsage: Int? = null,
 ) {
     val otherMs: Long get() = (totalMs - modelMs - observeMs - actMs).coerceAtLeast(0)
 
@@ -163,6 +164,7 @@ data class RunMetrics(
                 allHttpCalls = all?.httpCalls,
                 allInputTokens = all?.inputTokens,
                 allOutputTokens = all?.outputTokens,
+                allCallsWithoutUsage = all?.let { maxOf(it.unreported, it.httpUnreported ?: 0) },
                 modelMs = modelMs,
                 retryWaitMs = retryMs,
                 observeMs = observe,
