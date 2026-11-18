@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aura_home_title">Seu assistente para o celular</string>
+    <string name="aura_speak">Toque para falar</string>
+    <string name="aura_input">Dê uma tarefa à Aura</string>
+    <string name="aura_new">Nova tarefa</string>
+    <string name="aura_tools">Ferramentas</string>
+    <string name="aura_show_tools">Mostrar</string>
+    <string name="aura_hide_tools">Ocultar</string>
+    <string name="aura_all">Ver tudo</string>
+    <string name="aura_model_setup">Configurar modelo</string>
+    <string name="aura_confirm">Revisar e confirmar</string>
+    <string name="aura_queued">Na fila</string>
+    <string name="aura_reply">Responder</string>
+    <string name="aura_takeover">Abrir e assumir</string>
+    <string name="aura_progress">Ver andamento</string>
+    <string name="aura_finished">Resultado pronto</string>
+    <string name="aura_result_unconfirmed">Resultado por revisar</string>
+    <string name="aura_stopped">Interrompida</string>
+    <string name="aura_incomplete">Não foi possível concluir</string>
+    <string name="aura_examples">Experimente pedir à Aura</string>
+    <string name="aura_swipe">Deslize para ver mais</string>
+    <string name="aura_phone">Celular e aplicativos</string>
+    <string name="aura_phone_example">Programe um alarme para amanhã às sete</string>
+    <string name="aura_call_example">Ligue para um contato e diga que vou atrasar dez minutos</string>
+    <string name="aura_answer_example">Atenda e resuma as chamadas que seguirem minhas regras</string>
+    <string name="aura_scene_example">Ao conectar ao Wi-Fi de casa, lembre-me de verificar a fechadura</string>
+    <string name="aura_setup">Configurar</string>
+    <string name="aura_try">Usar este exemplo</string>
+</resources>

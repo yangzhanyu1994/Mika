@@ -206,6 +206,16 @@ fun ChatScreen(
     onCreateCall: () -> Unit = {},
     /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
     habitSuggestions: List<String>? = null,
+    showAuraHome: Boolean = false,
+    auraTasks: List<AuraTask> = emptyList(),
+    onAuraTask: (AuraTask) -> Unit = {},
+    onAuraConversation: () -> Unit = {},
+    onAuraNew: () -> Unit = {},
+    onAuraHome: (() -> Unit)? = null,
+    onAuraModelSetup: () -> Unit = openSettings,
+    onAuraPlans: () -> Unit = onCreatePlan,
+    onAuraCalls: () -> Unit = onCreateCall,
+    onAuraScenes: () -> Unit = {},
 ) {
     if (recommendations != null) Unit
     val ui by vm.ui.collectAsState()
@@ -241,12 +251,19 @@ fun ChatScreen(
     var voiceHolding by remember { mutableStateOf(false) }
     var editRequest by remember { mutableIntStateOf(0) }
     var focusRequest by remember { mutableIntStateOf(0) }
+    var auraVoiceRequest by remember { mutableIntStateOf(0) }
+    LaunchedEffect(showAuraHome) { if (!showAuraHome) auraVoiceRequest = 0 }
+    if (showAuraHome && voice != null) {
+        AssistantVoiceCapture(auraVoiceRequest, voice, sendOnConfirm = false) { spoken, _ ->
+            vm.input(HoldToTalk.join(vm.ui.value.input, spoken))
+        }
+    }
     var shortcutsDismissed by remember { mutableStateOf(false) }
     var deviceHabits by remember { mutableStateOf<List<String>>(emptyList()) }
     val habits = habitSuggestions ?: deviceHabits
     LaunchedEffect(ui.conversationId) { shortcutsDismissed = false }
     LifecycleStartEffect(Unit) {
-        focusRequest += 1
+        if (!showAuraHome) focusRequest += 1
         onStopOrDispose {}
     }
     var composerHeight by rememberSaveable { mutableIntStateOf(0) }
@@ -286,7 +303,8 @@ fun ChatScreen(
     val highlightKey = jumpHighlight
         ?.takeIf { it.conversationId == ui.conversationId }
         ?.let { chatTargetKey(ui.exchanges, it.target) }
-    LaunchedEffect(scrollMarker, jump) {
+    LaunchedEffect(scrollMarker, jump, showAuraHome) {
+        if (showAuraHome) return@LaunchedEffect
         // 从搜索或文件库过来:先滚到目标消息,期间不要跟末尾;目标不在了就退回原来的逻辑。
         if (jump != null) {
             val keys = chatItemKeys(ui.exchanges, kept, phoneSetupNeeded, hasBlocked = ui.blocked != null)
@@ -315,8 +333,8 @@ fun ChatScreen(
         }
     }
     // 流式文字增长时跟住底部；用户主动向上翻看过程时不拉回去。
-    LaunchedEffect(last?.draft?.length) {
-        if (last?.draft.isNullOrEmpty() || !followingTail || listState.isScrollInProgress) return@LaunchedEffect
+    LaunchedEffect(last?.draft?.length, showAuraHome) {
+        if (showAuraHome || last?.draft.isNullOrEmpty() || !followingTail || listState.isScrollInProgress) return@LaunchedEffect
         val layout = listState.layoutInfo
         val end = layout.totalItemsCount - 1
         val draft = layout.visibleItemsInfo.firstOrNull { it.index == end } ?: return@LaunchedEffect
@@ -333,7 +351,7 @@ fun ChatScreen(
     LaunchedEffect(composerHeight) {
         val grown = composerHeight - lastComposerHeight
         lastComposerHeight = composerHeight
-        if (grown > 0 && followingTail && !listState.isScrollInProgress) listState.scrollBy(grown.toFloat())
+        if (!showAuraHome && grown > 0 && followingTail && !listState.isScrollInProgress) listState.scrollBy(grown.toFloat())
     }
 
     // 已结束各轮的运行小结:每轮结束那一行写这一轮的 token,顶栏闲着时写这个对话合起来的
@@ -343,8 +361,8 @@ fun ChatScreen(
     val c = MikaTheme.colors
     val backdrop = rememberGlassBackdrop()
     val context = LocalContext.current
-    LaunchedEffect(habitSuggestions, ui.exchanges.isEmpty()) {
-        if (habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
+    LaunchedEffect(habitSuggestions, ui.exchanges.isEmpty(), showAuraHome) {
+        if (showAuraHome || habitSuggestions != null || ui.exchanges.isNotEmpty()) return@LaunchedEffect
         deviceHabits = withContext(Dispatchers.IO) { HabitSuggestions.fromDevice(context) }
     }
     /** 长按了的那条消息;菜单开着(收起的动画放完才清掉)。 */
@@ -393,14 +411,24 @@ fun ChatScreen(
                     )
                 },
             ) {
-                if (ui.exchanges.isEmpty() && ui.blocked == null) {
+                if (showAuraHome) {
+                    item("aura-home") {
+                        AuraHomeContent(
+                            auraTasks, last, voiceAvailable = voice != null, modelReady = check.canStartTask,
+                            reduceMotion = reduceMotion, onVoice = { auraVoiceRequest++ }, onOpenTask = onAuraTask,
+                            onOpenRecent = onAuraConversation, onAll = onOpenDrawer, onPlan = onAuraPlans,
+                            onScenes = onAuraScenes, onCalls = onAuraCalls, onSetup = onAuraModelSetup,
+                            onExample = { prompt -> if (ui.input.isBlank()) vm.input(prompt) else pendingExample = prompt },
+                        )
+                    }
+                } else if (ui.exchanges.isEmpty() && ui.blocked == null) {
                     item("empty") {
                         EmptyState(ui.conversationId, habits) { prompt ->
                             if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
                         }
                     }
                 }
-                ui.exchanges.forEachIndexed { i, ex ->
+                if (!showAuraHome) ui.exchanges.forEachIndexed { i, ex ->
                     val backgroundNote = i == ui.exchanges.lastIndex && ui.operatingPhone
                     exchange(
                         i, ex, ui.conversationId, ui.takeoverStage, vm, reduceMotion, backgroundNote, openRun, loadSource, openSource, kept,
@@ -412,7 +440,7 @@ fun ChatScreen(
                         },
                     )
                 }
-                if (phoneSetupNeeded && ui.exchanges.isNotEmpty()) item("phone-setup") { PhoneSetupLine(openPhoneSetup) }
+                if (!showAuraHome && phoneSetupNeeded && ui.exchanges.isNotEmpty()) item("phone-setup") { PhoneSetupLine(openPhoneSetup) }
                 ui.blocked?.let { problems ->
                     item("blocked") {
                         NeedCard(
@@ -433,11 +461,15 @@ fun ChatScreen(
             ?: kept?.let { ChatCopy.KEPT_PAGE to ChatCopy.Tone.Ok }
             ?: ChatTokensCopy.conversationSubtitle(endedRuns, runMetrics)?.let { it to null }
         Column(Modifier.behindMenu(menuOpen) { lift.value }.onSizeChanged { topHeight = it.height }) {
-            TopBar(
+            if (showAuraHome) AuraHeader(onOpenDrawer, onAuraNew, vm.canSwitch(), auraTasks.isNotEmpty())
+            else TopBar(
                 ChatCopy.APP_TITLE,
                 background = if (c.isDark) c.bg else c.surface.copy(alpha = 0.38f),
                 left = MikaIcons.Menu, leftLabel = stringResource(R.string.chat_menu), onLeft = onOpenDrawer,
                 leftGlass = true,
+                right = onAuraHome?.let { goHome ->
+                    { BarIconButton(MikaIcons.Home, stringResource(R.string.aura_home_title), goHome) }
+                },
                 // 别的对话里还有任务在跑(并行时):菜单上一个小圆点,侧栏「进行中」里能切过去
                 leftBadge = others.isNotEmpty(),
                 subtitle = sub?.first,
@@ -450,7 +482,7 @@ fun ChatScreen(
             )
         }
 
-        val showShortcuts = ui.exchanges.isEmpty() && ui.blocked == null && input.isBlank() && !shortcutsDismissed
+        val showShortcuts = !showAuraHome && ui.exchanges.isEmpty() && ui.blocked == null && input.isBlank() && !shortcutsDismissed
         Column(
             Modifier.align(Alignment.BottomCenter).behindMenu(menuOpen) { lift.value }.onSizeChanged { composerHeight = it.height },
         ) {
@@ -511,11 +543,13 @@ fun ChatScreen(
             onVoiceHolding = { voiceHolding = it },
             editRequest = editRequest,
             focusRequest = focusRequest,
-            rotatingHintIds = if (ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
+            rotatingHintIds = if (!showAuraHome && ui.exchanges.isEmpty() && ui.composer == ComposerMode.Idle) InputHints.home else emptyList(),
+            idlePlaceholder = if (showAuraHome) stringResource(R.string.aura_input) else null,
+            showVoiceButton = !showAuraHome || auraTasks.isNotEmpty() || last != null,
         )
         }
 
-        AgentPip(
+        if (!showAuraHome) AgentPip(
             pip = ui.pip,
             frame = frame,
             webContent = webContent,
@@ -1474,6 +1508,8 @@ internal fun Composer(
     onVoiceHolding: (Boolean) -> Unit = {},
     sendFromIme: Boolean = false,
     draftKey: String? = null,
+    idlePlaceholder: String? = null,
+    showVoiceButton: Boolean = true,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1608,7 +1644,9 @@ internal fun Composer(
                 Box(Modifier.weight(1f).padding(start = if (showAttach) 2.dp else 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                     val converting = vState is HoldToTalk.State.Converting
                     if (text.isEmpty() && !converting) {
-                        if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
+                        if (idlePlaceholder != null && mode == ComposerMode.Idle) {
+                            Text(idlePlaceholder, style = MikaType.Body, color = c.ink3, maxLines = 1)
+                        } else if (rotating.isNotEmpty() && mode == ComposerMode.Idle) {
                             RotatingPlaceholder(rotating, active = !fieldFocused, reduceMotion = reduceMotion, Modifier.fillMaxWidth())
                         } else if (vh != null) VoicePlaceholder(mode, followUpMode)
                         else Text(ChatCopy.placeholder(mode, hasHistory, followUpMode), style = MikaType.Body, color = c.ink3, maxLines = 1)
@@ -1639,7 +1677,7 @@ internal fun Composer(
                 }
                 val canSend = AttachTray.canSend(text, attachments, importing)
                 // 键盘出来以后长按输入框留给系统选字;话筒按住才听,点一下只提示按住
-                if (fieldFocused && vh != null) {
+                if (showVoiceButton && fieldFocused && vh != null) {
                     val hint = stringResource(R.string.voice_hold_to_talk)
                     Box(
                         Modifier.size(MikaSize.IconButton).testTag("composer-mic").holdToTalk(vh) { vh.toast = hint },

@@ -404,13 +404,13 @@ private fun PersonalProfileDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             MikaLogo(36.dp, corner = 18.dp)
-                            Text("Mika", style = MikaType.Title, color = c.ink, maxLines = 1)
+                            Text(stringResource(R.string.app_name), style = MikaType.Title, color = c.ink, maxLines = 1)
                         }
                     } else {
                         Column(Modifier.align(Alignment.TopCenter).padding(top = MikaSpace.S4),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             MikaLogo(52.dp, corner = 26.dp)
-                            Text("Mika", Modifier.padding(top = MikaSpace.S8), style = MikaType.Title, color = c.ink)
+                            Text(stringResource(R.string.app_name), Modifier.padding(top = MikaSpace.S8), style = MikaType.Title, color = c.ink)
                         }
                     }
                     Box(Modifier.align(Alignment.TopEnd)) {
@@ -518,7 +518,7 @@ internal fun PersonalHeader(
                     ) {
                         MikaLogo(52.dp, corner = 26.dp)
                     }
-                    Text("Mika", Modifier.padding(top = 7.dp), style = MikaType.Title, color = c.ink)
+                    Text(stringResource(R.string.app_name), Modifier.padding(top = 7.dp), style = MikaType.Title, color = c.ink)
                 }
                 if (frame != null) {
                     Image(

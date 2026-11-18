@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aura_home_title">مساعد هاتفك</string>
+    <string name="aura_speak">انقر للتحدث</string>
+    <string name="aura_input">أعطِ Aura مهمة</string>
+    <string name="aura_new">مهمة جديدة</string>
+    <string name="aura_tools">الأدوات</string>
+    <string name="aura_show_tools">إظهار</string>
+    <string name="aura_hide_tools">إخفاء</string>
+    <string name="aura_all">عرض الكل</string>
+    <string name="aura_model_setup">إعداد نموذج</string>
+    <string name="aura_confirm">المراجعة والتأكيد</string>
+    <string name="aura_queued">في قائمة الانتظار</string>
+    <string name="aura_reply">إضافة إجابة</string>
+    <string name="aura_takeover">افتح وتولَّ المهمة</string>
+    <string name="aura_progress">عرض التقدم</string>
+    <string name="aura_finished">النتيجة جاهزة</string>
+    <string name="aura_result_unconfirmed">تحتاج النتيجة إلى مراجعة</string>
+    <string name="aura_stopped">متوقفة</string>
+    <string name="aura_incomplete">تعذّر الإكمال</string>
+    <string name="aura_examples">جرّب أن تطلب من Aura</string>
+    <string name="aura_swipe">اسحب للمزيد</string>
+    <string name="aura_phone">الهاتف والتطبيقات</string>
+    <string name="aura_phone_example">اضبط منبّهًا للساعة السابعة صباح الغد</string>
+    <string name="aura_call_example">اتصل بجهة اتصال وأخبرها أنني سأتأخر عشر دقائق</string>
+    <string name="aura_answer_example">أجب عن المكالمات المطابقة لقواعدي ولخّصها</string>
+    <string name="aura_scene_example">عند الاتصال بشبكة Wi-Fi المنزلية، ذكّرني بفحص قفل الباب</string>
+    <string name="aura_setup">الإعداد</string>
+    <string name="aura_try">استخدم هذا المثال</string>
+</resources>

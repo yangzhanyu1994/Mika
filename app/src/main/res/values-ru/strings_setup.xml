@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="welcome_title">Привет, я Mika</string>
+    <string name="welcome_title">Привет, я Aura</string>
     <string name="welcome_lead">Ваш личный помощник в телефоне.\nСкажите, что нужно сделать, и я выполню это в фоне.</string>
     <string name="welcome_note">Прежде чем начать: настройте модель и включите управление телефоном. Это займёт около 3 минут.</string>
     <string name="welcome_start">Начать</string>

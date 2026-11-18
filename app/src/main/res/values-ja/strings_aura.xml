@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aura_home_title">スマホのデジタルアシスタント</string>
+    <string name="aura_speak">タップして話す</string>
+    <string name="aura_input">Aura に頼む</string>
+    <string name="aura_new">新しいタスク</string>
+    <string name="aura_tools">ツール</string>
+    <string name="aura_show_tools">表示</string>
+    <string name="aura_hide_tools">非表示</string>
+    <string name="aura_all">すべて表示</string>
+    <string name="aura_model_setup">モデルを設定</string>
+    <string name="aura_confirm">内容を確認</string>
+    <string name="aura_queued">待機中</string>
+    <string name="aura_reply">情報を追加</string>
+    <string name="aura_takeover">開いて引き継ぐ</string>
+    <string name="aura_progress">進捗を見る</string>
+    <string name="aura_finished">結果を見る</string>
+    <string name="aura_result_unconfirmed">結果を確認してください</string>
+    <string name="aura_stopped">停止済み</string>
+    <string name="aura_incomplete">未完了</string>
+    <string name="aura_examples">Aura に頼んでみる</string>
+    <string name="aura_swipe">スワイプして他の例を見る</string>
+    <string name="aura_phone">スマホとアプリ</string>
+    <string name="aura_phone_example">明日の朝7時にアラームをセットして</string>
+    <string name="aura_call_example">連絡先に電話して10分遅れると伝えて</string>
+    <string name="aura_answer_example">ルールに一致する着信に応答して要約して</string>
+    <string name="aura_scene_example">自宅の Wi-Fi に接続したら玄関の鍵を確認するよう知らせて</string>
+    <string name="aura_setup">設定する</string>
+    <string name="aura_try">この例を使う</string>
+</resources>
