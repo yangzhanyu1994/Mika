@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">Ikuti mode Kerja</string>
     <string name="mode_work_draft_pending">Selesaikan tugas atau draf Kerja terlebih dahulu.</string>
     <string name="assistant_readout_unavailable">Hasil tidak dapat dibacakan. Periksa pengaturan Pembacaan suara.</string>
+    <string name="assistant_mode_auto">Otomatis</string>
+    <string name="assistant_mode_chat">Obrolan</string>
+    <string name="assistant_mode_work">Kerja</string>
+    <string name="assistant_routing">Memilih mode…</string>
+    <string name="assistant_routing_unavailable">Mode tidak dapat dipilih secara otomatis. Pilih Obrolan atau Kerja, lalu kirim lagi.</string>
 </resources>

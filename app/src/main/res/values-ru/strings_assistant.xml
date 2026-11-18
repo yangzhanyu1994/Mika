@@ -36,4 +36,9 @@
     <string name="mode_reasoning_follow_work">Как в режиме работы</string>
     <string name="mode_work_draft_pending">Завершите текущую задачу или обработайте черновик в режиме работы.</string>
     <string name="assistant_readout_unavailable">Не удалось озвучить результат. Проверьте настройки озвучивания.</string>
+    <string name="assistant_mode_auto">Авто</string>
+    <string name="assistant_mode_chat">Чат</string>
+    <string name="assistant_mode_work">Работа</string>
+    <string name="assistant_routing">Выбираем режим…</string>
+    <string name="assistant_routing_unavailable">Не удалось выбрать режим. Выберите Чат или Работу и отправьте сообщение снова.</string>
 </resources>
