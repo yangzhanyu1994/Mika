@@ -27,6 +27,7 @@ import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.settings.AccessibilityState
 import com.wangzan101.mika.settings.Prerequisites
+import com.wangzan101.mika.settings.PersonaStore
 import com.wangzan101.mika.settings.Problem
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.settings.SystemStatus
@@ -152,6 +153,27 @@ class ChatViewModelTest {
         runCurrent()
         assertEquals(listOf("notice:n1", "run-1", "notice:n2"), vm.ui.value.exchanges.map { it.runId })
         assertEquals(listOf("我从通知里挑出 1 条", "已回复", "我从通知里挑出 2 条"), vm.ui.value.exchanges.map { (it.status as ExchangeStatus.Done).answer })
+    }
+
+    @Test fun workflowConversationCanOpenWhileRunningAndPreservesDraft() = runTest {
+        val active = MutableStateFlow<List<String>>(emptyList())
+        val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()),
+            activeConversations = active, parallelFlag = { false }, runGoal = { "workflow step" })
+        runCurrent()
+        vm.openConversation("original")
+        vm.input("draft to keep")
+        vm.quote(QuoteMessage.From.Mika, "quoted result")
+        active.value = listOf("step")
+        emit(TaskState.Running(1, "working"))
+        vm.openWorkflowConversation("step")
+        assertEquals("step", vm.ui.value.conversationId)
+        assertTrue(calls.contains("show:step"))
+        assertFalse(calls.any { it.startsWith("start:") })
+        active.value = emptyList()
+        emit(TaskState.Idle)
+        vm.openWorkflowConversation("original")
+        assertEquals("draft to keep", vm.ui.value.input)
+        assertEquals("quoted result", vm.ui.value.quote?.text)
     }
 
     @Test fun draftsStayWithTheirConversationInSerialAndParallelModes() = runTest {
@@ -312,6 +334,69 @@ class ChatViewModelTest {
         described.complete(listOf(PendingAttachment("content://late.pdf", "late.pdf", 1)))
         runCurrent()
         assertTrue(vm.ui.value.attachments.isEmpty())
+    }
+
+    @Test fun deviceImportKeepsOriginalDraftAndReportsPartialFailure() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()),
+            sandboxReady = MutableStateFlow(true))
+        runCurrent()
+        vm.openConversation("a")
+        vm.importDeviceAttachments("a", listOf("/good.pdf", "/bad.pdf")) { path, id ->
+            assertEquals("a", id)
+            gate.await()
+            if (path.contains("bad")) throw IllegalStateException()
+            com.wangzan101.mika.core.cap.devicefiles.DeviceFileImport("/workspace/inbox/good.pdf", 12)
+        }
+        runCurrent()
+        assertTrue(vm.ui.value.importing)
+        assertFalse(vm.send("hello", ok))
+        vm.openConversation("b")
+        gate.complete(Unit)
+        runCurrent()
+        assertTrue(vm.ui.value.attachments.isEmpty())
+        vm.openConversation("a")
+        assertFalse(vm.ui.value.importing)
+        assertEquals("a", vm.ui.value.attachments.single().workspaceConversationId)
+        assertEquals("bad.pdf", vm.ui.value.rejectedAttachments.single())
+    }
+
+    @Test fun deviceImportOnlyCopiesAvailableAttachmentSlots() = runTest {
+        val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()),
+            sandboxReady = MutableStateFlow(true))
+        runCurrent()
+        vm.openConversation("a")
+        repeat(8) { vm.addLibraryAttachment("a", PendingAttachment("content://$it", "$it.pdf", 1)) }
+        val copied = mutableListOf<String>()
+        vm.importDeviceAttachments("a", listOf("/one", "/two")) { path, _ ->
+            copied += path
+            com.wangzan101.mika.core.cap.devicefiles.DeviceFileImport("/workspace/inbox/one", 1)
+        }
+        runCurrent()
+        assertEquals(listOf("/one"), copied)
+        assertEquals(9, vm.ui.value.attachments.size)
+        assertEquals(1, vm.ui.value.overLimit)
+    }
+
+    @Test fun deviceImportFinishesBeforeConversationDeletion() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var deleted = false
+        val vm = ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()),
+            sandboxReady = MutableStateFlow(true), removeConversation = { deleted = true })
+        runCurrent()
+        vm.openConversation("a")
+        vm.importDeviceAttachments("a", listOf("/file")) { _, _ ->
+            gate.await()
+            com.wangzan101.mika.core.cap.devicefiles.DeviceFileImport("/workspace/inbox/file", 1)
+        }
+        runCurrent()
+        vm.deleteConversation("a")
+        runCurrent()
+        assertFalse(deleted)
+        gate.complete(Unit)
+        runCurrent()
+        assertTrue(deleted)
+        assertTrue(vm.draftConversations.value.none { it.id == "a" })
     }
 
     @Test fun libraryAttachmentMergesIntoTargetDraftWithoutSwitchingOrOverwriting() = runTest {
@@ -3455,4 +3540,35 @@ class ChatViewModelTest {
         assertEquals(1, calls.count { it.startsWith("start:") })
     }
 
+    /** 新对话选的人格先写进旁文件,再交给服务;任务开局才能读到。 */
+    @Test fun personaIsWrittenBeforeTheTaskStarts() = runTest {
+        val conversations = ConversationStore(tmp.newFolder())
+        val personas = PersonaStore(tmp.newFolder())
+        val p = personas.add("写作助手", "", "先给结论。").getOrThrow()
+        val vm = ChatViewModel(
+            backgroundScope, state, stage, actions, conversations,
+            appLabel = { it }, activities = acts, steers = steerFlow, personaStore = personas,
+        ).also { runCurrent() }
+
+        assertTrue(vm.selectPersona(p.id))
+        assertEquals(p.id, vm.ui.value.personaId)
+        assertTrue(vm.send("查天气", ok))
+        val id = vm.ui.value.conversationId!!
+        assertEquals(p.id, conversations.persona(id)?.personaId)
+    }
+
+    /** 功能关闭时界面不读也不写人格旁文件;任务层也会忽略绑定。 */
+    @Test fun personaBindingIsIgnoredWhenTheFeatureIsOff() = runTest {
+        val conversations = ConversationStore(tmp.newFolder())
+        val id = conversations.newConversation()
+        assertTrue(conversations.setPersona(id, "p1"))
+        val vm = ChatViewModel(
+            backgroundScope, state, stage, actions, conversations,
+            appLabel = { it }, activities = acts, steers = steerFlow, personaStore = null,
+        ).also { runCurrent() }
+
+        vm.openConversation(id)
+        assertNull(vm.ui.value.personaId)
+        assertFalse(vm.selectPersona("p1"))
+    }
 }

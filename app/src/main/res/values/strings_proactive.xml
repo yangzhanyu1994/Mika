@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="proactive_title">Proactive (experimental)</string>
+    <string name="proactive_title">Proactive</string>
     <string name="proactive_entry_sub">Reads notifications from apps you choose</string>
     <string name="proactive_switch">Turn on</string>
     <string name="proactive_listener">Listener: %1$s</string>
@@ -18,7 +18,7 @@
     <string name="proactive_helper_grant_confirm">Grant</string>
     <string name="proactive_helper_unavailable">Phone control isn\'t set up yet. Set it up first, or use \"Grant access\" above.</string>
     <string name="proactive_helper_failed">Couldn\'t grant it this way. Try \"Grant access\" above.</string>
-    <string name="proactive_off_note">Turning this off stops reading and sending notifications and clears pending items. Revoke system access in Settings.</string>
+    <string name="proactive_off_note">Turning the switch off: nothing more is read or sent, and unhandled notifications and stored notification text are deleted. Topics, contacts and digests already gathered stay; delete them under “What Mika has gathered”. Notification access itself stays granted until you revoke it in system settings.</string>
     <string name="proactive_triage_no_model">No model is set up. Choose one in Settings › Models first.</string>
     <string name="proactive_triage_consent_title">Send notifications to a model?</string>
     <string name="proactive_triage_reconfirm">The provider or model changed. Paused until you confirm again.</string>
@@ -53,17 +53,17 @@
     <string name="proactive_status_consent">Not yet confirmed which model the notifications go to</string>
     <string name="proactive_status_working">Working · %1$d notifications received today</string>
     <string name="proactive_status_access">App access settings can\'t be read, so proactive features are on hold: no notifications are read and nothing is sent to the model. What\'s already saved is kept. Reset them on the App access page to resume.</string>
-    <string name="proactive_apps_unreadable">The app list could not be read. No apps are read until you select them again.</string>
+    <string name="proactive_apps_unreadable">The list of apps to read could not be loaded, so nothing is being read. Choose the apps again; what was gathered before is not affected.</string>
     <string name="proactive_apps_unsaved">That change could not be saved (storage may be full). Please choose it again. If you chose “Not read”, the app is already no longer being read.</string>
     <string name="proactive_apps_more">Choose more apps</string>
-    <string name="proactive_apps_sub">Only notifications from selected apps are read.</string>
+    <string name="proactive_apps_sub">Each app can be: not read, Low (sorted and flagged only), Medium (also gathered from), or High (what is gathered may go into tasks). At Bold, what is gathered from Medium apps goes into tasks too. Chat apps carry other people\'s words, so think before letting one into tasks.</string>
     <string name="proactive_known_sub">%1$d topics · %2$d people and groups</string>
     <string name="proactive_diag">Diagnostics</string>
-    <string name="proactive_footer_send">With your consent, selected notifications are sent to the model you confirm to assess reminders.</string>
-    <string name="proactive_footer_store">Reminder results stay in memory. Notifications opened from reminders are saved in a conversation.</string>
+    <string name="proactive_footer_send">Sent to the model: the title, text and recent messages of notifications from the apps you chose, one app at a time, to the model you confirmed; plus the app\'s package name, whether it is a group or private chat, whether you opened or dismissed each notification, and the names of up to 30 existing topics. Daily, weekly and monthly digests are made only from sentences already written, not from the notification text. The daily one is also given the names of the chats.</string>
+    <string name="proactive_footer_store">Stored on this phone, encrypted: short topics, and the names and guessed relationships of the people and groups you chat with. Sorting results stay in memory only. When you open a reminder, those notifications are written into a conversation and kept like your other conversations; if you continue there, that text goes to the model doing the work. Turning this off, or deleting or clearing things under “What Mika has gathered”, does not delete that conversation.</string>
     <string name="proactive_footer_digest">Daily digest is on, so these are also stored: notification text (up to 2 days), the notes made from it (8 days), each day\'s digest (35 days), weekly digests (26 weeks) and monthly digests (2 years).</string>
     <string name="proactive_footer_no_text">Apart from reminders you open, notification text is not stored: it stays in memory only until it has been handled.</string>
     <string name="proactive_app_off">Not read</string>
-    <string name="proactive_app_off_sub">Stop reading new notifications from this app.</string>
-    <string name="proactive_consent_body">Titles, text and recent messages from selected apps are sent to %1$s model %2$s to assess reminders.\n\nIf the provider or model changes, processing pauses until you confirm again. Turning the feature off stops sending.</string>
+    <string name="proactive_app_off_sub">Its notifications are not read. Its stored notification text and the digest lines made from it are deleted; topics and contacts stay.</string>
+    <string name="proactive_consent_body">The text of notifications from the apps you chose (title, text and recent messages) will be sent to %1$s, model %2$s, to decide which are worth flagging and to gather short topics and the names and guessed relationships of the people and groups you chat with. What is gathered is stored on this phone, encrypted.\n\nIf the provider or model changes later, this pauses until you confirm again. Turning the main switch off stops all sending.</string>
 </resources>

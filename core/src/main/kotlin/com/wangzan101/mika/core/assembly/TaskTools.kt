@@ -20,6 +20,10 @@ import com.wangzan101.mika.core.uistate.IdleScroll
 import com.wangzan101.mika.core.cap.web.PagePacing
 import com.wangzan101.mika.core.uistate.PlacePace
 import com.wangzan101.mika.core.cap.mcp.McpConnection
+import com.wangzan101.mika.core.plugin.PluginCapability
+import com.wangzan101.mika.core.plugin.PluginScriptTool
+import com.wangzan101.mika.core.plugin.PluginToolSpec
+import com.wangzan101.mika.core.plugin.ScriptRunner
 import com.wangzan101.mika.core.general.GeneralGroup
 import com.wangzan101.mika.core.knowledge.GuideCatalog
 import com.wangzan101.mika.core.memory.MemoryStore
@@ -43,6 +47,7 @@ import com.wangzan101.mika.core.trigger.TriggerDefinition
 import com.wangzan101.mika.core.trigger.ScheduleAdmin
 import com.wangzan101.mika.core.child.ChildRunHost
 import com.wangzan101.mika.core.userscreen.UserScreenSource
+import java.io.File
 
 /**
  * 一个任务的工具:装上手机、网页、沙箱三种能力和核心工具。这是唯一同时认识几种能力的地方。
@@ -118,10 +123,22 @@ fun toolDispatcher(
     selfConfig: com.wangzan101.mika.core.settings.SelfConfig? = null,
     /** 存下的运行记录;给了、而这个对话之前有记过运行的轮次时提供 history_read(查之前几轮读到的东西)。 */
     runRecords: RunRecords? = null,
+    /** 声音生成/保存;为空时不装音频能力(没配置声音模型或用户没打开)。 */
+    audio: com.wangzan101.mika.core.cap.audio.AudioPort? = null,
+    /** 用户允许把音频存进音乐库;默认关。 */
+    audioSaveEnabled: Boolean = false,
+    /** 每次保存前是否问用户;默认问。 */
+    audioAskBeforeSave: Boolean = true,
+    /** 用户允许模型主动说话;默认关。 */
+    audioSpeakTool: Boolean = false,
+    /** 音频转写;为空时不装转写能力(没配置服务商转写模型)。 */
+    transcribe: com.wangzan101.mika.core.cap.transcribe.TranscribePort? = null,
     /** 以 root 跑命令(已 root 的手机上用户打开了「允许 Mika 执行 root 命令」才给);为空时 root 工具不登记。 */
     root: RootPort? = null,
     /** 用户配置并启用的通用网页搜索;为空时保持原有浏览器搜索路径。 */
     webSearch: com.wangzan101.mika.core.search.WebSearch? = null,
+    /** 用户配置并启用的网页抓取;为空时不提供 web_fetch,只能用浏览器读页面。 */
+    webFetch: com.wangzan101.mika.core.fetch.WebFetch? = null,
     /** 读 Mika 自己的状态;只对手机上、有用户的 UI 主任务给。 */
     self: com.wangzan101.mika.core.self.SelfPort? = null,
     /** 操作 Mika 自己的界面/文件/通知/剪贴板;用户打开「允许 Mika 操作自己的界面」时才给。 */
@@ -132,6 +149,14 @@ fun toolDispatcher(
     /** 这两天的通知原文和存着的各天、各周、各月的归纳(主动能力攒下的、够格带进任务的);给了才提供 notices_read。 */
     notices: com.wangzan101.mika.core.proactive.NoticeSource? = null,
     wechatOwner: com.wangzan101.mika.core.wechat.WechatOwnerPort? = null,
+    /** 启用的插件工具(名字已拼成 plugin_<id>_<name>);给了 [pluginScriptRunner] 才放进任务。 */
+    pluginTools: List<PluginToolSpec> = emptyList(),
+    /** 在 App 进程内跑插件脚本的入口;为空时插件工具不登记。 */
+    pluginScriptRunner: ScriptRunner? = null,
+    /** 插件脚本参数临时文件放哪;App 用 cacheDir,JVM 测试用 java.io.tmpdir。 */
+    pluginArgsDir: File = File(System.getProperty("java.io.tmpdir"), "mika-plugin-args"),
+    /** 用户在 UI 发起任务时可访问的设备文件。 */
+    deviceFiles: com.wangzan101.mika.core.cap.devicefiles.DeviceFilesPort? = null,
 ): ToolDispatcher {
     val screenshotStore = sandbox?.takeIf {
         it.status() !is com.wangzan101.mika.core.cap.sandbox.SandboxStatus.Unsupported &&
@@ -140,7 +165,7 @@ fun toolDispatcher(
     }?.let { com.wangzan101.mika.core.cap.sandbox.WorkspaceScreenshots(it, workspace) }
     val config = ToolConfig(visionEnabled, skills, recordFrames, vision, inlineScreen, adaptiveVision, memory, profile, utterances, conversationId,
         imageOps, scheduleTrigger, scheduleAdmin, runSpec, childHost, userScreens, personalSkills, selfConfig, runRecords, webSearch, self, selfOperate,
-        screenshotStore?.let { store -> { path, png -> store.save(path, png) } }, taskMemory = taskMemory, notices = notices)
+        screenshotStore?.let { store -> { path, png -> store.save(path, png) } }, taskMemory = taskMemory, notices = notices, webFetch = webFetch)
     val providers: List<CapabilityProvider> = listOf(
         object : CapabilityProvider {
             override val id = PHONE
@@ -153,9 +178,21 @@ fun toolDispatcher(
         object : CapabilityProvider {
             override val id = SANDBOX
             override fun open(spec: RunSpec) = SandboxCapability(sandbox, workspace, visionEnabled,
-                onSandboxCommand, onSandboxProgress, onSandboxPreparing, onSandboxScript)
+                onSandboxCommand, onSandboxProgress, onSandboxPreparing, onSandboxScript,
+                folderAccess = spec.provenance.origin == com.wangzan101.mika.core.run.RunOrigin.Ui &&
+                    spec.provenance.attendance != com.wangzan101.mika.core.run.Attendance.Unattended && !spec.readOnly)
         },
-    ) + listOfNotNull(root?.let { port ->
+    ) + listOfNotNull(transcribe?.let { port ->
+        object : CapabilityProvider {
+            override val id = com.wangzan101.mika.core.cap.transcribe.TRANSCRIBE
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.cap.transcribe.TranscribeCapability(port)
+        }
+    }) + listOfNotNull(audio?.let { port ->
+        object : CapabilityProvider {
+            override val id = com.wangzan101.mika.core.cap.audio.AUDIO
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.cap.audio.AudioCapability(port, audioSaveEnabled, audioAskBeforeSave, audioSpeakTool)
+        }
+    }) + listOfNotNull(root?.let { port ->
         object : CapabilityProvider {
             override val id = RootCapability.KEY.name
             override fun open(spec: RunSpec) = RootCapability(port)
@@ -169,6 +206,18 @@ fun toolDispatcher(
         object : CapabilityProvider {
             override val id = "calls"
             override fun open(spec: RunSpec) = com.wangzan101.mika.core.calls.PhoneCallsCapability(port)
+        }
+    }, pluginScriptRunner?.takeIf { pluginTools.isNotEmpty() }?.let { runner ->
+        object : CapabilityProvider {
+            override val id = "plugin"
+            override fun open(spec: RunSpec) = PluginCapability(pluginTools.map { PluginScriptTool(it, runner, pluginArgsDir) })
+        }
+    }, deviceFiles?.let { port ->
+        object : CapabilityProvider {
+            override val id = com.wangzan101.mika.core.cap.devicefiles.DEVICE_FILES
+            override fun open(spec: RunSpec) = if (spec.provenance.origin == com.wangzan101.mika.core.run.RunOrigin.Ui &&
+                spec.provenance.attendance != com.wangzan101.mika.core.run.Attendance.Unattended)
+                com.wangzan101.mika.core.cap.devicefiles.DeviceFilesCapability(port, workspace) else null
         }
     }) + mcpServers.map(::McpClientProvider)
     return RunAssembler(providers).assemble(runSpec, config, stableRefs, FORMER_PREFIX, RENAMED, RETIRED, MOVED)
@@ -216,7 +265,7 @@ fun recordedTools(): ToolIndex = legacyNames().let { legacy -> ToolIndex(allTool
 
 /** Mika 所有可能提供的工具,按发给模型的顺序。 */
 internal fun allTools(): List<AgentTool> =
-    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools + com.wangzan101.mika.core.wechat.wechatOwnerTools
+    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + com.wangzan101.mika.core.cap.audio.AudioGroup.tools + com.wangzan101.mika.core.cap.transcribe.TranscribeGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools + com.wangzan101.mika.core.wechat.wechatOwnerTools + com.wangzan101.mika.core.cap.devicefiles.DeviceFilesGroup.tools
 
 /** Mika 所有可能提供的工具的声明。 */
 fun knownTools(): ToolIndex = ToolIndex(allTools())

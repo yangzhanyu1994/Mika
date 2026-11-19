@@ -1,7 +1,11 @@
 package com.wangzan101.mika.chat
 
 import android.content.Context
+import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.core.agent.SystemPrompt
+import com.wangzan101.mika.core.prompt.PersonaPrompt
+import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.model.Author
 import com.wangzan101.mika.core.model.Message
@@ -152,7 +156,13 @@ internal class ResearchChat(
         val search = WebSearchSettings.get(app).service().takeIf { model.capabilities.toolCalls }
         val tools = if (search != null) listOf(SEARCH) else emptyList()
         val delegating = allowWork && model.capabilities.toolCalls
-        val system = if (delegating) ADAPTIVE_SYSTEM else SYSTEM
+        val persona = if (FeatureFlags.get(app).persona()) {
+            (app as? MikaApp)?.personas?.get(store.persona(id)?.personaId)
+        } else null
+        val system = SystemPrompt.withPersona(
+            if (delegating) ADAPTIVE_SYSTEM else SYSTEM,
+            persona?.let { PersonaPrompt.layer(it.name, it.prompt) },
+        )
         val messages = buildList {
             history.forEach {
                 add(Message(Role.User, listOf(Part.Text(it.userText.take(4_000))), Author.User))

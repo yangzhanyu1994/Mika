@@ -175,7 +175,14 @@ class AgentLoop(
     private val reviewFinalAnswer: Boolean = true,
     /** 同一网站、App 里连着做对外动作(发送、提交)时两次之间的间隔;默认不等。 */
     private val outwardPacing: OutwardPacing = OutwardPacing.Off,
+    /** 主模型的备援链(项目 3);默认没有。[modelChainTags] 与主模型加备援平行,是各自的服务商名。 */
+    private val modelFallbacks: List<ChatModel> = emptyList(),
+    private val modelChainTags: List<String?> = emptyList(),
     private val trace: RunTrace? = null,
+    /** 这一轮用的人格(名字 · 修订号);只写进运行记录,不参与提示词拼装。没有人格为 null。 */
+    private val personaLabel: String? = null,
+    /** 插件提示词钩子:拼好的系统提示词发模型前过它;为 null 时原样发。 */
+    private val promptTransform: (suspend (String) -> String)? = null,
 ) {
     init {
         require(maxSteps > 0) { "maxSteps must be positive" }
@@ -193,7 +200,7 @@ class AgentLoop(
         tools.observer = { record { order.observed(RunEvent.Observed.of(it)) } }
     }
 
-    private val caller = ModelCaller(model, tools, router, flags, retry, ::emit, ::now, autonomous, trace)
+    private val caller = ModelCaller(model, tools, router, flags, retry, ::emit, ::now, autonomous, trace, modelFallbacks, modelChainTags)
     private val intentGate = intentJudge?.let { IntentGate(it, model.takeUnless { main -> main === it }) }
     private val routeMatcher = routes
     /** 本任务的上下文生成器(外壳、预算、已给过的参考资料)。 */
@@ -276,12 +283,15 @@ class AgentLoop(
             override fun cancel() = this@AgentLoop.cancel()
         })
         caller.reset(basePrompt)
+        caller.promptTransform = promptTransform
         // 同意只在一次任务内有效
         confirmations?.reset()
         utterances?.clear()
         emit(RunEvent.TaskStarted(now(), Redactor.text(task), model.name,
             origin = runProvenance.origin.takeIf { it != RunOrigin.Ui }?.name?.lowercase(),
             stepLimit = maxSteps.takeIf { it != Int.MAX_VALUE }, tokenBudget = tokenBudget))
+        // 人格在 TaskStarted 之后记,时间线按「开始时用了谁」读;没有人格不写
+        personaLabel?.let { emit(RunEvent.State(now(), "persona", it)) }
         var end: TaskState? = null
         replay?.reset()
         lastEnd = null
@@ -549,7 +559,7 @@ class AgentLoop(
                     reply = try { caller.ask(discussion, emptyList(), step, using = model, onText = previewFor(step)) }
                     catch (e: CancellationException) { throw e }
                     catch (e: Exception) { return StopRules.modelFailed(e) }
-                    used = model
+                    used = caller.lastMainUsed
                 }
             }
             val rawText = reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()
@@ -707,7 +717,7 @@ class AgentLoop(
                         (if (verdicts.isEmpty()) emptyMap() else mapOf("guard" to JsonArray(verdicts.map { it.toJson() }))) +
                         (advice?.let { mapOf("advice" to JsonPrimitive(it)) } ?: emptyMap()))
                     val isError = (e.content["ok"] as? JsonPrimitive)?.booleanOrNull == false
-                    history += Message(Role.Tool, listOf(Part.ToolResult(first.id, content.toString(), isError, e.observations.map { it.tag })) + skipped, Author.Mika)
+                    history += Message(Role.Tool, listOf(Part.ToolResult(first.id, ScreenElementTable.text(content, flags.tablesAtBirth && !isError), isError, e.observations.map { it.tag })) + skipped, Author.Mika)
                     // 只有端口明确说「不是密码框」才记原文
                     val secret = (e.content["secret"] as? JsonPrimitive)?.booleanOrNull != false
                     if (!waitsForUser) recordReply(Redactor.args(tools.verb(first.name), first.argsJson, secret))
@@ -941,11 +951,11 @@ class AgentLoop(
         }
         val durationMs = now() - started
         val isError = exec.content["ok"] != JsonPrimitive(true)
-        history += Message(Role.Tool, listOf(Part.ToolResult(first.id, exec.content.toString(), isError, exec.observations.map { it.tag })) + skipped, Author.Mika)
+        history += Message(Role.Tool, listOf(Part.ToolResult(first.id, ScreenElementTable.text(exec.content, flags.tablesAtBirth && !isError), isError, exec.observations.map { it.tag })) + skipped, Author.Mika)
         // 批做完(或停下)后再给模型一份当前元素表；只有元素信息不足才附画面。
         if (steps != null && ranAnyStep(exec.content)) {
             tools.lookNow()?.let { v ->
-                history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(v.content.toString())), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
+                history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(ScreenElementTable.text(v.content, flags.tablesAtBirth))), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
             }
         }
         recordReply(BatchRunner.redactArgs(first.argsJson))
@@ -1040,6 +1050,7 @@ class AgentLoop(
             }
             val text = CompletionPlanBlock.extract(reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()).text
             history += Message(Role.Assistant, cleanReplyParts(reply.parts, text), Author.Mika)
+                .also { caller.noteReply(it, caller.lastMainUsed, reply.usage) }
             val calls = reply.parts.filterIsInstance<Part.ToolCall>()
             val call = calls.firstOrNull { tools.verb(it.name) in TurnPolicy.FINAL_VERBS }
             val retryWaitMs = caller.lastRetryWaitMs

@@ -45,6 +45,8 @@ import com.wangzan101.mika.chat.FileLibrary
 import com.wangzan101.mika.chat.FileLibrarySnapshot
 import com.wangzan101.mika.chat.FileSource
 import com.wangzan101.mika.chat.LibraryFile
+import com.wangzan101.mika.task.DeviceImportStore
+import kotlinx.coroutines.flow.catch
 import com.wangzan101.mika.ui.components.*
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
@@ -67,7 +69,8 @@ private data class LibraryRow(
     val input: Boolean,
     val handle: LibraryFileHandle,
     /** 最近一次出现的位置,「在对话中查看」跳到这里。 */
-    val source: FileSource,
+    val source: FileSource?,
+    val deviceImport: Boolean = false,
 ) {
     val type = LibraryFileType.of(name)
 }
@@ -131,9 +134,11 @@ internal fun FileLibraryScreen(
 ) {
     val context = LocalContext.current
     val store = remember(conversationStore) { conversationStore ?: ConversationStore.shared(context) }
+    val imports = remember(context) { DeviceImportStore.get(context) }
     val scope = rememberCoroutineScope()
     var revision by remember { mutableIntStateOf(0) }
     LaunchedEffect(store) { store.changes.collect { revision++ } }
+    LaunchedEffect(imports) { imports.recordsFlow().catch { revision++ }.collect { revision++ } }
     val drafts by vm.draftConversations.collectAsState()
     val loaded by produceState<LibraryLoaded?>(null, revision, drafts) {
         value = try { withContext(Dispatchers.IO) {
@@ -143,6 +148,11 @@ internal fun FileLibraryScreen(
                 draftTitles = drafts.associate { it.id to ChatCopy.plainTitle(it.title) },
                 fallbackTitle = { id -> store.title(id)?.let(ChatCopy::plainTitle) },
             )
+            var importReadFailed = false
+            val importRecords = try { imports.allRecords() } catch (_: Exception) {
+                importReadFailed = true
+                emptyList()
+            }
             val rows = result.snapshot?.files.orEmpty().mapNotNull { file ->
                 when (file) {
                     is LibraryFile.Input -> file.sources.maxByOrNull { it.source.atMs ?: Long.MIN_VALUE }?.let { latest ->
@@ -163,8 +173,17 @@ internal fun FileLibraryScreen(
                         )
                     }
                 }
-            }.sortedByDescending { it.at ?: Long.MIN_VALUE }
-            LibraryLoaded(rows, result.titles, result.partial, failed = result.snapshot == null)
+            } + importRecords.map { record ->
+                LibraryRow(
+                    "device-import:${record.id}", record.workspacePath.substringAfterLast('/'),
+                    ChatViewModel.sizeLabel(record.size), record.importedAt, listOf(record.conversationId), true,
+                    LibraryFileHandle.Workspace(record.conversationId, record.workspacePath), null, deviceImport = true,
+                )
+            }
+            val titles = result.titles.toMutableMap()
+            importRecords.forEach { record -> titles.putIfAbsent(record.conversationId, record.conversationId) }
+            LibraryLoaded(rows.sortedByDescending { it.at ?: Long.MIN_VALUE }, titles,
+                result.partial || importReadFailed, failed = result.snapshot == null && importReadFailed)
         } } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -242,7 +261,8 @@ internal fun FileLibraryScreen(
     /** 跳到文件最近一次出现的消息:输入文件回到那条用户消息,产物回到这一轮的文件卡片。 */
     fun openInChat(item: LibraryRow) {
         if (working) return
-        if (!onOpenSource(item.source.conversationId, fileLibraryTarget(item.source, item.input))) {
+        val source = item.source ?: return
+        if (!onOpenSource(source.conversationId, fileLibraryTarget(source, item.input))) {
             error = R.string.file_library_open_failed
         }
     }
@@ -454,7 +474,7 @@ internal fun FileLibraryScreen(
                                     selecting = selecting,
                                     working = working,
                                     conversationLabel = item.conversations.joinToString(" · ") { titles[it] ?: it },
-                                    sourceLabel = stringResource(if (item.input) R.string.file_library_input else R.string.file_library_output),
+                                    sourceLabel = stringResource(if (item.deviceImport) R.string.dev_device_files else if (item.input) R.string.file_library_input else R.string.file_library_output),
                                     divider = index > 0,
                                     onOpen = { preview(item) },
                                     onLongPress = { enterSelection(item) },
@@ -491,7 +511,7 @@ internal fun FileLibraryScreen(
     }
     actionsFor?.let { item ->
         // 来源会话打不开(任务进行中且没开并行、又不是当前会话)时不给这一项
-        val canOpenInChat = item.source.conversationId == vm.ui.value.conversationId || vm.canSwitch()
+        val canOpenInChat = item.source?.let { it.conversationId == vm.ui.value.conversationId || vm.canSwitch() } == true
         val openInChatAction = SheetAction(
             stringResource(R.string.file_library_open_in_chat), icon = MikaIcons.Message,
         ) { openInChat(item) }

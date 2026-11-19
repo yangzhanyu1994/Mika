@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="proactive_title">Проактивность (эксперимент)</string>
+    <string name="proactive_title">Проактивность</string>
     <string name="proactive_entry_sub">Читает уведомления выбранных приложений</string>
     <string name="proactive_switch">Включить</string>
     <string name="proactive_listener">Слушатель: %1$s</string>
@@ -18,7 +18,7 @@
     <string name="proactive_helper_grant_confirm">Выдать</string>
     <string name="proactive_helper_unavailable">Управление телефоном ещё не настроено. Настройте его или используйте «Дать доступ» выше.</string>
     <string name="proactive_helper_failed">Не удалось выдать доступ так. Попробуйте «Дать доступ» выше.</string>
-    <string name="proactive_off_note">Turning this off stops reading and sending notifications and clears pending items. Revoke system access in Settings.</string>
+    <string name="proactive_off_note">При выключении больше ничего не читается и не отправляется, а необработанные уведомления и сохранённый текст удаляются. Уже собранные темы, контакты и сводки остаются; удалить их можно в разделе «Что узнала Mika». Доступ к уведомлениям остаётся, пока вы не отзовёте его в системных настройках.</string>
     <string name="proactive_triage_no_model">Модель не настроена. Сначала выберите её в Настройки › Модели.</string>
     <string name="proactive_triage_consent_title">Отправлять уведомления модели?</string>
     <string name="proactive_triage_reconfirm">Провайдер или модель изменились. Приостановлено до повторного подтверждения.</string>
@@ -53,17 +53,17 @@
     <string name="proactive_status_consent">Вы ещё не подтвердили, какой модели отправлять уведомления</string>
     <string name="proactive_status_working">Работает · сегодня получено уведомлений: %1$d</string>
     <string name="proactive_status_access">Не удаётся прочитать настройки «Доступ к приложениям», поэтому проактивные функции приостановлены: уведомления не читаются и ничего не отправляется модели. Уже сохранённое не трогается. Сбросьте настройки на странице «Доступ к приложениям», чтобы возобновить.</string>
-    <string name="proactive_apps_unreadable">The app list could not be read. No apps are read until you select them again.</string>
+    <string name="proactive_apps_unreadable">Не удалось прочитать список приложений, поэтому сейчас не читается ни одно. Выберите приложения заново; уже собранное не затронуто.</string>
     <string name="proactive_apps_unsaved">Не удалось сохранить это изменение (возможно, память заполнена). Выберите ещё раз. Если вы выбрали «Не читать», приложение уже не читается.</string>
     <string name="proactive_apps_more">Выбрать ещё приложения</string>
-    <string name="proactive_apps_sub">Only notifications from selected apps are read.</string>
+    <string name="proactive_apps_sub">Для каждого приложения можно выбрать: не читать, Низкий (только сортировка и отметки), Средний (ещё и выводы по нему) или Высокий (собранное может попадать в задачи). На уровне «Смело» в задачи попадает и собранное из приложений со «Средним». В чатах говорят другие люди — подумайте, прежде чем допускать их в задачи.</string>
     <string name="proactive_known_sub">Тем: %1$d · людей и групп: %2$d</string>
     <string name="proactive_diag">Диагностика</string>
-    <string name="proactive_footer_send">With your consent, selected notifications are sent to the model you confirm to assess reminders.</string>
-    <string name="proactive_footer_store">Reminder results stay in memory. Notifications opened from reminders are saved in a conversation.</string>
+    <string name="proactive_footer_send">Модели отправляется: заголовок, текст и недавние сообщения уведомлений выбранных приложений — по одному приложению за раз, подтверждённой вами модели; а также имя пакета приложения, групповой это чат или личный, открыли вы уведомление или смахнули, и названия до 30 уже имеющихся тем. Сводки за день, неделю и месяц составляются только из уже написанных предложений, без текста уведомлений. В дневную сводку также передаются названия чатов.</string>
+    <string name="proactive_footer_store">На телефоне в зашифрованном виде хранятся: короткие темы, а также имена и предполагаемые отношения людей и групп, с которыми вы переписываетесь. Результаты сортировки остаются только в памяти. Когда вы открываете напоминание, эти уведомления записываются в беседу и хранятся, как остальные беседы; если вы продолжите в ней, этот текст уйдёт модели, выполняющей работу. Выключение переключателя, удаление или очистка того, что есть в разделе «Что узнала Mika», не удаляет эту беседу.</string>
     <string name="proactive_footer_digest">Сводка за день включена, поэтому хранятся ещё: текст уведомлений (до 2 дней), составленные по нему заметки (8 дней), сводка за каждый день (35 дней), сводки за неделю (26 недель) и за месяц (2 года).</string>
     <string name="proactive_footer_no_text">Кроме открытых вами напоминаний, текст уведомлений не сохраняется: он остаётся в памяти только до обработки.</string>
     <string name="proactive_app_off">Не читать</string>
-    <string name="proactive_app_off_sub">Stop reading new notifications from this app.</string>
-    <string name="proactive_consent_body">Titles, text and recent messages from selected apps are sent to %1$s model %2$s to assess reminders.\n\nIf the provider or model changes, processing pauses until you confirm again. Turning the feature off stops sending.</string>
+    <string name="proactive_app_off_sub">Его уведомления не читаются. Сохранённый текст и строки сводок, составленные по нему, удаляются; темы и контакты остаются.</string>
+    <string name="proactive_consent_body">Текст уведомлений выбранных приложений (заголовок, текст и недавние сообщения) будет отправляться %1$s, модель %2$s, чтобы решать, о чём стоит напомнить, и собирать короткие темы, а также имена и предполагаемые отношения людей и групп, с которыми вы переписываетесь. Собранное хранится на этом телефоне в зашифрованном виде.\n\nЕсли позже изменится провайдер или модель, всё приостановится до повторного подтверждения. Выключение главного переключателя прекращает отправку.</string>
 </resources>

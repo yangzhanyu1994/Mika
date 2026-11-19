@@ -2,6 +2,8 @@ package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
 import com.wangzan101.mika.i18n.tr
+import com.wangzan101.mika.i18n.trPlural
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.wangzan101.mika.settings.ProviderConnection
 import android.app.ActivityManager
@@ -39,6 +41,8 @@ import com.wangzan101.mika.settings.Prerequisites
 import com.wangzan101.mika.settings.Problem
 import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.settings.NetProxyStore
+import com.wangzan101.mika.settings.WebFetchConfig
+import com.wangzan101.mika.settings.WebFetchSettings
 import com.wangzan101.mika.settings.WebSearchConfig
 import com.wangzan101.mika.settings.WebSearchSettings
 import com.wangzan101.mika.cap.web.WebProxy
@@ -68,7 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, RunStats, Proactive }
+private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -93,6 +97,8 @@ fun SettingsScreen(
     /** 外部 MCP server 设置(outbound);为空时不显示入口。 */
     mcpServers: com.wangzan101.mika.settings.McpServerStore? = null,
     onOpenSpeech: () -> Unit = {},
+    /** 人格设置;为空时不显示入口。 */
+    onOpenPersonas: (() -> Unit)? = null,
 ) {
     val configs by store.configs.collectAsState()
     val roles by store.roles.collectAsState()
@@ -124,6 +130,7 @@ fun SettingsScreen(
     var tokenBudget by remember { mutableStateOf(flags.taskTokenBudget()) }
     var selfConfig by remember { mutableStateOf(flags.selfConfig()) }
     var selfOperate by remember { mutableStateOf(flags.selfOperate()) }
+    var deviceFiles by remember { mutableStateOf(flags.deviceFiles()) }
     var pipOperate by remember { mutableStateOf(flags.pipOperate()) }
     var externalSchedule by remember { mutableStateOf(flags.externalSchedule()) }
     var capsuleMode by remember { mutableStateOf(flags.capsuleMode()) }
@@ -148,10 +155,16 @@ fun SettingsScreen(
     var webSearch by remember { mutableStateOf<WebSearchConfig?>(null) }
     var editingSearch by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { webSearch = withContext(Dispatchers.IO) { searchSettings.get() } }
+    val fetchSettings = remember { WebFetchSettings.get(context) }
+    var webFetch by remember { mutableStateOf<WebFetchConfig?>(null) }
+    var editingFetch by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { webFetch = withContext(Dispatchers.IO) { fetchSettings.get() } }
     val mcp = remember { (context.applicationContext as com.wangzan101.mika.MikaApp).mcp }
     val mcpNetworkOn by mcp.settings.enabled.collectAsState()
     val mcpUsbOn by mcp.usb.enabled.collectAsState()
     val mcpOn = mcpNetworkOn || mcpUsbOn
+    val pluginRegistry = remember { (context.applicationContext as com.wangzan101.mika.MikaApp).plugins }
+    val pluginRecords by pluginRegistry.plugins.collectAsState()
     val parallel = if (!speed.parallelTasks) null else ParallelSetting(
         parallelMax,
         ParallelCapability.detect(
@@ -165,11 +178,11 @@ fun SettingsScreen(
     val toAdvanced = { page = SettingsPage.Advanced }
     val back = {
         page = when (page) {
-            SettingsPage.RunStats -> SettingsPage.Developer
-            SettingsPage.Proactive -> SettingsPage.Advanced
+            SettingsPage.RunStats, SettingsPage.DeviceDirectories -> SettingsPage.Developer
+            SettingsPage.Proactive -> SettingsPage.Home
             SettingsPage.SelfCheck -> SettingsPage.Recovery
             SettingsPage.Sandbox, SettingsPage.Recovery, SettingsPage.ComputerAccess,
-            SettingsPage.McpServers, SettingsPage.Root, SettingsPage.Developer -> SettingsPage.Advanced
+            SettingsPage.McpServers, SettingsPage.Root, SettingsPage.Developer, SettingsPage.EnvVars -> SettingsPage.Advanced
             else -> SettingsPage.Home
         }
     }
@@ -177,7 +190,7 @@ fun SettingsScreen(
     if (page != SettingsPage.Home) BackHandler { back() }
 
     val visiblePage = when {
-        !showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.RunStats) -> SettingsPage.Home
+        !showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.DeviceDirectories || page == SettingsPage.RunStats) -> SettingsPage.Home
         page == SettingsPage.Root && !rootState.suPresent -> SettingsPage.Advanced
         else -> page
     }
@@ -201,6 +214,8 @@ fun SettingsScreen(
             onPersonalStart = { flags.setPersonalStart(it); personalStart = it },
             onOpenMemory = onOpenMemory,
             onOpenRecommendations = { page = SettingsPage.Recommendations },
+            onOpenProactive = { page = SettingsPage.Proactive },
+            onOpenPersonas = onOpenPersonas,
             onOpenAdvanced = { page = SettingsPage.Advanced },
             versionName = BuildConfig.VERSION_NAME, updateVersion = updateVersion, onOpenAbout = onOpenAbout,
             onQuit = { confirmingQuit = true },
@@ -208,7 +223,10 @@ fun SettingsScreen(
         SettingsPage.Advanced -> AdvancedSettingsContent(
             proxy = proxy, proxyNote = proxy?.let { NetProxyCopy.subtitle(it, browserProxy) }, onOpenProxy = { editingProxy = true },
             webSearch = webSearch, onOpenWebSearch = { editingSearch = true },
+            webFetch = webFetch, onOpenWebFetch = { editingFetch = true },
             sandbox = sandboxStatus, onOpenSandbox = { page = SettingsPage.Sandbox },
+            pluginsCount = pluginRecords.size, onOpenPlugins = { page = SettingsPage.Plugins },
+            onOpenEnvVars = { page = SettingsPage.EnvVars },
             showRecovery = status.sdkInt >= Prerequisites.MIN_SDK, onOpenRecovery = { page = SettingsPage.Recovery },
             computerAccess = mcpOn, onOpenComputerAccess = { page = SettingsPage.ComputerAccess },
             mcpServersCount = mcpServers?.servers?.value?.size, onOpenMcpServers = { page = SettingsPage.McpServers },
@@ -256,6 +274,8 @@ fun SettingsScreen(
             cardScale = capsuleCardScale,
             onCardScale = { flags.setCapsuleCardScale(it); capsuleCardScale = it },
         )
+        SettingsPage.Plugins -> PluginsScreen(pluginRegistry, onBack = toHome)
+        SettingsPage.EnvVars -> EnvVarSettingsScreen(remember { com.wangzan101.mika.settings.EnvVarStore.get(context) }, onBack = toAdvanced)
         SettingsPage.Sandbox -> SandboxScreen(onBack = toAdvanced)
         SettingsPage.Recovery -> RecoveryScreen(onBack = toAdvanced, onOpenSelfCheck = { page = SettingsPage.SelfCheck })
         SettingsPage.SelfCheck -> SelfCheckScreen(status, onBack = back)
@@ -264,9 +284,16 @@ fun SettingsScreen(
         SettingsPage.Root -> RootScreen(helperRow = status.sdkInt >= Prerequisites.MIN_SDK, onBack = toAdvanced)
         SettingsPage.Developer -> DeveloperOptionsScreen(
             speed, onSpeed = { flags.setSpeed(it); speed = it }, onBack = toAdvanced,
+            deviceFiles = deviceFiles, onDeviceFiles = { flags.setDeviceFiles(it); deviceFiles = it },
             grounding = visionConfig?.let { GroundingSetting(it.model, it.capabilities.groundingVerified) },
             onGrounding = { verified -> scope.launch { withContext(Dispatchers.IO) { store.setVisionGroundingVerified(verified) } } },
             onOpenRunStats = { page = SettingsPage.RunStats },
+            onDeviceDirectories = { page = SettingsPage.DeviceDirectories },
+        )
+        SettingsPage.DeviceDirectories -> DeviceDirectoriesScreen(
+            remember { com.wangzan101.mika.settings.DeviceDirectoryStore.get(context) },
+            remember { com.wangzan101.mika.cap.phone.PhoneServices.of(context).hub },
+            onBack = { page = SettingsPage.Developer },
         )
         SettingsPage.RunStats -> RunStatsScreen(remember { RunStore(context).metrics }, onBack = back)
         SettingsPage.Proactive -> com.wangzan101.mika.proactive.ProactiveScreen(onBack = back)
@@ -292,6 +319,18 @@ fun SettingsScreen(
                 withContext(Dispatchers.IO) { searchSettings.set(config) }
                 webSearch = searchSettings.get()
                 editingSearch = false
+            }
+        },
+    )
+
+    if (editingFetch) WebFetchDialog(
+        initial = webFetch ?: WebFetchConfig(),
+        onDismiss = { editingFetch = false },
+        onSave = { config ->
+            scope.launch {
+                withContext(Dispatchers.IO) { fetchSettings.set(config) }
+                webFetch = fetchSettings.get()
+                editingFetch = false
             }
         },
     )
@@ -364,6 +403,8 @@ fun SettingsContent(
     onOpenLanguage: () -> Unit = {},
     onOpenMemory: (() -> Unit)? = null,
     onOpenRecommendations: () -> Unit = {},
+    onOpenProactive: (() -> Unit)? = null,
+    onOpenPersonas: (() -> Unit)? = null,
     onOpenAdvanced: () -> Unit = {},
     versionName: String = "",
     updateVersion: String? = null,
@@ -412,7 +453,14 @@ fun SettingsContent(
 
         GroupLabel(stringResource(R.string.settings_group_preferences))
         GroupCard {
-            ListRow(MikaIcons.Moon, stringResource(R.string.settings_row_run), stringResource(R.string.settings_during_work_sub), first = true, onClick = onOpenDuringWork) { RowChevron() }
+            onOpenProactive?.let { open ->
+                ListRow(MikaIcons.Spark, stringResource(R.string.proactive_title),
+                    stringResource(R.string.proactive_entry_sub), first = true, onClick = open) { RowChevron() }
+            }
+            onOpenPersonas?.let {
+                ListRow(MikaIcons.Spark, stringResource(R.string.persona_title), stringResource(R.string.persona_sub), first = onOpenProactive == null, onClick = it) { RowChevron() }
+            }
+            ListRow(MikaIcons.Moon, stringResource(R.string.settings_row_run), stringResource(R.string.settings_during_work_sub), first = onOpenProactive == null && onOpenPersonas == null, onClick = onOpenDuringWork) { RowChevron() }
             ListRow(MikaIcons.Globe, stringResource(R.string.settings_language_appearance), onClick = onOpenLanguage) {
                 RowValue(languageLabel(language))
                 RowChevron()
@@ -486,8 +534,13 @@ fun AdvancedSettingsContent(
     onOpenProxy: () -> Unit = {},
     webSearch: WebSearchConfig? = null,
     onOpenWebSearch: () -> Unit = {},
+    webFetch: WebFetchConfig? = null,
+    onOpenWebFetch: () -> Unit = {},
     sandbox: SandboxStatus? = null,
     onOpenSandbox: () -> Unit = {},
+    pluginsCount: Int? = null,
+    onOpenPlugins: () -> Unit = {},
+    onOpenEnvVars: () -> Unit = {},
     showRecovery: Boolean = true,
     onOpenRecovery: () -> Unit = {},
     computerAccess: Boolean? = null,
@@ -503,7 +556,10 @@ fun AdvancedSettingsContent(
 ) {
     PageScaffold(stringResource(R.string.settings_advanced), onBack) {
         val sandboxRow = sandbox?.takeIf { it !is SandboxStatus.Unsupported }
-        if (proxy != null || webSearch != null || sandboxRow != null || computerAccess != null || mcpServersCount != null || showRoot) {
+        GroupCard {
+            ListRow(MikaIcons.Code, stringResource(R.string.env_vars_title), first = true, onClick = onOpenEnvVars) { RowChevron() }
+        }
+        if (proxy != null || webSearch != null || webFetch != null || sandboxRow != null || pluginsCount != null || computerAccess != null || mcpServersCount != null || showRoot) {
             GroupLabel(stringResource(R.string.settings_connections))
             GroupCard {
                 var first = true
@@ -519,9 +575,19 @@ fun AdvancedSettingsContent(
                         RowValue(WebSearchCopy.value(config)); RowChevron()
                     }
                 }
+                webFetch?.let { config ->
+                    ListRow(MikaIcons.Doc, stringResource(R.string.web_fetch_title), stringResource(R.string.web_fetch_row_sub), first = take(), onClick = onOpenWebFetch) {
+                        RowValue(WebFetchCopy.value(config)); RowChevron()
+                    }
+                }
                 if (sandboxRow != null) {
                     ListRow(MikaIcons.Terminal, stringResource(R.string.settings_sandbox), first = take(), onClick = onOpenSandbox) {
                         RowValue(sandboxValue(sandboxRow)); RowChevron()
+                    }
+                }
+                pluginsCount?.let {
+                    ListRow(MikaIcons.Spark, stringResource(R.string.plugins_title), first = take(), onClick = onOpenPlugins) {
+                        RowValue(trPlural(R.plurals.plugins_count, it)); RowChevron()
                     }
                 }
                 computerAccess?.let { on ->

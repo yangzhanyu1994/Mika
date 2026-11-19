@@ -89,6 +89,7 @@ import com.wangzan101.mika.ui.components.TopBar
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
+import com.wangzan101.mika.settings.MAX_MAIN_FALLBACKS
 
 /**
  * 配置模型:用途(主模型、看图模型、轻量模型)和服务商两块。首次上手时 [onboarding] 为真
@@ -100,6 +101,8 @@ fun ModelSetupScreen(
     store: ProviderStore, onboarding: Boolean, onBack: () -> Unit, onDone: () -> Unit,
     /** 设置里点「语音转文字」卡片去选择页;上手流程不传,卡片就不出现。 */
     onOpenSpeech: (() -> Unit)? = null,
+    /** 设置里点「声音模型」卡片去设置页;上手流程不传,卡片就不出现。 */
+    onOpenVoice: (() -> Unit)? = null,
     /** 设置里查看 Token 用量;上手流程不传。 */
     onOpenUsage: (() -> Unit)? = null,
     initialRole: ModelRole? = null,
@@ -119,6 +122,7 @@ fun ModelSetupScreen(
     }
     val ui by vm.state.collectAsState()
     var picking by rememberSaveable { mutableStateOf(initialRole) }
+    var pickingFallback by rememberSaveable { mutableStateOf<Int?>(null) }
     var openProvider by rememberSaveable { mutableStateOf<String?>(null) }
     var allModels by rememberSaveable { mutableStateOf(false) }
     // 账号登录的面板:在添加表单和服务商详情里都能打开,登录中关掉也不打断登录
@@ -129,6 +133,7 @@ fun ModelSetupScreen(
         val id = ui.signedInProvider ?: return@LaunchedEffect
         signInSheet = null
         picking = null
+        pickingFallback = null
         openProvider = id
         allModels = false
         vm.signedInShown()
@@ -176,6 +181,37 @@ fun ModelSetupScreen(
                 ProviderDetailContent(ui, provider, actions, onBack = { openProvider = null })
             }
         }
+        pickingFallback != null -> {
+            val slot = pickingFallback!!
+            BackHandler { pickingFallback = null }
+            LaunchedEffect(slot) { vm.ensureListed(); vm.clearManualPick() }
+            RolePickerContent(
+                ui, ModelRole.Main,
+                RolePickerActions(
+                    pick = { pid, model ->
+                        // 和选主模型一样:没试通过的那家先试调用,通了才选上、返回
+                        if (ui.probeBeforePick(ModelRole.Main, pid)) vm.pickFallbackManual(slot, pid, model) { pickingFallback = null }
+                        else { vm.pickFallback(slot, pid, model); pickingFallback = null }
+                    },
+                    pickManual = { pid, model -> vm.pickFallbackManual(slot, pid, model) { pickingFallback = null } },
+                    addProvider = { vm.openForm(); pickingFallback = null },
+                ),
+                onBack = { pickingFallback = null },
+                titleOverride = stringResource(R.string.main_fallback_name, slot + 1),
+                hintOverride = stringResource(R.string.main_fallback_hint),
+                pickedOverride = { pid, model ->
+                    ui.roles.mainFallbacks.getOrNull(slot)?.let { id -> ui.configs.firstOrNull { it.id == id } }
+                        ?.let { it.providerId == pid && it.model == model } == true
+                },
+                // 主模型自己不列在备援选单里:选它当备援没有意义(MK-1 B-D2)。
+                exclude = { pid, model ->
+                    val mainCfg = ui.configs.firstOrNull { it.id == ui.roles.resolve(ModelRole.Main) }
+                    mainCfg != null && mainCfg.providerId == pid && mainCfg.model == model
+                },
+                clearAction = { vm.clearFallback(slot); pickingFallback = null },
+                clearSelected = ui.roles.mainFallbacks.getOrNull(slot) == null,
+            )
+        }
         role != null -> {
             BackHandler { picking = null }
             LaunchedEffect(role) { vm.ensureListed(); vm.clearManualPick() }
@@ -204,7 +240,8 @@ fun ModelSetupScreen(
                     setModel = vm::setModel, setManual = vm::setManual, setName = vm::setName,
                     testAndSave = vm::testAndSave, saveUntested = vm::saveWithoutTest,
                     openForm = vm::openForm, closeForm = vm::closeForm,
-                    openProvider = { openProvider = it; allModels = false }, pickRole = { picking = it }, next = onDone, openSpeech = onOpenSpeech,
+                    openProvider = { openProvider = it; allModels = false }, pickRole = { picking = it }, pickFallback = { pickingFallback = it }, next = onDone, openSpeech = onOpenSpeech,
+                    openVoice = onOpenVoice,
                     openUsage = onOpenUsage,
                     openSignIn = { signInSheet = it },
                     setReasoningEffort = vm::setReasoningEffort,
@@ -255,8 +292,11 @@ class ModelSetupActions(
     val closeForm: () -> Unit = {},
     val openProvider: (String) -> Unit = {},
     val pickRole: (ModelRole) -> Unit = {},
+    val pickFallback: (Int) -> Unit = {},
     /** 打开「语音转文字」的选择页;为 null 时不显示这张卡(上手流程)。 */
     val openSpeech: (() -> Unit)? = null,
+    /** 打开「声音模型」设置页;为 null 时不显示这张卡(上手流程)。 */
+    val openVoice: (() -> Unit)? = null,
     /** 打开 Token 用量;为 null 时不显示入口(上手流程)。 */
     val openUsage: (() -> Unit)? = null,
     val next: () -> Unit = {},
@@ -290,10 +330,10 @@ fun ModelSetupContent(ui: ModelSetupUi, onboarding: Boolean, actions: ModelSetup
                 // 上手时先连服务商再选模型;设置里先看用途
                 if (onboarding) {
                     ProvidersSection(ui, actions)
-                    RolesSection(ui, onPick, actions.setReasoningEffort, null)
+                    RolesSection(ui, onPick, actions.setReasoningEffort, null, null, actions.setModelContext, null)
                     FooterNote(ModelSetupCopy.ONBOARDING_NOTE)
                 } else {
-                    RolesSection(ui, onPick, actions.setReasoningEffort, actions.openSpeech, actions.setModelContext)
+                    RolesSection(ui, onPick, actions.setReasoningEffort, actions.openSpeech, actions.openVoice, actions.setModelContext, actions.pickFallback)
                     ProvidersSection(ui, actions)
                     actions.openUsage?.let { openUsage ->
                         GroupCard {
@@ -534,7 +574,8 @@ internal object SignInPage {
 /** 用途:主模型、看图模型、轻量模型各一张卡,点开是选择页。 */
 @Composable
 private fun RolesSection(ui: ModelSetupUi, onPick: (ModelRole) -> Unit, onReasoning: (ModelRole, String?) -> Unit,
-    onSpeech: (() -> Unit)?, onContext: ((String, ModelContextSettings) -> Boolean)? = null,
+    onSpeech: (() -> Unit)?, onVoice: (() -> Unit)?, onContext: ((String, ModelContextSettings) -> Boolean)? = null,
+    onPickFallback: ((Int) -> Unit)? = null,
 ) {
     GroupLabel(ModelsCopy.ROLES)
     GroupCard {
@@ -559,9 +600,21 @@ private fun RolesSection(ui: ModelSetupUi, onPick: (ModelRole) -> Unit, onReason
                 }
             }
         }
+        // 主模型的备援(项目 3):主模型不能用时按顺序接手;上手流程不传,就不出现
+        if (onPickFallback != null) {
+            for (slot in 0 until MAX_MAIN_FALLBACKS) {
+                RoleCard(ModelsCopy.FALLBACK_ICON, ModelsCopy.fallbackLabel(slot), ModelsCopy.fallbackLine(ui, slot), tag = "role-fallback-$slot") {
+                    onPickFallback(slot)
+                }
+            }
+        }
         // 第四个用途:语音转文字(不是对话模型,点开是单独的选择页)
         if (onSpeech != null) {
             RoleCard(ModelsCopy.SPEECH_ICON, ModelsCopy.SPEECH_LABEL, ModelsCopy.speechLine(ui), tag = "role-speech", onClick = onSpeech)
+        }
+        // 第五个用途:声音模型(朗读/说话,同样独立)
+        if (onVoice != null) {
+            RoleCard(ModelsCopy.VOICE_ICON, ModelsCopy.VOICE_LABEL, ModelsCopy.voiceLine(), tag = "role-voice", onClick = onVoice)
         }
     }
 }

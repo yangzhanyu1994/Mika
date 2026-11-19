@@ -57,7 +57,6 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.LocalContext
-import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.cap.web.WebHandover
 import com.wangzan101.mika.cap.web.WebSites
 import com.wangzan101.mika.browser.UserBrowser
@@ -80,6 +79,7 @@ import com.wangzan101.mika.record.RunStore
 import com.wangzan101.mika.replay.FileRouteStore
 import com.wangzan101.mika.task.TaskService
 import com.wangzan101.mika.settings.Prerequisites
+import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.settings.SystemStatusMonitor
 import com.wangzan101.mika.cap.phone.PhoneServices
@@ -448,6 +448,8 @@ private fun MikaRoot(
         }
     }
     var runId by rememberSaveable { mutableStateOf<String?>(null) }
+    var reportRunId by rememberSaveable { mutableStateOf<String?>(null) }
+    var playbackScreenshotId by rememberSaveable { mutableStateOf<Int?>(null) }
     var sourceRunId by rememberSaveable { mutableStateOf<String?>(null) }
     var sourceLegacyText by rememberSaveable { mutableStateOf<String?>(null) }
     val status by monitor.status.collectAsState()
@@ -455,6 +457,7 @@ private fun MikaRoot(
     val hasMain = roles.main != null
     val check = Prerequisites.check(status, hasMain)
     val app = context.applicationContext as MikaApp
+    val personasOn = FeatureFlags.get(context).persona()
     val conversationUi by app.chat.ui.collectAsState()
     val personalWorkId = "personal-main-work"
     var personalChat by rememberSaveable { mutableStateOf(true) }
@@ -878,6 +881,8 @@ private fun MikaRoot(
                             onOpenDrawer = openDrawer,
                             openSettings = { nav.push(Route.Settings) },
                             openRun = { runId = it; nav.push(Route.Run) },
+                            openReport = { reportRunId = it; nav.push(Route.Report) },
+                            openPlayback = { reportRunId = it; playbackScreenshotId = null; nav.push(Route.Playback) },
                             phoneSetupNeeded = phoneSetupNeeded && status.builtinShell != BuiltinShellStatus.Running,
                             openPhoneSetup = { onFix(Fix.OpenPhoneSetup) },
                             loadSource = { id ->
@@ -890,6 +895,7 @@ private fun MikaRoot(
                             },
                             voice = app.voice,
                             openSpeechModel = { nav.push(Route.SpeechModel) },
+                            onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else ({}),
                             onOpenTeach = { hint ->
                                 app.teach.prefill(hint)
                                 nav.push(Route.Teach)
@@ -921,14 +927,17 @@ private fun MikaRoot(
             val autonomous by app.approvals.autonomous.collectAsState()
             SettingsScreen(store, status, release, onFix, onBack = back, onOpenMemory = { nav.push(Route.Memory) },
                 onOpenModels = { nav.push(Route.Models) }, onOpenSpeech = { nav.push(Route.SpeechModel) },
+                onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else null,
                 autonomous = autonomous, onAutonomous = app.approvalControl::setAutonomous,
                 updateVersion = updateState.update?.version, onOpenAbout = { nav.push(Route.About) },
                 mcpServers = app.mcpServers)
         }
+        Route.Persona -> if (personasOn) PersonaScreen(app.personas, onBack = back) else LaunchedEffect(Unit) { nav.back() }
         Route.Models -> SettingsAppearance {
             ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) },
-                onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
+                onOpenVoice = { nav.push(Route.VoiceModel) }, onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
+        Route.VoiceModel -> SettingsAppearance { VoiceModelScreen(store, onBack = back) }
         Route.Usage -> SettingsAppearance { UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) }) }
         Route.SpeechModel -> SettingsAppearance { SpeechModelScreen(store, onBack = back) }
         Route.About -> SettingsAppearance {
@@ -1019,6 +1028,15 @@ private fun MikaRoot(
                     alive = { run -> app.taskState.runs.value.any { r -> r.runId.value == run } },
                 ) } }
             if (vm != null) RunTimelineScreen(vm, back) else LaunchedEffect(Unit) { nav.back() }
+        }
+        Route.Report, Route.Playback -> {
+            val id = reportRunId
+            val vm = remember(id) { id?.let { TaskReportViewModel(RunStore(context), it) } }
+            if (vm == null) LaunchedEffect(Unit) { nav.back() }
+            else if (nav.current == Route.Report) TaskReportScreen(vm, back,
+                onReplay = { playbackScreenshotId = it; nav.push(Route.Playback) },
+                onTimeline = { runId = id; nav.push(Route.Run) })
+            else TaskPlaybackScreen(vm, playbackScreenshotId, back)
         }
         Route.Source -> {
             val vm = remember(sourceRunId, sourceLegacyText) {

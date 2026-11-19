@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="proactive_title">主动能力（实验）</string>
+    <string name="proactive_title">主动能力</string>
     <string name="proactive_entry_sub">读取所选 App 的通知</string>
     <string name="proactive_switch">开启</string>
     <string name="proactive_listener">监听：%1$s</string>
@@ -18,7 +18,7 @@
     <string name="proactive_helper_grant_confirm">授权</string>
     <string name="proactive_helper_unavailable">手机操作还没准备好。可以先完成设置，或者用上面的「去授权」。</string>
     <string name="proactive_helper_failed">没能这样授权，请用上面的「去授权」。</string>
-    <string name="proactive_off_note">关闭后不再读取或发送新通知，并清除未处理的内容。系统通知权限可在系统设置中撤销。</string>
+    <string name="proactive_off_note">关掉开关：不再读取，也不再发送；没处理完的通知和存着的通知原文会删掉。已经归纳出的话题、联系人和各级归纳留着，要删到「Mika 知道了什么」里删。系统里的通知使用权要你在系统设置里收回才会取消。</string>
     <string name="proactive_triage_no_model">还没有配置模型，请先在 设置 › 模型 里选择。</string>
     <string name="proactive_triage_consent_title">把通知发给模型？</string>
     <string name="proactive_triage_reconfirm">服务商或模型变了，已暂停，等你重新确认。</string>
@@ -53,17 +53,17 @@
     <string name="proactive_status_consent">还没确认把通知发给哪个模型</string>
     <string name="proactive_status_working">正在工作 · 今天收到 %1$d 条通知</string>
     <string name="proactive_status_access">「应用访问」设置读不出来，主动能力先停着：不读通知，也不发给模型；已经攒下的不动。到「应用访问」页重置后恢复。</string>
-    <string name="proactive_apps_unreadable">应用名单读取失败，现在不会读取任何应用，请重新选择。</string>
+    <string name="proactive_apps_unreadable">读哪些 App 的名单读不出来了，现在一个都不读。重新选一遍即可；之前归纳出的内容不受影响。</string>
     <string name="proactive_apps_unsaved">刚才的改动没能存下来（存储可能已满）。请再选一次。选的是「不读」的话，这个 App 已经先不读了。</string>
     <string name="proactive_apps_more">选择更多 App</string>
-    <string name="proactive_apps_sub">只读取你选择的应用。关闭读取后，不再接收该应用的新通知。</string>
+    <string name="proactive_apps_sub">每个 App 可以是：不读、低（只判定和提醒）、中（还从它归纳）、高（归纳出的东西可以带进任务）。激进程度调到「激进」时，「中」的也带进任务。聊天 App 里是别人说的话，让它带进任务之前想清楚。</string>
     <string name="proactive_known_sub">话题 %1$d · 联系人 %2$d</string>
     <string name="proactive_diag">诊断</string>
-    <string name="proactive_footer_send">经你同意后，所选应用的通知内容会发送给你确认的模型，用于判断是否提醒。</string>
-    <string name="proactive_footer_store">提醒判断结果暂存在内存。点击提醒后，相关通知会写入对话并按对话方式保存。</string>
+    <string name="proactive_footer_send">发给模型的：你选的 App 的通知标题、正文和最近的消息，一次只发一个 App 的，发给你确认过的那个模型；另带 App 包名、是群聊还是私聊、每条通知你点开还是划掉了，以及最多 30 个已有话题的名字。日、周、月归纳只用已经写出的句子，不再发通知原文。当日归纳还会带上会话的名字。</string>
+    <string name="proactive_footer_store">加密存在这台手机上的：简短的话题；和你聊天的人和群的名字、猜测的关系。判定结果只在内存里。你点开提醒时，那几条通知会写进一个对话，和别的对话一样保存；你在里面接着说，这些文字会发给干活的模型。关掉开关，或者删除、清空「Mika 知道了什么」里的内容，都不会删这个对话。</string>
     <string name="proactive_footer_digest">「当日消息归纳」开着，所以还存着：通知原文（最多 2 天）、归纳出的句子（8 天）、每天的归纳（35 天）、每周的归纳（26 周）和每月的归纳（2 年）。</string>
     <string name="proactive_footer_no_text">除了你点开的提醒，不存通知原文：只在内存里留到处理完。</string>
     <string name="proactive_app_off">不读</string>
-    <string name="proactive_app_off_sub">不再读取该应用的新通知。</string>
-    <string name="proactive_consent_body">你选中的应用通知标题、正文和最近消息会发送给 %1$s 的模型 %2$s，用来判断是否需要提醒。\n\n服务商或模型更换后会暂停，直到你重新确认。关闭总开关后不再发送。</string>
+    <string name="proactive_app_off_sub">不读它的通知。它存着的通知原文和归纳里来自它的句子会删掉；话题和联系人留着。</string>
+    <string name="proactive_consent_body">你选的 App 的通知文字（标题、正文和最近的消息）会发给 %1$s 的模型 %2$s，用来判定哪些值得提醒，并从中归纳简短的话题，以及和你聊天的人和群的名字、猜测的关系。归纳出的内容加密存在这台手机上。\n\n之后服务商或模型变了会暂停，等你重新确认。关掉总开关就不再发送。</string>
 </resources>
