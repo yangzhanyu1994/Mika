@@ -172,4 +172,6 @@
     <string name="phone_root_note">检测到这台手机上有 su。用 root 启动的手机助手仍以同样的受限身份运行,权限和经无线调试启动时一样。</string>
     <string name="phone_root_entry_on">自动启动助手;root 命令已开启</string>
     <string name="phone_root_entry_off">自动启动助手;root 命令已关闭</string>
+    <string name="phone_usage_summary_usb">「USB 调试」要一直开着；重启后需再运行一次启动命令</string>
+    <string name="phone_usage_summary">「USB 调试」要一直开着；重启后 Mika 会自动重连</string>
 </resources>

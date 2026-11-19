@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">تعذّرت قراءة نص الإشعارات الآن. حاول لاحقًا.</string>
     <string name="proactive_know_raw_none">لم يُعثر على نص إشعارات لتلك الفترة.</string>
     <string name="proactive_know_delete_note">حذف هذه الملاحظة</string>
+    <string name="proactive_learn_level_summary">يُرفق بكل مهمة ملخّص اليوم والأمس، مع الإشارة إلى أنه من الإشعارات.</string>
 </resources>

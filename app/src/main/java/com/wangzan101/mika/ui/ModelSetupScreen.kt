@@ -81,6 +81,8 @@ import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.RowChevron
 import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.PageScaffold
+import com.wangzan101.mika.ui.components.RowValue
 import com.wangzan101.mika.ui.components.ProgressDots
 import com.wangzan101.mika.ui.components.SelectChip
 import com.wangzan101.mika.ui.components.TagTone
@@ -125,6 +127,11 @@ fun ModelSetupScreen(
     var pickingFallback by rememberSaveable { mutableStateOf<Int?>(null) }
     var openProvider by rememberSaveable { mutableStateOf<String?>(null) }
     var allModels by rememberSaveable { mutableStateOf(false) }
+    var showProviders by rememberSaveable { mutableStateOf(false) }
+    val openProviderForm = {
+        showProviders = !onboarding
+        vm.openForm()
+    }
     // 账号登录的面板:在添加表单和服务商详情里都能打开,登录中关掉也不打断登录
     var signInSheet by rememberSaveable { mutableStateOf<SignInKind?>(null) }
 
@@ -145,6 +152,17 @@ fun ModelSetupScreen(
 
     val provider = openProvider?.let { id -> ui.providers.firstOrNull { it.id == id } }
     val role = picking
+    val setupActions = ModelSetupActions(
+        selectPreset = vm::selectPreset, setKind = vm::setKind, setBaseUrl = vm::setBaseUrl, setApiKey = vm::setApiKey,
+        setModel = vm::setModel, setManual = vm::setManual, setName = vm::setName,
+        testAndSave = vm::testAndSave, saveUntested = vm::saveWithoutTest,
+        openForm = openProviderForm, closeForm = vm::closeForm,
+        openProvider = { openProvider = it; allModels = false },
+        pickRole = { picking = it }, pickFallback = { pickingFallback = it }, openProviders = { showProviders = true },
+        next = onDone, openSpeech = onOpenSpeech, openVoice = onOpenVoice, openUsage = onOpenUsage,
+        openSignIn = { signInSheet = it }, setReasoningEffort = vm::setReasoningEffort,
+        setModelContext = vm::setModelContext,
+    )
     when {
         provider != null -> {
             LaunchedEffect(provider.id) { vm.ensureListed() }
@@ -194,7 +212,7 @@ fun ModelSetupScreen(
                         else { vm.pickFallback(slot, pid, model); pickingFallback = null }
                     },
                     pickManual = { pid, model -> vm.pickFallbackManual(slot, pid, model) { pickingFallback = null } },
-                    addProvider = { vm.openForm(); pickingFallback = null },
+                    addProvider = { openProviderForm(); pickingFallback = null },
                 ),
                 onBack = { pickingFallback = null },
                 titleOverride = stringResource(R.string.main_fallback_name, slot + 1),
@@ -225,31 +243,24 @@ fun ModelSetupScreen(
                     },
                     pickManual = { pid, model -> vm.pickManual(role, pid, model) { picking = null } },
                     choose = { vm.choose(role, it); picking = null },
-                    addProvider = { vm.openForm(); picking = null },
+                    addProvider = { openProviderForm(); picking = null },
                 ),
                 onBack = { picking = null },
             )
         }
-        else -> {
-            if (ui.chatGptWelcome) ChatGptWelcome(vm::dismissChatGptWelcome)
-            BackHandler(onBack = onBack)
-            ModelSetupContent(
-                ui, onboarding,
-                ModelSetupActions(
-                    selectPreset = vm::selectPreset, setKind = vm::setKind, setBaseUrl = vm::setBaseUrl, setApiKey = vm::setApiKey,
-                    setModel = vm::setModel, setManual = vm::setManual, setName = vm::setName,
-                    testAndSave = vm::testAndSave, saveUntested = vm::saveWithoutTest,
-                    openForm = vm::openForm, closeForm = vm::closeForm,
-                    openProvider = { openProvider = it; allModels = false }, pickRole = { picking = it }, pickFallback = { pickingFallback = it }, next = onDone, openSpeech = onOpenSpeech,
-                    openVoice = onOpenVoice,
-                    openUsage = onOpenUsage,
-                    openSignIn = { signInSheet = it },
-                    setReasoningEffort = vm::setReasoningEffort,
-                    setModelContext = vm::setModelContext,
-                ),
-                onBack,
-            )
+        showProviders -> {
+            BackHandler { showProviders = false }
+            PageScaffold(ModelsCopy.PROVIDERS, onBack = { showProviders = false }) {
+                ProvidersSection(ui, setupActions)
+            }
         }
+        else -> {
+            BackHandler(onBack = onBack)
+            ModelSetupContent(ui, onboarding, setupActions, onBack)
+        }
+    }
+    if (ui.chatGptWelcome && provider == null && role == null && pickingFallback == null) {
+        ChatGptWelcome(vm::dismissChatGptWelcome)
     }
 
     signInSheet?.let { kind ->
@@ -262,7 +273,7 @@ fun ModelSetupScreen(
                     signInSheet = null
                     openProvider = null
                     picking = null
-                    vm.openForm()
+                    openProviderForm()
                     k.keyPreset?.let(vm::selectPreset)
                 },
                 dismiss = {
@@ -299,6 +310,7 @@ class ModelSetupActions(
     val openVoice: (() -> Unit)? = null,
     /** 打开 Token 用量;为 null 时不显示入口(上手流程)。 */
     val openUsage: (() -> Unit)? = null,
+    val openProviders: (() -> Unit)? = null,
     val next: () -> Unit = {},
     /** 打开一家账号登录的说明面板。 */
     val openSignIn: (SignInKind) -> Unit = {},
@@ -333,13 +345,23 @@ fun ModelSetupContent(ui: ModelSetupUi, onboarding: Boolean, actions: ModelSetup
                     RolesSection(ui, onPick, actions.setReasoningEffort, null, null, actions.setModelContext, null)
                     FooterNote(ModelSetupCopy.ONBOARDING_NOTE)
                 } else {
-                    RolesSection(ui, onPick, actions.setReasoningEffort, actions.openSpeech, actions.openVoice, actions.setModelContext, actions.pickFallback)
-                    ProvidersSection(ui, actions)
+                    val openProviders = actions.openProviders
+                    if (openProviders != null) {
+                        GroupCard {
+                            ListRow(MikaIcons.Key, ModelsCopy.PROVIDERS, first = true, onClick = openProviders) {
+                                RowValue(ui.providers.size.toString())
+                                RowChevron()
+                            }
+                        }
+                    } else {
+                        ProvidersSection(ui, actions)
+                    }
                     actions.openUsage?.let { openUsage ->
                         GroupCard {
                             ListRow(MikaIcons.Chart, UsageCopy.TITLE, first = true, onClick = openUsage) { RowChevron() }
                         }
                     }
+                    RolesSection(ui, onPick, actions.setReasoningEffort, actions.openSpeech, actions.openVoice, actions.setModelContext, actions.pickFallback)
                 }
                 Spacer(Modifier.height(16.dp))
             }

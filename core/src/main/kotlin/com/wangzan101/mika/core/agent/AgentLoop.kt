@@ -494,11 +494,12 @@ class AgentLoop(
         var completion = CompletionPlan()
         val newData = NewDataTracker()
         fun progressState() = completion.metric?.state()
-        fun progressText(raw: String): String {
-            val parsed = CompletionPlanBlock.extract(raw)
+        fun acceptProgress(parsed: CompletionPlanBlock.Extracted): Boolean {
+            var valid = parsed.errors.isEmpty()
             parsed.errors.forEach { emit(RunEvent.State(now(), "task_progress_invalid", RunEvent.clip(it))) }
             parsed.updates.forEach { update ->
                 val next = try { completion.apply(update) } catch (e: IllegalArgumentException) {
+                    valid = false
                     emit(RunEvent.State(now(), "task_progress_invalid", RunEvent.clip(e.message ?: "invalid progress")))
                     return@forEach
                 }
@@ -507,8 +508,9 @@ class AgentLoop(
                     emit(completion.event(now()))
                 }
             }
-            return parsed.text
+            return valid
         }
+        var progressOnlyTurns = 0
         var intent: IntentGate.Intent? = null
         var intentAssessed = false
         // 每次运行只判断一次;判断不出(调用失败、回复不是三个词之一)时为 null,照主模型自己的决定走
@@ -548,7 +550,7 @@ class AgentLoop(
                 continue
             }
             var (reply, used) = routed
-            val proposed = reply.parts.filterIsInstance<Part.ToolCall>().firstOrNull()
+            val proposed = reply.parts.firstActionCall()
             if (provenance.origin == RunOrigin.Ui && intentGate != null && proposed != null &&
                 tools.verb(proposed.name) !in DISCUSSION_LOOKUP_VERBS) {
                 if (!intentAssessed) intent = assessIntent()
@@ -563,20 +565,23 @@ class AgentLoop(
                 }
             }
             val rawText = reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()
-            val text = progressText(rawText)
+            val parsed = CompletionPlanBlock.extract(rawText)
+            acceptProgress(parsed)
+            val text = parsed.text
             val cleanParts = cleanReplyParts(reply.parts, text)
             history += Message(Role.Assistant, cleanParts, Author.Mika).also { caller.noteReply(it, used, reply.usage) }
-            val calls = reply.parts.filterIsInstance<Part.ToolCall>()
-            note = text.ifEmpty { calls.firstOrNull()?.name ?: note }
-            val tool = calls.firstOrNull()?.name
-            val reason = calls.firstOrNull()?.let { tools.callReason(it.name, parseArgs(it.argsJson)) }
+            val calls = ReplyCalls(reply.parts, ::acceptProgress)
+            val first = calls.action
+            note = text.ifEmpty { first?.name ?: note }
+            val tool = first?.name
+            val reason = first?.let { tools.callReason(it.name, parseArgs(it.argsJson)) }
             val retryWaitMs = caller.lastRetryWaitMs
             val repliedAtMs = now()
             val latencyMs = repliedAtMs - asked - retryWaitMs
             // 随调用写的字是进度说明,界面上的实时那一行先用它
-            val narration = text.takeIf { calls.isNotEmpty() && it.isNotEmpty() }
+            val narration = text.takeIf { !calls.isEmpty && it.isNotEmpty() }
             _state.value = TaskState.Running(step, note, tool, progress = progressState(), reason = reason, narration = narration,
-                preview = text.takeIf { streamReplies && calls.isEmpty() && it.isNotEmpty() })
+                preview = text.takeIf { streamReplies && calls.isEmpty && it.isNotEmpty() })
             // 带调用的回复等执行完再记:要看端口是否报告了密码框
             fun recordReply(argsJson: String?) = emit(RunEvent.ModelReply(
                 now(), step, RunEvent.clip(Redactor.text(text)), tool, argsJson,
@@ -585,7 +590,16 @@ class AgentLoop(
                 repliedAtMs = repliedAtMs,
             ))
 
-            if (calls.isEmpty()) {
+            if (first == null) {
+                if (!calls.isEmpty) {
+                    history += calls.results()
+                    if (text.isEmpty()) {
+                        recordReply(null)
+                        if (++progressOnlyTurns >= 3) return StopRules.noAnswer()
+                        continue
+                    }
+                }
+                progressOnlyTurns = 0
                 track.after(null, ok = false, guard = false, changed = null, recovery = false, app = null)
                 recordReply(null)
                 // 模型给出最终回答时,先收下在途的用户插话,再决定是否交出回答。
@@ -650,15 +664,9 @@ class AgentLoop(
             // 回答之后又做了别的:那个回答算有了下文
             answered = null
 
-            val first = calls.first()
+            progressOnlyTurns = 0
             trace?.toolStarted(step, first.name, first.id, now())
-            val skipped = calls.drop(1).map {
-                Part.ToolResult(it.id, buildJsonObject {
-                    put("ok", false)
-                    put("error", "parallel_tool_call_skipped")
-                    put("message", Feedback["parallel_call_skipped"])
-                }.toString(), isError = true)
-            }
+            val skipped = calls.resultsExcept(first)
             val args = parseArgs(first.argsJson)
 
             // 用户刚同意的那一步要单独做:批里的步不带同意,混进去会被关卡拦下,同意也可能被别的步用掉或作废

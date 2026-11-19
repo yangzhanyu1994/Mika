@@ -172,4 +172,6 @@
     <string name="phone_root_note">このスマホで su が見つかりました。root で起動したヘルパーも同じ制限付きユーザーで動作し、権限はワイヤレス デバッグで起動した場合と同じです。</string>
     <string name="phone_root_entry_on">ヘルパーを自動起動;root コマンドはオン</string>
     <string name="phone_root_entry_off">ヘルパーを自動起動;root コマンドはオフ</string>
+    <string name="phone_usage_summary_usb">「USB デバッグ」は常にオンに。再起動後、起動コマンドをもう一度実行してください。</string>
+    <string name="phone_usage_summary">「USB デバッグ」は常にオンに。再起動後、Mika が自動で再接続します。</string>
 </resources>

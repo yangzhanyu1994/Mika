@@ -19,7 +19,7 @@ internal object Failover {
         is ModelError.TaskBudgetExceeded -> null
         is ModelError.DailyBudgetExceeded ->
             (fromIndex + 1 until chainSize).firstOrNull { tags.getOrNull(it) != null && tags[it] != e.providerName }
-        is ModelError.QuotaExceeded, is ModelError.Auth, is ModelError.ModelNotFound, is ModelError.ModelNotAvailable,
+        is ModelError.QuotaExceeded, is ModelError.Auth, is ModelError.IllegalHeader, is ModelError.ModelNotFound, is ModelError.ModelNotAvailable,
         is ModelError.ToolsUnsupported, is ModelError.SignInExpired, is ModelError.AccountPlanNotAllowed,
         is ModelError.ChatGptLimitReached, is ModelError.ChatGptNotEligible,
         is ModelError.RateLimited, is ModelError.Network, is ModelError.StreamCut,

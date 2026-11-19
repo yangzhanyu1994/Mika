@@ -205,4 +205,6 @@
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
+    <string name="details">자세히</string>
+    <string name="net_proxy_summary">모델 요청, 업데이트, 내장 브라우저, 파일 환경 명령이 이 프록시를 사용합니다.</string>
 </resources>

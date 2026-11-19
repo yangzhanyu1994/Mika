@@ -213,4 +213,6 @@
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
+    <string name="details">Detalhes</string>
+    <string name="net_proxy_summary">As solicitações do modelo, as atualizações, o navegador integrado e os comandos do ambiente de arquivos passam por este proxy.</string>
 </resources>

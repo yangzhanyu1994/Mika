@@ -172,4 +172,6 @@
     <string name="phone_root_note">이 휴전화에서 su를 찾았어요. root로 시작한 도우미도 같은 제한된 사용자로 실행되며 무선 디버깅으로 시작할 때와 권한이 같아요.</string>
     <string name="phone_root_entry_on">도우미 자동 시작;root 명령 켜짐</string>
     <string name="phone_root_entry_off">도우미 자동 시작;root 명령 꺼짐</string>
+    <string name="phone_usage_summary_usb">「USB 디버깅」을 켜 두세요. 재시작 후 시작 명령을 다시 실행하세요.</string>
+    <string name="phone_usage_summary">「USB 디버깅」을 켜 두세요. 재시작 후 Mika가 자동으로 다시 연결됩니다.</string>
 </resources>

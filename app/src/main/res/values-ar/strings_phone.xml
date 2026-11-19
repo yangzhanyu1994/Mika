@@ -172,4 +172,6 @@
     <string name="phone_root_note">وجد Mika ملف su على هذا الهاتف. يظل المساعد الذي يبدأ باستخدام root يعمل بالمستخدم المحدود نفسه وبالأذونات نفسها كما عند بدئه عبر تصحيح الأخطاء اللاسلكي.</string>
     <string name="phone_root_entry_on">بدء المساعد تلقائيًا؛ أوامر root مفعّلة</string>
     <string name="phone_root_entry_off">بدء المساعد تلقائيًا؛ أوامر root متوقفة</string>
+    <string name="phone_usage_summary_usb">أبقِ تصحيح USB قيد التشغيل؛ بعد إعادة التشغيل شغّل أمر البدء مرة أخرى.</string>
+    <string name="phone_usage_summary">أبقِ تصحيح USB قيد التشغيل؛ بعد إعادة التشغيل يعيد Mika الاتصال تلقائيًا.</string>
 </resources>

@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">通知原文现在读不出来,稍后再试。</string>
     <string name="proactive_know_raw_none">没有找到这段时间的通知原文。</string>
     <string name="proactive_know_delete_note">删除这一句</string>
+    <string name="proactive_learn_level_summary">带进任务 = 附上今天/昨天的归纳，并标明来自通知</string>
 </resources>

@@ -84,6 +84,7 @@ internal object StopRules {
 }
 
 internal fun userReason(e: ModelError): String = when (e) {
+    is ModelError.IllegalHeader -> "模型配置的请求头含有不支持的字符。请在设置里检查 API Key 或其他请求头字段。"
     is ModelError.Auth -> "模型服务拒绝了请求:API Key 无效或没有权限。请在设置里检查 API Key 是否填写正确、是否有权使用该模型。"
     is ModelError.QuotaExceeded -> "模型账户额度已用完,请检查服务商账户的余额或套餐。"
     is ModelError.TaskBudgetExceeded -> "已达到本任务 ${e.limit} Token 的预算上限,任务没有完成。"

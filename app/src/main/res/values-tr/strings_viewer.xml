@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="viewer_no_open_app">Bu dosyayı açabilecek uygulama yok</string>
+    <string name="viewer_no_share_app">Bu dosyayı paylaşabilecek uygulama yok</string>
+    <string name="viewer_open_elsewhere">Başka bir uygulamayla aç</string>
+    <string name="viewer_unsupported">Bu dosya Mika\'da görüntülenemiyor.</string>
+    <string name="viewer_read_error">Bu dosya okunurken bir şeyler ters gitti.</string>
+    <string name="viewer_page">Sayfa %1$d</string>
+    <string name="viewer_truncated">Bu dosya büyük; yalnızca başlangıcı gösteriliyor.</string>
+</resources>

@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">Сейчас не удаётся прочитать текст уведомлений. Повторите позже.</string>
     <string name="proactive_know_raw_none">Текст уведомлений за тот период не найден.</string>
     <string name="proactive_know_delete_note">Удалить эту заметку</string>
+    <string name="proactive_learn_level_summary">Попадает в задачи = каждая задача получает сводку за сегодня и вчера с пометкой, что она из уведомлений.</string>
 </resources>

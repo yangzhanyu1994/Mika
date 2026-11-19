@@ -71,8 +71,11 @@ class ApkUpdater(private val context: Context, private val net: NetProxy = NetPr
         val proxy = net.proxyFor(Uri.parse(url).host.orEmpty())
         // OkHttp creates SOCKS sockets outside the configured Wi-Fi socket factory.
         if (wifi != null && proxy?.socks == true) return
-        if (prefs.getString("url", null) == url && state(release).phase in
-            listOf(DownloadPhase.Downloading, DownloadPhase.Paused, DownloadPhase.Ready)) return
+        if (prefs.getString("url", null) == url) {
+            val phase = state(release).phase
+            if (phase == DownloadPhase.Downloading || phase == DownloadPhase.Ready ||
+                (phase == DownloadPhase.Paused && wifi != null)) return
+        }
         cancel()
         val folder = directory
         check(folder.mkdirs() || folder.isDirectory)

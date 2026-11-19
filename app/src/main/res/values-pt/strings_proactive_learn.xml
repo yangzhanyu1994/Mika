@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">Não é possível ler o texto das notificações agora. Tente mais tarde.</string>
     <string name="proactive_know_raw_none">Nenhum texto de notificação foi encontrado nesse período.</string>
     <string name="proactive_know_delete_note">Excluir esta nota</string>
+    <string name="proactive_learn_level_summary">Vai para as tarefas = cada tarefa recebe o resumo de hoje e ontem, marcado como vindo de notificações.</string>
 </resources>

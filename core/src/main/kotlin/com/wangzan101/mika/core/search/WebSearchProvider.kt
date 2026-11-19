@@ -6,6 +6,8 @@ package com.wangzan101.mika.core.search
  * 几家托管的服务地址固定,只填密钥;SearXNG 填实例地址、不要密钥。[wire] 存进设置,只能往后加、不能改名或删。
  */
 enum class WebSearchProvider(val wire: String) {
+    /** Google Search grounding via Gemini API (`tools: [{googleSearch: {}}]`). */
+    Google("google"),
     /** You.com:不填密钥走免费接口(每天 100 次),填了走付费接口。 */
     You("you"),
     /** Jina 搜索(s.jina.ai):必须有密钥。 */
@@ -16,6 +18,8 @@ enum class WebSearchProvider(val wire: String) {
     Keirolabs("keirolabs"),
     /** TinyFish 搜索(api.search.tinyfish.ai):必须有密钥。 */
     TinyFish("tinyfish"),
+    /** DeepSeek 搜索(api.deepseek.com/v1/tools/search):必须有密钥,和对话用的是同一个 DeepSeek API Key。 */
+    DeepSeek("deepseek"),
     /** 自建的 SearXNG 实例:填实例地址,不要密钥;实例要打开 JSON 输出。 */
     SearXNG("searxng");
 
@@ -23,19 +27,20 @@ enum class WebSearchProvider(val wire: String) {
     val needsEndpoint: Boolean get() = this == SearXNG
 
     /** 有密钥框。 */
-    val takesKey: Boolean get() = this != SearXNG
+    val takesKey: Boolean get() = this != SearXNG && this != Google
 
     /** 不填密钥不能用,也不让保存。 */
-    val keyRequired: Boolean get() = this == Jina || this == Exa || this == Keirolabs || this == TinyFish
+    val keyRequired: Boolean get() = this == Jina || this == Exa || this == Keirolabs || this == TinyFish || this == DeepSeek
 
-    /** 照 [endpoint]、[apiKey] 这一家能不能用;能用为 null。 */
-    fun problem(endpoint: String, apiKey: String): Problem? = when {
+    /** 照 [endpoint]、[apiKey]、[groundingAvailable] 这一家能不能用;能用为 null。 */
+    fun problem(endpoint: String, apiKey: String, groundingAvailable: Boolean = true): Problem? = when {
+        this == Google && !groundingAvailable -> Problem.UnsupportedProvider
         needsEndpoint && WebSearch.parseEndpoint(endpoint) == null -> Problem.Endpoint
         keyRequired && apiKey.isBlank() -> Problem.Key
         else -> null
     }
 
-    enum class Problem { Endpoint, Key }
+    enum class Problem { Endpoint, Key, UnsupportedProvider }
 
     companion object {
         /** 设置里存的值;认不出时为 null。 */
