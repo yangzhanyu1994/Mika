@@ -1,6 +1,9 @@
 package com.wangzan101.mika.chat
 
 import com.wangzan101.mika.core.agent.Turn
+import com.wangzan101.mika.core.knowledge.FrontMatter
+import com.wangzan101.mika.core.skills.PersonalSkill
+import com.wangzan101.mika.core.skills.SkillStatus
 import com.wangzan101.mika.core.model.Author
 import com.wangzan101.mika.core.model.Message
 import com.wangzan101.mika.core.model.ModelRole
@@ -68,6 +71,23 @@ internal fun parseConversationRoute(answer: String): ModelRole? {
 private val fencedRoute = Regex(
     "```(?:text|plaintext)?\\s+(CHAT|WORK)\\s*```", RegexOption.IGNORE_CASE,
 )
+
+/** Match enabled skills by name or display label, without treating mentions as invocations. */
+internal fun invokesSavedSkill(question: String, skills: List<PersonalSkill>): Boolean {
+    val command = normalizeSkillInvocation(question)
+    if (command.isBlank()) return false
+    return skills.any { skill ->
+        if (skill.status != SkillStatus.active && skill.status != SkillStatus.trial) return@any false
+        val title = FrontMatter.parse(skill.markdown).first["display"] as? String
+        sequenceOf(skill.name, title).filterNotNull().any { normalizeSkillInvocation(it) == command }
+    }
+}
+
+private val skillRequestPrefix = Regex("^(?:(?:麻烦|请|帮我|替我|给我|please\\s+|can you\\s+)+\\s*)", RegexOption.IGNORE_CASE)
+private val skillRequestSuffix = Regex("(?:吧|一下|谢谢|\\s+please)$", RegexOption.IGNORE_CASE)
+
+private fun normalizeSkillInvocation(text: String): String = text.trim().trimEnd('。', '！', '!', '.', '？', '?')
+    .replace(skillRequestPrefix, "").replace(skillRequestSuffix, "").trim().lowercase(java.util.Locale.ROOT)
 
 /** Resolve live weather before asking a model to classify or answer it. */
 internal fun routeLiveWeather(question: String, searchAvailable: Boolean): ModelRole? = when {

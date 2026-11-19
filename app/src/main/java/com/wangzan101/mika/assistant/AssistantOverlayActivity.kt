@@ -26,6 +26,8 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.chat.routeAssistantConversation
 import com.wangzan101.mika.chat.routeLiveWeather
+import com.wangzan101.mika.chat.invokesSavedSkill
+import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.ui.OrbMotion
 import com.wangzan101.mika.ui.orbMotion
 import com.wangzan101.mika.ui.toolOrbMotion
@@ -512,15 +514,18 @@ class AssistantOverlayActivity : ComponentActivity() {
                 val priorTurns = if (existing == null) emptyList() else withContext(Dispatchers.IO) { app.conversations.turns(id) }
                 val baseline = priorTurns.size
                 val oldRun = app.taskState.run(id)?.key
-                val weatherRoute = if (mode == AssistantMode.Auto) {
-                    routeLiveWeather(words, app.researchChat.canSearch())
+                val automatic = mode == AssistantMode.Auto && screen == null && cameraFile == null
+                val knownRoute = if (automatic) {
+                    val skillMatch = withContext(Dispatchers.IO) {
+                        invokesSavedSkill(words, MemoryRuntime.of(this@AssistantOverlayActivity).skills().list())
+                    }
+                    if (skillMatch) ModelRole.Main else routeLiveWeather(words, app.researchChat.canSearch())
                 } else null
-                val adaptive = mode == AssistantMode.Auto && screen == null && cameraFile == null &&
-                    weatherRoute != ModelRole.Main && app.researchChat.canDelegate()
+                val adaptive = automatic && knownRoute != ModelRole.Main && app.researchChat.canDelegate()
                 val target = when {
                     screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
                     mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
-                    weatherRoute != null -> weatherRoute
+                    knownRoute != null -> knownRoute
                     else -> {
                         status = getString(R.string.assistant_routing)
                         val latestWork = priorTurns.lastOrNull()?.takeIf {
@@ -546,7 +551,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                         withTimeoutOrNull(2_000) { app.researchChat.pending.first { it[id] == null } }
                     }
                     if (!resumed || locked() || isFinishing) return@launch
-                    val handoff: (() -> Boolean)? = if (adaptive) {
+                    val handoff: (() -> Boolean)? = if (automatic) {
                         { handOffToWork(id, words, ::dispatch) }
                     } else null
                     if (!app.researchChat.send(id, words, onWork = handoff)) throw IOException("Chat submission failed")

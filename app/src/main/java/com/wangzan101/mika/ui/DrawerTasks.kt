@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -127,6 +128,7 @@ internal fun rememberDrawerTasks(open: Boolean): DrawerTasks {
 @Composable
 internal fun DrawerTaskLabel(
     @StringRes label: Int,
+    icon: ImageVector,
     expanded: Boolean,
     count: Int? = null,
     unread: Boolean = false,
@@ -143,6 +145,7 @@ internal fun DrawerTaskLabel(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        Icon(icon, null, Modifier.size(18.dp), tint = c.ink2)
         Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = MikaType.Title.copy(fontWeight = FontWeight.Bold))
         badge?.let { DrawerStatusBadge(it) }
         if (unread) Text(stringResource(R.string.drawer_calls_unread), color = c.accent, style = MikaType.Hint)

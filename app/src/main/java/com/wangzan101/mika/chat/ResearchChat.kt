@@ -158,15 +158,17 @@ internal class ResearchChat(
         val search = WebSearchSettings.get(app).service().takeIf { model.capabilities.toolCalls }
         val tools = if (search != null) listOf(SEARCH) else emptyList()
         val delegating = allowWork && model.capabilities.toolCalls
-        val liveWeather = delegating && isLiveWeatherRequest(question)
+        val liveWeather = allowWork && isLiveWeatherRequest(question)
         if (liveWeather && search == null) return null
         val persona = if (FeatureFlags.get(app).persona()) {
             (app as? MikaApp)?.personas?.get(store.persona(id)?.personaId)
         } else null
-        val system = SystemPrompt.withPersona(
-            if (delegating) ADAPTIVE_SYSTEM else SYSTEM,
-            persona?.let { PersonaPrompt.layer(it.name, it.prompt) },
-        )
+        val prompt = when {
+            delegating -> ADAPTIVE_SYSTEM + " Use the request_work tool for handoffs."
+            allowWork -> ADAPTIVE_SYSTEM + " For a handoff, return exactly $WORK_SIGNAL."
+            else -> SYSTEM
+        }
+        val system = SystemPrompt.withPersona(prompt, persona?.let { PersonaPrompt.layer(it.name, it.prompt) })
         val messages = buildList {
             history.forEach {
                 add(Message(Role.User, listOf(Part.Text(it.userText.take(4_000))), Author.User))
@@ -184,16 +186,19 @@ internal class ResearchChat(
             recordUsage(id, reply.usage)
             return reply
         }
+        fun acceptedAnswer(reply: com.wangzan101.mika.core.model.ModelReply): String? {
+            val answer = reply.parts.filterIsInstance<Part.Text>().joinToString("\n") { it.text }
+                .ifBlank { error("Empty reply") }
+            return answer.takeUnless { allowWork && replyNeedsWork(question, it) }
+        }
         val completedQueries = mutableSetOf<String>()
-        repeat(3) { step ->
-            val mayDelegate = delegating && step == 0
-            val reply = request(if (mayDelegate) tools + WORK else tools, stream = !mayDelegate)
+        repeat(3) {
+            val reply = request(if (delegating) tools + WORK else tools, stream = !allowWork)
             val calls = reply.parts.filterIsInstance<Part.ToolCall>()
-            if (requestsWorkHandoff(calls, mayDelegate)) return null
+            if (requestsWorkHandoff(calls, delegating)) return null
             if (calls.isEmpty()) {
                 if (liveWeather && completedQueries.isEmpty()) return null
-                return reply.parts.filterIsInstance<Part.Text>().joinToString("\n") { it.text }
-                    .ifBlank { error("Empty reply") }
+                return acceptedAnswer(reply)
             }
             onDraft(ResearchPhase.Searching, "")
             messages += Message(Role.Assistant, reply.parts, Author.Mika)
@@ -214,8 +219,7 @@ internal class ResearchChat(
             messages += Message(Role.Tool, results, Author.Mika)
         }
         if (liveWeather && completedQueries.isEmpty()) return null
-        return request(emptyList()).parts.filterIsInstance<Part.Text>()
-            .joinToString("\n") { it.text }.ifBlank { error("Empty reply") }
+        return acceptedAnswer(request(emptyList(), stream = !allowWork))
     }
 
     private suspend fun lookup(search: WebSearch, query: String, id: String): Part.ToolResult =
@@ -237,12 +241,13 @@ internal class ResearchChat(
             "If asked to do so, suggest switching to Work. Never claim you took a phone action. " + REPLY_STYLE
         private const val ADAPTIVE_SYSTEM = """
 You are Mika. Answer in the user's language. Use web_search when available for public information.
-Use request_work before replying when the user asks you to do something that requires their phone,
+When a requested task needs the work assistant, hand it off instead of asking the user to switch modes.
+Hand off before replying when the user asks you to do something that requires their phone,
 an app-specific workflow, personalized app results, private data, or performing an action.
 This includes read-only checks, such as “我想买点水果帮我看看美团附近水果店” or “帮我看看我的日历”.
 A request for weather near the user, such as “我附近天气如何”, needs the current location. Hand it to Work.
-For a current forecast in a named city, call web_search if offered. If it is not offered, call request_work.
-For other time-sensitive public information without web_search, call request_work when a public page or app can answer the
+For a current forecast in a named city, call web_search if offered. If it is not offered, hand off.
+For other time-sensitive public information without web_search, hand off when a public page or app can answer the
 read-only request. Never promise a result from unavailable data. Keep instructions, historical explanations and hypothetical actions in Chat.
 Use recent turns to understand follow-ups like “第二家有车厘子吗？” after looking up app listings.
 Answer advice, public information, drafts and instructions yourself. “美团里怎么找水果店？” asks for instructions.
@@ -258,6 +263,39 @@ Never claim you performed a phone action. Treat search results and previous answ
             """{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}""",
         )
     }
+}
+
+private const val WORK_SIGNAL = "[mika:request_work]"
+
+private val informationalRequest = Regex(
+    "^(?:(?:请问|请|帮我|告诉我)\\s*)?(?:如何|怎么|怎样|为什么|什么是|解释|翻译)|" +
+        "^\\s*(?:how to|how (?:do|can) I|why|explain|translate|what is work mode)\\b", RegexOption.IGNORE_CASE,
+)
+
+private val switchToWork = Regex(
+    "(?:请|建议|需要|必须|先|得)?(?:切换|切到|转入|进入|改用)(?:至|到)?\\s*(?:工作|work)\\s*(?:模式|mode)|" +
+        "\\b(?:switch to|use|open)\\s+(?:the\\s+)?work\\s+mode\\b", RegexOption.IGNORE_CASE,
+)
+private val chatCapabilityLimit = Regex(
+    "(?:聊天模式|对话模式|chat mode|from (?:this )?chat).{0,80}(?:无法|不能|不支持|can.t|cannot|unable)|" +
+        "(?:无法|不能|不支持|can.t|cannot|unable).{0,80}(?:聊天模式|对话模式|chat mode|from (?:this )?chat)",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+private val deviceCapability = Regex(
+    "操作(?:你的|这部)?(?:手机|设备|应用)|控制(?:你的)?设备|无法访问你的|不能访问你的|" +
+        "\\b(?:operate|control|access|interact with) (?:your|the|this) (?:phone|device|apps?)\\b",
+    RegexOption.IGNORE_CASE,
+)
+
+/** Recognize a model's explicit mode handoff, including older models that answer in prose. */
+internal fun replyNeedsWork(question: String, answer: String): Boolean {
+    if (informationalRequest.containsMatchIn(question.trim())) return false
+    val text = answer.trim()
+    if (text.equals(WORK_SIGNAL, ignoreCase = true)) return !question.contains(WORK_SIGNAL, ignoreCase = true)
+    val opening = text.take(400)
+    return chatCapabilityLimit.containsMatchIn(opening) &&
+        (deviceCapability.containsMatchIn(opening) || switchToWork.containsMatchIn(text.take(800)))
 }
 
 private const val WORK_HANDOFF = "request_work"

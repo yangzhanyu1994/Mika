@@ -215,7 +215,6 @@ fun ChatScreen(
     /** 测试直接给建议。不传时从本机记录读取；没有记录就是空的。 */
     habitSuggestions: List<String>? = null,
     onExploreSkills: () -> Unit = {},
-    onRouteSend: ((String) -> Unit)? = null,
     modeHeader: (@Composable (ConversationTokens?, Boolean) -> Unit)? = null,
     transferDraft: Boolean = false,
     /** 人格选择器里的「管理人格」:打开设置里的人格页。 */
@@ -565,7 +564,7 @@ fun ChatScreen(
             mode = ui.composer,
             hasHistory = ui.exchanges.isNotEmpty(),
             idlePlaceholder = if (modeHeader == null) null else stringResource(R.string.mode_work_input),
-            onSend = { if (onRouteSend != null) onRouteSend(input) else vm.send(input, check) },
+            onSend = { vm.send(input, check) },
             onSavedTasks = if (recommendationStore != null && ui.composer == ComposerMode.Idle) ({ showSavedTasks = true }) else null,
             onTeach = if (ui.composer == ComposerMode.Idle) ({ onOpenTeach(input.trim()) }) else null,
             onStop = vm::cancel,
@@ -605,7 +604,7 @@ fun ChatScreen(
             onVoiceSend = {
                 val text = HoldToTalk.join(vm.ui.value.input, it)
                 vm.input(text)
-                if (onRouteSend != null) onRouteSend(text) else vm.send(text, check)
+                vm.send(text, check)
             },
             voiceAutoSend = true,
             thinkVoiceMotion = true,
