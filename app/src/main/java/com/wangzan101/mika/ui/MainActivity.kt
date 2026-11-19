@@ -282,6 +282,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        foreground = true
         monitor.refresh()
         val env = com.wangzan101.mika.automation.EnvironmentSceneStore.get(this)
         if (env.load() && env.rules.value.any { it.enabled } &&
@@ -295,6 +296,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         updateWatch?.cancel()
         monitor.stop()
+        foreground = false
         super.onStop()
     }
 
@@ -385,6 +387,9 @@ class MainActivity : ComponentActivity() {
         private const val STATE_SHARE_IN_CURRENT = "share_in_current"
         private const val STATE_SHARE_HANDLED = "share_handled"
         private const val TAG = "MikaMain"
+
+        /** 主界面(聊天)此刻是否在前台可见。任务完成时据此决定要不要弹完成通知(#731)。 */
+        @Volatile var foreground: Boolean = false
     }
 }
 
