@@ -647,7 +647,10 @@ class AssistantOverlayActivity : ComponentActivity() {
             combine(live, saved, app.researchChat.pending) { state, turns, chats ->
                 Triple(state, turns, chats[id])
             }.collect { (state, turns, draft) ->
-                history = turns.map { AssistantExchange(AttachmentLines.words(it.userText), savedReply(it).body) }
+                history = turns.map {
+                    val result = savedReply(it)
+                    AssistantExchange(AttachmentLines.words(it.userText), result.body, result.collapsedBody)
+                }
                 val finishedIndex = if (pendingQuestion != null) {
                     (pendingAfter until turns.size).firstOrNull { turns[it].research == useChat }
                 } else null
@@ -695,9 +698,9 @@ class AssistantOverlayActivity : ComponentActivity() {
         if (state == TaskState.Idle) return null
         val (title, body) = TaskService.describe(state)
         return when (state) {
-            is TaskState.Succeeded -> AssistantReply(
+            is TaskState.Succeeded -> workResultReply(
                 if (state.doubtful) title else getString(R.string.task_done),
-                workResultSummary(state.answer, state.note.takeIf { state.doubtful }),
+                state.answer, state.note.takeIf { state.doubtful },
                 completed = true,
             )
             is TaskState.Running -> {
@@ -717,25 +720,27 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun savedReply(turn: Turn): AssistantReply = when (turn.status) {
-        "unverified" -> AssistantReply(
+        "unverified" -> workResultReply(
             getString(R.string.chat_unverified),
-            workResultSummary(turn.outcome, turn.note),
+            turn.outcome, turn.note,
         )
         "failed" -> AssistantReply(getString(R.string.task_not_done), turn.outcome)
         "cancelled" -> AssistantReply(
             getString(R.string.task_stopped),
             Conversation.stopSummary(turn) ?: getString(R.string.task_stopped_body),
         )
-        else -> AssistantReply(
-            getString(R.string.task_done),
-            if (turn.research) turn.outcome else WorkReply.from(turn.outcome).summary,
-            completed = true,
-        )
+        else -> if (turn.research) AssistantReply(getString(R.string.task_done), turn.outcome, completed = true)
+        else workResultReply(getString(R.string.task_done), turn.outcome, completed = true)
     }
 
-    private fun workResultSummary(answer: String, note: String?): String =
-        listOfNotNull(note?.takeIf(String::isNotBlank), WorkReply.from(answer).summary.takeIf(String::isNotBlank))
-            .joinToString("\n\n")
+    private fun workResultReply(title: String, answer: String, note: String? = null, completed: Boolean = false): AssistantReply {
+        val result = WorkReply.from(answer)
+        val prefix = note?.takeIf(String::isNotBlank)?.plus("\n\n").orEmpty()
+        return AssistantReply(
+            title, (prefix + result.full).trimEnd(), completed = completed,
+            collapsedBody = result.summary.takeIf { it.isNotBlank() && it != result.full.trim() }?.let { prefix + it },
+        )
+    }
 
     private fun openConversation() {
         val id = conversationId ?: return

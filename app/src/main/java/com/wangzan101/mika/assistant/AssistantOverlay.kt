@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -85,9 +86,10 @@ internal data class AssistantReply(
     val completed: Boolean = false,
     val motion: OrbMotion = OrbMotion.Idle,
     val progress: String? = null,
+    val collapsedBody: String? = null,
 )
 
-internal data class AssistantExchange(val question: String, val answer: String)
+internal data class AssistantExchange(val question: String, val answer: String, val collapsedAnswer: String? = null)
 
 internal enum class AssistantMode(val label: Int) {
     Auto(R.string.assistant_mode_auto),
@@ -133,18 +135,19 @@ internal fun AssistantOverlay(
     val glow by animateFloatAsState(if (listening) 1f else 0.48f, label = "assistant glow")
     val running = reply?.running == true
     val reducedMotion = MikaTheme.reduceMotion
+    val revealingWorkDetails = revealTurn?.let { history.getOrNull(it)?.collapsedAnswer != null } == true
     val target = revealTurn?.let { index ->
         history.getOrNull(index)?.answer ?: reply?.body.orEmpty()
     }.orEmpty()
     var revealed by remember(revealTurn) { mutableStateOf("") }
-    LaunchedEffect(revealTurn, target, reducedMotion) {
-        if (reducedMotion) revealed = target
+    LaunchedEffect(revealTurn, target, reducedMotion, revealingWorkDetails) {
+        if (reducedMotion || revealingWorkDetails) revealed = target
         else while (target != revealed) {
             revealed = advanceResearchText(revealed, target)
             if (target != revealed) delay(24)
         }
     }
-    ResearchReplyHaptics(revealTurn?.toString(), revealed)
+    if (!revealingWorkDetails) ResearchReplyHaptics(revealTurn?.toString(), revealed)
     val taskGlow = remember { mutableFloatStateOf(1f) }
     LaunchedEffect(running, reducedMotion) {
         if (running && !reducedMotion) {
@@ -257,13 +260,18 @@ internal fun AssistantOverlay(
                         ) {
                             history.forEachIndexed { index, turn ->
                                 AssistantQuestion(turn.question, Modifier.align(Alignment.End))
-                                if (index == revealTurn) AssistantAnswer(revealed, streaming = revealed != target)
+                                if (turn.collapsedAnswer != null) AssistantWorkAnswer(turn.answer, turn.collapsedAnswer)
+                                else if (index == revealTurn) AssistantAnswer(revealed, streaming = revealed != target)
                                 else AssistantAnswer(turn.answer)
                             }
                             if (pendingQuestion != null) {
                                 AssistantQuestion(pendingQuestion, Modifier.align(Alignment.End))
-                                val body = if (revealTurn != null) revealed else reply?.body.orEmpty()
-                                AssistantAnswer(body, streaming = reply?.running == true || body != reply?.body.orEmpty())
+                                val collapsed = reply?.collapsedBody
+                                if (collapsed != null) AssistantWorkAnswer(reply.body, collapsed)
+                                else {
+                                    val body = if (revealTurn != null) revealed else reply?.body.orEmpty()
+                                    AssistantAnswer(body, streaming = reply?.running == true || body != reply?.body.orEmpty())
+                                }
                             }
                         }
                         TextButton(onClick = onOpenConversation) {
@@ -393,6 +401,15 @@ private fun AssistantQuestion(question: String, modifier: Modifier = Modifier) {
             .background(c.accent.copy(alpha = 0.14f), MikaShapes.UserBubble).padding(horizontal = 12.dp, vertical = 8.dp),
         style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
     )
+}
+
+@Composable
+private fun AssistantWorkAnswer(answer: String, summary: String) {
+    var expanded by rememberSaveable(answer, summary) { mutableStateOf(true) }
+    AssistantAnswer(if (expanded) answer else summary)
+    TextButton(onClick = { expanded = !expanded }) {
+        Text(stringResource(if (expanded) R.string.collapse else R.string.expand))
+    }
 }
 
 @Composable

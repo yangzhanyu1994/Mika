@@ -63,8 +63,10 @@ class AssistantOverlayTest {
         compose.runOnIdle { assertEquals("再说一下地点", sent) }
         compose.onNodeWithText("当前回复结束后发送下一条").assertIsDisplayed()
         compose.runOnIdle {
-            reply.value = AssistantReply("任务完成", "**14:00** 项目同步会")
-            history.value = listOf(AssistantExchange(question, reply.value.body))
+            val summary = "**14:00** 项目同步会"
+            val full = "$summary\n\n会议地点：二楼会议室"
+            reply.value = AssistantReply("任务完成", full, collapsedBody = summary)
+            history.value = listOf(AssistantExchange(question, full, summary))
             pending.value = null
             queued.value = false
             draft.value = ""
@@ -73,6 +75,11 @@ class AssistantOverlayTest {
         val result = compose.onNodeWithText("14:00 项目同步会").assertIsDisplayed()
         assertTrue(result.fetchSemanticsNode().boundsInRoot.top >
             compose.onNodeWithText(question).fetchSemanticsNode().boundsInRoot.bottom)
+        compose.onNodeWithText("会议地点：二楼会议室").assertIsDisplayed()
+        compose.onNodeWithText("收起").performClick()
+        compose.onNodeWithText("会议地点：二楼会议室").assertDoesNotExist()
+        compose.onNodeWithText("展开").performClick()
+        compose.onNodeWithText("会议地点：二楼会议室").assertIsDisplayed()
         compose.onNodeWithText("查看完整对话").performClick()
         compose.runOnIdle { assertTrue(opened) }
         compose.onNode(hasSetTextAction()).performTextInput("结束时间呢")
