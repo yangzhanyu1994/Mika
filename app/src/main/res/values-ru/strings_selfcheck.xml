@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">Проверка с выключенным экраном</string>
     <string name="selfcheck_screen_off_wait">В течение 45 секунд нажмите кнопку питания, чтобы выключить экран и заблокировать телефон. После проверки вернитесь, чтобы увидеть результат.</string>
     <string name="selfcheck_screen_off_interrupted">Во время проверки экран включился, телефон разблокировали или запустилась другая задача.</string>
+    <string name="selfcheck_screen_off_lock">Экран выключен и телефон заблокирован</string>
+    <string name="selfcheck_screen_off_capture">Снимок виртуального экрана</string>
+    <string name="selfcheck_screen_off_no_app_window">Служба специальных возможностей не обнаружила окно приложения на виртуальном экране</string>
+    <string name="selfcheck_screen_off_no_root">Корневой узел окна приложения недоступен для чтения</string>
+    <string name="selfcheck_screen_off_no_settings_window">Служба специальных возможностей не обнаружила окно настроек</string>
+    <string name="selfcheck_screen_off_no_elements">В окне настроек нет доступных для чтения элементов</string>
+    <string name="selfcheck_screen_off_tree_readable">Дерево специальных возможностей настроек доступно для чтения</string>
+    <string name="selfcheck_screen_off_no_frame">Кадр виртуального экрана не получен</string>
+    <string name="selfcheck_screen_off_black_frame">Кадр виртуального экрана чёрный</string>
+    <string name="selfcheck_screen_off_frame_readable">На кадре виртуального экрана есть видимые пиксели</string>
 </resources>

@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">熄屏自检</string>
     <string name="selfcheck_screen_off_wait">请在 45 秒内按电源键熄屏并锁定手机。测试完成后解锁，回到这里查看结果。</string>
     <string name="selfcheck_screen_off_interrupted">测试期间主屏亮起、手机解锁，或有其他任务开始。</string>
+    <string name="selfcheck_screen_off_lock">主屏已熄屏并锁定</string>
+    <string name="selfcheck_screen_off_capture">虚拟屏截图</string>
+    <string name="selfcheck_screen_off_no_app_window">无障碍服务未返回虚拟屏上的应用窗口</string>
+    <string name="selfcheck_screen_off_no_root">无障碍服务返回了应用窗口，但读不到根节点</string>
+    <string name="selfcheck_screen_off_no_settings_window">无障碍服务未返回设置的应用窗口</string>
+    <string name="selfcheck_screen_off_no_elements">找到了设置窗口，但没有可读取的元素</string>
+    <string name="selfcheck_screen_off_tree_readable">可以读取设置页的无障碍元素</string>
+    <string name="selfcheck_screen_off_no_frame">未收到虚拟屏画面</string>
+    <string name="selfcheck_screen_off_black_frame">虚拟屏画面为黑屏</string>
+    <string name="selfcheck_screen_off_frame_readable">虚拟屏画面中有可见内容</string>
 </resources>

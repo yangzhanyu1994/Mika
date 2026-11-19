@@ -148,7 +148,7 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         }
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Mika:ScreenOffSelfCheck")
         fun valid() = !invalidated.get() && !taskBusy() && lockedAndOff()
-        val waitStage = R.string.selfcheck_screen_off_start
+        val waitStage = R.string.selfcheck_screen_off_lock
         val finalStage = R.string.selfcheck_check_main
         var stage = waitStage
         var registeredReceiver = false
@@ -248,18 +248,34 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         }) return false
         val s = checkNotNull(deviceScreen)
         val pkg = checkNotNull(settings)
-        if (!step(R.string.selfcheck_check_reading) {
+        val treeReadable = step(R.string.selfcheck_check_reading) {
+            var readFailure = R.string.selfcheck_screen_off_no_app_window
             val readable = poll(PAGE_WAIT_MS) {
                 verifyLock()
-                selfCheckWindowContent(s.snapshot(), pkg)?.elements?.isNotEmpty() == true
+                val snapshot = s.peek()
+                val settingsWindow = selfCheckWindowContent(snapshot, pkg)
+                readFailure = when {
+                    !snapshot.hasWindow -> R.string.selfcheck_screen_off_no_app_window
+                    settingsWindow == null && snapshot.windows.any {
+                        it.type == "application" && it.packageName == null
+                    } -> R.string.selfcheck_screen_off_no_root
+                    settingsWindow == null -> R.string.selfcheck_screen_off_no_settings_window
+                    else -> R.string.selfcheck_screen_off_no_elements
+                }
+                settingsWindow?.elements?.isNotEmpty() == true
             }
-            if (!readable) return@step CheckOutcome.fail("Settings window is unreadable", Advice.ReadFailed)
-            val frame = awaitFrame(d) ?: return@step CheckOutcome.fail("No virtual display frame", Advice.BlankFrames)
+            if (readable) CheckOutcome.pass(tr(R.string.selfcheck_screen_off_tree_readable))
+            else CheckOutcome.fail(tr(readFailure), Advice.ReadFailed)
+        }
+        val frameReadable = step(R.string.selfcheck_screen_off_capture) {
+            val frame = awaitFrame(d)
+                ?: return@step CheckOutcome.fail(tr(R.string.selfcheck_screen_off_no_frame), Advice.BlankFrames)
             val black = try { FrameMath.isBlack(frame.width, frame.height, frame::getPixel) }
                 finally { frame.recycle() }
-            if (black) CheckOutcome.fail("Virtual display frame is black", Advice.BlankFrames)
-            else CheckOutcome.pass("Settings tree and screenshot readable")
-        }) return false
+            if (black) CheckOutcome.fail(tr(R.string.selfcheck_screen_off_black_frame), Advice.BlankFrames)
+            else CheckOutcome.pass(tr(R.string.selfcheck_screen_off_frame_readable))
+        }
+        if (!treeReadable || !frameReadable) return false
         return step(R.string.selfcheck_check_actions) {
             val window = selfCheckWindowContent(s.snapshot(), pkg)
                 ?: return@step CheckOutcome.fail("Settings window is no longer readable", Advice.ReadFailed)
