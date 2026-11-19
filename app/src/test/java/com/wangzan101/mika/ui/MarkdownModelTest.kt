@@ -14,6 +14,30 @@ class MarkdownModelTest {
     private fun para(md: String) = (MarkdownModel.parse(md).single() as MdBlock.Para).text
 
     @Test
+    fun labeledFindingsSplitIntoColumnsAndPreserveLinks() {
+        val list = MarkdownModel.parse("- **温度**：2°C\n- 观测时间: 19:44\n- 来源：[气象台](https://example.com)")
+            .single() as MdBlock.ListBlock
+        val rows = checkNotNull(list.resultRows())
+        assertEquals(listOf("温度" to "2°C", "观测时间" to "19:44", "来源" to "气象台"),
+            rows.map { (label, value) -> label.text to value.text })
+        assertEquals(FontWeight.SemiBold, rows.first().first.spanStyles.single().item.fontWeight)
+        val source = rows.last().second
+        assertEquals("https://example.com", (source.getLinkAnnotations(0, source.length).single().item as LinkAnnotation.Url).url)
+    }
+
+    @Test
+    fun ordinaryOrNestedListsDoNotBecomeRows() {
+        for (markdown in listOf(
+            "- Open the app\n- Time: 19:44",
+            "- https://example.com\n- Source: forecast",
+            "- One: x\n  - Nested\n- Two: y",
+            "1. First: x\n2. Second: y",
+        )) {
+            assertNull((MarkdownModel.parse(markdown).single() as MdBlock.ListBlock).resultRows())
+        }
+    }
+
+    @Test
     fun inlineStyles() {
         val t = para("a **粗** *斜* ~~删~~ `code` b")
         assertEquals("a 粗 斜 删 code b", t.text)

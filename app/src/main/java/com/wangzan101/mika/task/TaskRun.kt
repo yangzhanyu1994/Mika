@@ -1671,14 +1671,15 @@ User-facing progress and final replies:
 private const val WORK_RESULT_STYLE = """
 
 For the final text shown on the work result card:
-- Lead with one to three short sentences that directly answer the request. For a lookup, name
+- Lead with a short result that directly answers the request. For a lookup, name
   the observed state or values first. "I found it" and a source or update time alone do not answer
   a lookup. Put the essential findings and any relevant anomaly or unconfirmed fact before the
   marker so the summary can stand on its own.
-- For a broad status check, group related readings and give the most important observed states
-  and figures. For example: "The engine is off and the car is in Park. The doors and windows show
-  closed, with 7 L of fuel remaining. The lock state could not be verified." These are example
-  values only. Use only facts observed in the current task. Add the update time if it matters.
+- When returning several fields about one subject, give the two or three most important fields as
+  separate Markdown bullets, each formatted "- **Label**: value". Weather and vehicle status are
+  examples of this layout. Group closely related readings under a short label. Use the user's
+  language and only facts observed in the current task. Give further readings, update time or
+  source when relevant, using the same layout so a reader can scan each field.
 - For simple results, stop there. When supporting detail is useful, put it below
   ${WorkReply.DETAILS_MARKER}
   on its own line, followed by the supplementary facts or evidence. Do not repeat the summary.

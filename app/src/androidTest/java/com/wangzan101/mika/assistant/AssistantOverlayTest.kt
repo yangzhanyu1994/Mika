@@ -64,7 +64,7 @@ class AssistantOverlayTest {
         compose.onNodeWithText("当前回复结束后发送下一条").assertIsDisplayed()
         compose.runOnIdle {
             val summary = "**14:00** 项目同步会"
-            val full = "$summary\n\n会议地点：二楼会议室"
+            val full = "$summary\n\n- 会议地点：二楼会议室\n- 结束时间：15:00"
             reply.value = AssistantReply("任务完成", full, collapsedBody = summary)
             history.value = listOf(AssistantExchange(question, full, summary))
             pending.value = null
@@ -75,11 +75,13 @@ class AssistantOverlayTest {
         val result = compose.onNodeWithText("14:00 项目同步会").assertIsDisplayed()
         assertTrue(result.fetchSemanticsNode().boundsInRoot.top >
             compose.onNodeWithText(question).fetchSemanticsNode().boundsInRoot.bottom)
-        compose.onNodeWithText("会议地点：二楼会议室").assertIsDisplayed()
+        val venue = compose.onNodeWithText("二楼会议室").assertIsDisplayed()
+        val endTime = compose.onNodeWithText("15:00").assertIsDisplayed()
+        assertEquals(venue.fetchSemanticsNode().boundsInRoot.left, endTime.fetchSemanticsNode().boundsInRoot.left, 1f)
         compose.onNodeWithText("收起").performClick()
-        compose.onNodeWithText("会议地点：二楼会议室").assertDoesNotExist()
+        compose.onNodeWithText("二楼会议室").assertDoesNotExist()
         compose.onNodeWithText("展开").performClick()
-        compose.onNodeWithText("会议地点：二楼会议室").assertIsDisplayed()
+        compose.onNodeWithText("二楼会议室").assertIsDisplayed()
         compose.onNodeWithText("查看完整对话").performClick()
         compose.runOnIdle { assertTrue(opened) }
         compose.onNode(hasSetTextAction()).performTextInput("结束时间呢")

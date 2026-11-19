@@ -56,6 +56,21 @@ sealed interface MdBlock {
     data object Rule : MdBlock
 }
 
+private val resultField = Regex("""^[\p{L}\p{N}][\p{L}\p{M}\p{N}\p{Zs}()/（）·_-]{0,23}(?:：|:(?=\s))""")
+
+/** Keep inline Markdown styles and links when separating a flat list of labels and values. */
+internal fun MdBlock.ListBlock.resultRows(): List<Pair<AnnotatedString, AnnotatedString>>? {
+    if (start != null || items.size < 2) return null
+    return items.map { item ->
+        val text = (item.singleOrNull() as? MdBlock.Para)?.text ?: return null
+        val match = resultField.find(text) ?: return null
+        val colon = match.range.last
+        val valueStart = (colon + 1 until text.length).firstOrNull { !text[it].isWhitespace() } ?: return null
+        val labelEnd = (colon - 1 downTo 0).first { !text[it].isWhitespace() } + 1
+        text.subSequence(0, labelEnd) to text.subSequence(valueStart, text.length)
+    }
+}
+
 object MarkdownModel {
     /** 嵌套再深的引用、列表就按纯文字显示,免得递归太深。 */
     private const val MAX_DEPTH = 12
