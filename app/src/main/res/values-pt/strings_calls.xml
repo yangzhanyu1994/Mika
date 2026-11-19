@@ -143,4 +143,5 @@
     <string name="calls_notification_connecting_audio">A ligar o áudio da chamada</string>
     <string name="calls_notification_connected_waiting">IA ligada. A aguardar que a outra pessoa fale. Pode assumir a chamada a qualquer momento.</string>
     <string name="calls_notification_connected">IA ligada. Pode falar pessoalmente a qualquer momento.</string>
+    <string name="calls_openai_realtime_note">O OpenAI Realtime processa o áudio das chamadas. Ao mudar o serviço de voz, o atendimento automático é desativado até ser ativado novamente.</string>
 </resources>

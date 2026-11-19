@@ -8,9 +8,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
+enum class CallSpeechProvider { Volcengine, OpenAi }
+
 data class VolcRealtimeConfig(
     val systemPrompt: String = "",
     val speaker: String = DEFAULT_SPEAKER,
+    val provider: CallSpeechProvider = CallSpeechProvider.Volcengine,
 ) {
     init {
         require(systemPrompt.length <= MAX_PROMPT_CHARS) { "Realtime system prompt is too long" }

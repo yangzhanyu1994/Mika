@@ -63,6 +63,7 @@ class CallSettings(
             answerOnRingTimeout = config.answerOnRingTimeout,
             speaker = speaker,
             credentialsConfigured = previous.credentialsConfigured,
+            speechProvider = previous.speechProvider,
         )
         val committed = prefs.edit()
             .putBoolean("enabled", next.enabled)
@@ -124,8 +125,10 @@ class CallSettings(
         }
         val edit = prefs.edit()
         if (clear) {
-            edit.remove(CREDENTIALS).putBoolean("auto_answer", false).putBoolean(BACKGROUND_AUTHORIZED, false)
-                .remove("credential_probe")
+            edit.remove(CREDENTIALS)
+            if (selectedProvider() == CallSpeechProvider.Volcengine) {
+                edit.putBoolean("auto_answer", false).putBoolean(BACKGROUND_AUTHORIZED, false).remove("credential_probe")
+            }
         } else {
             val bytes = "${modern}\n${legacyId}\n${legacyKey}".toByteArray()
             try {
@@ -136,7 +139,7 @@ class CallSettings(
             }
         }
         val committed = edit.commit()
-        if (committed || clear) {
+        if ((committed || clear) && selectedProvider() == CallSpeechProvider.Volcengine) {
             mutable.value = mutable.value.copy(credentialsConfigured = !clear,
                 credentialProbeOk = if (clear) null else mutable.value.credentialProbeOk,
                 autoAnswer = !clear && mutable.value.autoAnswer,
@@ -146,6 +149,47 @@ class CallSettings(
         check(committed) { "无法保存火山凭据" }
     }
 
+    /** Store the separate OpenAI key without ever copying a Volcengine credential across providers. */
+    @Synchronized
+    fun selectOpenAiVoice(apiKey: String) {
+        val trimmed = apiKey.trim()
+        require(trimmed.length <= 1024 && trimmed.all { it.code in 33..126 })
+        val editor = prefs.edit()
+        if (trimmed.isNotEmpty()) {
+            val plain = trimmed.toByteArray(Charsets.UTF_8)
+            try {
+                editor.putString(OPENAI_CREDENTIAL, Base64.encodeToString(cipher.encrypt(plain), Base64.NO_WRAP))
+            } finally {
+                plain.fill(0)
+            }
+        } else {
+            require(credentials(CallSpeechProvider.OpenAi) != null) { "OpenAI Realtime API key is required" }
+        }
+        storeProvider(editor, CallSpeechProvider.OpenAi)
+    }
+
+    @Synchronized
+    fun selectVolcengineVoice() {
+        if (selectedProvider() == CallSpeechProvider.Volcengine) return
+        require(credentials(CallSpeechProvider.Volcengine) != null)
+        storeProvider(prefs.edit(), CallSpeechProvider.Volcengine)
+    }
+
+    private fun storeProvider(editor: SharedPreferences.Editor, provider: CallSpeechProvider) {
+        check(editor.putString(VOICE_PROVIDER, provider.name).putBoolean("auto_answer", false)
+            .putBoolean(BACKGROUND_AUTHORIZED, false).remove("credential_probe").commit())
+        mutable.value = mutable.value.copy(speechProvider = provider, credentialsConfigured = credentials(provider) != null,
+            autoAnswer = false, backgroundStandbyAuthorized = false, credentialProbeOk = null)
+        credentialsRevision.value++
+    }
+
+    fun hasCredentialsFor(provider: CallSpeechProvider): Boolean =
+        prefs.contains(if (provider == CallSpeechProvider.OpenAi) OPENAI_CREDENTIAL else CREDENTIALS)
+
+    private fun selectedProvider(): CallSpeechProvider = CallSpeechProvider.entries.firstOrNull {
+        it.name == prefs.getString(VOICE_PROVIDER, null)
+    } ?: CallSpeechProvider.Volcengine
+
     @Synchronized
     fun noteCredentialProbe(ok: Boolean) {
         if (!prefs.edit().putString("credential_probe", if (ok) "ok" else "fail").commit()) return
@@ -153,10 +197,14 @@ class CallSettings(
     }
 
     @Synchronized
-    internal fun credentials(): VolcRealtimeCredentials? = runCatching {
-        val stored = prefs.getString(CREDENTIALS, null) ?: return null
+    internal fun credentials(provider: CallSpeechProvider = selectedProvider()): VolcRealtimeCredentials? = runCatching {
+        val name = if (provider == CallSpeechProvider.OpenAi) OPENAI_CREDENTIAL else CREDENTIALS
+        val stored = prefs.getString(name, null) ?: return null
         val bytes = cipher.decrypt(Base64.decode(stored, Base64.NO_WRAP))
         try {
+            if (provider == CallSpeechProvider.OpenAi) {
+                return VolcRealtimeCredentials(apiKey = bytes.toString(Charsets.UTF_8)).takeIf { it.valid }
+            }
             val fields = bytes.toString(Charsets.UTF_8).split('\n')
             if (fields.size != 3) return null
             VolcRealtimeCredentials(apiKey = fields[0], appId = fields[1], accessKey = fields[2]).takeIf { it.valid }
@@ -190,6 +238,7 @@ class CallSettings(
             audioMode = prefs.getString("audio_mode", null)?.let(CallAudioMode::valueOf) ?: defaults.audioMode,
             audioVerified = verified,
             credentialsConfigured = credentials() != null,
+            speechProvider = selectedProvider(),
             summaryEnabled = prefs.getBoolean("summary_enabled", false),
             greeting = CallPolicy.migrateDefaultGreeting(prefs.getString("greeting", defaults.greeting).orEmpty())
                 .take(CallPolicy.MAX_GREETING_CHARS),
@@ -210,6 +259,8 @@ class CallSettings(
 
     companion object {
         private const val CREDENTIALS = "volc_credentials_v1"
+        private const val OPENAI_CREDENTIAL = "openai_realtime_key_v1"
+        private const val VOICE_PROVIDER = "speech_provider"
         internal const val BACKGROUND_AUTHORIZED = "background_standby_authorized"
 
         fun create(context: Context): CallSettings =

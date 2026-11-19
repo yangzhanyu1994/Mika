@@ -143,4 +143,5 @@
     <string name="calls_notification_connecting_audio">Arama sesi bağlanıyor</string>
     <string name="calls_notification_connected_waiting">Yapay zeka bağlandı. Karşı tarafın konuşması bekleniyor. İstediğiniz an devralabilirsiniz.</string>
     <string name="calls_notification_connected">Yapay zeka bağlandı. İstediğiniz an devralabilirsiniz.</string>
+    <string name="calls_openai_realtime_note">OpenAI Realtime arama sesini işler. Ses hizmetini değiştirirseniz otomatik yanıtlama, yeniden etkinleştirene kadar kapanır.</string>
 </resources>

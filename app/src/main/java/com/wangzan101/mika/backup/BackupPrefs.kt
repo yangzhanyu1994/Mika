@@ -51,6 +51,7 @@ object BackupPrefs {
         ),
         "mika_call_settings.xml" to listOf(
             EncryptedPrefKey.Exact("volc_credentials_v1", "mika-volc-realtime-calls"),
+            EncryptedPrefKey.Exact("openai_realtime_key_v1", "mika-volc-realtime-calls"),
         ),
         "mika_call_voice_profiles.xml" to listOf(
             EncryptedPrefKey.Exact("encrypted_profiles_v1", "mika-call-voice-profiles"),

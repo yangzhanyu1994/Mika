@@ -16,6 +16,9 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okio.ByteString
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -30,6 +33,41 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VolcRealtimeClientTest {
+    @Test fun openAiWaitsForSessionUpdateAndResamplesCallAudio() = runBlocking {
+        val frames = mutableListOf<JsonObject>()
+        val socket = object : WebSocket {
+            override fun request() = Request.Builder().url("https://api.openai.com/v1/realtime").build()
+            override fun queueSize() = 0L
+            override fun send(text: String) = frames.add(Json.parseToJsonElement(text).jsonObject)
+            override fun send(bytes: ByteString) = false
+            override fun close(code: Int, reason: String?) = true
+            override fun cancel() = Unit
+        }
+        val session = VolcRealtimeSession(
+            VolcRealtimeConfig(speaker = OpenAiCallProtocol.VOICE, provider = CallSpeechProvider.OpenAi),
+            closeTimeoutMs = 100L,
+        )
+        try {
+            val response = Response.Builder().request(socket.request()).protocol(Protocol.HTTP_1_1)
+                .code(101).message("Switching Protocols").build()
+            session.listener.onOpen(socket, response)
+            assertTrue(frames.isEmpty())
+            session.listener.onMessage(socket, """{"type":"session.created"}""")
+            assertEquals("session.update", frames.single().type)
+            assertFalse(session.sendPcm16(ByteArray(640)))
+            session.listener.onMessage(socket, """{"type":"session.updated"}""")
+            withTimeout(1_000L) { session.awaitReady() }
+            assertTrue(session.sendPcm16(ByteArray(640)))
+            val append = frames.last()
+            assertEquals("input_audio_buffer.append", append.type)
+            assertEquals(960, Base64.getDecoder().decode(append.getValue("audio").jsonPrimitive.content).size)
+            assertTrue(session.sendGreeting("Hello"))
+            assertEquals("response.create", frames.last().type)
+        } finally {
+            session.close()
+        }
+    }
+
     @Test fun fullDuplexWaitsForSessionAckAndSuppressesInterruptedPcm() = runBlocking {
         withServer { server, http ->
             val messages = Channel<JsonObject>(16)
