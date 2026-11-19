@@ -206,7 +206,6 @@ private fun RadioMark(selected: Boolean, enabled: Boolean = true) {
 /**
  * 卡片里的输入行:左边固定宽的标题,右边单行输入框(空时显示 [placeholder])。
  * [secret] 为真时按密码显示;[trailing] 放在输入框右边(例如「显示」)。
- * [onClear] 非空且输入框里有字时,在文字右边放一个清空按钮(和搜索框的叉同一套)。
  */
 @Composable
 fun InputRow(
