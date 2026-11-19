@@ -67,7 +67,7 @@ class ToolRiskTest {
 
     @Test fun readCallsRefuseWhatTheOldListsRefused() = runTest {
         val refused = oldWriting + oldSandbox + WEB_SCRIPT_TOOL +
-            setOf("phone_find", "phone_collect", "phone_dialog", "phone_run", "phone_system_command", "phone_calendar_bulk_insert", "schedule_task", "spawn_agent", "settings_set", "root_run_command", "web_search", "web_fetch",
+            setOf("phone_find", "phone_collect", "phone_dialog", "phone_run", "phone_system_command", "phone_calendar_bulk_insert", "schedule_task", "spawn_agent", "settings_set", "root_run_command", "web_search",
                 "mika_open_screen", "mika_open_file", "mika_notify", "mika_copy",
                 "mika_open_in_browser", "mika_search_in_browser", "mika_login_site", "mika_confirm_login", "mika_favorites",
                 "phone_call_state", "phone_call_resolve_contact", "phone_call_schedule_dial", "phone_call_dial", "phone_call_answer", "phone_call_hangup", "phone_call_takeover", "phone_call_incoming_task", "phone_call_manage_tasks", "wechat_send_owner", "audio_generate", "audio_save", "audio_transcribe", "speak", "list_device_files", "copy_device_file", "search_device_files", "list_device_directory_hints", "update_device_directory_description")

@@ -348,12 +348,4 @@
     <string name="skill_suspended">This skill hasn’t been working lately, so it’s paused</string>
     <string name="tool_wechat_owner">Send to my WeChat</string>
     <string name="voice_hint">Mika can read answers aloud and say a line with your own speech model. Text is sent to the service you pick.</string>
-    <string name="web_fetch_enabled">Enable page fetching</string>
-    <string name="web_fetch_note_tinyfish">Needs an API key. Pages are fetched with the TinyFish Fetch API (api.fetch.tinyfish.ai).</string>
-    <string name="web_fetch_privacy">The key is stored encrypted on this phone. Fetched pages are treated as untrusted.</string>
-    <string name="web_fetch_provider">Fetching service</string>
-    <string name="web_fetch_row_sub">Optional page fetching; the browser is always available</string>
-    <string name="web_fetch_title">Page fetching</string>
-    <string name="web_search_note_keirolabs">Needs an API key. Results come from Keirolabs search (api.keirolabs.cloud).</string>
-    <string name="web_search_note_tinyfish">Needs an API key. Results come from TinyFish search (api.search.tinyfish.ai).</string>
 </resources>

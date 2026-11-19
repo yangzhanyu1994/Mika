@@ -56,8 +56,6 @@ internal class ToolConfig(
     val taskMemory: com.wangzan101.mika.core.memory.TaskMemoryStore? = null,
     /** 这两天的通知原文和存着的各天、各周、各月的归纳(主动能力攒下的);给了才提供 notices_read。 */
     val notices: com.wangzan101.mika.core.proactive.NoticeSource? = null,
-    /** 用户配置并启用的网页抓取;为空时不提供 web_fetch。 */
-    val webFetch: com.wangzan101.mika.core.fetch.WebFetch? = null,
 )
 
 /**
