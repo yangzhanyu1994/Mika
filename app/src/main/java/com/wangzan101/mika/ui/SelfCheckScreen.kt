@@ -37,6 +37,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.about.Diagnostics
 import com.wangzan101.mika.about.MikaLinks
 import com.wangzan101.mika.core.selfcheck.Advice
+import com.wangzan101.mika.core.selfcheck.CheckOutcome
 import com.wangzan101.mika.core.selfcheck.CheckResult
 import com.wangzan101.mika.core.selfcheck.CheckStatus
 import com.wangzan101.mika.core.selfcheck.SelfCheck
@@ -61,7 +62,9 @@ import com.wangzan101.mika.ui.theme.MikaTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** 兼容性自检页的文字(纯函数,便于测试):每项的名字、状态、下面那一句大白话。 */
 object SelfCheckCopy {
@@ -153,6 +156,10 @@ fun SelfCheckScreen(status: SystemStatus, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var runner by remember { mutableStateOf<SelfCheckRunner?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
+    var screenOffJob by remember { mutableStateOf<Job?>(null) }
+    var screenOffRunning by remember { mutableStateOf(false) }
+    val screenOffResults = remember { MutableStateFlow(emptyList<Pair<Int, CheckOutcome>>()) }
+    val screenOffReport by screenOffResults.collectAsState()
     val idle = remember { MutableStateFlow(SelfCheckState()) }
     val state by (runner?.state ?: idle).collectAsState()
     SelfCheckContent(
@@ -171,6 +178,48 @@ fun SelfCheckScreen(status: SystemStatus, onBack: () -> Unit) {
             openInBrowser(context, SelfCheckReport.issueUrl(MikaLinks.NEW_ISSUE, state.facts))
         },
         onBack = onBack,
+        canStart = !screenOffRunning,
+        screenOffContent = {
+            if (state.phase != SelfCheckState.Phase.Running) {
+                MikaButton(
+                    stringResource(if (screenOffRunning) R.string.selfcheck_cancel else R.string.selfcheck_screen_off_start),
+                    onClick = {
+                        if (screenOffRunning) {
+                            screenOffJob?.cancel()
+                        } else if (job?.isActive != true) {
+                            screenOffResults.value = emptyList()
+                            screenOffRunning = true
+                            screenOffJob = scope.launch {
+                                try {
+                                    withContext(Dispatchers.Default) {
+                                        AndroidSelfCheck(context) { current.value }.checkScreenOff({ app.taskState.busy.value }) { stage, result ->
+                                            screenOffResults.update { it + (stage to result) }
+                                        }
+                                    }
+                                } finally {
+                                    screenOffRunning = false
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("selfcheck-screen-off-start"),
+                    enabled = screenOffRunning || !taskBusy,
+                    kind = ButtonKind.Tonal,
+                )
+                if (screenOffRunning && screenOffReport.isEmpty()) FooterNote(stringResource(R.string.selfcheck_screen_off_wait))
+                if (screenOffReport.isNotEmpty()) {
+                    val report = screenOffReport.joinToString("\n") { (stage, result) ->
+                        "${tr(stage)} · ${SelfCheckCopy.status(result.status)} — ${result.detail}"
+                    }
+                    FooterNote(report)
+                    if (!screenOffRunning) MikaButton(
+                        stringResource(R.string.selfcheck_copy),
+                        onClick = { copyReport(context, report, tr(R.string.selfcheck_copied)) },
+                        kind = ButtonKind.Tonal,
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -191,6 +240,8 @@ fun SelfCheckContent(
     onCopy: () -> Unit,
     onGithub: () -> Unit,
     onBack: () -> Unit,
+    canStart: Boolean = true,
+    screenOffContent: (@Composable () -> Unit)? = null,
 ) {
     val running = state.phase == SelfCheckState.Phase.Running
     PageScaffold(stringResource(R.string.selfcheck_title), onBack) {
@@ -200,11 +251,12 @@ fun SelfCheckContent(
         } else {
             MikaButton(
                 stringResource(if (state.ended) R.string.selfcheck_again else R.string.selfcheck_start), onStart,
-                Modifier.fillMaxWidth().testTag("selfcheck-start"), enabled = !taskBusy,
+                Modifier.fillMaxWidth().testTag("selfcheck-start"), enabled = !taskBusy && canStart,
             )
             if (taskBusy) FooterNote(stringResource(R.string.selfcheck_task_running), Modifier.padding(top = 8.dp), color = MikaTheme.colors.warn)
         }
 
+        screenOffContent?.invoke()
         GroupLabel(stringResource(R.string.selfcheck_checks), Modifier.padding(top = 12.dp))
         GroupCard {
             state.results.forEachIndexed { i, r ->

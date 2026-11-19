@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">在这里打字</string>
     <string name="selfcheck_target_tick">计时 %1$d</string>
     <string name="selfcheck_target_row">第 %1$d 行</string>
+    <string name="selfcheck_screen_off_start">熄屏自检</string>
+    <string name="selfcheck_screen_off_wait">请在 45 秒内按电源键熄屏并锁定手机。测试完成后解锁，回到这里查看结果。</string>
+    <string name="selfcheck_screen_off_interrupted">测试期间主屏亮起、手机解锁，或有其他任务开始。</string>
 </resources>

@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">Ketik di sini</string>
     <string name="selfcheck_target_tick">Centang %1$d</string>
     <string name="selfcheck_target_row">Baris %1$d</string>
+    <string name="selfcheck_screen_off_start">Uji dengan layar mati</string>
+    <string name="selfcheck_screen_off_wait">Tekan tombol daya untuk mematikan layar dan mengunci ponsel dalam 45 detik. Kembali setelah pengujian untuk melihat hasilnya.</string>
+    <string name="selfcheck_screen_off_interrupted">Layar menyala, ponsel terbuka, atau tugas lain dimulai saat pengujian.</string>
 </resources>

@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">Type here</string>
     <string name="selfcheck_target_tick">Tick %1$d</string>
     <string name="selfcheck_target_row">Row %1$d</string>
+    <string name="selfcheck_screen_off_start">Screen-off self-check</string>
+    <string name="selfcheck_screen_off_wait">Press the power button to turn the screen off and lock the phone within 45 seconds. Return after the test to see the results.</string>
+    <string name="selfcheck_screen_off_interrupted">The screen turned on, the phone unlocked, or another task started during the check.</string>
 </resources>

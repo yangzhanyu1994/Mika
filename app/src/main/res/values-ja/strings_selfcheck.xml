@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">ここに入力</string>
     <string name="selfcheck_target_tick">チェック %1$d</string>
     <string name="selfcheck_target_row">行 %1$d</string>
+    <string name="selfcheck_screen_off_start">画面消灯時のセルフチェック</string>
+    <string name="selfcheck_screen_off_wait">45 秒以内に電源ボタンを押して消灯し、端末をロックしてください。テスト後に戻ると結果を確認できます。</string>
+    <string name="selfcheck_screen_off_interrupted">テスト中に画面が点灯したか、ロックが解除されたか、別のタスクが開始されました。</string>
 </resources>

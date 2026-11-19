@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">여기에 입력</string>
     <string name="selfcheck_target_tick">체크 %1$d</string>
     <string name="selfcheck_target_row">행 %1$d</string>
+    <string name="selfcheck_screen_off_start">화면 꺼짐 자체 점검</string>
+    <string name="selfcheck_screen_off_wait">45초 안에 전원 버튼을 눌러 화면을 끄고 휴대전화를 잠그세요. 테스트가 끝나면 돌아와 결과를 확인하세요.</string>
+    <string name="selfcheck_screen_off_interrupted">점검 중 화면이 켜졌거나 잠금이 해제되었거나 다른 작업이 시작되었습니다.</string>
 </resources>

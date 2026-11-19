@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">اكتب هنا</string>
     <string name="selfcheck_target_tick">النبضة %1$d</string>
     <string name="selfcheck_target_row">الصف %1$d</string>
+    <string name="selfcheck_screen_off_start">فحص الشاشة المطفأة</string>
+    <string name="selfcheck_screen_off_wait">اضغط زر التشغيل لإطفاء الشاشة وقفل الهاتف خلال 45 ثانية. بعد الاختبار، افتح القفل وعد لعرض النتيجة.</string>
+    <string name="selfcheck_screen_off_interrupted">أُضيئت الشاشة أو فُتح قفل الهاتف أو بدأت مهمة أخرى أثناء الفحص.</string>
 </resources>
