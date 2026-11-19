@@ -22,7 +22,7 @@ class ForkReleaseHistoryTest {
         val entries = ForkReleaseHistory.parse(source)
         assertEquals(listOf("0.1.65", "0.1.64"), entries.map { it.version })
         assertEquals("- First update.", entries[0].notes)
-        assertEquals("- Older update.", entries[2].notes)
+        assertEquals("- Older update.", entries[1].notes)
         assertTrue(ForkReleaseHistory.parse("no changelog").isEmpty())
     }
 
