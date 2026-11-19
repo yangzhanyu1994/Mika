@@ -7,6 +7,7 @@ import android.os.Looper
 import com.wangzan101.mika.core.cap.web.WebUrlPolicy
 import com.wangzan101.mika.takeover.HandoverActivity
 import com.wangzan101.mika.task.TaskService
+import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,7 +122,17 @@ object WebHandover {
                 else android.util.Log.i("MikaWebHandover", "takeover on $host handed back; sign-in not confirmed ($state), not recorded")
             }
         }
-        return HandoverActivity(s.inputs, s.title?.takeIf { it.isNotBlank() })
+        return HandoverActivity(s.inputs, s.title?.takeIf { it.isNotBlank() }, s.url?.let(::handoverPageUrl))
+    }
+
+    /** 接管登录或付款后的地址可能在查询串、片段或 userinfo 里带凭据。 */
+    private fun handoverPageUrl(url: String): String? {
+        val uri = runCatching { URI(url) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "https" && scheme != "http") return null
+        val authority = uri.rawAuthority?.substringAfterLast('@') ?: return null
+        if (WebUrlPolicy.host(url) == null) return null
+        return "$scheme://$authority${uri.rawPath.orEmpty()}"
     }
 
     /** 视图放回后台宿主;没有宿主(设置页登录)就销毁。 */

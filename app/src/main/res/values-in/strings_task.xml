@@ -78,4 +78,5 @@
     <string name="screens_waiting">Menunggu</string>
     <string name="screens_needs_you">Perlu Anda</string>
     <string name="screens_zoom">Perbesar layar ini</string>
+    <string name="task_no_phone_helper_shizuku">Kontrol ponsel belum siap. Mulai Shizuku dan beri izin ke Mika (atau periksa Kontrol ponsel di Pengaturan). Tugas web dan file tidak terpengaruh.</string>
 </resources>

@@ -77,4 +77,5 @@
     <string name="screens_waiting">Bekleniyor</string>
     <string name="screens_needs_you">Size ihtiyaç duyuyor</string>
     <string name="screens_zoom">Bu ekranı büyüt</string>
+    <string name="task_no_phone_helper_shizuku">Telefon kontrolü hazır değil. Shizuku\'yu başlatın ve Mika\'ya izin verin (veya Ayarlar\'daki Telefon kontrolünü kontrol edin). Web ve dosya görevleri etkilenmez.</string>
 </resources>

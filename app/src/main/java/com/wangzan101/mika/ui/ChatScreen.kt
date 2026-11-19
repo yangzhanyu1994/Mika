@@ -968,7 +968,11 @@ private fun LazyListScope.exchange(
     fun steer(n: SteerNote) {
         n.finished?.takeIf(String::isNotBlank)?.let { done ->
             item("a$index-${n.id}") {
-                MessageRise(reduceMotion) { JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) { FinishedReply(done, "a$index-${n.id}") } }
+                MessageRise(reduceMotion) {
+                    JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) {
+                        FinishedReply(done, "a$index-${n.id}", conversationId)
+                    }
+                }
             }
         }
         n.interrupted?.takeIf(String::isNotBlank)?.let { cut ->
@@ -995,7 +999,7 @@ private fun LazyListScope.exchange(
         JumpHighlight(highlightKey == "r$index", reduceMotion) {
             StatusCard(ex.status, stage, vm, ex.recordedRun, loadSource, openSource, "r$index",
                 recover = recover, goal = ex.goal, openReport = openReport, openPlayback = openPlayback,
-                openRun = openRun,
+                openRun = openRun, conversationId = conversationId,
                 summary = listOfNotNull(
                     stepsSummary(ex).takeIf { ex.steps.isNotEmpty() },
                     ex.elapsedMs?.takeIf { ex.steps.isEmpty() }?.let { RunTimelineViewModel.duration(it) },
@@ -1107,10 +1111,13 @@ private fun DraftText(text: String, generating: Boolean, reduceMotion: Boolean) 
 
 /** 插话交给模型之前已经说完的回复:和回答一样的底和字,长按一样能复制、引用、选择文字。 */
 @Composable
-private fun FinishedReply(text: String, key: String) {
+private fun FinishedReply(text: String, key: String, conversationId: String?) {
     Box(Modifier.padding(bottom = 4.dp)) {
         AnswerArea(key, text, Modifier.fillMaxWidth().answerSurface()) {
-            MarkdownText(text, AnswerText.copy(color = MikaTheme.colors.ink), streaming = false)
+            Column {
+                MarkdownText(text, AnswerText.copy(color = MikaTheme.colors.ink), streaming = false)
+                OutputRefs(text, conversationId)
+            }
         }
     }
 }
@@ -1406,6 +1413,7 @@ private fun StatusCard(
     recover: (Boolean) -> Unit = {},
     goal: String, openReport: (String) -> Unit, openPlayback: (String) -> Unit,
     openRun: (String) -> Unit,
+    conversationId: String?,
     summary: String,
 ) {
     var shareRequest by remember { mutableStateOf<ShareRequest?>(null) }
@@ -1473,6 +1481,7 @@ private fun StatusCard(
                         }
                     }
                     MarkdownText(visibleAnswer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    OutputRefs(visibleAnswer, conversationId)
                     if (reply.full.trim() != reply.summary) {
                         TextButton(onClick = { expanded = !expanded }) {
                             Text(stringResource(if (expanded) R.string.collapse else R.string.expand))

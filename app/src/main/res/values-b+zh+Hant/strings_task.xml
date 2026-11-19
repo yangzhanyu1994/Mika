@@ -78,4 +78,5 @@
     <string name="screens_waiting">等待中</string>
     <string name="screens_needs_you">等你處理</string>
     <string name="screens_zoom">放大這塊螢幕</string>
+    <string name="task_no_phone_helper_shizuku">手機控制尚未就緒。請先啟動 Shizuku 並給 Mika 授權（或到「設定 › 手機控制」裡檢查）。網頁和檔案任務不受影響。</string>
 </resources>

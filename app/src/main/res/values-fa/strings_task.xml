@@ -81,4 +81,5 @@
     <string name="screens_waiting">در انتظار</string>
     <string name="screens_needs_you">به توجه شما نیاز دارد</string>
     <string name="screens_zoom">بزرگ کردن این صفحه</string>
+    <string name="task_no_phone_helper_shizuku">کنترل گوشی آماده نیست. Shizuku را شروع کنید و به Mika مجوز بدهید (یا کنترل گوشی را در تنظیمات بررسی کنید). وظایف وب و فایل تحت تأثیر قرار نمی‌گیرند.</string>
 </resources>
