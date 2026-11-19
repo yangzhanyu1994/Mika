@@ -252,4 +252,7 @@
     <string name="share_card_question">質問</string>
     <string name="share_card_answer">回答</string>
     <string name="share_card_made_by">Mika が完了</string>
+    <string name="chat_task_cost_estimate">約 %1$s</string>
+    <string name="chat_task_cost_partial">%1$s（一部）</string>
+    <string name="chat_task_cost_unavailable">費用を見積もれません</string>
 </resources>

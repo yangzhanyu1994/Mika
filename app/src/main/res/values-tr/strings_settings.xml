@@ -200,4 +200,18 @@
     <string name="settings_token_budget_invalid">%1$s ile %2$s arasında bir tam sayı girin.</string>
     <string name="details">Ayrıntılar</string>
     <string name="net_proxy_summary">Model istekleri, güncellemeler, uygulama içi tarayıcı ve dosya ortamı komutları bu proxy üzerinden geçer.</string>
+    <string name="settings_live_task_updates">Canlı görev güncellemeleri</string>
+    <string name="settings_live_task_updates_detail">Çalışan görevlerinizin durum çubuğunda gösterilip gösterilmeyeceğini seçin</string>
+    <string name="settings_scheduled_quiet">Zamanlanmış görev sessiz saatleri</string>
+    <string name="settings_scheduled_quiet_detail">Zamanlanmış sonuçlar ve hatırlatıcılar bildirim gölgesinde sessizce görünür.</string>
+    <string name="settings_scheduled_quiet_start">Başlangıç saati</string>
+    <string name="settings_scheduled_quiet_end">Bitiş saati</string>
+    <string name="settings_scheduled_quiet_equal">Bildirimleri susturmak için farklı başlangıç ve bitiş saatleri seçin.</string>
+    <string name="settings_trigger_run_limit">Zamanlanmış görevler için süre sınırı</string>
+    <string name="settings_trigger_run_limit_sub">Zamanlanmış görevler siz uzaktayken çalışır. Kapalı, sınırsız demektir; süre dolduğunda görev durur ve süresinin bittiğini söyler.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="other">%1$d dakika</item>
+    </plurals>
+    <string name="settings_show_task_cost">Görev maliyetini göster</string>
+    <string name="settings_show_task_cost_sub">Yeni görevler için DeepSeek API ücretlerini Çin yuanı cinsinden tahmin edin.</string>
 </resources>

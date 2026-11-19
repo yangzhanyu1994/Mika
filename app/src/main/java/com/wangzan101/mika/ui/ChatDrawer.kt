@@ -394,7 +394,7 @@ internal fun ChatDrawer(
                         Column(Modifier.padding(horizontal = 12.dp)) {
                             DrawerModelEntry(R.string.drawer_language_model, modelStatuses?.language, onModels)
                             DrawerModelEntry(R.string.drawer_call_model, modelStatuses?.call, onCallModel)
-                            DrawerModelEntry(R.string.drawer_readout_model, modelStatuses?.readout, onReadoutModel)
+                            DrawerModelEntry(R.string.role_voice, modelStatuses?.readout, onReadoutModel)
                             DrawerModelEntry(R.string.drawer_speech_model, modelStatuses?.speech, onSpeechModel)
                         }
                     }

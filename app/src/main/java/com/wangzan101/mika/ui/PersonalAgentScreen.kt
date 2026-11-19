@@ -246,7 +246,9 @@ internal fun PersonalAgentScreen(
                 contentPadding = PaddingValues(horizontal = MikaSpace.Page, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (showGuide) item("welcome") {
-                    ConversationModeGuidance(true) { draft = it }
+                    Box(Modifier.fillParentMaxHeight().fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        ConversationModeGuidance(true) { draft = it }
+                    }
                 }
                 itemsIndexed(messages, key = { _, message -> message.id }) { index, message ->
                     val date = Instant.ofEpochMilli(message.at).atZone(zone).toLocalDate()

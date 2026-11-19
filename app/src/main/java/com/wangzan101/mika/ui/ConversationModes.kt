@@ -1,6 +1,9 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,9 +21,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,8 +38,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +53,7 @@ import com.wangzan101.mika.chat.ResearchDraft
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.ui.components.PageBackground
+import com.wangzan101.mika.ui.components.MikaCard
 import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.ui.components.BarIconButton
@@ -56,6 +63,7 @@ import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
 import kotlinx.coroutines.launch
+import java.time.LocalTime
 
 @Composable
 internal fun ConversationModeHeader(
@@ -70,24 +78,47 @@ internal fun ConversationModeHeader(
     profile: (@Composable () -> Unit)? = null,
     title: String? = null,
     reasoning: (@Composable () -> Unit)? = null,
+    conversationId: String? = null,
 ) {
     val c = MikaTheme.colors
+    var menu by remember { mutableStateOf(false) }
+    var showUsage by rememberSaveable(conversationId) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().pageBackground(c.bg).statusBarsPadding().padding(bottom = 6.dp)) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
             Box(Modifier.align(Alignment.CenterStart)) {
                 BarIconButton(MikaIcons.Menu, stringResource(R.string.chat_menu), onOpenDrawer, badge = runningElsewhere)
             }
-            Row(
-                Modifier.align(Alignment.Center).fillMaxWidth(1f / 3)
-                    .clip(RoundedCornerShape(24.dp)).background(c.fill).selectableGroup(),
-            ) {
-                listOf(true to R.string.mode_chat, false to R.string.mode_work).forEach { (value, label) ->
-                    Box(
-                        Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
-                            .then(if (value == chat) Modifier.background(c.accentSoft) else Modifier)
-                            .selectable(selected = value == chat, onClick = { onMode(value) }, role = Role.Tab),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(label), color = c.ink, style = MikaType.Caption) }
+            Box(Modifier.align(Alignment.Center).fillMaxWidth(0.55f), contentAlignment = Alignment.Center) {
+                Box {
+                    Row(
+                        Modifier.clip(MikaShapes.Pill).background(c.surface).border(1.dp, c.hair, MikaShapes.Pill)
+                            .clickable(role = Role.Button) { menu = true }
+                            .heightIn(min = 44.dp).padding(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(title?.takeIf(String::isNotBlank) ?: "Mika", Modifier.weight(1f, fill = false),
+                            color = c.ink, style = MikaType.BodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Icon(MikaIcons.Chevron, null, Modifier.rotate(90f).heightIn(max = 16.dp), tint = c.ink2)
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = c.surface) {
+                        listOf(true to R.string.mode_chat, false to R.string.mode_work).forEach { (value, label) ->
+                            DropdownMenuItem(text = { Text(stringResource(label)) },
+                                trailingIcon = if (value == chat) ({ Icon(MikaIcons.Check, null, tint = c.accent) }) else null,
+                                onClick = { menu = false; onMode(value) })
+                        }
+                        DropdownMenuItem(
+                            text = { Text(currentConversationTokenText(usage)) },
+                            leadingIcon = { Icon(MikaIcons.Chart, null) },
+                            onClick = { menu = false; showUsage = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.mode_current_model, model ?: stringResource(R.string.settings_not_set))) },
+                            leadingIcon = { Icon(MikaIcons.Sliders, null) },
+                            onClick = { menu = false; onModel() },
+                        )
+                        if (reasoning != null) Box(Modifier.padding(horizontal = 12.dp)) { reasoning() }
+                    }
                 }
             }
             if (onNew != null) Box(Modifier.align(Alignment.CenterEnd)) {
@@ -95,43 +126,36 @@ internal fun ConversationModeHeader(
             }
         }
         profile?.invoke()
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            if (!title.isNullOrBlank()) Text(title, style = MikaType.Label, color = c.ink,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.mode_current_model, model ?: stringResource(R.string.settings_not_set)),
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .clickable(role = Role.Button, onClick = onModel).padding(vertical = 8.dp),
-                    color = c.ink2, style = MikaType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-                if (reasoning != null) Box(Modifier.weight(1f)) { reasoning() }
-            }
-            Text(currentConversationTokenText(usage), color = c.ink2, style = MikaType.Caption,
-                modifier = Modifier.padding(bottom = 6.dp))
-        }
     }
+    if (showUsage) ConversationUsageSheet(conversationId) { showUsage = false }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ConversationModeGuidance(chat: Boolean, onPrompt: (String) -> Unit) {
     val c = MikaTheme.colors
+    val hour = remember { LocalTime.now().hour }
     val prompts = if (chat) listOf(R.string.mode_chat_prompt1, R.string.mode_chat_prompt2, R.string.mode_chat_prompt3)
         else listOf(R.string.mode_work_prompt1, R.string.mode_work_prompt2, R.string.mode_work_prompt3)
-    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(ChatCopy.greeting(hour), style = MikaType.LargeTitle, color = c.ink, textAlign = TextAlign.Center)
         Text(
             stringResource(if (chat) R.string.mode_chat_description else R.string.mode_work_description),
-            color = c.ink2, style = MikaType.Caption, modifier = Modifier.padding(bottom = 6.dp),
+            color = c.ink2, style = MikaType.Body, textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
         )
-        prompts.forEach { res ->
-            val prompt = stringResource(res)
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.fill)
-                    .clickable(role = Role.Button) { onPrompt(prompt) }.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(prompt, Modifier.weight(1f), color = c.ink2, style = MikaType.Body)
-                Icon(MikaIcons.Chevron, contentDescription = null, tint = c.ink3)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            prompts.forEach { res ->
+                val prompt = stringResource(res)
+                Text(
+                    prompt, Modifier.clip(MikaShapes.Pill).background(c.surface).border(1.dp, c.hair, MikaShapes.Pill)
+                        .clickable(role = Role.Button) { onPrompt(prompt) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                    color = c.ink2, style = MikaType.Caption, textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -159,6 +183,8 @@ internal fun ResearchConversationScreen(
     }
     ResearchReplyHaptics(id, working?.text.orEmpty())
     val scroll = rememberLazyListState()
+    var share by remember { mutableStateOf<ShareRequest?>(null) }
+    if (share != null) ShareCardHost(share, onDone = { share = null })
     LaunchedEffect(working?.startedAt) {
         if (working != null) scroll.scrollToItem(0)
     }
@@ -181,7 +207,7 @@ internal fun ResearchConversationScreen(
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
             val usage = rememberModeConversationUsage(app, id, loaded)
             ConversationModeHeader(true, model, usage, onMode, onModel, onOpenDrawer, onNew,
-                title = id?.let(app.conversations::title), reasoning = {
+                title = id?.let(app.conversations::title), conversationId = id, reasoning = {
                     ConversationReasoning(app.providers, com.wangzan101.mika.core.model.ModelRole.Chat)
                 })
             LazyColumn(
@@ -194,12 +220,14 @@ internal fun ResearchConversationScreen(
                     ResearchPendingReply(working)
                 }
                 if (stored.isEmpty() && working == null) item {
-                    ConversationModeGuidance(true) { draft = it }
+                    Box(Modifier.fillParentMaxHeight().fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        ConversationModeGuidance(true) { draft = it }
+                    }
                 }
                 items(stored.asReversed()) { turn ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         ResearchQuestion(turn.userText, Modifier.align(Alignment.End))
-                        ResearchAnswer(turn.outcome)
+                        ResearchResultCard(app, id, turn, onShare = { share = ShareRequest(turn.userText, turn.outcome) })
                         if (turn.status == "succeeded") {
                             TextButton(onClick = { onTransfer(turn) }) {
                                 Text(stringResource(R.string.mode_transfer), color = c.accent)
@@ -249,6 +277,24 @@ internal fun ResearchPendingReply(draft: ResearchDraft) {
         } else {
             ResearchThinkingOrb(draft.phase.orbMotion, 20.dp)
             ResearchAnswer(draft.text, streaming = true)
+        }
+    }
+}
+
+@Composable
+private fun ResearchResultCard(app: MikaApp, conversationId: String?, turn: Turn, onShare: () -> Unit) {
+    val c = MikaTheme.colors
+    val clipboard = LocalClipboardManager.current
+    MikaCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+            MarkdownText(turn.outcome, MikaType.Body.copy(color = c.ink, lineHeight = 24.sp))
+            OutputRefs(turn.outcome, conversationId)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BarIconButton(MikaIcons.Copy, stringResource(R.string.chat_copy),
+                    { clipboard.setText(AnnotatedString(turn.outcome)) })
+                BarIconButton(MikaIcons.Share, stringResource(R.string.share), onShare)
+                ReadAloudIcon(turn.outcome, app.chat)
+            }
         }
     }
 }

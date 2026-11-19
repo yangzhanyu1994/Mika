@@ -16,6 +16,7 @@ import kotlin.coroutines.CoroutineContext
  */
 class RunUsageTally(
     val tokenBudget: Long? = null,
+    val deepSeekCost: DeepSeekRunCost? = null,
     private val onUsage: ((Usage?, Int) -> Unit)? = null,
 ) : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<RunUsageTally>
@@ -56,7 +57,7 @@ class RunUsageTally(
     }
 
     /** 此刻的合计,作为运行记录里的一条 [RunEvent.ModelCalls]。 */
-    fun event(atMs: Long) = RunEvent.ModelCalls(
-        atMs, logicalCalls.get(), unreported.get(), input.get(), output.get(), cached.get(), calls.get(), httpUnreported.get(),
+    fun event(atMs: Long, cost: DeepSeekCost? = null) = RunEvent.ModelCalls(
+        atMs, logicalCalls.get(), unreported.get(), input.get(), output.get(), cached.get(), calls.get(), httpUnreported.get(), deepSeekCost = cost,
     )
 }

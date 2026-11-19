@@ -222,4 +222,19 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">جزئیات</string>
     <string name="net_proxy_summary">درخواست‌های مدل، به‌روزرسانی‌ها، مرورگر داخلی و دستورهای محیط فایل از این پروکسی می‌گذرند.</string>
+    <string name="settings_live_task_updates">اعلان زندهٔ کارها</string>
+    <string name="settings_live_task_updates_detail">انتخاب کنید که کارهای در حال اجرا در نوار وضعیت نمایش داده شوند یا نه</string>
+    <string name="settings_scheduled_quiet">ساعات سکوت کارهای زمان‌بندی‌شده</string>
+    <string name="settings_scheduled_quiet_detail">نتیجه‌ها و یادآوری‌های زمان‌بندی‌شده بی‌صدا در پنل اعلان‌ها نمایش داده می‌شوند.</string>
+    <string name="settings_scheduled_quiet_start">زمان شروع</string>
+    <string name="settings_scheduled_quiet_end">زمان پایان</string>
+    <string name="settings_scheduled_quiet_equal">برای بی‌صدا کردن اعلان‌ها، زمان شروع و پایان متفاوتی انتخاب کنید.</string>
+    <string name="settings_trigger_run_limit">حداکثر زمان اجرای کارهای زمان‌بندی‌شده</string>
+    <string name="settings_trigger_run_limit_sub">کارهای زمان‌بندی‌شده بدون حضور شما اجرا می‌شوند. خاموش یعنی بدون محدودیت؛ با تمام شدن زمان، کار متوقف می‌شود و می‌گوید زمانش تمام شده است.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="one">%1$d دقیقه</item>
+        <item quantity="other">%1$d دقیقه</item>
+    </plurals>
+    <string name="settings_show_task_cost">نمایش هزینه کار</string>
+    <string name="settings_show_task_cost_sub">تخمین هزینه API DeepSeek به یوان چین برای کارهای جدید.</string>
 </resources>

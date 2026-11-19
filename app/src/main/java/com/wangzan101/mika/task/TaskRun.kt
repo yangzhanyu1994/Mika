@@ -10,6 +10,8 @@ import com.wangzan101.mika.core.uistate.PlacePace
 import kotlin.random.Random
 import com.wangzan101.mika.core.action.OutwardPacing
 import com.wangzan101.mika.core.cap.phone.OperatingPace
+import com.wangzan101.mika.core.usage.DeepSeekPriceCache
+import com.wangzan101.mika.core.usage.DeepSeekRunCost
 import com.wangzan101.mika.core.usage.RunUsageTally
 import com.wangzan101.mika.core.shell.AccessibilityRepair
 import com.wangzan101.mika.core.shell.HelperRestart
@@ -157,6 +159,8 @@ import com.wangzan101.mika.core.cap.web.WEB
 internal fun restorePipSound(takeover: Takeover?, restorePhone: () -> Unit) {
     if (takeover?.unmute() != true) restorePhone()
 }
+
+private val deepSeekPrices by lazy { DeepSeekPriceCache(ProviderStore.modelHttp) }
 
 /**
  * 一个任务的全部状态:虚拟屏、循环、关卡、接管、静音、监视。[TaskService] 只管服务生命周期、意图分发与通知。
@@ -579,6 +583,7 @@ class TaskRun(
         noticeTainted = NoticeTurn.tainted(priorTurns)
         // 手机一侧(内置助手、无障碍、虚拟屏)第一次 launch_app 时才接上:只用网页、沙箱的任务不需要它们
         var connection: com.wangzan101.mika.cap.phone.shell.ShellBinding? = null
+        var smsLogin: com.wangzan101.mika.cap.phone.sms.AndroidSmsLogin? = null
         phone = null
         // 虚拟屏、网页显示等:建好当场归它,收尾时一起放掉;不经「建完再记到变量」,取消落在中间也不会漏
         val resources = ResourceScope()
@@ -594,7 +599,8 @@ class TaskRun(
         var runStore: RunStore? = null
         // 整个运行共用一份已报告 Token 预算；子任务沿用协程上下文里的这份，不另开额度。
         val tokenBudget = if (conditionCheck) null else FeatureFlags.get(service).taskTokenBudget()
-        val tally = RunUsageTally(tokenBudget) { usage, attempts ->
+        val tally = RunUsageTally(tokenBudget, deepSeekCost =
+            if (FeatureFlags.get(service).showTaskCost()) DeepSeekRunCost() else null) { usage, attempts ->
             _conversationUsage.update { total ->
                 val used = usage?.let { it.inputTokens.toLong() + it.outputTokens } ?: 0L
                 val unreported = if (usage == null) attempts.coerceAtLeast(1) else (attempts - 1).coerceAtLeast(0)
@@ -645,7 +651,9 @@ class TaskRun(
             val appAccess = (service.application as MikaApp).appAccess
             // 应用访问边界:工具和预览画面共用一份(下面接手机端口时建),窗口没变时核对结果直接沿用,预览不必每一帧都问窗口
             var accessGuard: com.wangzan101.mika.core.uistate.AppAccessScreenPort? = null
+            var smsPrivacy: com.wangzan101.mika.core.cap.phone.sms.SmsPrivateScreen? = null
             suspend fun previewAllowed(): Boolean {
+                if (smsPrivacy?.imagesPrivate == true) return false
                 val guard = accessGuard ?: return false
                 return try {
                     guard.checkAppAccess()
@@ -771,6 +779,7 @@ class TaskRun(
                 protectedUi = { appAccess.sensitiveUi }, ownPackage = service.packageName,
                 windowToken = { ScreenAccessibility.windowGeneration() },
             ).also { accessGuard = it }
+            val privatePhone = com.wangzan101.mika.core.cap.phone.sms.SmsPrivateScreen(accessedPhone).also { smsPrivacy = it }
             afterTask = phoneScreen.afterTask
             // 挪回虚拟屏后等窗口出现,Agent 接下来读屏才读得到
             suspend fun moveTask(taskId: Int, to: Int): Boolean {
@@ -976,7 +985,7 @@ class TaskRun(
                 { com.wangzan101.mika.settings.EnvVarStore.get(service).all() })
             val childRunner = if (provenance.origin == RunOrigin.Ui && web != null) ChildAgentRunner(
                 create = { childSpec ->
-                    val childTools = toolDispatcher(accessedPhone, model.capabilities.vision,
+                    val childTools = toolDispatcher(privatePhone, model.capabilities.vision,
                         web = web, webPacing = { PagePacing.human() }, webPlacePace = { PlacePace.of(catalog.sitePace(it)) },
                         webIdleScroll = { IdleScroll(Random.Default) },
                         appPacing = { pace.appPacing() }, appPace = { PlacePace.of(catalog.appPace(it)) }, appIdleScroll = { IdleScroll(Random.Default) },
@@ -997,8 +1006,11 @@ class TaskRun(
             val selfPort = if (provenance.origin == RunOrigin.Ui && !conditionCheck) {
                 (service.application as? MikaApp)?.let { app -> com.wangzan101.mika.self.AndroidSelfPort(app, conversationId, key) }
             } else null
-            val tools = toolDispatcher(accessedPhone, model.capabilities.vision, catalog, recordFrames = true, vision = vision?.let { VisionService(it, BitmapImageOps) },
-
+            val tools = toolDispatcher(privatePhone, model.capabilities.vision, catalog, recordFrames = true, vision = vision?.let { VisionService(it, BitmapImageOps) },
+                smsLogin = if (provenance.origin == RunOrigin.Ui && !conditionCheck && !runSpec.readOnly) {
+                    com.wangzan101.mika.cap.phone.sms.AndroidSmsLogin(service, phoneServices.smsLogin, appAccess,
+                        accessedPhone, privatePhone) { phone?.screen }.also { smsLogin = it }
+                } else null,
                 phoneCalls = (service.application as MikaApp).callPort.takeIf {
                     !conditionCheck && (service.application as MikaApp).calls.settings.state.value.enabled
                 },
@@ -1274,7 +1286,15 @@ class TaskRun(
                     }
                     record?.let { r ->
                         apps?.let { r.event(RunEvent.State(System.currentTimeMillis(), "apps_after_task", it.detail)) }
-                        r.event(tally.event(System.currentTimeMillis()))
+                        val cost = tally.deepSeekCost?.let { usage ->
+                            val table = if (usage.hasUsage()) {
+                                withTimeoutOrNull(2_000L) { deepSeekPrices.prices() }.also {
+                                    if (it == null) Log.d(TAG, "DeepSeek 价目表暂不可用")
+                                }
+                            } else null
+                            usage.estimate(table)
+                        }
+                        r.event(tally.event(System.currentTimeMillis(), cost))
                         r.close()
                         if (BuildConfig.DEBUG) runStore?.mirrorToExternal(r.runId)
                     }
@@ -1282,7 +1302,7 @@ class TaskRun(
                     try { mute?.restoreAll() } finally { recovery.endRun(key) }
                     watcher?.close()
                 } finally {
-                    resources.close()
+                    try { resources.close() } finally { smsLogin?.close() }
                 }
             }
             phone = null

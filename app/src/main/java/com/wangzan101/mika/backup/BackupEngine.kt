@@ -96,7 +96,6 @@ class BackupEngine(
         "wechat/account.enc" to "mika-wechat-account",
         "workflows-v1.bin" to "mika-workflows",
         "saved-checklists-v1.bin" to "mika-saved-checklists",
-        "sms-login-consent.txt" to "mika-sms-login-profiles",
     )
 
     /** Directories under [filesDir] that are deliberately not backed up (large, regenerable). */
@@ -106,6 +105,7 @@ class BackupEngine(
         /** Largest backup the import will read into memory. */
         const val MAX_BACKUP_BYTES: Long = 128L * 1024 * 1024
         private const val MANIFEST_PATH = "manifest.json"
+        private const val SMS_CONSENT_PATH = "files/sms-login-consent.txt"
         private const val PROVIDER_KEYS_PATH = "settings/provider-keys.json"
         private const val PROVIDER_KEYS_ALIAS = "mika-provider-keys"
 
@@ -197,7 +197,7 @@ class BackupEngine(
             skippedProviderKeys = skippedProviderKeys,
             skippedPrefs = skippedPrefs,
             excluded = excludedDirs.map { "$it/ (large, not included)" } +
-                listOf("noBackupFilesDir/adb/ (wireless-debugging key, must re-pair)"),
+                listOf("noBackupFilesDir/adb/ (wireless-debugging key, must re-pair)", SMS_CONSENT_PATH),
         )
         ZipOutputStream(output).use { zip ->
             zip.putNextEntry(ZipEntry(MANIFEST_PATH))
@@ -226,7 +226,8 @@ class BackupEngine(
             throw BackupException("This install already has chats and providers; import needs Replace all")
         }
         val byPath = payloads.toMap()
-        manifest.entries.forEach { info ->
+        val restored = manifest.entries.filterNot { it.path == SMS_CONSENT_PATH }
+        restored.forEach { info ->
             val bytes = byPath[info.path]
                 ?: throw BackupException("Backup is missing ${info.path}")
             val target = targetFile(info.path)
@@ -256,7 +257,7 @@ class BackupEngine(
             }
             writeAtomically(target, out)
         }
-        return manifest
+        return manifest.copy(entries = restored)
     }
 
     /** Files to include, as (ZIP path, file), in deterministic order. */
@@ -266,6 +267,7 @@ class BackupEngine(
             .onEnter { dir -> dir == filesDir || dir.name !in excludedDirs }
             .filter { it.isFile && !it.name.endsWith(".tmp") }
             .map { file -> "files/${file.relativeTo(filesDir).invariantSeparatorsPath}" to file }
+            .filterNot { (path, _) -> path == SMS_CONSENT_PATH }
             .sortedBy { it.first }
             .toList()
     }

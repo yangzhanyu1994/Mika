@@ -252,4 +252,7 @@
     <string name="share_card_question">问</string>
     <string name="share_card_answer">答</string>
     <string name="share_card_made_by">由 Mika 完成</string>
+    <string name="chat_task_cost_estimate">约 %1$s</string>
+    <string name="chat_task_cost_partial">%1$s（部分）</string>
+    <string name="chat_task_cost_unavailable">费用暂不可估</string>
 </resources>

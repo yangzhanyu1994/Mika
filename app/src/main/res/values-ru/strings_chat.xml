@@ -285,4 +285,7 @@
     <string name="share_card_question">Вопрос</string>
     <string name="share_card_answer">Ответ</string>
     <string name="share_card_made_by">Выполнено Mika</string>
+    <string name="chat_task_cost_estimate">Около %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (частично)</string>
+    <string name="chat_task_cost_unavailable">Не удалось оценить стоимость</string>
 </resources>

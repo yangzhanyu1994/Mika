@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.R
 import com.wangzan101.mika.backup.BackupEngine
-import com.wangzan101.mika.backup.BackupException
 import com.wangzan101.mika.backup.BackupManifest
 import com.wangzan101.mika.quit.MikaQuit
 import com.wangzan101.mika.ui.components.GroupCard
@@ -68,8 +67,6 @@ fun BackupScreen(onBack: () -> Unit) {
                     ?: throw IOException("Could not open the backup file")
             }
             importedManifest = manifest
-        } catch (e: BackupException) {
-            status = e.message ?: context.getString(R.string.backup_import_failed)
         } catch (_: Exception) {
             status = context.getString(R.string.backup_import_failed)
         }
@@ -128,8 +125,6 @@ fun BackupScreen(onBack: () -> Unit) {
                 } else {
                     doImport(uri, replace = false)
                 }
-            } catch (e: BackupException) {
-                status = e.message ?: context.getString(R.string.backup_import_failed)
             } catch (_: Exception) {
                 status = context.getString(R.string.backup_import_failed)
             } finally {

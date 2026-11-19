@@ -17,6 +17,9 @@ import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.tool.ToolDispatcher
 import com.wangzan101.mika.core.tool.parseArgs
 import kotlinx.coroutines.CancellationException
+import com.wangzan101.mika.core.usage.ConversationMeter
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -257,7 +260,7 @@ internal class ModelCaller(
                 val sentAt = now()
                 lastRetryWaitMs = firstAttemptAt?.let { sentAt - it } ?: 0L
                 if (firstAttemptAt == null) firstAttemptAt = sentAt
-                suspend fun send(): ModelReply {
+                suspend fun invokeModel(): ModelReply {
                     val prompt = promptTransform?.invoke(systemPrompt) ?: systemPrompt
                     return if (onText == null) using.complete(prompt, sent.messages, specs)
                     else if (using is StreamingChatModel) using.completeStreaming(prompt, sent.messages, specs, onText)
@@ -266,6 +269,10 @@ internal class ModelCaller(
                             .takeIf(String::isNotEmpty)?.let(onText)
                     }
                 }
+                suspend fun send(): ModelReply =
+                    if (currentCoroutineContext()[ConversationMeter] != null && roleOf(using) == ROLE_MAIN)
+                        withContext(ConversationMeter.MainRequest(step)) { invokeModel() }
+                    else invokeModel()
                 val reply = if (trace == null) send() else {
                     val change = when {
                         overflowRewrote -> "overflow_compaction folded=" + raw.foldedSteps

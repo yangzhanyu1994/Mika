@@ -263,4 +263,7 @@
     <string name="share_card_question">پرسش</string>
     <string name="share_card_answer">پاسخ</string>
     <string name="share_card_made_by">توسط Mika انجام شد</string>
+    <string name="chat_task_cost_estimate">تقریباً %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (ناقص)</string>
+    <string name="chat_task_cost_unavailable">هزینه در دسترس نیست</string>
 </resources>

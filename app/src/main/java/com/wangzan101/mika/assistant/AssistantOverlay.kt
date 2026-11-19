@@ -119,6 +119,7 @@ internal fun AssistantOverlay(
     onSend: () -> Unit,
     onClose: () -> Unit,
     reply: AssistantReply? = null,
+    onReadResult: (() -> Unit)? = null,
     onOpenConversation: () -> Unit = {},
     displayName: String = "",
     animateAvatar: Boolean = true,
@@ -274,8 +275,15 @@ internal fun AssistantOverlay(
                                 }
                             }
                         }
-                        TextButton(onClick = onOpenConversation) {
-                            Text(stringResource(R.string.assistant_open_conversation), color = c.accent)
+                        Row {
+                            TextButton(onClick = onOpenConversation) {
+                                Text(stringResource(R.string.assistant_open_conversation), color = c.accent)
+                            }
+                            if (onReadResult != null && reply?.completed == true && !listening && !converting) {
+                                TextButton(onClick = onReadResult) {
+                                    Text(stringResource(R.string.chat_read_aloud), color = c.accent)
+                                }
+                            }
                         }
                     }
                     Row(

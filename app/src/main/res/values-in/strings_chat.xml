@@ -252,4 +252,7 @@
     <string name="share_card_question">Pertanyaan</string>
     <string name="share_card_answer">Jawaban</string>
     <string name="share_card_made_by">Diselesaikan oleh Mika</string>
+    <string name="chat_task_cost_estimate">Perkiraan %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (sebagian)</string>
+    <string name="chat_task_cost_unavailable">Biaya tidak tersedia</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.wangzan101.mika.core.record
 
+import com.wangzan101.mika.core.usage.DeepSeekCost
 import kotlinx.serialization.Serializable
 
 /**
@@ -54,6 +55,7 @@ data class RunMetrics(
     val failKind: String? = null,
     val judged: String? = null,
     val allCallsWithoutUsage: Int? = null,
+    val deepSeekCost: DeepSeekCost? = null,
 ) {
     val otherMs: Long get() = (totalMs - modelMs - observeMs - actMs).coerceAtLeast(0)
 
@@ -176,6 +178,7 @@ data class RunMetrics(
                 outcome = end?.outcome ?: UNFINISHED,
                 failKind = end?.kind,
                 judged = judged,
+                deepSeekCost = all?.deepSeekCost,
             )
         }
     }
