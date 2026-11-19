@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.core.record.PlaybackMark
 import com.wangzan101.mika.core.record.RunEvent
@@ -38,8 +39,9 @@ class TaskReportViewModel(private val store: RunStore, val runId: String) {
     fun load(): TaskReport? {
         val timeline = RunTimelineViewModel(store, runId).load() as? TimelineUi.Ready ?: return null
         val events = store.events(runId)
-        val answer = store.summary(runId)?.answerOrReason
+        val recordedAnswer = store.summary(runId)?.answerOrReason
             ?: events.filterIsInstance<RunEvent.TaskEnded>().lastOrNull()?.answerOrReason.orEmpty()
+        val answer = WorkReply.from(recordedAnswer).full
         val steps = playbackSteps(events)
         val all = steps.flatMapIndexed { index, step -> step.frames.map {
             ReplayFrame(index, it, step.mark.takeIf { _ -> it.after == false })

@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.foundation.gestures.scrollBy
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.core.agent.QuoteMessage
 import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.core.cap.web.AttachedPage
@@ -984,7 +985,10 @@ private fun LazyListScope.exchange(
     val (joined, waiting) = steersAroundDraft(ex.steers)
     joined.forEach(::steer)
     ex.draft?.takeIf(String::isNotBlank)?.let { draft ->
-        item("d$index") { MessageRise(reduceMotion) { DraftText(draft, ex.waitingForModel, reduceMotion) } }
+        item("d$index") {
+            val preview = remember(draft) { WorkReply.from(draft, streaming = true).summary }
+            if (preview.isNotEmpty()) MessageRise(reduceMotion) { DraftText(preview, ex.waitingForModel, reduceMotion) }
+        }
     }
     waiting.forEach(::steer)
     item("r$index") {
@@ -1451,7 +1455,10 @@ private fun StatusCard(
         }
         // 长按整块回答弹菜单;复制、引用的只是回答的字,不带上面的提示和下面的来源
         is ExchangeStatus.Done -> Box(Modifier.padding(bottom = 12.dp)) {
-            AnswerArea(key, status.answer, Modifier.fillMaxWidth().answerSurface()) {
+            val reply = remember(status.answer) { WorkReply.from(status.answer) }
+            var expanded by rememberSaveable(key, status.answer) { mutableStateOf(false) }
+            val visibleAnswer = if (expanded) reply.full else reply.summary
+            AnswerArea(key, visibleAnswer, Modifier.fillMaxWidth().answerSurface()) {
                 Column {
                     if (runId != null) Text(goal, Modifier.padding(bottom = 12.dp), style = MikaType.BodyStrong,
                         color = MikaTheme.colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -1463,11 +1470,16 @@ private fun StatusCard(
                             Text(line, style = MikaType.Caption, fontWeight = FontWeight.SemiBold, color = MikaTheme.colors.ink2)
                         }
                     }
-                    MarkdownText(status.answer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    MarkdownText(visibleAnswer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    if (reply.full.trim() != reply.summary) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(stringResource(if (expanded) R.string.collapse else R.string.expand))
+                        }
+                    }
                     if (runId != null || status.evidence != null) {
                         ResultActions(runId, status.evidence, summary, loadSource, openSource, openRun, openReport, openPlayback)
                     }
-                    ReadAloudRow(status.answer, vm)
+                    ReadAloudRow(visibleAnswer, vm)
                 }
             }
         }
