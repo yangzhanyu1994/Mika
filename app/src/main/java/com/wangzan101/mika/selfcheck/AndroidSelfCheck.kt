@@ -148,12 +148,19 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         }
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Mika:ScreenOffSelfCheck")
         fun valid() = !invalidated.get() && !taskBusy() && lockedAndOff()
-        val waitStage = R.string.selfcheck_screen_off_start
-        val finalStage = R.string.selfcheck_check_main
+        val waitStage = R.string.selfcheck_screen_off_lock
+        val finalStage = R.string.selfcheck_screen_off_start
         var stage = waitStage
         var registeredReceiver = false
         var registeredListener = false
         var completed = false
+        var firstProblem: Pair<Int, CheckOutcome>? = null
+        fun reportStep(label: Int, outcome: CheckOutcome) {
+            if (outcome.status != CheckStatus.Pass && firstProblem == null) {
+                firstProblem = label to outcome
+            }
+            report(label, outcome)
+        }
         try {
             ContextCompat.registerReceiver(app, receiver, IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
@@ -168,33 +175,39 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
                 !taskBusy()
             }
             if (ready != true) {
-                report(stage, CheckOutcome.fail(
+                reportStep(stage, CheckOutcome.fail(
                     if (taskBusy()) tr(R.string.selfcheck_task_running) else tr(R.string.selfcheck_advice_timeout),
                     Advice.TimedOut,
                 ))
                 return
             }
             armed.set(true)
-            report(stage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+            reportStep(stage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
             val finished = withTimeoutOrNull(35_000L) {
-                completed = runScreenOffStages(::valid, { stage = it }, report)
+                completed = runScreenOffStages(::valid, { stage = it }, ::reportStep)
                 true
             }
-            if (finished != true && valid()) report(stage, CheckOutcome.fail(tr(R.string.selfcheck_advice_timeout), Advice.TimedOut))
+            if (finished != true && valid()) reportStep(stage, CheckOutcome.fail(tr(R.string.selfcheck_advice_timeout), Advice.TimedOut))
         } catch (e: CancellationException) {
             throw e
         } catch (_: ScreenOffInterrupted) {
             // Report the interruption after the virtual display has been released.
         } catch (e: Exception) {
-            report(stage, CheckOutcome.fail(e.javaClass.simpleName, Advice.Error))
+            reportStep(stage, CheckOutcome.fail(e.javaClass.simpleName, Advice.Error))
         } finally {
             try {
                 release()
                 withContext(Dispatchers.Main.immediate) {
                     if (armed.get() && !valid()) {
                         report(finalStage, CheckOutcome.fail(tr(R.string.selfcheck_screen_off_interrupted), Advice.MainScreenChanged))
-                    } else if (completed) {
-                        report(finalStage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+                    } else {
+                        val problem = firstProblem
+                        if (problem != null) {
+                            val (label, outcome) = problem
+                            report(finalStage, outcome.copy(detail = tr(label)))
+                        } else if (completed) {
+                            report(finalStage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+                        }
                     }
                 }
             } finally {
@@ -248,18 +261,34 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         }) return false
         val s = checkNotNull(deviceScreen)
         val pkg = checkNotNull(settings)
-        if (!step(R.string.selfcheck_check_reading) {
+        val treeReadable = step(R.string.selfcheck_check_reading) {
+            var readFailure = R.string.selfcheck_screen_off_no_app_window
             val readable = poll(PAGE_WAIT_MS) {
                 verifyLock()
-                selfCheckWindowContent(s.snapshot(), pkg)?.elements?.isNotEmpty() == true
+                val snapshot = s.peek()
+                val settingsWindow = selfCheckWindowContent(snapshot, pkg)
+                readFailure = when {
+                    !snapshot.hasWindow -> R.string.selfcheck_screen_off_no_app_window
+                    settingsWindow == null && snapshot.windows.any {
+                        it.type == "application" && it.packageName == null
+                    } -> R.string.selfcheck_screen_off_no_root
+                    settingsWindow == null -> R.string.selfcheck_screen_off_no_settings_window
+                    else -> R.string.selfcheck_screen_off_no_elements
+                }
+                settingsWindow?.elements?.isNotEmpty() == true
             }
-            if (!readable) return@step CheckOutcome.fail("Settings window is unreadable", Advice.ReadFailed)
-            val frame = awaitFrame(d) ?: return@step CheckOutcome.fail("No virtual display frame", Advice.BlankFrames)
+            if (readable) CheckOutcome.pass(tr(R.string.selfcheck_screen_off_tree_readable))
+            else CheckOutcome.fail(tr(readFailure), Advice.ReadFailed)
+        }
+        val frameReadable = step(R.string.selfcheck_screen_off_capture) {
+            val frame = awaitFrame(d)
+                ?: return@step CheckOutcome.fail(tr(R.string.selfcheck_screen_off_no_frame), Advice.BlankFrames)
             val black = try { FrameMath.isBlack(frame.width, frame.height, frame::getPixel) }
                 finally { frame.recycle() }
-            if (black) CheckOutcome.fail("Virtual display frame is black", Advice.BlankFrames)
-            else CheckOutcome.pass("Settings tree and screenshot readable")
-        }) return false
+            if (black) CheckOutcome.fail(tr(R.string.selfcheck_screen_off_black_frame), Advice.BlankFrames)
+            else CheckOutcome.pass(tr(R.string.selfcheck_screen_off_frame_readable))
+        }
+        if (!treeReadable || !frameReadable) return false
         return step(R.string.selfcheck_check_actions) {
             val window = selfCheckWindowContent(s.snapshot(), pkg)
                 ?: return@step CheckOutcome.fail("Settings window is no longer readable", Advice.ReadFailed)

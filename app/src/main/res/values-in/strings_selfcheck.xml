@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">Uji dengan layar mati</string>
     <string name="selfcheck_screen_off_wait">Tekan tombol daya untuk mematikan layar dan mengunci ponsel dalam 45 detik. Kembali setelah pengujian untuk melihat hasilnya.</string>
     <string name="selfcheck_screen_off_interrupted">Layar menyala, ponsel terbuka, atau tugas lain dimulai saat pengujian.</string>
+    <string name="selfcheck_screen_off_lock">Layar mati dan ponsel terkunci</string>
+    <string name="selfcheck_screen_off_capture">Tangkapan layar virtual</string>
+    <string name="selfcheck_screen_off_no_app_window">Layanan aksesibilitas tidak menemukan jendela aplikasi di layar virtual</string>
+    <string name="selfcheck_screen_off_no_root">Node akar jendela aplikasi tidak dapat dibaca</string>
+    <string name="selfcheck_screen_off_no_settings_window">Layanan aksesibilitas tidak menemukan jendela Setelan</string>
+    <string name="selfcheck_screen_off_no_elements">Jendela Setelan tidak memiliki elemen yang dapat dibaca</string>
+    <string name="selfcheck_screen_off_tree_readable">Pohon aksesibilitas Setelan dapat dibaca</string>
+    <string name="selfcheck_screen_off_no_frame">Tidak ada gambar dari layar virtual</string>
+    <string name="selfcheck_screen_off_black_frame">Gambar layar virtual berwarna hitam</string>
+    <string name="selfcheck_screen_off_frame_readable">Gambar layar virtual berisi piksel yang terlihat</string>
 </resources>

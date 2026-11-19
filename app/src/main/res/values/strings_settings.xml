@@ -223,4 +223,19 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">Details</string>
     <string name="net_proxy_summary">Model requests, updates, the in-app browser and file-environment commands go through this proxy.</string>
+    <string name="settings_live_task_updates">Live task updates</string>
+    <string name="settings_live_task_updates_detail">Choose whether to show your running tasks in the status bar</string>
+    <string name="settings_scheduled_quiet">Scheduled task quiet hours</string>
+    <string name="settings_scheduled_quiet_detail">Scheduled results and reminders appear silently in the notification shade.</string>
+    <string name="settings_scheduled_quiet_start">Start time</string>
+    <string name="settings_scheduled_quiet_end">End time</string>
+    <string name="settings_scheduled_quiet_equal">Choose different start and end times to silence notifications.</string>
+    <string name="settings_trigger_run_limit">Time limit for scheduled tasks</string>
+    <string name="settings_trigger_run_limit_sub">Scheduled tasks run while you’re away. Off means no limit; when time is up, the task stops and says it ran out of time.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="settings_show_task_cost">Show task cost</string>
+    <string name="settings_show_task_cost_sub">Estimate DeepSeek API charges in Chinese yuan for new tasks.</string>
 </resources>

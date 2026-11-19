@@ -6,7 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import com.wangzan101.mika.MikaApp
-import com.wangzan101.mika.assistant.AssistantReadoutSettings
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
@@ -41,7 +40,8 @@ internal fun rememberDrawerModelStatuses(open: Boolean): DrawerModelStatuses? {
     val call by app.calls.settings.state.collectAsState()
     val speech by app.speech.choice.collectAsState()
     val silent by app.speech.systemSilent.collectAsState()
-    val status by produceState<DrawerModelStatuses?>(null, listOf(roles, configs, keyRevisions, providerList, call, speech, silent)) {
+    val voice by app.voiceSettings.state.collectAsState()
+    val status by produceState<DrawerModelStatuses?>(null, listOf(roles, configs, keyRevisions, providerList, call, speech, silent, voice)) {
         value = withContext(Dispatchers.IO) {
             fun hasKey(provider: Provider): Boolean = !providers.providerKey(provider.id).isNullOrBlank()
             fun needsKey(provider: Provider): Boolean {
@@ -57,11 +57,14 @@ internal fun rememberDrawerModelStatuses(open: Boolean): DrawerModelStatuses? {
                 selected.any { it == null } -> DrawerBadge.NotConfigured
                 else -> DrawerBadge.Configured
             }
-            val readout = AssistantReadoutSettings(app)
             val readoutStatus = when {
-                readout.playbackConfiguration() != null -> DrawerBadge.Configured
-                readout.hasCredentials() && !readout.enabled -> DrawerBadge.Disabled
-                else -> DrawerBadge.NoKey
+                !voice.enabled -> DrawerBadge.Disabled
+                voice.choice?.model.isNullOrBlank() -> DrawerBadge.NotConfigured
+                else -> {
+                    val provider = voice.choice?.providerId?.let(providers::provider)
+                    if (provider == null) DrawerBadge.NotConfigured
+                    else configured(!needsKey(provider) || hasKey(provider))
+                }
             }
             val speechStatus = when (val engine = app.voice.spec()) {
                 is SpeechEngineSpec.Doubao -> configured(app.speech.doubaoCredentials() != null)

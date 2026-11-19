@@ -207,4 +207,18 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">Detail</string>
     <string name="net_proxy_summary">Permintaan model, pembaruan, peramban bawaan, dan perintah lingkungan file memakai proxy ini.</string>
+    <string name="settings_live_task_updates">Pembaruan tugas langsung</string>
+    <string name="settings_live_task_updates_detail">Pilih apakah tugas yang sedang berjalan ditampilkan di bilah status</string>
+    <string name="settings_scheduled_quiet">Jam hening tugas terjadwal</string>
+    <string name="settings_scheduled_quiet_detail">Hasil dan pengingat terjadwal muncul tanpa suara di panel notifikasi.</string>
+    <string name="settings_scheduled_quiet_start">Waktu mulai</string>
+    <string name="settings_scheduled_quiet_end">Waktu selesai</string>
+    <string name="settings_scheduled_quiet_equal">Pilih waktu mulai dan selesai yang berbeda untuk membisukan notifikasi.</string>
+    <string name="settings_trigger_run_limit">Batas waktu tugas terjadwal</string>
+    <string name="settings_trigger_run_limit_sub">Tugas terjadwal berjalan saat Anda tidak memantau. Mati berarti tanpa batas; saat waktunya habis, tugas berhenti dan menjelaskan bahwa waktunya habis.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="other">%1$d menit</item>
+    </plurals>
+    <string name="settings_show_task_cost">Tampilkan biaya tugas</string>
+    <string name="settings_show_task_cost_sub">Perkirakan biaya API DeepSeek untuk tugas baru dalam yuan.</string>
 </resources>

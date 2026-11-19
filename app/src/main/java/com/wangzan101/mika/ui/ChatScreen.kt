@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.scrollBy
 import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.core.agent.QuoteMessage
 import com.wangzan101.mika.core.record.ConversationTokens
+import com.wangzan101.mika.core.usage.DeepSeekCost
 import com.wangzan101.mika.core.cap.web.AttachedPage
 import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.RowChevron
@@ -127,6 +128,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.cap.web.KeptPage
 import com.wangzan101.mika.chat.ChecklistSource
 import com.wangzan101.mika.chat.SavedChecklistStore
@@ -389,6 +391,10 @@ fun ChatScreen(
     // 已结束各轮的运行小结:每轮结束那一行写这一轮的 token,顶栏闲着时写这个对话合起来的
     val endedRuns = ui.exchanges.filter { !it.status.isActive() }.mapNotNull { it.recordedRun }
     val runMetrics = rememberRunMetrics(endedRuns)
+    val costContext = LocalContext.current
+    val costFlags = remember(costContext) { FeatureFlags.get(costContext) }
+    val showTaskCost by remember(costFlags) { costFlags.showTaskCostChanges() }
+        .collectAsState(initial = costFlags.showTaskCost())
 
     val c = MikaTheme.colors
     val backdrop = rememberGlassBackdrop()
@@ -469,8 +475,10 @@ fun ChatScreen(
                 }
                 if (ui.exchanges.isEmpty() && ui.blocked == null) {
                     if (modeHeader != null && !transferDraft) item("work-guidance") {
-                        ConversationModeGuidance(false) { prompt ->
-                            if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
+                        Box(Modifier.fillParentMaxHeight().fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            ConversationModeGuidance(false) { prompt ->
+                                if (input.isEmpty()) vm.input(prompt) else pendingExample = prompt
+                            }
                         }
                     } else if (modeHeader == null) item("empty") { HomeGreeting(ui.conversationId) }
                     if (modeHeader == null) item("home-guides") {
@@ -488,10 +496,12 @@ fun ChatScreen(
                 }
                 ui.exchanges.forEachIndexed { i, ex ->
                     val backgroundNote = i == ui.exchanges.lastIndex && ui.operatingPhone
+                    val metrics = ex.recordedRun?.let(runMetrics::get)
+                    val cost = metrics?.deepSeekCost?.takeIf { showTaskCost }
                     exchange(
                         i, ex, ui.conversationId, ui.takeoverStage, vm, reduceMotion, backgroundNote, openRun, loadSource, openSource, kept,
                         highlightKey = highlightKey,
-                        tokens = ConversationTokens.turn(ex.recordedRun?.let(runMetrics::get)),
+                        tokens = ConversationTokens.turn(metrics, includeSideCalls = cost != null), cost = cost,
                         recover = { resume ->
                             val label = if (resume) R.string.chat_resume_request else R.string.chat_restart_request
                             vm.send(context.getString(label, ex.goal), check)
@@ -941,6 +951,7 @@ private fun LazyListScope.exchange(
     highlightKey: String? = null,
     /** 这一轮用了多少 token(结束后、读到运行小结时才有)。 */
     tokens: Long? = null,
+    cost: DeepSeekCost? = null,
     /** 终态后的两个新运行入口:true 从摘要断点继续,false 按原目标重新开始。 */
     recover: (Boolean) -> Unit = {},
     openReport: (String) -> Unit = {}, openPlayback: (String) -> Unit = {},
@@ -960,7 +971,7 @@ private fun LazyListScope.exchange(
     } else if ((ex.status !is ExchangeStatus.Done || ex.recordedRun == null) &&
         (ex.steps.isNotEmpty() || ex.recordedRun != null)
     ) {
-        item("s$index") { DoneLine(ex, reduceMotion, openRun, tokens) }
+        item("s$index") { DoneLine(ex, reduceMotion, openRun, tokens, cost) }
     }
     // 任务进行中插的话:用户的原话,下面一行小字说它的去向。
     // 插话之前已经说完的回复照常显示;插话打断的那段留在原处(淡色、标「被你的新消息打断」);接着才是插话。
@@ -968,7 +979,11 @@ private fun LazyListScope.exchange(
     fun steer(n: SteerNote) {
         n.finished?.takeIf(String::isNotBlank)?.let { done ->
             item("a$index-${n.id}") {
-                MessageRise(reduceMotion) { JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) { FinishedReply(done, "a$index-${n.id}") } }
+                MessageRise(reduceMotion) {
+                    JumpHighlight(highlightKey == "a$index-${n.id}", reduceMotion) {
+                        FinishedReply(done, "a$index-${n.id}", conversationId)
+                    }
+                }
             }
         }
         n.interrupted?.takeIf(String::isNotBlank)?.let { cut ->
@@ -995,7 +1010,7 @@ private fun LazyListScope.exchange(
         JumpHighlight(highlightKey == "r$index", reduceMotion) {
             StatusCard(ex.status, stage, vm, ex.recordedRun, loadSource, openSource, "r$index",
                 recover = recover, goal = ex.goal, openReport = openReport, openPlayback = openPlayback,
-                openRun = openRun,
+                openRun = openRun, conversationId = conversationId,
                 summary = listOfNotNull(
                     stepsSummary(ex).takeIf { ex.steps.isNotEmpty() },
                     ex.elapsedMs?.takeIf { ex.steps.isEmpty() }?.let { RunTimelineViewModel.duration(it) },
@@ -1107,10 +1122,13 @@ private fun DraftText(text: String, generating: Boolean, reduceMotion: Boolean) 
 
 /** 插话交给模型之前已经说完的回复:和回答一样的底和字,长按一样能复制、引用、选择文字。 */
 @Composable
-private fun FinishedReply(text: String, key: String) {
+private fun FinishedReply(text: String, key: String, conversationId: String?) {
     Box(Modifier.padding(bottom = 4.dp)) {
         AnswerArea(key, text, Modifier.fillMaxWidth().answerSurface()) {
-            MarkdownText(text, AnswerText.copy(color = MikaTheme.colors.ink), streaming = false)
+            Column {
+                MarkdownText(text, AnswerText.copy(color = MikaTheme.colors.ink), streaming = false)
+                OutputRefs(text, conversationId)
+            }
         }
     }
 }
@@ -1341,8 +1359,8 @@ internal fun Spinner(modifier: Modifier, spinning: Boolean, track: Color, head: 
  * 没做步骤的(只聊了几句)只写 token;[tokens] 为 null(还没读到小结、服务商没报用量)时不写。
  */
 @Composable
-private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> Unit, tokens: Long? = null) {
-    val tokenText = tokens?.let(ChatTokensCopy::amount)
+private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> Unit, tokens: Long?, cost: DeepSeekCost?) {
+    val usage = listOfNotNull(tokens?.let(ChatTokensCopy::amount), cost?.let(ChatTokensCopy::cost)).joinToString(" · ")
     val c = MikaTheme.colors
     var open by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
@@ -1355,12 +1373,12 @@ private fun DoneLine(ex: Exchange, reduceMotion: Boolean, openRun: (String) -> U
             }
             if (ex.steps.isNotEmpty()) {
                 Text(
-                    stepsSummary(ex) + tokenText?.let { " · $it" }.orEmpty(),
+                    listOf(stepsSummary(ex), usage).filter(String::isNotEmpty).joinToString(" · "),
                     Modifier.clickable(onClickLabel = if (open) stringResource(R.string.chat_collapse_steps) else stringResource(R.string.chat_expand_steps)) { open = !open },
                     style = DoneText, color = c.ink3,
                 )
-            } else if (tokenText != null) {
-                Text(tokenText, style = DoneText, color = c.ink3)
+            } else if (usage.isNotEmpty()) {
+                Text(usage, style = DoneText, color = c.ink3)
             }
             ex.recordedRun?.let { id ->
                 Text(
@@ -1406,6 +1424,7 @@ private fun StatusCard(
     recover: (Boolean) -> Unit = {},
     goal: String, openReport: (String) -> Unit, openPlayback: (String) -> Unit,
     openRun: (String) -> Unit,
+    conversationId: String?,
     summary: String,
 ) {
     var shareRequest by remember { mutableStateOf<ShareRequest?>(null) }
@@ -1473,6 +1492,7 @@ private fun StatusCard(
                         }
                     }
                     MarkdownText(visibleAnswer, AnswerText.copy(color = MikaTheme.colors.ink))
+                    OutputRefs(visibleAnswer, conversationId)
                     if (reply.full.trim() != reply.summary) {
                         TextButton(onClick = { expanded = !expanded }) {
                             Text(stringResource(if (expanded) R.string.collapse else R.string.expand))
@@ -1524,7 +1544,7 @@ private fun StatusCard(
 
 /** Keep the selected answer available for retry when speech fails. */
 @Composable
-private fun ReadAloudIcon(answer: String, vm: ChatViewModel) {
+internal fun ReadAloudIcon(answer: String, vm: ChatViewModel) {
     val ready by vm.canSpeak.collectAsState()
     if (!ready) return
     val playback by vm.voice.collectAsState()

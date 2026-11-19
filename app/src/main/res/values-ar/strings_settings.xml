@@ -227,4 +227,23 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">التفاصيل</string>
     <string name="net_proxy_summary">طلبات النموذج والتحديثات والمتصفح المدمج وأوامر بيئة الملفات تمر عبر هذا الوكيل.</string>
+    <string name="settings_live_task_updates">إشعارات المهام المباشرة</string>
+    <string name="settings_live_task_updates_detail">اختر ما إذا كنت تريد عرض المهام الجارية في شريط الحالة</string>
+    <string name="settings_scheduled_quiet">ساعات الهدوء للمهام المجدولة</string>
+    <string name="settings_scheduled_quiet_detail">تظهر نتائج المهام المجدولة وتذكيراتها بصمت في لوحة الإشعارات.</string>
+    <string name="settings_scheduled_quiet_start">وقت البدء</string>
+    <string name="settings_scheduled_quiet_end">وقت الانتهاء</string>
+    <string name="settings_scheduled_quiet_equal">اختر وقتَي بدء وانتهاء مختلفين لكتم الإشعارات.</string>
+    <string name="settings_trigger_run_limit">الحد الزمني للمهام المجدولة</string>
+    <string name="settings_trigger_run_limit_sub">تعمل المهام المجدولة في غيابك. الإيقاف يعني بلا حد؛ وعند انتهاء الوقت تتوقف المهمة وتوضح أن الوقت نفد.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="zero">%1$d دقيقة</item>
+        <item quantity="one">دقيقة واحدة (%1$d)</item>
+        <item quantity="two">دقيقتان (%1$d)</item>
+        <item quantity="few">%1$d دقائق</item>
+        <item quantity="many">%1$d دقيقة</item>
+        <item quantity="other">%1$d دقيقة</item>
+    </plurals>
+    <string name="settings_show_task_cost">عرض تكلفة المهمة</string>
+    <string name="settings_show_task_cost_sub">تقدير رسوم DeepSeek API للمهام الجديدة باليوان الصيني.</string>
 </resources>

@@ -64,9 +64,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.plus
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withTimeoutOrNull
+import com.wangzan101.mika.pocket.LockTriggerPolicy
+import com.wangzan101.mika.pocket.PocketGuardManager
+import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicInteger
 import com.wangzan101.mika.core.cap.web.KeptPageClose
 
@@ -76,6 +82,9 @@ import com.wangzan101.mika.core.cap.web.KeptPageClose
  */
 internal fun Notification.Builder.alertQuietly(): Notification.Builder =
     setGroup(QUIET_GROUP).setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+
+internal fun Notification.Builder.applyScheduledQuietHours(context: Context): Notification.Builder =
+    if (FeatureFlags.get(context).scheduledQuietHours().isQuietAt(LocalTime.now())) alertQuietly() else this
 
 private const val QUIET_GROUP = "com.wangzan101.mika.quiet"
 
@@ -104,16 +113,19 @@ class TaskService : Service() {
         }
     }
     private val outbox get() = (application as com.wangzan101.mika.MikaApp).outbox
-    private val localChannel by lazy { LocalChannel { _, delivery ->
+    private val localChannel by lazy { localDeliveryChannel(scheduled = false) }
+    private val scheduledLocalChannel by lazy { localDeliveryChannel(scheduled = true) }
+
+    private fun localDeliveryChannel(scheduled: Boolean) = LocalChannel { _, delivery ->
         if (delivery is Delivery.Ask) {
             center.byConversation(delivery.threadId)?.let(::refreshNotifications)
             SendOutcome.Delivered
         } else {
             val resultId = if (delivery is Delivery.Result && center.byConversation(delivery.threadId)?.parallel == false) ID_RESULT
                 else nextResultId()
-            notifyDelivery(this, delivery, resultId)
+            notifyDelivery(this, delivery, resultId, scheduled)
         }
-    } }
+    }
     /** 前台常驻通知属于哪个任务;收尾后留着,直到换成别的任务。 */
     @Volatile private var foreground: TaskRun? = null
     private val notifyLock = Any()
@@ -177,8 +189,8 @@ class TaskService : Service() {
         }.onFailure { center.followUps.add(item) }
     }
 
-    private fun channelFor(peer: ChannelPeer): Channel = when (peer.channelId) {
-        LocalChannel.ID -> localChannel
+    private fun channelFor(peer: ChannelPeer, scheduled: Boolean = false): Channel = when (peer.channelId) {
+        LocalChannel.ID -> if (scheduled) scheduledLocalChannel else localChannel
         else -> checkNotNull((application as com.wangzan101.mika.MikaApp).wechat.channelFor(peer.channelId)) {
             "unknown channel ${peer.channelId}"
         }
@@ -311,8 +323,11 @@ class TaskService : Service() {
                 .setContentIntent(openApp(this)).setAutoCancel(true).build()) }
     }
 
+    private val pocketGuard by lazy { PocketGuardManager(this) }
+
     private fun publishRuns() {
         val r = center.runs()
+        pocketGuard.setTasksActive(center.running().isNotEmpty())
         taskState._runs.value = r
         taskState._activeConversations.value = r.map { it.conversationId }
     }
@@ -571,7 +586,7 @@ class TaskService : Service() {
     /** 用户(或电脑)在新对话里交来的第一句话:后台请模型起一个标题记下(只起一次,起不出来就不记)。 */
     private fun nameConversation(store: ConversationStore, id: String, first: String, provenance: RunProvenance) {
         if (provenance.origin != RunOrigin.Ui && provenance.origin != RunOrigin.Mcp && provenance.origin != RunOrigin.Channel) return
-        scope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO + store.meter(id)) {
             runCatching {
                 val env = TaskEnvironment.of(this@TaskService)
                 // 起标题也属于这段对话,和对话里的任务用同一个会话号
@@ -591,10 +606,28 @@ class TaskService : Service() {
     }
 
     private fun launch(run: TaskRun, store: ConversationStore) {
-        run.job = scope.launch {
+        val waitingLockWatcher = scope.launch {
+            run.state.collectLatest { state ->
+                if (LockTriggerPolicy.isWaiting(state)) {
+                    pocketGuard.lockWhileWaitingIfCovered {
+                        LockTriggerPolicy.isWaiting(run.state.value) && run in center.running() &&
+                            center.running().none { it !== run } && center.queued().isEmpty()
+                    }
+                } else if (state is TaskState.Running) {
+                    pocketGuard.onTaskResumed()
+                }
+            }
+        }
+        val meter = store.meter(run.conversationId)
+        run.job = scope.launch(meter) {
             center.markRunning(run)
+            val limitMinutes = run.triggerWindowKey?.let { FeatureFlags.get(this@TaskService).triggerRunMinutes() }
             val result = try {
-                run.execute(runCatching { store.turns(run.conversationId) }.getOrDefault(emptyList()).filterNot { it.research }.map(::withKeptState))
+                val prior = runCatching { store.turns(run.conversationId) }.getOrDefault(emptyList())
+                    .filterNot { it.research }.map(::withKeptState)
+                if (limitMinutes == null) run.execute(prior)
+                else withTimeoutOrNull(limitMinutes * 60_000L) { run.execute(prior) }
+                    ?: TaskState.Failed(tr(R.string.task_trigger_time_limit, limitMinutes), FailKind.TimeLimit)
             } catch (e: CancellationException) {
                 TaskState.Cancelled
             } catch (e: RemoteException) {
@@ -650,6 +683,7 @@ class TaskService : Service() {
                         .onFailure { Log.w(TAG, "condition failure notification failed", it) }
                 }
                 center.markDelivered(run)
+                if (outcome is ConditionOutcome.Error) lockCoveredPhone(run)
                 onRunEnded(run, store)
                 return@launch
             }
@@ -664,7 +698,7 @@ class TaskService : Service() {
                 // A storage failure skips sending but must still release this task's slot below.
                 prepareResult(run, end, deliveryId)
                 center.markResult(run, resultDescription(run, end).second, deliveryId, successful = end is TaskState.Succeeded)
-                RunLearning.launchAfter(MemoryRuntime.of(this@TaskService).scope, {
+                RunLearning.launchAfter(MemoryRuntime.of(this@TaskService).scope + meter, {
                     delivered = notifyResult(run, end, deliveryId) == DeliveryState.Delivered
                     // 定时任务的结果当场按结局记(和以前一样),判下来没办成再改记;不靠服务一直在
                     if (delivered) run.triggerWindowKey?.let { key ->
@@ -687,10 +721,21 @@ class TaskService : Service() {
                 }
             }.onFailure { Log.w(TAG, "result notification failed", it) }
             if (delivered) center.markDelivered(run)
+            if (LockTriggerPolicy.shouldCheck(end)) lockCoveredPhone(run)
             onRunEnded(run, store)
         }
         // 收尾前被取消(服务退出)、放出来还没跑就被停掉时,替它拿着的屏幕锁没交出去也没放开:这里放开
-        run.job?.invokeOnCompletion { run.wakeHandoff?.release(); run.wakeHandoff = null }
+        run.job?.invokeOnCompletion {
+            waitingLockWatcher.cancel()
+            run.wakeHandoff?.release()
+            run.wakeHandoff = null
+        }
+    }
+
+    private suspend fun lockCoveredPhone(run: TaskRun) = withContext(NonCancellable) {
+        pocketGuard.lockAfterStopIfCovered {
+            center.running().none { it !== run } && center.queued().isEmpty()
+        }
     }
 
     /**
@@ -698,7 +743,7 @@ class TaskService : Service() {
      * 写好或写不成都从「正在整理」里拿掉。
      */
     private fun summarizeStop(run: TaskRun, runId: String, draft: String?, store: ConversationStore) {
-        MemoryRuntime.of(this).scope.launch {
+        MemoryRuntime.of(this).scope.launch(store.meter(run.conversationId)) {
             try {
                 val text = runCatching { run.stopSummary(draft) }.onFailure { Log.w(TAG, "stop summary failed", it) }.getOrNull()
                 if (text != null) withContext(Dispatchers.IO) {
@@ -1074,6 +1119,11 @@ class TaskService : Service() {
 
     private fun resultDescription(run: TaskRun, end: TaskState): Pair<String, String> {
         val (title, text) = describeDelivery(end, run.provenance.origin == RunOrigin.Trigger)
+        if (end is TaskState.Failed) run.triggerWindowKey?.let { key ->
+            val streak = runCatching { TriggerRuntime.failureStreakBefore(this, key) }.getOrDefault(0) + 1
+            if (streak >= 3) return tr(R.string.trigger_failed_streak, streak) to
+                "$text\n${tr(R.string.trigger_failed_streak_hint)}"
+        }
         if (run.provenance.origin != RunOrigin.Ui || end !is TaskState.Succeeded) return title to text
         val reply = WorkReply.from(end.answer)
         if (reply.full == end.answer) return title to text
@@ -1084,7 +1134,7 @@ class TaskService : Service() {
     private suspend fun prepareResult(run: TaskRun, end: TaskState, deliveryId: String) {
         val (title, text) = resultDescription(run, end)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
-        ResultDelivery.prepare(outbox, channelFor(peer), peer,
+        ResultDelivery.prepare(outbox, channelFor(peer, run.triggerWindowKey != null), peer,
             Delivery.Result(deliveryId, run.conversationId, text, title = title), run.sharedFiles.value)
     }
 
@@ -1093,7 +1143,7 @@ class TaskService : Service() {
         val (title, text) = resultDescription(run, end)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
         val started = SystemClock.elapsedRealtime()
-        val delivered = ResultDelivery.send(outbox, channelFor(peer), peer,
+        val delivered = ResultDelivery.send(outbox, channelFor(peer, run.triggerWindowKey != null), peer,
             Delivery.Result(deliveryId, run.conversationId, text, title = title))
         if (run.shouldSendWechat()) {
             val result = runCatching {
@@ -1131,6 +1181,7 @@ class TaskService : Service() {
     private fun openApp(threadId: String? = null) = openApp(this, threadId)
 
     override fun onDestroy() {
+        pocketGuard.close()
         scope.cancel()
         // 服务没了就撑不住进程:留着的那一页如实关掉,对话里记下
         keeper.close(KeptPageClose.AppExit)
@@ -1175,7 +1226,7 @@ class TaskService : Service() {
         internal fun nextResultId() = ID_RESULT_FIRST + resultCount.getAndIncrement() % RESULT_IDS
 
         /** 结果与提示发成通知(服务里的与 App 启动时恢复用的共用);[resultId] 是结果通知的编号。 */
-        internal fun notifyDelivery(context: Context, delivery: Delivery, resultId: Int): SendOutcome {
+        internal fun notifyDelivery(context: Context, delivery: Delivery, resultId: Int, scheduled: Boolean = false): SendOutcome {
             val nm = context.getSystemService(NotificationManager::class.java)
             when (delivery) {
                 // Mika 在前台(用户正看着聊天页)时不弹任务完成通知,结果只在应用内展示;切到别的 App 才保留通知(#731)
@@ -1186,10 +1237,12 @@ class TaskService : Service() {
                     .setStyle(Notification.BigTextStyle().bigText(delivery.text))
                     .setContentIntent(openApp(context, delivery.threadId))
                     .setAutoCancel(true)
+                    .apply { if (scheduled) applyScheduledQuietHours(context) }
                     .build())
                 is Delivery.Notice -> nm.notify(nextResultId(), Notification.Builder(context, CHANNEL_RESULT)
                     .setSmallIcon(R.drawable.ic_notification).setContentTitle("Mika")
-                    .setContentText(delivery.text).setContentIntent(openApp(context, delivery.threadId)).setAutoCancel(true).build())
+                    .setContentText(delivery.text).setContentIntent(openApp(context, delivery.threadId)).setAutoCancel(true)
+                    .apply { if (scheduled) applyScheduledQuietHours(context) }.build())
                 is Delivery.Ask, is Delivery.Progress, is Delivery.Image -> {}
             }
             return SendOutcome.Delivered

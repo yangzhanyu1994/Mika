@@ -219,4 +219,21 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">Подробнее</string>
     <string name="net_proxy_summary">Запросы модели, обновления, встроенный браузер и команды файлового окружения идут через этот прокси.</string>
+    <string name="settings_live_task_updates">Уведомления о ходе задач</string>
+    <string name="settings_live_task_updates_detail">Выберите, показывать ли текущие задачи в строке состояния</string>
+    <string name="settings_scheduled_quiet">Тихие часы для запланированных задач</string>
+    <string name="settings_scheduled_quiet_detail">Результаты и напоминания запланированных задач беззвучно появляются в панели уведомлений.</string>
+    <string name="settings_scheduled_quiet_start">Время начала</string>
+    <string name="settings_scheduled_quiet_end">Время окончания</string>
+    <string name="settings_scheduled_quiet_equal">Чтобы отключить звук уведомлений, выберите разное время начала и окончания.</string>
+    <string name="settings_trigger_run_limit">Время работы задач по расписанию</string>
+    <string name="settings_trigger_run_limit_sub">Задачи по расписанию выполняются без вашего присмотра. Выключено — без ограничения; когда время выйдет, задача остановится и сообщит, что время истекло.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="one">%1$d минута</item>
+        <item quantity="few">%1$d минуты</item>
+        <item quantity="many">%1$d минут</item>
+        <item quantity="other">%1$d минуты</item>
+    </plurals>
+    <string name="settings_show_task_cost">Показывать стоимость задачи</string>
+    <string name="settings_show_task_cost_sub">Оценивает стоимость API DeepSeek в юанях для новых задач.</string>
 </resources>

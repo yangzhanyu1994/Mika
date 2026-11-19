@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">화면 꺼짐 자체 점검</string>
     <string name="selfcheck_screen_off_wait">45초 안에 전원 버튼을 눌러 화면을 끄고 휴대전화를 잠그세요. 테스트가 끝나면 돌아와 결과를 확인하세요.</string>
     <string name="selfcheck_screen_off_interrupted">점검 중 화면이 켜졌거나 잠금이 해제되었거나 다른 작업이 시작되었습니다.</string>
+    <string name="selfcheck_screen_off_lock">화면이 꺼지고 휴대전화가 잠김</string>
+    <string name="selfcheck_screen_off_capture">가상 디스플레이 스크린샷</string>
+    <string name="selfcheck_screen_off_no_app_window">접근성 서비스가 가상 디스플레이에서 앱 창을 찾지 못함</string>
+    <string name="selfcheck_screen_off_no_root">앱 창의 루트 노드를 읽을 수 없음</string>
+    <string name="selfcheck_screen_off_no_settings_window">접근성 서비스가 설정 앱 창을 찾지 못함</string>
+    <string name="selfcheck_screen_off_no_elements">설정 창에 읽을 수 있는 요소가 없음</string>
+    <string name="selfcheck_screen_off_tree_readable">설정 앱의 접근성 트리를 읽을 수 있음</string>
+    <string name="selfcheck_screen_off_no_frame">가상 디스플레이 프레임을 받지 못함</string>
+    <string name="selfcheck_screen_off_black_frame">가상 디스플레이 프레임이 검은색임</string>
+    <string name="selfcheck_screen_off_frame_readable">가상 디스플레이 프레임에 보이는 내용이 있음</string>
 </resources>

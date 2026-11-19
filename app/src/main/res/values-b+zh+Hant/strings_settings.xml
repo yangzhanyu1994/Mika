@@ -207,4 +207,18 @@
     <string name="accent_preview_user">幫我整理今天的待辦事項。</string>
     <string name="details">詳情</string>
     <string name="net_proxy_summary">模型請求、更新、內建瀏覽器和檔案環境的命令走這個代理</string>
+    <string name="settings_live_task_updates">即時任務通知</string>
+    <string name="settings_live_task_updates_detail">在系統設定中選擇是否在狀態列顯示進行中的任務</string>
+    <string name="settings_scheduled_quiet">定時任務勿擾時段</string>
+    <string name="settings_scheduled_quiet_detail">定時任務的結果和提醒會靜默顯示在通知欄。</string>
+    <string name="settings_scheduled_quiet_start">開始時間</string>
+    <string name="settings_scheduled_quiet_end">結束時間</string>
+    <string name="settings_scheduled_quiet_equal">請設定不同的開始與結束時間，通知才會靜音。</string>
+    <string name="settings_trigger_run_limit">定時任務最長執行時間</string>
+    <string name="settings_trigger_run_limit_sub">定時任務執行時沒人看著。關著表示不限制；到時間任務會停下，並說明是逾時。</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="other">%1$d 分鐘</item>
+    </plurals>
+    <string name="settings_show_task_cost">顯示任務費用</string>
+    <string name="settings_show_task_cost_sub">以人民幣估算新任務的 DeepSeek API 費用。</string>
 </resources>

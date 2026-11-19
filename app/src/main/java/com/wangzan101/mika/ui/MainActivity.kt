@@ -325,6 +325,13 @@ class MainActivity : ComponentActivity() {
             Fix.OpenAttentionChannel -> openChannelSettings(TaskService.CHANNEL_ATTENTION)
             Fix.OpenResultChannel -> openChannelSettings(TaskService.CHANNEL_RESULT)
             Fix.OpenProgressChannel -> openChannelSettings(TaskService.CHANNEL_PROGRESS)
+            Fix.OpenLiveTaskSettings -> if (Build.VERSION.SDK_INT >= 36) {
+                try {
+                    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+                } catch (_: ActivityNotFoundException) {
+                    openNotificationSettings()
+                }
+            } else openNotificationSettings()
             Fix.OpenPairingChannel -> openChannelSettings(PairingNotifier.ensureChannel(this).id)
             Fix.AddModel -> Unit // 设置页自己处理
             // 换页由 MikaRoot 处理
@@ -790,7 +797,7 @@ private fun MikaRoot(
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
                 onModels = { nav.pushFromDrawer(Route.Models) },
                 onCallModel = { nav.pushFromDrawer(Route.CallModel) },
-                onReadoutModel = { nav.pushFromDrawer(Route.ReadoutModel) },
+                onReadoutModel = { nav.pushFromDrawer(Route.VoiceModel) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
@@ -847,7 +854,7 @@ private fun MikaRoot(
                                         onMode = { chat -> if (!chat) showPersonalWork() },
                                         onModel = { openModeModels(ModelRole.Chat) },
                                         onOpenDrawer = openDrawer,
-                                        profile = personalProfile,
+                                        profile = personalProfile, conversationId = "personal-main",
                                         reasoning = { ConversationReasoning(store, ModelRole.Chat) },
                                     )
                                 },
@@ -889,6 +896,7 @@ private fun MikaRoot(
                                     runningElsewhere = otherRunning,
                                     profile = if (inPersonal) personalProfile else null,
                                     title = if (inPersonal) null else conversationUi.conversationId?.let(app.conversations::title),
+                                    conversationId = conversationUi.conversationId,
                                     reasoning = { ConversationReasoning(store, ModelRole.Main) },
                                 )
                             },
@@ -944,7 +952,7 @@ private fun MikaRoot(
                 }
             }
         }
-        Route.Settings -> {
+        Route.Settings -> screenStates.SaveableStateProvider("settings") {
             val autonomous by app.approvals.autonomous.collectAsState()
             SettingsScreen(store, status, release, onFix, onBack = back, onOpenMemory = { nav.push(Route.Memory) },
                 onOpenModels = { nav.push(Route.Models) }, onOpenSpeech = { nav.push(Route.SpeechModel) },
@@ -965,7 +973,6 @@ private fun MikaRoot(
             ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) },
                 onOpenVoice = { nav.push(Route.VoiceModel) }, onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
-        Route.ReadoutModel -> AssistantReadoutScreen(onBack = back)
         Route.CallModel -> CallSettingsScreen(app.calls, onBack = back, standalone = true, openModelCredentials = true)
         Route.VoiceModel -> VoiceModelScreen(store, onBack = back)
         Route.Usage -> UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) })

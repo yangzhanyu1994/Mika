@@ -274,4 +274,7 @@
     <string name="share_card_question">Pergunta</string>
     <string name="share_card_answer">Resposta</string>
     <string name="share_card_made_by">Concluído por Mika</string>
+    <string name="chat_task_cost_estimate">Aprox. %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (parcial)</string>
+    <string name="chat_task_cost_unavailable">Custo indisponível</string>
 </resources>

@@ -94,6 +94,8 @@ data class HandBack(
     val durationMs: Long? = null, val inputCount: Int? = null, val stoppedAt: String? = null,
     /** 用户交回时写的备注(用户原话,可作记忆的出处)。 */
     val note: String? = null,
+    /** 网页接管交回时的最终页面地址,不含查询串、片段和 userinfo;App 接管为 null。 */
+    val url: String? = null,
 )
 
 

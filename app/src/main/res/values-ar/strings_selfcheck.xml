@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">فحص الشاشة المطفأة</string>
     <string name="selfcheck_screen_off_wait">اضغط زر التشغيل لإطفاء الشاشة وقفل الهاتف خلال 45 ثانية. بعد الاختبار، افتح القفل وعد لعرض النتيجة.</string>
     <string name="selfcheck_screen_off_interrupted">أُضيئت الشاشة أو فُتح قفل الهاتف أو بدأت مهمة أخرى أثناء الفحص.</string>
+    <string name="selfcheck_screen_off_lock">الشاشة مطفأة والهاتف مقفل</string>
+    <string name="selfcheck_screen_off_capture">لقطة الشاشة الافتراضية</string>
+    <string name="selfcheck_screen_off_no_app_window">لم تبلغ خدمة تسهيل الاستخدام عن نافذة تطبيق على الشاشة الافتراضية</string>
+    <string name="selfcheck_screen_off_no_root">نافذة التطبيق موجودة لكن عقدتها الجذرية غير قابلة للقراءة</string>
+    <string name="selfcheck_screen_off_no_settings_window">لم تبلغ خدمة تسهيل الاستخدام عن نافذة تطبيق الإعدادات</string>
+    <string name="selfcheck_screen_off_no_elements">لا توجد عناصر قابلة للقراءة في نافذة الإعدادات</string>
+    <string name="selfcheck_screen_off_tree_readable">يمكن قراءة شجرة تسهيل الاستخدام في الإعدادات</string>
+    <string name="selfcheck_screen_off_no_frame">لم تصل صورة من الشاشة الافتراضية</string>
+    <string name="selfcheck_screen_off_black_frame">صورة الشاشة الافتراضية سوداء</string>
+    <string name="selfcheck_screen_off_frame_readable">تحتوي صورة الشاشة الافتراضية على محتوى مرئي</string>
 </resources>

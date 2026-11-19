@@ -79,4 +79,14 @@
     <string name="selfcheck_screen_off_start">Screen-off self-check</string>
     <string name="selfcheck_screen_off_wait">Press the power button to turn the screen off and lock the phone within 45 seconds. Return after the test to see the results.</string>
     <string name="selfcheck_screen_off_interrupted">The screen turned on, the phone unlocked, or another task started during the check.</string>
+    <string name="selfcheck_screen_off_lock">Screen off and phone locked</string>
+    <string name="selfcheck_screen_off_capture">Virtual display screenshot</string>
+    <string name="selfcheck_screen_off_no_app_window">No app window reported by accessibility on the virtual display</string>
+    <string name="selfcheck_screen_off_no_root">Accessibility returned an app window without a readable root</string>
+    <string name="selfcheck_screen_off_no_settings_window">Accessibility did not report a Settings app window</string>
+    <string name="selfcheck_screen_off_no_elements">Settings app window has no readable elements</string>
+    <string name="selfcheck_screen_off_tree_readable">Settings accessibility tree is readable</string>
+    <string name="selfcheck_screen_off_no_frame">No virtual display frame arrived</string>
+    <string name="selfcheck_screen_off_black_frame">Virtual display frame is black</string>
+    <string name="selfcheck_screen_off_frame_readable">Virtual display frame contains visible pixels</string>
 </resources>

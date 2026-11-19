@@ -71,4 +71,14 @@
     <string name="selfcheck_target_input">Buraya yaz</string>
     <string name="selfcheck_target_tick">Sayaç %1$d</string>
     <string name="selfcheck_target_row">Satır %1$d</string>
+    <string name="selfcheck_screen_off_lock">Ekran kapalı ve telefon kilitli</string>
+    <string name="selfcheck_screen_off_capture">Sanal ekran görüntüsü</string>
+    <string name="selfcheck_screen_off_no_app_window">Erişilebilirlik hizmeti sanal ekranda uygulama penceresi bildirmedi</string>
+    <string name="selfcheck_screen_off_no_root">Uygulama penceresinin kök düğümü okunamıyor</string>
+    <string name="selfcheck_screen_off_no_settings_window">Erişilebilirlik hizmeti Ayarlar penceresini bildirmedi</string>
+    <string name="selfcheck_screen_off_no_elements">Ayarlar penceresinde okunabilir öğe yok</string>
+    <string name="selfcheck_screen_off_tree_readable">Ayarlar erişilebilirlik ağacı okunabiliyor</string>
+    <string name="selfcheck_screen_off_no_frame">Sanal ekrandan görüntü alınamadı</string>
+    <string name="selfcheck_screen_off_black_frame">Sanal ekran görüntüsü siyah</string>
+    <string name="selfcheck_screen_off_frame_readable">Sanal ekran görüntüsünde görünür içerik var</string>
 </resources>
