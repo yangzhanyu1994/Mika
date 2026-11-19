@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">No tasks</string>
     <string name="drawer_task_expanded">Expanded</string>
     <string name="drawer_task_collapsed">Collapsed</string>
+    <string name="drawer_main_chat">Main chat</string>
+    <string name="drawer_model_config">Model configuration</string>
+    <string name="drawer_language_model">AI model (work and chat)</string>
+    <string name="drawer_call_model">Realtime voice model (AI calls)</string>
+    <string name="drawer_readout_model">Text-to-speech model (readout)</string>
+    <string name="drawer_speech_model">Streaming speech recognition (input)</string>
+    <string name="drawer_model_website">Website</string>
 </resources>

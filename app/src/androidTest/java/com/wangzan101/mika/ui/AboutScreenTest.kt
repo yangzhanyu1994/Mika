@@ -263,7 +263,7 @@ class AboutScreenTest {
             MikaTheme {
                 ChatDrawer(
                     Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
-                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {},
+                    onPlans = {}, onMemory = {},
                     onSettings = { calls += "settings" }, onOpen = {},
                     aboutDot = true,
                 )
@@ -283,7 +283,7 @@ class AboutScreenTest {
             MikaTheme {
                 ChatDrawer(
                     Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
-                    onNew = {}, onPlans = {}, onMemory = {}, onBrowser = {}, onSettings = {}, onOpen = {}, currentVersion = "0.1.46",
+                    onPlans = {}, onMemory = {}, onSettings = {}, onOpen = {}, currentVersion = "0.1.46",
                 )
             }
         }

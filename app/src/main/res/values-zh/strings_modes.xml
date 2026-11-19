@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">暂无任务</string>
     <string name="drawer_task_expanded">已展开</string>
     <string name="drawer_task_collapsed">已折叠</string>
+    <string name="drawer_main_chat">主要聊天</string>
+    <string name="drawer_model_config">模型配置</string>
+    <string name="drawer_language_model">AI 大模型（执行任务、聊天）</string>
+    <string name="drawer_call_model">语音电话交互模型（AI 电话）</string>
+    <string name="drawer_readout_model">AI 语音合成模型（读出结果）</string>
+    <string name="drawer_speech_model">流式语音识别模型（语音输入）</string>
+    <string name="drawer_model_website">配置官网</string>
 </resources>

@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">کار</string>
     <string name="assistant_routing">در حال انتخاب حالت…</string>
     <string name="assistant_routing_unavailable">انتخاب خودکار حالت ممکن نبود. گفت‌وگو یا کار را انتخاب کنید و دوباره بفرستید.</string>
+    <string name="assistant_follow_up_queued">پیام بعدی پس از پایان این پاسخ ارسال می‌شود</string>
 </resources>

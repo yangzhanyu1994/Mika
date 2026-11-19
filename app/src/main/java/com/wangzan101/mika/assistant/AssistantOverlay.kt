@@ -25,6 +25,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import com.wangzan101.mika.ui.theme.MikaShapes
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -120,6 +124,7 @@ internal fun AssistantOverlay(
     pendingQuestion: String? = null,
     revealTurn: Int? = null,
     awaitingReply: Boolean = false,
+    sendQueued: Boolean = false,
     mode: AssistantMode = AssistantMode.Auto,
     resolvedMode: AssistantMode? = null,
     onMode: (AssistantMode) -> Unit = {},
@@ -302,54 +307,64 @@ internal fun AssistantOverlay(
                         Text(partial, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.accent,
                             maxLines = 3, style = MaterialTheme.typography.bodyMedium)
                     }
-                    if (status != null || sending) {
-                        Text(status ?: stringResource(R.string.attach_importing),
+                    if (status != null || sending || sendQueued) {
+                        Text(when {
+                            sendQueued -> stringResource(R.string.assistant_follow_up_queued)
+                            status != null -> status
+                            else -> stringResource(R.string.attach_importing)
+                        },
                             Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = c.ink2,
                             style = MaterialTheme.typography.bodySmall)
                     }
+                    val canSend = !sending && !sendQueued &&
+                        (text.isNotBlank() || partial.isNotBlank() || screenshot != null || photo != null)
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 6.dp)
                             .background(c.fill, RoundedCornerShape(24.dp)).padding(horizontal = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        IconButton(onClick = onPhoto, enabled = !sending, modifier = Modifier.size(42.dp)) {
+                        IconButton(onClick = onPhoto, enabled = !sending && !sendQueued, modifier = Modifier.size(42.dp)) {
                             Icon(MikaIcons.PhotoCamera, stringResource(R.string.attach_camera))
                         }
-                        IconButton(onClick = onScreenshot, enabled = !sending, modifier = Modifier.size(42.dp)) {
+                        IconButton(onClick = onScreenshot, enabled = !sending && !sendQueued, modifier = Modifier.size(42.dp)) {
                             Icon(MikaIcons.Camera, stringResource(R.string.assistant_take_screenshot))
                         }
                         BasicTextField(
                             value = text,
                             onValueChange = onText,
-                            enabled = !sending,
+                            enabled = !sending && !sendQueued,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = { if (canSend) onSend() }),
                             minLines = 1,
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.ink),
                             cursorBrush = SolidColor(c.accent),
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 7.dp)
+                            modifier = Modifier.weight(1f).heightIn(min = 42.dp).padding(horizontal = 4.dp)
                                 .onFocusChanged { if (it.isFocused) onEdit() },
                             decorationBox = { field ->
-                                Box {
+                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                                     if (text.isEmpty()) Text(stringResource(R.string.assistant_input), color = c.ink2)
                                     field()
                                 }
                             },
                         )
-                        IconButton(onClick = onVoice, enabled = !converting && !sending, modifier = Modifier.size(42.dp)) {
+                        IconButton(onClick = onVoice, enabled = !converting && !sending && !sendQueued, modifier = Modifier.size(42.dp)) {
                             Icon(
                                 if (listening) MikaIcons.Check else MikaIcons.Mic,
                                 stringResource(if (listening) R.string.assistant_stop_listening else R.string.voice_listening),
                                 tint = if (listening) c.accent else c.ink,
                             )
                         }
-                        val canSend = !sending && !awaitingReply && (text.isNotBlank() || partial.isNotBlank() || screenshot != null || photo != null)
                         IconButton(
                             onClick = onSend,
                             enabled = canSend,
-                            modifier = Modifier.size(42.dp).clip(CircleShape)
-                                .background(if (canSend) c.accent else c.fill),
+                            modifier = Modifier.size(42.dp),
                         ) {
-                            Icon(MikaIcons.Up, stringResource(R.string.chat_send), tint = if (canSend) c.onAccent else c.ink2)
+                            Box(Modifier.size(32.dp).background(if (canSend) c.accent else c.fill, CircleShape),
+                                contentAlignment = Alignment.Center) {
+                                Icon(MikaIcons.Up, stringResource(R.string.chat_send), Modifier.size(18.dp),
+                                    tint = if (canSend) c.onAccent else c.ink2)
+                            }
                         }
                     }
                 }
@@ -375,7 +390,7 @@ private fun AssistantQuestion(question: String, modifier: Modifier = Modifier) {
     val c = MikaTheme.colors
     Text(
         question, modifier.widthIn(max = 300.dp).padding(top = 6.dp)
-            .background(c.accentSoft, RoundedCornerShape(18.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+            .background(c.accent.copy(alpha = 0.14f), MikaShapes.UserBubble).padding(horizontal = 12.dp, vertical = 8.dp),
         style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
     )
 }
@@ -386,7 +401,7 @@ private fun AssistantAnswer(answer: String, streaming: Boolean = false) {
     val c = MikaTheme.colors
     MarkdownText(
         answer, MaterialTheme.typography.bodyMedium.copy(color = c.ink),
-        Modifier.fillMaxWidth().background(c.fill, RoundedCornerShape(16.dp)).padding(10.dp),
+        Modifier.fillMaxWidth().background(c.answer, MikaShapes.AnswerBubble).padding(horizontal = 14.dp, vertical = 12.dp),
         streaming = streaming,
     )
 }

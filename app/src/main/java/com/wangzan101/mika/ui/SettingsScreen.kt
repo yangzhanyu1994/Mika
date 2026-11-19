@@ -8,7 +8,6 @@ import androidx.compose.ui.res.stringResource
 import com.wangzan101.mika.settings.ProviderConnection
 import android.app.ActivityManager
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import com.wangzan101.mika.ui.components.MikaDialog
 import androidx.compose.material3.AlertDialog
@@ -99,6 +98,8 @@ fun SettingsScreen(
     onOpenSpeech: () -> Unit = {},
     /** 人格设置;为空时不显示入口。 */
     onOpenPersonas: (() -> Unit)? = null,
+    onOpenBrowser: (() -> Unit)? = null,
+    onOpenFiles: (() -> Unit)? = null,
 ) {
     val configs by store.configs.collectAsState()
     val roles by store.roles.collectAsState()
@@ -204,6 +205,8 @@ fun SettingsScreen(
             wechatState = wechatState, wechatBound = wechat.store.account() != null,
             onOpenWechat = { page = SettingsPage.Wechat },
             onOpenAppAccess = { page = SettingsPage.AppAccess },
+            onOpenBrowser = onOpenBrowser,
+            onOpenFiles = onOpenFiles,
             onOpenDuringWork = { page = SettingsPage.DuringWork },
             capsuleMode = capsuleMode, onOpenCapsule = { page = SettingsPage.Capsule },
             onOpenNotifications = { page = SettingsPage.Notifications },
@@ -262,9 +265,7 @@ fun SettingsScreen(
             deviceAccess = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.access,
         )
         SettingsPage.AssistantReadout -> AssistantReadoutScreen(onBack = toHome)
-        SettingsPage.AssistantAppearance -> MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = MikaTheme.reduceMotion) {
-            com.wangzan101.mika.ui.theme.SettingsAppearance { AssistantAppearanceScreen(onBack = toHome) }
-        }
+        SettingsPage.AssistantAppearance -> AssistantAppearanceScreen(onBack = toHome)
         SettingsPage.Language -> LanguageScreen(language, onLanguage = { AppLanguage.set(context, it) }, onBack = toHome)
         SettingsPage.Recommendations -> RecommendedTasksScreen(recommendedTasks, onBack = toHome)
         SettingsPage.Capsule -> CapsuleScreen(
@@ -405,6 +406,8 @@ fun SettingsContent(
     onOpenRecommendations: () -> Unit = {},
     onOpenProactive: (() -> Unit)? = null,
     onOpenPersonas: (() -> Unit)? = null,
+    onOpenBrowser: (() -> Unit)? = null,
+    onOpenFiles: (() -> Unit)? = null,
     onOpenAdvanced: () -> Unit = {},
     versionName: String = "",
     updateVersion: String? = null,
@@ -438,6 +441,12 @@ fun SettingsContent(
             ListRow(MikaIcons.Hand, stringResource(R.string.settings_row_a11y), first = true, onClick = onOpenPhoneOps) {
                 PhoneOpsPill(status)
                 RowChevron()
+            }
+            onOpenBrowser?.let { open ->
+                ListRow(MikaIcons.Globe, stringResource(R.string.drawer_browser), onClick = open) { RowChevron() }
+            }
+            onOpenFiles?.let { open ->
+                ListRow(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = open) { RowChevron() }
             }
             val (notifText, notifTone) = StatusCopy.notificationSummary(status.notificationOverview().summary)
             ListRow(MikaIcons.Bell, StatusCopy.NOTIFICATIONS, stringResource(R.string.settings_notif_sub), onClick = onOpenNotifications) {

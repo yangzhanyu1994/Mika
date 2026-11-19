@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">タスクなし</string>
     <string name="drawer_task_expanded">展開中</string>
     <string name="drawer_task_collapsed">折りたたみ済み</string>
+    <string name="drawer_main_chat">メインチャット</string>
+    <string name="drawer_model_config">モデル設定</string>
+    <string name="drawer_language_model">AI モデル（作業・チャット）</string>
+    <string name="drawer_call_model">リアルタイム音声モデル（AI 通話）</string>
+    <string name="drawer_readout_model">音声合成モデル（読み上げ）</string>
+    <string name="drawer_speech_model">ストリーミング音声認識（入力）</string>
+    <string name="drawer_model_website">公式サイト</string>
 </resources>

@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">作業</string>
     <string name="assistant_routing">モードを選択しています…</string>
     <string name="assistant_routing_unavailable">モードを自動で選べませんでした。チャットか作業を選び、もう一度送信してください。</string>
+    <string name="assistant_follow_up_queued">現在の応答が完了したら送信します</string>
 </resources>

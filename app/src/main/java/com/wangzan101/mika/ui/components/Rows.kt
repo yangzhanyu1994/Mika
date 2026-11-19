@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.SolidColor
@@ -34,12 +33,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.ui.theme.MikaColors
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -47,19 +43,11 @@ import com.wangzan101.mika.ui.theme.MikaShapes
 import com.wangzan101.mika.ui.theme.MikaSize
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
-import com.wangzan101.mika.ui.theme.LocalSettingsAppearance
-import com.wangzan101.mika.ui.theme.SettingsType
 
 /** 分组小标题:13 / 500,辅助文字色。 */
 @Composable
 fun GroupLabel(text: String, modifier: Modifier = Modifier) {
-    val settings = LocalSettingsAppearance.current
-    Text(
-        text,
-        modifier.padding(start = if (settings) 12.dp else 0.dp, top = 8.dp, bottom = 8.dp),
-        style = if (settings) SettingsType.Label else MikaType.Label,
-        color = if (settings) MikaTheme.colors.ink2 else MikaTheme.colors.ink3,
-    )
+    Text(text, modifier.padding(top = 8.dp, bottom = 8.dp), style = MikaType.Label, color = MikaTheme.colors.ink3)
 }
 
 /** 分组下面的说明,和卡片里的文字对齐。 */
@@ -87,24 +75,18 @@ enum class TileTone {
 /** 行左边的图标块:30dp、圆角 9,里面图形 18dp。 */
 @Composable
 fun IconTile(icon: ImageVector, tone: TileTone = TileTone.Neutral) {
-    val colors = MikaTheme.colors
-    val (bg, fg) = if (LocalSettingsAppearance.current && tone == TileTone.Neutral) {
-        colors.accent.copy(alpha = 0.09f) to colors.ink2
-    } else tone.colors(colors)
+    val (bg, fg) = tone.colors(MikaTheme.colors)
     Box(Modifier.size(MikaSize.Tile).background(bg, MikaShapes.Tile), contentAlignment = Alignment.Center) {
         Icon(icon, null, Modifier.size(MikaSize.TileIcon), tint = fg)
     }
 }
 
 /** 行与行之间的分隔线,从 [start] 画到右边;分组首行([first])不画。 */
-private fun Modifier.topHairline(first: Boolean, start: Dp, color: Color, end: Dp = 0.dp, rtl: Boolean = false): Modifier =
+private fun Modifier.topHairline(first: Boolean, start: Dp, color: Color): Modifier =
     if (first) this
     else drawBehind {
         val y = 0.25.dp.toPx()
-        val left = if (rtl) end else start
-        val right = if (rtl) start else end
-        val x = left.toPx()
-        drawLine(color, Offset(x, y), Offset((size.width - right.toPx()).coerceAtLeast(x), y), strokeWidth = 0.5.dp.toPx())
+        drawLine(color, Offset(start.toPx(), y), Offset(size.width, y), strokeWidth = 0.5.dp.toPx())
     }
 
 /** 有图标块时文字从这里开始:左边距 16 + 图标块 30 + 间距 14。 */
@@ -130,14 +112,9 @@ fun ListRow(
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val c = MikaTheme.colors
-    val settings = LocalSettingsAppearance.current
-    val rtl = settings && LocalLayoutDirection.current == LayoutDirection.Rtl
-    val body = if (settings) SettingsType.Body else MikaType.Body
-    val caption = if (settings) SettingsType.Caption else MikaType.Caption
     Row(
         Modifier.fillMaxWidth()
-            .topHairline(first, if (icon != null) TextStartWithIcon else TextStartPlain, c.hair,
-                end = if (settings) 16.dp else 0.dp, rtl = rtl)
+            .topHairline(first, if (icon != null) TextStartWithIcon else TextStartPlain, c.hair)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .heightIn(min = MikaSize.RowMin)
             .padding(horizontal = 16.dp),
@@ -146,8 +123,8 @@ fun ListRow(
     ) {
         if (icon != null) IconTile(icon, tone)
         Column(Modifier.weight(1f).padding(vertical = 11.dp)) {
-            Text(title, style = body, color = titleColor.takeOrElse { c.ink })
-            if (!subtitle.isNullOrEmpty()) Text(subtitle, Modifier.padding(top = 2.dp), style = caption, color = c.ink3)
+            Text(title, style = MikaType.Body, color = titleColor.takeOrElse { c.ink })
+            if (!subtitle.isNullOrEmpty()) Text(subtitle, Modifier.padding(top = 2.dp), style = MikaType.Caption, color = c.ink3)
             if (!detail.isNullOrEmpty()) Text(detail, Modifier.padding(top = 2.dp), style = MikaType.Hint, color = detailColor.takeOrElse { c.ink3 })
         }
         trailing()
@@ -160,10 +137,8 @@ enum class ValueTone { Plain, Ok, Warn, Bad, Link }
 @Composable
 fun RowValue(text: String, tone: ValueTone = ValueTone.Plain) {
     val c = MikaTheme.colors
-    val settings = LocalSettingsAppearance.current
     Text(
-        text, modifier = if (settings) Modifier.widthIn(max = 112.dp) else Modifier,
-        style = if (settings) SettingsType.Caption else MikaType.Value,
+        text, style = MikaType.Value,
         fontWeight = if (tone == ValueTone.Link) FontWeight.Medium else FontWeight.Normal,
         color = when (tone) {
             ValueTone.Plain -> c.ink3
@@ -172,8 +147,7 @@ fun RowValue(text: String, tone: ValueTone = ValueTone.Plain) {
             ValueTone.Bad -> c.bad
             ValueTone.Link -> c.accent
         },
-        maxLines = if (settings) 2 else 1,
-        overflow = if (settings) TextOverflow.Ellipsis else TextOverflow.Clip,
+        maxLines = 1,
     )
 }
 
@@ -198,7 +172,6 @@ fun RadioRow(
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val c = MikaTheme.colors
-    val settings = LocalSettingsAppearance.current
     Row(
         Modifier.fillMaxWidth()
             .topHairline(first, 50.dp, c.hair)
@@ -210,10 +183,8 @@ fun RadioRow(
     ) {
         RadioMark(selected, enabled)
         Column(Modifier.weight(1f).padding(vertical = 9.dp)) {
-            Text(title, style = if (settings && titleStyle == MikaType.Body) SettingsType.Body else titleStyle,
-                color = if (enabled) c.ink else c.ink3)
-            if (!subtitle.isNullOrEmpty()) Text(subtitle, Modifier.padding(top = 2.dp),
-                style = if (settings) SettingsType.Caption else MikaType.Caption, color = c.ink3)
+            Text(title, style = titleStyle, color = if (enabled) c.ink else c.ink3)
+            if (!subtitle.isNullOrEmpty()) Text(subtitle, Modifier.padding(top = 2.dp), style = MikaType.Caption, color = c.ink3)
             if (below != null) Box(Modifier.padding(top = 4.dp)) { below() }
         }
         trailing()
@@ -235,6 +206,7 @@ private fun RadioMark(selected: Boolean, enabled: Boolean = true) {
 /**
  * 卡片里的输入行:左边固定宽的标题,右边单行输入框(空时显示 [placeholder])。
  * [secret] 为真时按密码显示;[trailing] 放在输入框右边(例如「显示」)。
+ * [onClear] 非空且输入框里有字时,在文字右边放一个清空按钮(和搜索框的叉同一套)。
  */
 @Composable
 fun InputRow(

@@ -51,6 +51,7 @@ import com.wangzan101.mika.ui.components.pageBackground
 import com.wangzan101.mika.core.record.ConversationTokens
 import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.theme.MikaIcons
+import com.wangzan101.mika.ui.theme.MikaShapes
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.HoldToTalk
@@ -257,7 +258,7 @@ private fun ResearchAnswer(text: String, streaming: Boolean = false) {
     val c = MikaTheme.colors
     MarkdownText(
         text, MikaType.Body.copy(color = c.ink, lineHeight = 24.sp),
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.surface)
+        Modifier.fillMaxWidth().background(c.answer, MikaShapes.AnswerBubble)
             .padding(horizontal = 14.dp, vertical = 11.dp),
         streaming = streaming,
     )
@@ -266,6 +267,6 @@ private fun ResearchAnswer(text: String, streaming: Boolean = false) {
 @Composable
 private fun ResearchQuestion(question: String, modifier: Modifier = Modifier) {
     val c = MikaTheme.colors
-    Text(question, modifier.clip(RoundedCornerShape(16.dp)).background(c.accentSoft).padding(10.dp),
+    Text(question, modifier.background(c.accent.copy(alpha = 0.14f), MikaShapes.UserBubble).padding(10.dp),
         style = MikaType.Body, color = c.ink)
 }

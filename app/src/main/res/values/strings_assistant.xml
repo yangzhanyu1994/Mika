@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">Work</string>
     <string name="assistant_routing">Choosing a mode…</string>
     <string name="assistant_routing_unavailable">Couldn’t choose a mode. Select Chat or Work and send again.</string>
+    <string name="assistant_follow_up_queued">Follow-up will send when this reply finishes</string>
 </resources>

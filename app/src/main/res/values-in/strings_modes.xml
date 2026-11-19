@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">Tidak ada tugas</string>
     <string name="drawer_task_expanded">Diperluas</string>
     <string name="drawer_task_collapsed">Diciutkan</string>
+    <string name="drawer_main_chat">Chat utama</string>
+    <string name="drawer_model_config">Konfigurasi model</string>
+    <string name="drawer_language_model">Model AI (tugas dan chat)</string>
+    <string name="drawer_call_model">Model suara real-time (telepon AI)</string>
+    <string name="drawer_readout_model">Model sintesis suara (membacakan hasil)</string>
+    <string name="drawer_speech_model">Pengenalan suara streaming (input)</string>
+    <string name="drawer_model_website">Situs resmi</string>
 </resources>

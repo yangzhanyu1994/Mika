@@ -30,7 +30,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -266,16 +265,15 @@ internal fun PersonalAgentScreen(
                             Modifier.padding(start = 4.dp, bottom = 6.dp), fontSize = 10.sp, color = c.ink2)
                         val bubble = Modifier.fillMaxWidth(if (user) 0.8f else 1f)
                             .wrapContentWidth(if (user) Alignment.End else Alignment.Start)
-                            .then(if (user && !c.isDark) Modifier.background(
-                                Brush.verticalGradient(listOf(c.accent.copy(alpha = 0.78f), c.accent)), MikaShapes.UserBubble)
-                                .border(1.dp, Color.White.copy(alpha = 0.65f), MikaShapes.UserBubble)
-                            else if (user) Modifier.background(c.accent, MikaShapes.UserBubble)
-                            else Modifier.cardSurface(c, MikaShapes.AnswerBubble))
+                            .background(
+                                if (user) c.accent.copy(alpha = 0.14f) else c.answer,
+                                if (user) MikaShapes.UserBubble else MikaShapes.AnswerBubble,
+                            )
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                         if (message.role == "call_proposal") {
                             CallProposalCard(message.id, message.text, runtime)
                         } else if (user) {
-                            Text(message.text, bubble, style = MikaType.Body, color = c.onAccent)
+                            Text(message.text, bubble, style = MikaType.Body, color = c.ink)
                         } else {
                             MarkdownText(message.text, MikaType.Body.copy(color = if (message.error) c.bad else c.ink), bubble)
                         }

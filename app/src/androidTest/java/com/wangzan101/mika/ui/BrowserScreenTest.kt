@@ -35,7 +35,9 @@ import com.wangzan101.mika.browser.SearchEngine
 import com.wangzan101.mika.browser.SiteLook
 import com.wangzan101.mika.browser.SiteLooks
 import com.wangzan101.mika.browser.StartPageModel
-import com.wangzan101.mika.settings.Prerequisites
+import com.wangzan101.mika.core.shell.BuiltinShellStatus
+import com.wangzan101.mika.settings.AccessibilityState
+import com.wangzan101.mika.settings.SystemStatus
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import org.junit.Assert.assertEquals
@@ -43,7 +45,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** 侧栏的「浏览器」入口;起始页的几段(搜索、常用网站、整理、最近打开),网页的顶栏和工具栏、「更多」面板、「给 Mika 登录」横幅。 */
+/** 设置页的「浏览器」入口;起始页的几段(搜索、常用网站、整理、最近打开),网页的顶栏和工具栏、「更多」面板、「给 Mika 登录」横幅。 */
 @RunWith(AndroidJUnit4::class)
 class BrowserScreenTest {
     @get:Rule(order = Int.MIN_VALUE) val chinese = ChineseUi()
@@ -83,14 +85,13 @@ class BrowserScreenTest {
     }
 
     @Test
-    fun drawerHasBrowserEntryThatOpensIt() {
+    fun settingsHasBrowserEntryThatOpensIt() {
         compose.setContent {
             MikaTheme {
-                ChatDrawer(
-                    Prerequisites.Check(emptyList()), DrawerSections(emptyList(), emptyList()), canSwitch = true,
-                    onNew = {}, onPlans = {}, onMemory = {},
-                    onBrowser = { calls += "browser" },
-                    onSettings = {}, onOpen = {},
+                SettingsContent(
+                    status = SystemStatus(34, BuiltinShellStatus.Running, AccessibilityState.On, notificationsAllowed = true),
+                    androidRelease = "14", mainModel = null, onBack = {}, onProblem = {}, onOpenModels = {},
+                    onOpenBrowser = { calls += "browser" },
                 )
             }
         }

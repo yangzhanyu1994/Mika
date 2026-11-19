@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">Kerja</string>
     <string name="assistant_routing">Memilih mode…</string>
     <string name="assistant_routing_unavailable">Mode tidak dapat dipilih secara otomatis. Pilih Obrolan atau Kerja, lalu kirim lagi.</string>
+    <string name="assistant_follow_up_queued">Pesan lanjutan akan dikirim setelah jawaban ini selesai</string>
 </resources>

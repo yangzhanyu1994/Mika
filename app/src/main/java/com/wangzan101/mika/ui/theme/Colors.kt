@@ -3,9 +3,6 @@ package com.wangzan101.mika.ui.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.ui.graphics.lerp
 import com.wangzan101.mika.settings.ThemeAccent
 
 /**
@@ -65,34 +62,6 @@ class MikaColors(
     val grid: Color,
     val isDark: Boolean,
 ) {
-    /** Use Android's dynamic light palette for page and card surfaces as well as controls. */
-    fun withSystemLight(s: ColorScheme) = MikaColors(
-        bg = s.background, surface = s.surface, fill = s.surfaceVariant,
-        ink = s.onBackground, ink2 = s.onSurfaceVariant, ink3 = s.onSurfaceVariant,
-        hair = s.outlineVariant, edge = s.outlineVariant, accent = s.primary,
-        accentSoft = s.primaryContainer, onAccent = s.onPrimary,
-        ok = ok, okSoft = okSoft, warn = warn, warnSolid = warnSolid, warnSoft = warnSoft,
-        bad = bad, badSoft = badSoft, neutralSoft = s.surfaceVariant,
-        answer = s.surfaceContainerLow, greySoft = s.surfaceVariant,
-        glass = s.surface.copy(alpha = 0.9f), glassEdge = s.outlineVariant,
-        cardShadow = cardShadow, floatShadow = floatShadow, thumb = thumb,
-        series = series, seriesOther = seriesOther, grid = grid, isDark = false,
-    )
-
-    internal fun forSettings(s: ColorScheme) = MikaColors(
-        bg = if (isDark) s.surface else s.surfaceContainer,
-        surface = if (isDark) s.surfaceContainerHigh else s.surface,
-        fill = s.surfaceContainerHighest,
-        ink = s.onSurface, ink2 = s.onSurfaceVariant, ink3 = s.onSurfaceVariant,
-        hair = s.outlineVariant.copy(alpha = 0.7f), edge = s.outlineVariant,
-        accent = s.primary, accentSoft = s.primaryContainer, onAccent = s.onPrimary,
-        ok = ok, okSoft = okSoft, warn = warn, warnSolid = warnSolid, warnSoft = warnSoft,
-        bad = bad, badSoft = badSoft, neutralSoft = s.surfaceContainerHigh,
-        answer = answer, greySoft = s.surfaceContainerHighest,
-        glass = glass, glassEdge = glassEdge, cardShadow = Color.Transparent, floatShadow = floatShadow,
-        thumb = thumb, series = series, seriesOther = seriesOther, grid = grid, isDark = isDark,
-    )
-
     /** 换一种强调色,其余不变;淡底的透明度和原来一样(浅色 10%、深色 16%)。 */
     fun withAccent(accent: Color, onAccent: Color) = MikaColors(
         bg = bg, surface = surface, fill = fill, ink = ink, ink2 = ink2, ink3 = ink3, hair = hair, edge = edge,
@@ -105,14 +74,14 @@ class MikaColors(
 }
 
 val LightColors = MikaColors(
-    bg = Color(0xFFEAF2FF),
-    surface = Color(0xFFF7FAFF),
-    fill = Color(0x140A53A2),
+    bg = Color(0xFFF7F7F8),
+    surface = Color(0xFFFFFFFF),
+    fill = Color(0x0A000000),
     ink = Color(0xFF1C1C1E),
     ink2 = Color(0xFF5F6068),
-    ink3 = Color(0xFF687589),
+    ink3 = Color(0xFF9A9BA3),
     hair = Color(0x12000000),
-    edge = Color(0xA6FFFFFF),
+    edge = Color(0x0D000000),
     accent = Color(0xFF0A7CFF),
     accentSoft = Color(0x1A0A7CFF),
     onAccent = Color(0xFFFFFFFF),
@@ -124,12 +93,12 @@ val LightColors = MikaColors(
     bad = Color(0xFFE5483D),
     badSoft = Color(0x1AE5483D),
     neutralSoft = Color(0x0B000000),
-    answer = Color(0xB8F8FBFF),
+    answer = Color(0x09000000),
     greySoft = Color(0x1F767680),
-    glass = Color(0xC7F5F9FF),
-    glassEdge = Color(0xB8FFFFFF),
-    cardShadow = Color(0xFF6485B2),
-    floatShadow = Color(0xFF5279AC),
+    glass = Color(0xB8FFFFFF),
+    glassEdge = Color(0x0F000000),
+    cardShadow = Color(0xFF000000),
+    floatShadow = Color(0xFF000000),
     thumb = Color(0xFFFFFFFF),
     series = listOf(Color(0xFF2A78D6), Color(0xFFEB6834), Color(0xFF1BAF7A)),
     seriesOther = Color(0xFFB4B5BC),
@@ -178,28 +147,11 @@ fun palette(dark: Boolean, accent: ThemeAccent): MikaColors {
     return base.withAccent(color, on)
 }
 
-/** Light backgrounds and cards follow the selected custom accent. */
-fun coordinatedLightPalette(accent: ThemeAccent): MikaColors {
-    val chosen = palette(false, accent)
-    return LightColors.withSystemLight(lightColorScheme(
-        primary = chosen.accent, onPrimary = chosen.onAccent,
-        primaryContainer = lerp(Color.White, chosen.accent, 0.16f),
-        background = lerp(Color.White, chosen.accent, 0.075f),
-        surface = lerp(Color.White, chosen.accent, 0.025f),
-        surfaceContainerLow = lerp(Color.White, chosen.accent, 0.035f),
-        surfaceVariant = lerp(Color.White, chosen.accent, 0.12f),
-        onBackground = LightColors.ink, onSurfaceVariant = LightColors.ink2,
-        outlineVariant = lerp(Color.White, chosen.accent, 0.2f),
-    ))
-}
-
 /**
  * 强调色在浅色 / 深色下的取值,和它上面的文字、图标色。
  * 文字的对比度不低于默认蓝色,和页面背景的对比度不低于 3:1(见 `AccentPaletteTest`)。
  */
 fun accentTone(accent: ThemeAccent, dark: Boolean): Pair<Color, Color> = when (accent) {
-    ThemeAccent.System -> (if (dark) DarkColors else LightColors).let { it.accent to it.onAccent }
-    ThemeAccent.Apricot -> Color(if (dark) 0xFFC67A2C else 0xFF9C4D00) to Color.White
     ThemeAccent.Blue -> (if (dark) DarkColors else LightColors).let { it.accent to it.onAccent }
     ThemeAccent.Indigo -> Color(if (dark) 0xFF7D7AFF else 0xFF5856D6) to Color.White
     ThemeAccent.Purple -> Color(if (dark) 0xFFBF5AF2 else 0xFF9B3FD9) to Color.White
