@@ -4,7 +4,6 @@ import com.wangzan101.mika.core.model.ModelError
 import com.wangzan101.mika.core.model.ModelHttp
 import com.wangzan101.mika.core.model.Usage
 import com.wangzan101.mika.core.net.NetProxy
-import com.wangzan101.mika.core.usage.ConversationMeter
 import com.wangzan101.mika.core.usage.RunUsageTally
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -110,7 +109,6 @@ class SystemOneDecisionModel(
         } finally {
             val attempts = if (issued) 1 else 0
             context[RunUsageTally]?.add(usage, httpAttempts = attempts)
-            runCatching { context[ConversationMeter]?.record(usage, attempts) }
             runCatching { onUsage(usage, attempts) }
         }
     }
