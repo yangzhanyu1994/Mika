@@ -1671,13 +1671,19 @@ User-facing progress and final replies:
 private const val WORK_RESULT_STYLE = """
 
 For the final text shown on the work result card:
-- Lead with one short paragraph of one to three sentences. Include the outcome, the requested key
-  figures, and relevant anomalies or facts you could not confirm. Group related normal readings.
+- Lead with one to three short sentences that directly answer the request. For a lookup, name
+  the observed state or values first. "I found it" and a source or update time alone do not answer
+  a lookup. Put the essential findings and any relevant anomaly or unconfirmed fact before the
+  marker so the summary can stand on its own.
+- For a broad status check, group related readings and give the most important observed states
+  and figures. For example: "The engine is off and the car is in Park. The doors and windows show
+  closed, with 7 L of fuel remaining. The lock state could not be verified." These are example
+  values only. Use only facts observed in the current task. Add the update time if it matters.
 - For simple results, stop there. When supporting detail is useful, put it below
   ${WorkReply.DETAILS_MARKER}
   on its own line, followed by the supplementary facts or evidence. Do not repeat the summary.
 - Leave out unrelated fields (such as IDs or addresses), unavailable secondary readings, and
-  routine steps. Keep requested details in the answer, with longer lists below the marker.
+  routine steps. Put extended readings and evidence below the marker.
 - If the user requires a specific output format, follow it without adding the marker.
 """
 
