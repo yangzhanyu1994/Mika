@@ -88,7 +88,6 @@ import com.wangzan101.mika.cap.phone.setup.PairingNotifier
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.core.knowledge.GuideCatalog
 import com.wangzan101.mika.ui.theme.MikaTheme
-import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.ui.theme.appearanceDark
 import com.wangzan101.mika.ui.theme.systemBarsFor
@@ -428,10 +427,8 @@ private fun MikaRoot(
     val personalStart = remember { FeatureFlags.get(context).personalStart() }
     val nav = rememberNavStack(if (personalStart && requestedConversation == null && !requestedAssistant) Route.Personal else Route.Chat)
     var filesFromDrawer by rememberSaveable { mutableStateOf(false) }
-    var openPlanCreator by rememberSaveable { mutableStateOf(false) }
     var focusedPlan by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedCallTask by rememberSaveable { mutableStateOf<String?>(null) }
-    var openCallComposer by rememberSaveable { mutableStateOf(false) }
     var filesConversation by rememberSaveable { mutableStateOf<String?>(null) }
     // 从设置页「重新配对」进来时先回到配对一步
     var setupRepair by rememberSaveable { mutableStateOf(false) }
@@ -766,15 +763,16 @@ private fun MikaRoot(
                 conversationTitle = { ConversationStore.shared(context).title(it) },
                 search = ConversationStore.shared(context).search,
                 onPlans = { nav.pushFromDrawer(Route.Plans) },
-                onCreatePlan = { openPlanCreator = true; nav.pushFromDrawer(Route.Plans) },
-                onCreateCall = { openCallComposer = true; nav.pushFromDrawer(Route.Calls) },
                 onOpenPlan = { id -> focusedPlan = id; nav.pushFromDrawer(Route.Plans) },
                 onOpenCallTask = { id -> focusedCallTask = id; nav.pushFromDrawer(Route.Calls) },
                 onScenes = { nav.pushFromDrawer(Route.Scenes) },
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
+                onModels = { nav.pushFromDrawer(Route.Models) },
+                onCallModel = { nav.pushFromDrawer(Route.CallModel) },
+                onReadoutModel = { nav.pushFromDrawer(Route.ReadoutModel) },
+                onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
+                onOpenModelUrl = { openInBrowser(context, it) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
-                onBrowser = { nav.pushFromDrawer(Route.Browser) },
-                onFiles = { filesFromDrawer = true; filesConversation = app.chat.ui.value.conversationId; nav.pushFromDrawer(Route.Files) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
                 updateAvailable = AboutCopy.drawerDot(updateState),
@@ -923,24 +921,32 @@ private fun MikaRoot(
                 }
             }
         }
-        Route.Settings -> SettingsAppearance {
+        Route.Settings -> {
             val autonomous by app.approvals.autonomous.collectAsState()
             SettingsScreen(store, status, release, onFix, onBack = back, onOpenMemory = { nav.push(Route.Memory) },
                 onOpenModels = { nav.push(Route.Models) }, onOpenSpeech = { nav.push(Route.SpeechModel) },
                 onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else null,
                 autonomous = autonomous, onAutonomous = app.approvalControl::setAutonomous,
                 updateVersion = updateState.update?.version, onOpenAbout = { nav.push(Route.About) },
-                mcpServers = app.mcpServers)
+                mcpServers = app.mcpServers,
+                onOpenBrowser = { nav.push(Route.Browser) },
+                onOpenFiles = {
+                    filesFromDrawer = true
+                    filesConversation = app.chat.ui.value.conversationId
+                    nav.push(Route.Files)
+                })
         }
         Route.Persona -> if (personasOn) PersonaScreen(app.personas, onBack = back) else LaunchedEffect(Unit) { nav.back() }
-        Route.Models -> SettingsAppearance {
+        Route.Models -> {
             ModelsScreen(store, onBack = back, onOpenSpeech = { nav.push(Route.SpeechModel) },
                 onOpenVoice = { nav.push(Route.VoiceModel) }, onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
-        Route.VoiceModel -> SettingsAppearance { VoiceModelScreen(store, onBack = back) }
-        Route.Usage -> SettingsAppearance { UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) }) }
-        Route.SpeechModel -> SettingsAppearance { SpeechModelScreen(store, onBack = back) }
-        Route.About -> SettingsAppearance {
+        Route.ReadoutModel -> AssistantReadoutScreen(onBack = back)
+        Route.CallModel -> CallSettingsScreen(app.calls, onBack = back, standalone = true, openModelCredentials = true)
+        Route.VoiceModel -> VoiceModelScreen(store, onBack = back)
+        Route.Usage -> UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) })
+        Route.SpeechModel -> SpeechModelScreen(store, onBack = back)
+        Route.About -> {
             AboutScreen(
                 versionName = BuildConfig.VERSION_NAME, build = BuildConfig.GIT_HASH, beta = BuildConfig.BETA,
                 update = updateState,
@@ -964,7 +970,7 @@ private fun MikaRoot(
                 },
             )
         }
-        Route.License -> SettingsAppearance { LicensesScreen(onBack = back) }
+        Route.License -> LicensesScreen(onBack = back)
         Route.Browser -> BrowserScreen(remember { UserBrowser.of(context) }, onBack = back)
         Route.Files -> FileLibraryScreen(app.chat, filesConversation, filesFromDrawer, onBack = back, onAdded = { id ->
             app.chat.openConversation(id)
@@ -1047,7 +1053,7 @@ private fun MikaRoot(
         Route.Plans -> PlansScreen(context, onBack = back, onOpenConversation = {
             app.chat.openConversation(it)
             nav.reset()
-        }, onPickSpeech = { nav.push(Route.SpeechModel) }, startCreating = openPlanCreator, onCreateConsumed = { openPlanCreator = false }, focusPlanId = focusedPlan, onFocusPlanConsumed = { focusedPlan = null })
+        }, onPickSpeech = { nav.push(Route.SpeechModel) }, focusPlanId = focusedPlan, onFocusPlanConsumed = { focusedPlan = null })
         Route.Scenes -> ScenesScreen(context, onBack = back, onPlans = { nav.push(Route.Plans) }, onOpenConversation = {
             app.chat.openConversation(it)
             nav.reset()
@@ -1064,7 +1070,7 @@ private fun MikaRoot(
             app.chat.openConversation(it)
             nav.reset()
         })
-        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, openTaskComposer = openCallComposer, onTaskComposerOpened = { openCallComposer = false }, focusTaskId = focusedCallTask, onFocusTaskConsumed = { focusedCallTask = null })
+        Route.Calls -> CallSettingsScreen(app.calls, onBack = back, standalone = true, initialHistoryCallId = focusedCallHistoryId, voice = app.voice, onPickSpeech = { nav.push(Route.SpeechModel) }, focusTaskId = focusedCallTask, onFocusTaskConsumed = { focusedCallTask = null })
     }
 }
 

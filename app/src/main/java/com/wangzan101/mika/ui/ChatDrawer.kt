@@ -30,12 +30,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -109,8 +111,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import com.wangzan101.mika.ui.components.ButtonSize
-import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.cardSurface
 import com.wangzan101.mika.ui.components.lazyListScrollbar
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -253,17 +253,17 @@ internal fun ChatDrawer(
     search: DrawerSearch? = null,
     /** 有对话可搜时才显示搜索框。 */
     canSearch: Boolean = false,
-    onNew: () -> Unit,
     onPlans: () -> Unit,
-    onCreatePlan: () -> Unit = onPlans,
-    onCreateCall: () -> Unit = {},
     onOpenPlan: (String) -> Unit = { onPlans() },
     onOpenCallTask: (String) -> Unit = {},
     tasks: DrawerTasks = DrawerTasks(),
     onScenes: () -> Unit = {},
     onMemory: () -> Unit,
-    onBrowser: () -> Unit,
-    onFiles: () -> Unit = {},
+    onModels: () -> Unit = {},
+    onCallModel: () -> Unit = {},
+    onReadoutModel: () -> Unit = {},
+    onSpeechModel: () -> Unit = {},
+    onOpenModelUrl: (String) -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -327,7 +327,7 @@ internal fun ChatDrawer(
             }
         }
         if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
-        var newExpanded by rememberSaveable { mutableStateOf(false) }
+        var modelsExpanded by rememberSaveable { mutableStateOf(false) }
         var runningExpanded by rememberSaveable { mutableStateOf(true) }
         var scheduledExpanded by rememberSaveable { mutableStateOf(false) }
         var automationExpanded by rememberSaveable { mutableStateOf(false) }
@@ -335,7 +335,7 @@ internal fun ChatDrawer(
         val list = rememberLazyListState()
         val first = when {
             searchActive -> "h-search"
-            !selecting -> "h-new"
+            !selecting -> "main-chat"
             sections.running.isNotEmpty() -> "h-running"
             sections.pinned.isNotEmpty() -> "h-pinned"
             sections.recent.isNotEmpty() -> "h-recent"
@@ -365,21 +365,25 @@ internal fun ChatDrawer(
                 }
             } else {
                 if (!selecting) {
-                    item("h-new") {
-                        DrawerTaskLabel(R.string.drawer_task_new, newExpanded, onToggle = { newExpanded = !newExpanded })
+                    item("main-chat") {
+                        NavEntry(MikaIcons.Message, stringResource(R.string.drawer_main_chat),
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onPersonal)
                     }
-                    if (newExpanded) item("task-shortcuts") {
-                        Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
-                            MikaButton(stringResource(R.string.drawer_new_chat), onNew,
-                                Modifier.fillMaxWidth().testTag("drawer-new"), size = ButtonSize.Medium, enabled = canSwitch)
-                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_personal), compact = true, onClick = onPersonal)
-                            NavEntry(MikaIcons.Clock, stringResource(R.string.plans_add), compact = true, onClick = onCreatePlan)
-                            NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
-                                listening = callsListening, compact = true, onClick = onCreateCall)
-                            NavEntry(MikaIcons.Screens, stringResource(R.string.scene_title), compact = true, onClick = onScenes)
-                            NavEntry(MikaIcons.Globe, stringResource(R.string.drawer_browser), compact = true, onClick = onBrowser)
-                            NavEntry(MikaIcons.Paperclip, stringResource(R.string.file_library_title), compact = true, onClick = onFiles)
-                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills), compact = true, onClick = onMemory)
+                    item("memory-skills") {
+                        NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills),
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onMemory)
+                    }
+                    item("model-config") {
+                        DrawerTaskLabel(R.string.drawer_model_config, modelsExpanded,
+                            onToggle = { modelsExpanded = !modelsExpanded })
+                    }
+                    if (modelsExpanded) item("model-config-entries") {
+                        Column(Modifier.padding(horizontal = 12.dp)) {
+                            DrawerModelEntry(R.string.drawer_language_model, "https://platform.deepseek.com/usage",
+                                onModels, onOpenModelUrl)
+                            DrawerModelEntry(R.string.drawer_call_model, ARK_MODEL_CONSOLE, onCallModel, onOpenModelUrl)
+                            DrawerModelEntry(R.string.drawer_readout_model, ARK_MODEL_CONSOLE, onReadoutModel, onOpenModelUrl)
+                            DrawerModelEntry(R.string.drawer_speech_model, ARK_MODEL_CONSOLE, onSpeechModel, onOpenModelUrl)
                         }
                     }
                     item("h-running") {
@@ -547,6 +551,29 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
             )
         }
         Text(text, style = MikaType.Hint, color = c.ink2, maxLines = 2)
+    }
+}
+
+private const val ARK_MODEL_CONSOLE = "https://ark.volcengine.com/region:cn-beijing/openManagement?advancedActiveKey=model"
+
+@Composable
+private fun DrawerModelEntry(
+    label: Int,
+    url: String,
+    onConfigure: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
+    val colors = MikaTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(label),
+            Modifier.weight(1f).heightIn(min = 48.dp).wrapContentHeight()
+                .clip(NavShape).clickable(role = Role.Button, onClick = onConfigure).padding(horizontal = 12.dp, vertical = 8.dp),
+            style = MikaType.Caption, color = colors.ink,
+        )
+        TextButton(onClick = { onOpenUrl(url) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+            Text(stringResource(R.string.drawer_model_website), style = MikaType.Hint, color = colors.accent)
+        }
     }
 }
 
@@ -806,14 +833,15 @@ fun ChatWithDrawer(
     /** 侧栏搜索用的索引;没有时侧栏不显示搜索框。 */
     search: ConversationSearch? = null,
     onPlans: () -> Unit,
-    onCreatePlan: () -> Unit = onPlans,
-    onCreateCall: () -> Unit = {},
     onOpenPlan: (String) -> Unit = { onPlans() },
     onOpenCallTask: (String) -> Unit = {},
     onScenes: () -> Unit = {},
     onMemory: () -> Unit,
-    onBrowser: () -> Unit,
-    onFiles: () -> Unit = {},
+    onModels: () -> Unit = {},
+    onCallModel: () -> Unit = {},
+    onReadoutModel: () -> Unit = {},
+    onSpeechModel: () -> Unit = {},
+    onOpenModelUrl: (String) -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -1011,18 +1039,18 @@ fun ChatWithDrawer(
                     onQueryChange = { query = it },
                     search = searchView,
                     canSearch = candidates.isNotEmpty(),
-                    onNew = { close { vm.newConversation(); onRegularChat() } },
                     onPersonal = { leave(onPersonal) },
                     onPlans = { leave(onPlans) },
-                    onCreatePlan = { leave(onCreatePlan) },
-                    onCreateCall = { leave(onCreateCall) },
                     onOpenPlan = { id -> leave { onOpenPlan(id) } },
                     onOpenCallTask = { id -> leave { onOpenCallTask(id) } },
                     onScenes = { leave(onScenes) },
                     onMemory = { leave(onMemory) },
+                    onModels = { leave(onModels) },
+                    onCallModel = { leave(onCallModel) },
+                    onReadoutModel = { leave(onReadoutModel) },
+                    onSpeechModel = { leave(onSpeechModel) },
+                    onOpenModelUrl = onOpenModelUrl,
                     onSettings = { leave(onSettings) },
-                    onBrowser = { leave(onBrowser) },
-                    onFiles = { leave(onFiles) },
                     onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },
                     aboutDot = updateAvailable,

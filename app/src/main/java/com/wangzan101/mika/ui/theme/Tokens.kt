@@ -3,7 +3,6 @@ package com.wangzan101.mika.ui.theme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,15 +25,6 @@ object MikaType {
     val Hint = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Normal)
     /** 行尾的值。 */
     val Value = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Normal)
-}
-
-/** Keep settings on the platform font family and let Android scale all sp sizes. */
-internal object SettingsType {
-    val Title = MikaType.Title.copy(fontFamily = FontFamily.Default, fontSize = 20.sp, lineHeight = 26.sp)
-    val Body = MikaType.Body.copy(fontFamily = FontFamily.Default, fontSize = 16.sp, lineHeight = 23.sp)
-    val BodyStrong = Body.copy(fontWeight = FontWeight.Medium)
-    val Caption = MikaType.Caption.copy(fontFamily = FontFamily.Default, fontSize = 14.sp, lineHeight = 20.sp)
-    val Label = MikaType.Label.copy(fontFamily = FontFamily.Default, fontSize = 14.sp, lineHeight = 20.sp)
 }
 
 /** 间距。页面左右留 [Page]。 */
@@ -66,10 +56,10 @@ object MikaSize {
 
 /** 圆角。 */
 object MikaRadius {
-    val Card = 22.dp
+    val Card = 16.dp
     val Bubble = 20.dp
-    val BubbleTail = 18.dp
-    val Button = 18.dp
+    val BubbleTail = 6.dp
+    val Button = 14.dp
     val Tile = 9.dp
 }
 

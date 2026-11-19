@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">No hay tareas</string>
     <string name="drawer_task_expanded">Expandido</string>
     <string name="drawer_task_collapsed">Contraído</string>
+    <string name="drawer_main_chat">Chat principal</string>
+    <string name="drawer_model_config">Configuración de modelos</string>
+    <string name="drawer_language_model">Modelo de IA (tareas y chat)</string>
+    <string name="drawer_call_model">Modelo de voz en tiempo real (llamadas)</string>
+    <string name="drawer_readout_model">Modelo de síntesis de voz (lectura)</string>
+    <string name="drawer_speech_model">Reconocimiento de voz en directo (entrada)</string>
+    <string name="drawer_model_website">Sitio oficial</string>
 </resources>

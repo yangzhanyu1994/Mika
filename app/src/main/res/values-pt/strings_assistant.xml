@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">Trabalho</string>
     <string name="assistant_routing">Escolhendo um modo…</string>
     <string name="assistant_routing_unavailable">Não foi possível selecionar um modo. Escolha Conversa ou Trabalho e envie a mensagem novamente.</string>
+    <string name="assistant_follow_up_queued">A próxima mensagem será enviada ao terminar esta resposta</string>
 </resources>

@@ -1,7 +1,6 @@
 package com.wangzan101.mika.ui.theme
 
 import android.content.Context
-import android.os.Build
 import android.provider.Settings
 import android.view.View
 import androidx.compose.animation.core.AnimationSpec
@@ -14,8 +13,6 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.activity.ComponentActivity
@@ -52,7 +48,6 @@ fun animationsOff(context: Context): Boolean =
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
 val LocalReduceMotion = staticCompositionLocalOf { false }
-internal val LocalSettingsAppearance = staticCompositionLocalOf { false }
 
 object MikaTheme {
     val colors: MikaColors
@@ -112,18 +107,9 @@ fun MikaTheme(
 ) {
     // 背景图片设了「强调色跟随图片」时,用图上的主色代替设置里选的强调色
     val imageHue = appearanceSkin().accentHue
-    val context = LocalContext.current
-    // Configuration changes (including wallpaper palette changes) invalidate the system colors.
-    val configuration = LocalConfiguration.current
-    val systemColors = if (!dark && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        remember(context, configuration) { dynamicLightColorScheme(context) }
-    } else null
-    val colors = remember(dark, accent, imageHue, systemColors) {
-        val base = when {
-            systemColors != null -> LightColors.withSystemLight(systemColors)
-            else -> palette(dark, ThemeAccent.Blue)
-        }
-        base
+    val colors = remember(dark, accent, imageHue) {
+        val base = palette(dark, accent)
+        if (imageHue == null) base else SkinAccent.tone(imageHue, dark).let { (color, on) -> base.withAccent(color, on) }
     }
     val materialColors = remember(colors) { scheme(colors) }
     val layoutDirection = if (LocalContext.current.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) {
@@ -137,32 +123,6 @@ fun MikaTheme(
         LocalReduceMotion provides reduceMotion,
     ) {
         MaterialTheme(colorScheme = materialColors) {
-            CompositionLocalProvider(LocalContentColor provides colors.ink, content = content)
-        }
-    }
-}
-
-/** Settings use Android's public dynamic colors in either appearance mode. */
-@Composable
-internal fun SettingsAppearance(content: @Composable () -> Unit) {
-    val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val base = MikaTheme.colors
-    val colors = remember(context, configuration, base) {
-        val system = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (base.isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            scheme(base).copy(
-                surface = base.surface,
-                surfaceContainer = base.bg,
-                surfaceContainerHigh = if (base.isDark) base.surface else Color(0xFFECEEF3),
-                surfaceContainerHighest = if (base.isDark) Color(0xFF292A30) else Color(0xFFE2E5EC),
-            )
-        }
-        base.forSettings(system)
-    }
-    CompositionLocalProvider(LocalSettingsAppearance provides true, LocalMikaColors provides colors) {
-        MaterialTheme(colorScheme = scheme(colors)) {
             CompositionLocalProvider(LocalContentColor provides colors.ink, content = content)
         }
     }

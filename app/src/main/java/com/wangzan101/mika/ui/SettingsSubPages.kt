@@ -554,20 +554,13 @@ fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onB
         GroupCard {
             val dark = MikaTheme.colors.isDark
             val followingImage = skin.accentHue != null
-            val (previewColor, previewText) = when {
-                followingImage -> com.wangzan101.mika.ui.theme.SkinAccent.tone(skin.accentHue!!, dark)
-                themeAccent == ThemeAccent.System -> MikaTheme.colors.accent to MikaTheme.colors.onAccent
-                else -> accentTone(themeAccent, dark)
-            }
-            val options = listOf(ThemeAccent.System, ThemeAccent.Blue, ThemeAccent.Purple, ThemeAccent.Teal,
-                ThemeAccent.Apricot, ThemeAccent.Pink, ThemeAccent.Indigo, ThemeAccent.Graphite)
+            val (previewColor, previewText) = MikaTheme.colors.let { it.accent to it.onAccent }
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(stringResource(R.string.accent_system_detail), style = MikaType.Value, color = MikaTheme.colors.ink2)
-                options.chunked(4).forEach { row ->
+                ThemeAccent.entries.chunked(3).forEach { row ->
                     Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                         row.forEach { choice ->
                             val selected = choice == themeAccent
-                            val tone = if (choice == ThemeAccent.System && selected) MikaTheme.colors.accent else accentTone(choice, dark).first
+                            val tone = accentTone(choice, dark).first
                             Column(
                                 modifier = Modifier.weight(1f).selectable(
                                     selected = selected, enabled = !followingImage, role = Role.RadioButton,
@@ -742,8 +735,6 @@ private fun SkinControls(skin: SkinSpec, onChange: (SkinSpec) -> Unit, onClear: 
 
 fun accentLabel(accent: ThemeAccent): String = tr(
     when (accent) {
-        ThemeAccent.System -> R.string.accent_system
-        ThemeAccent.Apricot -> R.string.accent_apricot
         ThemeAccent.Blue -> R.string.accent_blue
         ThemeAccent.Indigo -> R.string.accent_indigo
         ThemeAccent.Purple -> R.string.accent_purple

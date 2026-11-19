@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">작업</string>
     <string name="assistant_routing">모드를 선택하는 중…</string>
     <string name="assistant_routing_unavailable">모드를 자동으로 선택하지 못했습니다. 채팅 또는 작업을 선택한 뒤 다시 보내세요.</string>
+    <string name="assistant_follow_up_queued">현재 답변이 끝나면 후속 메시지를 보냅니다</string>
 </resources>

@@ -45,7 +45,6 @@ import com.wangzan101.mika.ui.AttachFiles
 import com.wangzan101.mika.ui.MarkdownModel
 import com.wangzan101.mika.ui.VoiceCopy
 import com.wangzan101.mika.ui.theme.MikaTheme
-import com.wangzan101.mika.ui.theme.SettingsAppearance
 import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.SpeechEngineSpec
@@ -85,6 +84,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var screenshot by mutableStateOf<Bitmap?>(null)
     private var photo by mutableStateOf<Bitmap?>(null)
     private var sending by mutableStateOf(false)
+    private var sendAfterReply by mutableStateOf(false)
     private var mode by mutableStateOf(AssistantMode.Auto)
     private var conversationId: String? = null
     private var reply by mutableStateOf<AssistantReply?>(null)
@@ -158,6 +158,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 ?: AssistantMode.Auto
             resolvedMode = AssistantMode.entries.firstOrNull { it.name == savedInstanceState.getString("assistantResolvedMode") }
             text = savedInstanceState.getString("assistantQuestion").orEmpty()
+            sendAfterReply = savedInstanceState.getBoolean("assistantSendAfterReply")
             if (text.isNotBlank()) autoListen = false
             savedInstanceState.getString("assistantConversation")?.let { id ->
                 autoListen = false
@@ -180,44 +181,43 @@ class AssistantOverlayActivity : ComponentActivity() {
         val appearance = AssistantAppearance(this)
         setContent {
             MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = animationsOff(this)) {
-                SettingsAppearance {
-                    AssistantOverlay(
-                        history = history,
-                        revealTurn = revealTurn,
-                        pendingQuestion = pendingQuestion,
-                        awaitingReply = pendingQuestion != null,
-                        displayName = appearance.name,
-                        animateAvatar = appearance.animate,
-                        text = text,
-                        partial = partial,
-                        status = status,
-                        listening = listening,
-                        converting = converting,
-                        level = { level },
-                        screenshot = screenshot,
-                        photo = photo,
-                        sending = sending,
-                        mode = mode,
-                        resolvedMode = resolvedMode,
-                        onMode = {
-                            noteInteraction()
-                            mode = it
-                            status = null
-                        },
-                        reply = reply,
-                        onOpenConversation = ::openConversation,
-                        onText = { noteInteraction(); text = it },
-                        onEdit = { stopSpeech(keepText = true) },
-                        onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
-                        onScreenshot = ::attachScreenshot,
-                        onPhoto = { finishThen(::requestCamera) },
-                        onRemoveScreenshot = ::removeScreenshot,
-                        onRemovePhoto = ::removePhoto,
-                        onClear = ::clear,
-                        onSend = { finishThen(::send) },
-                        onClose = { finish() },
-                    )
-                }
+                AssistantOverlay(
+                    history = history,
+                    revealTurn = revealTurn,
+                    pendingQuestion = pendingQuestion,
+                    awaitingReply = pendingQuestion != null,
+                    displayName = appearance.name,
+                    animateAvatar = appearance.animate,
+                    text = text,
+                    partial = partial,
+                    status = status,
+                    listening = listening,
+                    converting = converting,
+                    level = { level },
+                    screenshot = screenshot,
+                    photo = photo,
+                    sending = sending,
+                    sendQueued = sendAfterReply,
+                    mode = mode,
+                    resolvedMode = resolvedMode,
+                    onMode = {
+                        noteInteraction()
+                        mode = it
+                        status = null
+                    },
+                    reply = reply,
+                    onOpenConversation = ::openConversation,
+                    onText = { noteInteraction(); text = it },
+                    onEdit = { stopSpeech(keepText = true) },
+                    onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
+                    onScreenshot = ::attachScreenshot,
+                    onPhoto = { finishThen(::requestCamera) },
+                    onRemoveScreenshot = ::removeScreenshot,
+                    onRemovePhoto = ::removePhoto,
+                    onClear = ::clear,
+                    onSend = { noteInteraction(); finishThen(::send) },
+                    onClose = { finish() },
+                )
             }
         }
     }
@@ -226,6 +226,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString("assistantConversation", conversationId)
         outState.putString("assistantQuestion", text)
+        outState.putBoolean("assistantSendAfterReply", sendAfterReply)
         outState.putString("assistantMode", mode.name)
         outState.putString("assistantResolvedMode", resolvedMode?.name)
         outState.putString("assistantPendingQuestion", pendingQuestion)
@@ -242,7 +243,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         } else if (autoListen) {
             autoListen = false
             requestSpeech()
-        }
+        } else sendQueuedFollowUp()
     }
 
     override fun onUserInteraction() {
@@ -381,7 +382,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun offerVoiceFollowUp() {
-        if (!resumed || listening || converting || sending || isFinishing || text.isNotBlank() ||
+        if (!resumed || listening || converting || sending || sendAfterReply || isFinishing || text.isNotBlank() ||
             screenshot != null || photo != null ||
             checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
             app.voice.spec() is SpeechEngineSpec.Unavailable
@@ -464,6 +465,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun clear() {
+        sendAfterReply = false
         stopSpeech(keepText = false)
         text = ""
         status = null
@@ -471,15 +473,18 @@ class AssistantOverlayActivity : ComponentActivity() {
         removePhoto()
     }
 
+    private fun sendQueuedFollowUp() {
+        if (!sendAfterReply || pendingQuestion != null || !resumed || sending || isFinishing) return
+        sendAfterReply = false
+        send()
+    }
+
     private fun send() {
-        if (sending || pendingQuestion != null || screenJob?.isActive == true || locked() || isFinishing) return
+        if (sending || sendAfterReply || locked() || isFinishing) return
         val words = text.trim()
-        val screen = screenshot
-        val cameraFile = photoUri?.let { AttachFiles.cameraFile(this, it) }
-        if (words.isEmpty() && screen == null && cameraFile == null) return
-        if (screen != null && invocation?.canShare(app) != true) {
-            screenshot = null
-            status = getString(R.string.appaccess_share_expired)
+        if (words.isEmpty() && screenshot == null && photoUri == null) return
+        if (pendingQuestion != null) {
+            sendAfterReply = true
             return
         }
         stopPlayback()
@@ -488,8 +493,6 @@ class AssistantOverlayActivity : ComponentActivity() {
         lifecycleScope.launch {
             val existing = conversationId
             val id = existing ?: app.conversations.newConversation()
-            val baseline = history.size
-            val oldRun = app.taskState.run(id)?.key
             fun dispatch(goal: String) {
                 if (existing == null) TaskService.start(this@AssistantOverlayActivity, goal, id)
                 else if (!TaskService.enqueueFollowUp(this@AssistantOverlayActivity, id, UUID.randomUUID().toString(), goal)) {
@@ -497,6 +500,18 @@ class AssistantOverlayActivity : ComponentActivity() {
                 }
             }
             try {
+                screenJob?.join()
+                val screen = screenshot
+                val cameraFile = photoUri?.let { AttachFiles.cameraFile(this@AssistantOverlayActivity, it) }
+                if (words.isEmpty() && screen == null && cameraFile == null) return@launch
+                if (screen != null && invocation?.canShare(app) != true) {
+                    screenshot = null
+                    status = getString(R.string.appaccess_share_expired)
+                    return@launch
+                }
+                val priorTurns = if (existing == null) emptyList() else withContext(Dispatchers.IO) { app.conversations.turns(id) }
+                val baseline = priorTurns.size
+                val oldRun = app.taskState.run(id)?.key
                 val adaptive = mode == AssistantMode.Auto && screen == null && cameraFile == null &&
                     !isNearbyWeatherRequest(words) && app.researchChat.canDelegate()
                 val target = when {
@@ -504,12 +519,8 @@ class AssistantOverlayActivity : ComponentActivity() {
                     mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
                     else -> {
                         status = getString(R.string.assistant_routing)
-                        val latestWork = existing?.let {
-                            withContext(Dispatchers.IO) {
-                                app.conversations.turns(it).lastOrNull()?.takeIf { turn ->
-                                    !turn.research && turn.status in setOf("succeeded", "unverified")
-                                }
-                            }
+                        val latestWork = priorTurns.lastOrNull()?.takeIf {
+                            !it.research && it.status in setOf("succeeded", "unverified")
                         }
                         routeAssistantConversation(words, app.providers, latestWork)
                     }
@@ -525,6 +536,12 @@ class AssistantOverlayActivity : ComponentActivity() {
                     return@launch
                 }
                 if (target == ModelRole.Chat) {
+                    // The previous reply can reach disk just before ResearchChat releases its draft.
+                    val previousDraft = app.researchChat.pending.value[id]
+                    if (previousDraft != null && priorTurns.any { it.research && it.atMs == previousDraft.startedAt }) {
+                        withTimeoutOrNull(2_000) { app.researchChat.pending.first { it[id] == null } }
+                    }
+                    if (!resumed || locked() || isFinishing) return@launch
                     val handoff: (() -> Boolean)? = if (adaptive) {
                         { handOffToWork(id, words, ::dispatch) }
                     } else null
@@ -558,6 +575,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 status = getString(R.string.assistant_send_failed)
             } finally {
                 sending = false
+                sendQueuedFollowUp()
             }
         }
     }
@@ -578,7 +596,8 @@ class AssistantOverlayActivity : ComponentActivity() {
         }
         if (problem != null) {
             pendingQuestion = null
-            text = words
+            sendAfterReply = false
+            if (text.isBlank()) text = words
             reply = null
             status = getString(problem)
         } else {
@@ -610,6 +629,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 delay(15_000)
                 if (pendingQuestion != null) reply = AssistantReply(getString(R.string.assistant_status_unavailable))
             }
+            var terminalWorkReply: AssistantReply? = null
             combine(live, saved, app.researchChat.pending) { state, turns, chats ->
                 Triple(state, turns, chats[id])
             }.collect { (state, turns, draft) ->
@@ -629,6 +649,14 @@ class AssistantOverlayActivity : ComponentActivity() {
                     } else if (!useChat && state != null && state != TaskState.Idle) {
                         startupTimeout.cancel()
                         reply = liveReply(state)
+                        if (state is TaskState.Succeeded || state is TaskState.Failed || state == TaskState.Cancelled) terminalWorkReply = reply
+                    } else if (!useChat && terminalWorkReply != null && state == null) {
+                        // A terminal result is still usable if recording the turn failed.
+                        pendingQuestion = null
+                        previousRun = null
+                        reply = terminalWorkReply
+                        terminalWorkReply = null
+                        sendQueuedFollowUp()
                     }
                 } else {
                     startupTimeout.cancel()
@@ -640,7 +668,8 @@ class AssistantOverlayActivity : ComponentActivity() {
                     pendingQuestion = null
                     previousRun = null
                     reply = (finished ?: turns.lastOrNull())?.let(::savedReply)
-                    if (finished != null && finished.status in setOf("succeeded", "unverified")) {
+                    if (sendAfterReply) sendQueuedFollowUp()
+                    else if (finished != null && finished.status in setOf("succeeded", "unverified")) {
                         playCompletedResult(finished)
                     }
                 }

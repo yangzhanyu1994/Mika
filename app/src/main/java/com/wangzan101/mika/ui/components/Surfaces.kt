@@ -49,8 +49,6 @@ import com.wangzan101.mika.ui.theme.MikaSize
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.ui.theme.LocalSkinBackdrop
-import com.wangzan101.mika.ui.theme.LocalSettingsAppearance
-import com.wangzan101.mika.ui.theme.SettingsType
 import com.wangzan101.mika.ui.theme.SkinBackdrop
 import com.wangzan101.mika.ui.theme.rememberSkinBackdrop
 import androidx.compose.runtime.CompositionLocalProvider
@@ -67,7 +65,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
  */
 @Composable
 fun PageBackground(modifier: Modifier = Modifier, ambient: AmbientMode = AmbientMode.Idle, reduceMotion: Boolean = MikaTheme.reduceMotion, content: @Composable BoxScope.() -> Unit) {
-    val backdrop = if (LocalSettingsAppearance.current) null else rememberSkinBackdrop()
+    val backdrop = rememberSkinBackdrop()
     val glassBackground: GlassBackdrop? = null
     // 有没有图都是同一个结构:图是异步读的,换结构会让里面的页面整个重建、丢掉状态
     Box(
@@ -109,13 +107,12 @@ fun Modifier.pageBackground(color: Color, fade: Brush? = null): Modifier = compo
 }
 
 /** 卡片的底:白底 + 黑 5% 描边 + 极淡阴影;深色下只有描边。 */
-fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Modifier = composed {
-    if (LocalSettingsAppearance.current) return@composed clip(shape).background(colors.surface, shape)
-    val shadowed = if (colors.cardShadow.alpha > 0f) {
-        shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.2f), spotColor = colors.cardShadow.copy(alpha = 0.1f))
-    } else this
-    shadowed.clip(shape).background(colors.surface, shape).border(1.dp, colors.edge, shape)
-}
+fun Modifier.cardSurface(colors: MikaColors, shape: Shape = MikaShapes.Card): Modifier =
+    (if (colors.cardShadow.alpha > 0f) {
+        shadow(6.dp, shape, clip = false, ambientColor = colors.cardShadow.copy(alpha = 0.45f), spotColor = colors.cardShadow.copy(alpha = 0.16f))
+    } else this)
+        .background(colors.surface, shape)
+        .border(0.5.dp, colors.edge, shape)
 
 /** 悬浮元素的阴影(输入栏、浮在内容上的按钮)。 */
 fun Modifier.floatShadow(colors: MikaColors, shape: Shape): Modifier =
@@ -158,11 +155,8 @@ fun StateCard(
                 Icon(icon, null, Modifier.size(20.dp), tint = fg)
             }
             Column(Modifier.weight(1f)) {
-                val settings = LocalSettingsAppearance.current
-                Text(title, style = if (settings) SettingsType.BodyStrong else MikaType.BodyStrong, color = c.ink)
-                if (!subtitle.isNullOrEmpty()) {
-                    Text(subtitle, style = if (settings) SettingsType.Caption else MikaType.Caption, color = c.ink3)
-                }
+                Text(title, style = MikaType.BodyStrong, color = c.ink)
+                if (!subtitle.isNullOrEmpty()) Text(subtitle, style = MikaType.Caption, color = c.ink3)
             }
             trailing()
         }

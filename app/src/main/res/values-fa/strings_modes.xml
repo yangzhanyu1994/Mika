@@ -32,4 +32,11 @@
     <string name="drawer_task_empty">کاری وجود ندارد</string>
     <string name="drawer_task_expanded">باز شده</string>
     <string name="drawer_task_collapsed">جمع شده</string>
+    <string name="drawer_main_chat">گفت‌وگوی اصلی</string>
+    <string name="drawer_model_config">تنظیم مدل‌ها</string>
+    <string name="drawer_language_model">مدل هوش مصنوعی (کار و گفت‌وگو)</string>
+    <string name="drawer_call_model">مدل صوتی بلادرنگ (تماس)</string>
+    <string name="drawer_readout_model">مدل تبدیل متن به گفتار (خواندن پاسخ)</string>
+    <string name="drawer_speech_model">تشخیص گفتار جریانی (ورودی)</string>
+    <string name="drawer_model_website">وب‌سایت رسمی</string>
 </resources>

@@ -66,6 +66,7 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
     onTaskComposerOpened: () -> Unit = {},
     focusTaskId: String? = null,
     onFocusTaskConsumed: () -> Unit = {},
+    openModelCredentials: Boolean = false,
 ) {
     var instructionsOpen by rememberSaveable { mutableStateOf(false) }
     var briefOpen by rememberSaveable { mutableStateOf(false) }
@@ -124,7 +125,7 @@ fun CallSettingsScreen(runtime: CallRuntime, onInstructions: (() -> Unit)? = nul
         else -> workspaceState.SaveableStateProvider("call-workspace") {
             CallSettingsWorkspace(runtime, taskDraft, onBack, { briefOpen = true },
                 standalone, onHelperSetup, onAbout, updateAvailable, focusRequest, initialHistoryCallId,
-                onCreateTask = { creatingTask = true }, onEditTask = { editingTaskId = it })
+                onCreateTask = { creatingTask = true }, onEditTask = { editingTaskId = it }, openModelCredentials = openModelCredentials)
         }
     }
 }
@@ -138,6 +139,7 @@ private fun CallSettingsWorkspace(
     initialHistoryCallId: String?,
     onCreateTask: () -> Unit,
     onEditTask: (String) -> Unit,
+    openModelCredentials: Boolean,
 ) {
     val config by runtime.settings.state.collectAsState()
     val state by runtime.state.collectAsState()
@@ -151,7 +153,13 @@ private fun CallSettingsWorkspace(
     var lastAction by remember { mutableIntStateOf(0) }
     var lastActionWasLockedDial by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<CallActionResult?>(null) }
-    var tab by rememberSaveable { mutableStateOf(if (initialHistoryCallId != null) CallWorkspaceTab.History else CallWorkspaceTab.Receive) }
+    var tab by rememberSaveable {
+        mutableStateOf(when {
+            initialHistoryCallId != null -> CallWorkspaceTab.History
+            openModelCredentials -> CallWorkspaceTab.Settings
+            else -> CallWorkspaceTab.Receive
+        })
+    }
     LaunchedEffect(initialHistoryCallId) {
         if (initialHistoryCallId != null) tab = CallWorkspaceTab.History
     }
@@ -164,7 +172,11 @@ private fun CallSettingsWorkspace(
     var deviceNavigation by rememberSaveable { mutableIntStateOf(0) }
     var handledDeviceNavigation by rememberSaveable { mutableIntStateOf(0) }
     var pendingReuse by remember { mutableStateOf<Pair<String, CallTaskBrief>?>(null) }
-    var dialog by rememberSaveable { mutableStateOf<AnswerSettingEditor?>(null) }
+    var dialog by rememberSaveable {
+        mutableStateOf(AnswerSettingEditor.Credentials.takeIf {
+            openModelCredentials && state.phase == CallPhase.IDLE && state.lockedDialRequestId == null
+        })
+    }
     val idle = state.phase == CallPhase.IDLE
     val pendingLockedDial = state.lockedDialRequestId
     val failureText = stringResource(R.string.calls_action_failed)

@@ -41,4 +41,5 @@
     <string name="assistant_mode_work">工作</string>
     <string name="assistant_routing">正在判断用哪种模式…</string>
     <string name="assistant_routing_unavailable">暂时无法自动分流。请选择聊天或工作，再发送一次。</string>
+    <string name="assistant_follow_up_queued">当前回复结束后发送下一条</string>
 </resources>

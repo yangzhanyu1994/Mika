@@ -29,6 +29,7 @@ class AssistantOverlayTest {
         val pending = mutableStateOf<String?>(question)
         val resolvedMode = mutableStateOf<AssistantMode?>(null)
         val history = mutableStateOf(emptyList<AssistantExchange>())
+        val queued = mutableStateOf(false)
         var sent = ""
         var opened = false
         compose.setContent {
@@ -37,11 +38,13 @@ class AssistantOverlayTest {
                     text = draft.value, partial = "", status = null,
                     listening = false, converting = false, level = { 0f },
                     screenshot = null, photo = null, sending = false, reply = reply.value, displayName = "小蓝",
-                    pendingQuestion = pending.value, history = history.value, revealTurn = 0,
+                    pendingQuestion = pending.value, awaitingReply = pending.value != null,
+                    sendQueued = queued.value, history = history.value, revealTurn = 0,
                     resolvedMode = resolvedMode.value,
                     onOpenConversation = { opened = true },
                     onText = { draft.value = it }, onEdit = {}, onVoice = {}, onScreenshot = {}, onPhoto = {},
-                    onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {}, onSend = { sent = draft.value }, onClose = {},
+                    onRemoveScreenshot = {}, onRemovePhoto = {}, onClear = {},
+                    onSend = { sent = draft.value; queued.value = pending.value != null }, onClose = {},
                 )
             }
         }
@@ -53,10 +56,18 @@ class AssistantOverlayTest {
         }
         compose.onNodeWithText("自动 → 工作").assertIsDisplayed()
         compose.onNodeWithText("14:00").assertIsDisplayed()
+        compose.onNode(hasSetTextAction()).performTextInput("再说一下地点")
+        val send = compose.onNodeWithContentDescription("发送")
+        send.performClick()
+        send.assertIsNotEnabled()
+        compose.runOnIdle { assertEquals("再说一下地点", sent) }
+        compose.onNodeWithText("当前回复结束后发送下一条").assertIsDisplayed()
         compose.runOnIdle {
             reply.value = AssistantReply("任务完成", "**14:00** 项目同步会")
             history.value = listOf(AssistantExchange(question, reply.value.body))
             pending.value = null
+            queued.value = false
+            draft.value = ""
         }
         compose.onNodeWithText("正在准备").assertDoesNotExist()
         val result = compose.onNodeWithText("14:00 项目同步会").assertIsDisplayed()
@@ -64,9 +75,9 @@ class AssistantOverlayTest {
             compose.onNodeWithText(question).fetchSemanticsNode().boundsInRoot.bottom)
         compose.onNodeWithText("查看完整对话").performClick()
         compose.runOnIdle { assertTrue(opened) }
-        compose.onNode(hasSetTextAction()).performTextInput("再说一下地点")
-        compose.onNodeWithContentDescription("发送").performClick()
-        compose.runOnIdle { assertEquals("再说一下地点", sent) }
+        compose.onNode(hasSetTextAction()).performTextInput("结束时间呢")
+        send.performClick()
+        compose.runOnIdle { assertEquals("结束时间呢", sent) }
         compose.runOnIdle {
             reply.value = AssistantReply("任务完成", List(45) { "第 ${it + 1} 段回复。" }.joinToString("\n\n"))
             history.value = listOf(AssistantExchange(question, reply.value.body))
