@@ -1408,6 +1408,8 @@ private fun StatusCard(
     openRun: (String) -> Unit,
     summary: String,
 ) {
+    var shareRequest by remember { mutableStateOf<ShareRequest?>(null) }
+    if (shareRequest != null) ShareCardHost(shareRequest, onDone = { shareRequest = null })
     when (status) {
         ExchangeStatus.Working -> Unit
         ExchangeStatus.WaitingUnlock -> NeedCard(stringResource(R.string.chat_wait_unlock), stringResource(R.string.chat_unlock_body))
@@ -1476,10 +1478,19 @@ private fun StatusCard(
                             Text(stringResource(if (expanded) R.string.collapse else R.string.expand))
                         }
                     }
-                    if (runId != null || status.evidence != null) {
-                        ResultActions(runId, status.evidence, summary, loadSource, openSource, openRun, openReport, openPlayback)
+                    val context = LocalContext.current
+                    ResultActions(runId, status.evidence, summary, loadSource, openSource, openRun, openReport, openPlayback) {
+                        ReadAloudIcon(visibleAnswer, vm)
+                        ResultAction(MikaIcons.Copy, stringResource(R.string.chat_copy)) { copyMessage(context, reply.full) }
+                        ResultAction(MikaIcons.Share, stringResource(R.string.share)) {
+                            shareRequest = ShareRequest(goal, reply.full)
+                        }
                     }
-                    ReadAloudRow(visibleAnswer, vm)
+                    val readText by vm.readAloudText.collectAsState()
+                    val readState by vm.voice.collectAsState()
+                    if (readText == visibleAnswer) (readState as? VoicePlayback.Error)?.let { failure ->
+                        Text(failure.message, Modifier.padding(top = 6.dp), style = MikaType.Caption, color = MikaTheme.colors.bad)
+                    }
                 }
             }
         }
@@ -1511,26 +1522,21 @@ private fun StatusCard(
     }
 }
 
-/** 回答下面的「朗读/停止」;没有配置声音模型时不显示。 */
+/** Keep the selected answer available for retry when speech fails. */
 @Composable
-private fun ReadAloudRow(answer: String, vm: ChatViewModel) {
+private fun ReadAloudIcon(answer: String, vm: ChatViewModel) {
     val ready by vm.canSpeak.collectAsState()
     if (!ready) return
     val playback by vm.voice.collectAsState()
-    val playing = playback is VoicePlayback.Playing || playback is VoicePlayback.Loading
-    val c = MikaTheme.colors
-    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(
-            Modifier.clip(MikaShapes.Pill).clickable(role = Role.Button) { if (playing) vm.stopSpeaking() else vm.speak(answer) }
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Icon(MikaIcons.Sound, null, Modifier.size(14.dp), tint = if (playing) c.accent else c.ink3)
-            Text(
-                stringResource(if (playing) R.string.chat_stop_speaking else R.string.chat_read_aloud),
-                style = MikaType.Caption, color = if (playing) c.accent else c.ink3,
-            )
-        }
+    val selected by vm.readAloudText.collectAsState()
+    val playing = selected == answer && (playback is VoicePlayback.Playing || playback is VoicePlayback.Loading)
+    val label = when {
+        playing -> R.string.chat_stop_speaking
+        selected == answer && playback is VoicePlayback.Error -> R.string.retry
+        else -> R.string.chat_read_aloud
+    }
+    ResultAction(MikaIcons.Sound, stringResource(label)) {
+        if (playing) vm.stopSpeaking() else vm.speak(answer)
     }
 }
 
@@ -1595,6 +1601,7 @@ private fun ResultActions(
     openRun: (String) -> Unit,
     openReport: (String) -> Unit,
     openPlayback: (String) -> Unit,
+    answerActions: (@Composable () -> Unit)? = null,
 ) {
     val source by produceState<EvidenceSource?>(null, runId) { value = runId?.let { loadSource(it) } }
     val colors = MikaTheme.colors
@@ -1605,6 +1612,7 @@ private fun ResultActions(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            answerActions?.invoke()
             if (runId != null) ResultAction(MikaIcons.Clock, stringResource(R.string.chat_view_process)) { openRun(runId) }
             if (evidence != null || !source?.items.isNullOrEmpty() || !source?.screenshots.isNullOrEmpty()) {
                 ResultAction(MikaIcons.Link, sourceLabel(source)) { openSource(runId, evidence) }
@@ -1623,14 +1631,12 @@ private fun ResultActions(
 @Composable
 private fun ResultAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     val colors = MikaTheme.colors
-    Row(
-        Modifier.heightIn(min = 34.dp).clip(MikaShapes.Pill).background(colors.fill)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    Box(
+        Modifier.size(40.dp).clip(MikaShapes.Pill).background(colors.fill)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, Modifier.size(14.dp), tint = colors.ink2)
-        Text(label, style = PillText, color = colors.ink2)
+        Icon(icon, label, Modifier.size(17.dp), tint = colors.ink2)
     }
 }
 

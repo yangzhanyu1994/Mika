@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">通知の原文を今は読み込めません。あとでもう一度お試しください。</string>
     <string name="proactive_know_raw_none">その時間帯の通知の原文は見つかりませんでした。</string>
     <string name="proactive_know_delete_note">このメモを削除</string>
+    <string name="proactive_learn_level_summary">タスクに持ち込み = 各タスクに今日・昨日の要約が付き、通知由来と明記されます。</string>
 </resources>

@@ -205,4 +205,6 @@
     <string name="accent_preview">效果预览</string>
     <string name="accent_preview_reply">你好！我是 Mika，有什么可以帮你？</string>
     <string name="accent_preview_user">帮我整理今天的待办事项。</string>
+    <string name="details">详情</string>
+    <string name="net_proxy_summary">模型请求、更新、内置浏览器和文件环境的命令走这个代理</string>
 </resources>

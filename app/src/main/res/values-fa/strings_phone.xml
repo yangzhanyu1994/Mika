@@ -172,4 +172,6 @@
     <string name="phone_root_note">میکا su را در این گوشی پیدا کرد. برنامهٔ کمکی که با روت شروع می‌شود همچنان با همان کاربر محدودشده و مجوزهای نسخهٔ شروع‌شده از طریق اشکال‌زدایی بی‌سیم اجرا می‌شود.</string>
     <string name="phone_root_entry_on">شروع خودکار برنامهٔ کمکی؛ دستورهای روت روشن</string>
     <string name="phone_root_entry_off">شروع خودکار برنامهٔ کمکی؛ دستورهای روت خاموش</string>
+    <string name="phone_usage_summary_usb">اشکال‌زدایی USB را روشن نگه دارید؛ پس از راه‌اندازی مجدد، دوباره دستور شروع را اجرا کنید.</string>
+    <string name="phone_usage_summary">اشکال‌زدایی USB را روشن نگه دارید؛ پس از راه‌اندازی مجدد، میکا خودش وصل می‌شود.</string>
 </resources>

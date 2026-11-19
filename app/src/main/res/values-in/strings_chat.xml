@@ -249,4 +249,7 @@
     <string name="chat_audio">Audio</string>
     <string name="chat_audio_play">Play</string>
     <string name="chat_audio_stop">Stop</string>
+    <string name="share_card_question">Pertanyaan</string>
+    <string name="share_card_answer">Jawaban</string>
+    <string name="share_card_made_by">Diselesaikan oleh Mika</string>
 </resources>

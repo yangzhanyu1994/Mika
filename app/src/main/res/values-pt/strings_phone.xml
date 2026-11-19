@@ -172,4 +172,6 @@
     <string name="phone_root_note">O Mika encontrou o su neste celular. Um assistente iniciado com root ainda é executado como o mesmo usuário limitado, com as mesmas permissões de um iniciado por depuração wireless.</string>
     <string name="phone_root_entry_on">Início automático do assistente; comandos root ativados</string>
     <string name="phone_root_entry_off">Início automático do assistente; comandos root desativados</string>
+    <string name="phone_usage_summary_usb">Mantenha a depuração USB ativada; após reiniciar, execute o comando de início novamente.</string>
+    <string name="phone_usage_summary">Mantenha a depuração USB ativada; após reiniciar, o Mika se reconecta sozinho.</string>
 </resources>

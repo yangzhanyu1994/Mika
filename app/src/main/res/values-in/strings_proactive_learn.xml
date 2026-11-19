@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">Teks notifikasi tidak dapat dibaca sekarang. Coba lagi nanti.</string>
     <string name="proactive_know_raw_none">Tidak ada teks notifikasi untuk periode itu.</string>
     <string name="proactive_know_delete_note">Hapus catatan ini</string>
+    <string name="proactive_learn_level_summary">Masuk ke tugas = tiap tugas mendapat ringkasan hari ini dan kemarin, ditandai berasal dari notifikasi.</string>
 </resources>

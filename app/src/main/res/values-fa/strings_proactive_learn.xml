@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">اکنون نمی‌توان متن اعلان‌ها را خواند. بعداً دوباره امتحان کنید.</string>
     <string name="proactive_know_raw_none">متن اعلانی برای آن بازه پیدا نشد.</string>
     <string name="proactive_know_delete_note">حذف این یادداشت</string>
+    <string name="proactive_learn_level_summary">وارد وظایف می‌شود = هر وظیفه خلاصهٔ امروز و دیروز را می‌گیرد و مشخص می‌شود که از اعلان‌هاست.</string>
 </resources>

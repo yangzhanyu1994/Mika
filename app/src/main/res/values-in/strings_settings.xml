@@ -205,4 +205,6 @@
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
+    <string name="details">Detail</string>
+    <string name="net_proxy_summary">Permintaan model, pembaruan, peramban bawaan, dan perintah lingkungan file memakai proxy ini.</string>
 </resources>

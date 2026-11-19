@@ -172,4 +172,6 @@
     <string name="phone_root_note">Mika menemukan su di ponsel ini. Pembantu yang dimulai dengan root tetap berjalan sebagai pengguna terbatas yang sama, dengan izin yang sama seperti melalui debug nirkabel.</string>
     <string name="phone_root_entry_on">Pembantu mulai otomatis; perintah root aktif</string>
     <string name="phone_root_entry_off">Pembantu mulai otomatis; perintah root nonaktif</string>
+    <string name="phone_usage_summary_usb">Biarkan USB debugging menyala; setelah mulai ulang, jalankan lagi perintah start.</string>
+    <string name="phone_usage_summary">Biarkan USB debugging menyala; setelah mulai ulang, Mika tersambung lagi sendiri.</string>
 </resources>

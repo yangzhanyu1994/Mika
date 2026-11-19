@@ -119,6 +119,15 @@ open class ScreenAccessibility : AccessibilityService() {
         return dispatch(displayId, (0 until count).map { i -> GestureDescription.StrokeDescription(at, i * (holdMs + gapMs), holdMs.coerceAtLeast(1)) })
     }
 
+    /** Global back follows the active window, so only use it for the requested display. */
+    fun performGlobalBackOn(displayId: Int): Boolean {
+        val service = instance.value ?: return false
+        if (service.rootInActiveWindow?.window?.displayId != displayId) return false
+        val performed = service.performGlobalAction(GLOBAL_ACTION_BACK)
+        Log.i(TAG, "performGlobalBack display=$displayId ok=$performed")
+        return performed
+    }
+
     private suspend fun dispatch(displayId: Int, strokes: List<GestureDescription.StrokeDescription>): Boolean {
         val service = instance.value ?: return false
         val gesture = GestureDescription.Builder()

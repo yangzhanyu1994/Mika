@@ -271,4 +271,7 @@
     <string name="chat_audio">Audio</string>
     <string name="chat_audio_play">Play</string>
     <string name="chat_audio_stop">Stop</string>
+    <string name="share_card_question">Pregunta</string>
+    <string name="share_card_answer">Respuesta</string>
+    <string name="share_card_made_by">Completado por Mika</string>
 </resources>

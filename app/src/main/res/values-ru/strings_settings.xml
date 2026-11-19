@@ -217,4 +217,6 @@
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
+    <string name="details">Подробнее</string>
+    <string name="net_proxy_summary">Запросы модели, обновления, встроенный браузер и команды файлового окружения идут через этот прокси.</string>
 </resources>
