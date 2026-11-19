@@ -162,3 +162,10 @@ dependencies {
 tasks.withType<Test>().configureEach {
     inputs.file(rootProject.file("licenses/THIRD_PARTY_NOTICES.md")).withPropertyName("thirdPartyNotices")
 }
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    if (name == "testDebugUnitTest") {
+        testLogging.events("started", "passed", "skipped", "failed")
+        timeout.set(java.time.Duration.ofMinutes(8))
+    }
+}
