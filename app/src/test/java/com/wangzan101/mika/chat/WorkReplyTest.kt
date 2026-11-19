@@ -41,4 +41,30 @@ class WorkReplyTest {
         val reply = WorkReply.from("${WorkReply.DETAILS_MARKER}\n有结果。")
         assertEquals(WorkReply("有结果。", "有结果。"), reply)
     }
+
+    @Test fun receiptAndTimestampDoNotHideActualVehicleFindings() {
+        val opening = "车况已经读到了，数据更新时间是 **2026-11-19 18:30:47**（页面「车辆状态」里的「更新于」）。"
+        val facts = "- 发动机：熄火\n- 挡位：P 挡\n- 车门和车窗：关闭"
+        val details = "**车辆状态**\n\n$facts\n- 车辆数据来源：车主应用"
+        val full = "$opening\n\n$details"
+        assertEquals(WorkReply(facts, full), WorkReply.from(full))
+        assertEquals(facts, WorkReply.from("$opening\n$details").summary)
+        assertEquals(WorkReply(facts, full), WorkReply.from("$opening\n\n${WorkReply.DETAILS_MARKER}\n\n$details"))
+    }
+
+    @Test fun missingFindingsAreNotInventedAndAnUnconfirmedFactIsKept() {
+        val opening = "车况已经读到了，数据更新时间是 **18:30:47**。"
+        assertEquals(WorkReply(opening, opening), WorkReply.from(opening))
+
+        val summary = "$opening 车锁状态未能确认。"
+        val answer = "$summary\n\n${WorkReply.DETAILS_MARKER}\n- 挡位：P 挡"
+        assertEquals(summary, WorkReply.from(answer).summary)
+    }
+
+    @Test fun genericReceiptFallbackIsNotLimitedToVehicles() {
+        val opening = "I retrieved the requested data. Last updated at 09:12."
+        val details = "### Departures\n\n- Next train: 09:42\n- Platform: 3\n- Delay: 8 minutes"
+        val reply = WorkReply.from("$opening\n\n${WorkReply.DETAILS_MARKER}\n\n$details")
+        assertEquals("- Next train: 09:42\n- Platform: 3\n- Delay: 8 minutes", reply.summary)
+    }
 }
