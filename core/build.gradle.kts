@@ -1,3 +1,5 @@
+import java.util.Base64
+
 import com.google.protobuf.gradle.*
 
 plugins {
@@ -157,4 +159,18 @@ val cliTest by tasks.registering(Exec::class) {
     dependsOn(cliContractTest)
     workingDir(rootProject.projectDir)
     commandLine(providers.gradleProperty("mikaPython").getOrElse("python3"), "-m", "unittest", "discover", "-s", "tools/mika/tests", "-v")
+}
+
+tasks.named<org.gradle.api.tasks.testing.Test>("test") {
+    doLast {
+        val root = file("src/test/resources")
+        listOf("prompt-surface", "loop-snapshots").forEach { folder ->
+            fileTree(root.resolve(folder)).matching {
+                include("**/*.sha256", "**/sizes.txt")
+            }.files.sorted().forEach { snapshot ->
+                println("MIKA_FIXTURE " + snapshot.relativeTo(root).invariantSeparatorsPath + " " +
+                    Base64.getEncoder().encodeToString(snapshot.readBytes()))
+            }
+        }
+    }
 }
