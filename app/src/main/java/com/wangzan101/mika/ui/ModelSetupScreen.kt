@@ -128,6 +128,7 @@ fun ModelSetupScreen(
     var openProvider by rememberSaveable { mutableStateOf<String?>(null) }
     var allModels by rememberSaveable { mutableStateOf(false) }
     var showProviders by rememberSaveable { mutableStateOf(false) }
+    var showDecision by rememberSaveable { mutableStateOf(false) }
     val openProviderForm = {
         showProviders = !onboarding
         vm.openForm()
@@ -161,6 +162,7 @@ fun ModelSetupScreen(
         pickRole = { picking = it }, pickFallback = { pickingFallback = it }, openProviders = { showProviders = true },
         next = onDone, openSpeech = onOpenSpeech, openVoice = onOpenVoice, openUsage = onOpenUsage,
         openSignIn = { signInSheet = it }, setReasoningEffort = vm::setReasoningEffort,
+        openDecision = { showDecision = true },
         setModelContext = vm::setModelContext,
     )
     when {
@@ -248,6 +250,10 @@ fun ModelSetupScreen(
                 onBack = { picking = null },
             )
         }
+        showDecision -> JevSettingsScreen(
+            remember { com.wangzan101.mika.settings.DecisionSettings.get(context) },
+            onBack = { showDecision = false },
+        )
         showProviders -> {
             BackHandler { showProviders = false }
             PageScaffold(ModelsCopy.PROVIDERS, onBack = { showProviders = false }) {
@@ -311,6 +317,7 @@ class ModelSetupActions(
     /** 打开 Token 用量;为 null 时不显示入口(上手流程)。 */
     val openUsage: (() -> Unit)? = null,
     val openProviders: (() -> Unit)? = null,
+    val openDecision: (() -> Unit)? = null,
     val next: () -> Unit = {},
     /** 打开一家账号登录的说明面板。 */
     val openSignIn: (SignInKind) -> Unit = {},
@@ -362,6 +369,12 @@ fun ModelSetupContent(ui: ModelSetupUi, onboarding: Boolean, actions: ModelSetup
                         }
                     }
                     RolesSection(ui, onPick, actions.setReasoningEffort, actions.openSpeech, actions.openVoice, actions.setModelContext, actions.pickFallback)
+                    actions.openDecision?.let { open ->
+                        GroupCard {
+                            ListRow(MikaIcons.Route, stringResource(R.string.jev_title), stringResource(R.string.jev_row_sub),
+                                first = true, onClick = open) { RowChevron() }
+                        }
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
             }

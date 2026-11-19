@@ -183,6 +183,7 @@ class AgentLoop(
     private val personaLabel: String? = null,
     /** 插件提示词钩子:拼好的系统提示词发模型前过它;为 null 时原样发。 */
     private val promptTransform: (suspend (String) -> String)? = null,
+    intentDecision: com.wangzan101.mika.core.decision.DecisionModel? = null,
 ) {
     init {
         require(maxSteps > 0) { "maxSteps must be positive" }
@@ -201,7 +202,11 @@ class AgentLoop(
     }
 
     private val caller = ModelCaller(model, tools, router, flags, retry, ::emit, ::now, autonomous, trace, modelFallbacks, modelChainTags)
-    private val intentGate = intentJudge?.let { IntentGate(it, model.takeUnless { main -> main === it }) }
+    private val intentGate = intentJudge?.let { judge ->
+        IntentGate(judge, model.takeUnless { it === judge }, decision = intentDecision) { outcome ->
+            emit(RunEvent.State(now(), "intent_decision", outcome))
+        }
+    }
     private val routeMatcher = routes
     /** 本任务的上下文生成器(外壳、预算、已给过的参考资料)。 */
     private var ctx = ContextBuilder()
