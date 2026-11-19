@@ -81,4 +81,5 @@
     <string name="screens_waiting">Waiting</string>
     <string name="screens_needs_you">Needs you</string>
     <string name="screens_zoom">Enlarge this screen</string>
+    <string name="task_no_phone_helper_shizuku" translatable="false">Phone control isn’t ready. Start Shizuku and grant Mika permission (or check Phone control in Settings). Web and file tasks aren’t affected.</string>
 </resources>

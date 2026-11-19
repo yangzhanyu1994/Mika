@@ -70,8 +70,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val SHIZUKU_SETUP_GUIDE_URL = "https://shizuku.rikka.app/guide/setup/"
+
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive }
+private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -100,23 +102,37 @@ fun SettingsScreen(
     onOpenPersonas: (() -> Unit)? = null,
     onOpenBrowser: (() -> Unit)? = null,
     onOpenFiles: (() -> Unit)? = null,
+    openPhoneOps: Boolean = false,
+    onPhoneOpsOpened: () -> Unit = {},
 ) {
     val configs by store.configs.collectAsState()
     val roles by store.roles.collectAsState()
     // 开发者选项里的「看图定位已验证」跟着看图模型(看图用主模型时是主模型那条配置)
     val visionConfig = remember(configs, roles) { store.configFor(ModelRole.Vision) }
-    var page by rememberSaveable { mutableStateOf(SettingsPage.Home) }
+    var page by rememberSaveable { mutableStateOf(if (openPhoneOps) SettingsPage.PhoneOps else SettingsPage.Home) }
     var explaining by remember { mutableStateOf<Problem?>(null) }
     // 「完全退出」先问一句:任务、胶囊和通知都会停
     var confirmingQuit by remember { mutableStateOf(false) }
 
-    fun fix(f: Fix) = if (f == Fix.AddModel) onOpenModels() else onFix(f)
+    LaunchedEffect(openPhoneOps) {
+        if (openPhoneOps) {
+            page = SettingsPage.PhoneOps
+            onPhoneOpsOpened()
+        }
+    }
+
+    fun fix(f: Fix) = when (f) {
+        Fix.AddModel -> onOpenModels()
+        Fix.OpenPhoneOps -> page = SettingsPage.PhoneOps
+        else -> onFix(f)
+    }
     val onProblem: (Problem) -> Unit = { p -> StatusCopy.directFix(p)?.let(::fix) ?: run { explaining = p } }
 
     // 并行任务的上限只在实验开关 parallelTasks 打开时出现;设备能力按此刻算,第二块屏建失败过就按失败算
     val context = LocalContext.current
     val recommendedTasks = remember { (context.applicationContext as com.wangzan101.mika.MikaApp).recommendedTasks }
-    val root = remember { com.wangzan101.mika.cap.phone.PhoneServices.of(context).shellManager.root }
+    val shellManager = remember { com.wangzan101.mika.cap.phone.PhoneServices.of(context).shellManager }
+    val root = remember { shellManager.root }
     val rootState by root.state.collectAsState()
     LaunchedEffect(Unit) { root.refresh() }
     val wechat = remember { (context.applicationContext as com.wangzan101.mika.MikaApp).wechat }
@@ -216,6 +232,7 @@ fun SettingsScreen(
             personalStart = personalStart,
             onPersonalStart = { flags.setPersonalStart(it); personalStart = it },
             onOpenMemory = onOpenMemory,
+            onOpenBackup = { page = SettingsPage.Backup },
             onOpenRecommendations = { page = SettingsPage.Recommendations },
             onOpenProactive = { page = SettingsPage.Proactive },
             onOpenPersonas = onOpenPersonas,
@@ -243,6 +260,14 @@ fun SettingsScreen(
         SettingsPage.PhoneOps -> PhoneOpsScreen(
             status, androidRelease, onProblem,
             onRepair = { onFix(Fix.RepairPhoneHelper) }, onUnpair = { onFix(Fix.UnpairPhoneHelper) }, onBack = toHome,
+            onSelectTransport = { shellManager.engine.selectTransport(it) },
+            onGrantShizuku = {
+                if (!shellManager.shizuku.openGrantPermissionOrApp(context)) {
+                    openInBrowser(context, SHIZUKU_SETUP_GUIDE_URL)
+                }
+            },
+            onOpenShizukuGuide = { openInBrowser(context, SHIZUKU_SETUP_GUIDE_URL) },
+            onRefreshShizuku = { shellManager.refreshShizukuAsync() },
         )
         SettingsPage.Calls -> {
             val app = context.applicationContext as com.wangzan101.mika.MikaApp
@@ -298,6 +323,7 @@ fun SettingsScreen(
         )
         SettingsPage.RunStats -> RunStatsScreen(remember { RunStore(context).metrics }, onBack = back)
         SettingsPage.Proactive -> com.wangzan101.mika.proactive.ProactiveScreen(onBack = back)
+        SettingsPage.Backup -> BackupScreen(onBack = toHome)
     }
 
     if (editingProxy) NetProxyDialog(
@@ -403,6 +429,7 @@ fun SettingsContent(
     language: AppLanguage = AppLanguage.System,
     onOpenLanguage: () -> Unit = {},
     onOpenMemory: (() -> Unit)? = null,
+    onOpenBackup: (() -> Unit)? = null,
     onOpenRecommendations: () -> Unit = {},
     onOpenProactive: (() -> Unit)? = null,
     onOpenPersonas: (() -> Unit)? = null,
@@ -498,9 +525,13 @@ fun SettingsContent(
             onOpenMemory?.let {
                 ListRow(MikaIcons.Heart, stringResource(R.string.settings_memory_data), stringResource(R.string.settings_memory_sub), first = true, onClick = it) { RowChevron() }
             }
+            onOpenBackup?.let {
+                ListRow(MikaIcons.Download, stringResource(R.string.backup_title), stringResource(R.string.backup_sub),
+                    first = onOpenMemory == null, onClick = it) { RowChevron() }
+            }
             ListRow(
                 MikaIcons.Wrench, stringResource(R.string.settings_network_diagnostics), stringResource(R.string.settings_advanced_sub),
-                first = onOpenMemory == null, onClick = onOpenAdvanced,
+                first = onOpenMemory == null && onOpenBackup == null, onClick = onOpenAdvanced,
             ) { RowChevron() }
             ListRow(MikaIcons.Info, stringResource(R.string.settings_about), onClick = onOpenAbout) {
                 TrailingValue(AboutCopy.settingsValue(updateVersion, versionName))
