@@ -514,7 +514,11 @@ class AndroidScreen(
 
     override suspend fun back(): ActionResult = withContext(Dispatchers.IO) {
         if (!hasDisplay) return@withContext NO_APP_OPEN
-        verified { shell.injectKey(displayId, KeyEvent.KEYCODE_BACK) }
+        verified(fallback = { clock ->
+            val control = com.wangzan101.mika.core.uistate.BackAffordance.find(peek().elements, screenWidth, screenHeight)
+            clock.mark()
+            (control != null && tapAt(control.centerX, control.centerY)) || a11y.performGlobalBackOn(displayId)
+        }) { shell.injectKey(displayId, KeyEvent.KEYCODE_BACK) }
     }
 
     override suspend fun pressKey(keyCode: Int): ActionResult = withContext(Dispatchers.IO) {

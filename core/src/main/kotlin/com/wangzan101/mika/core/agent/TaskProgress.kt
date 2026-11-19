@@ -91,6 +91,13 @@ internal object CompletionPlanBlock {
         return if (suffix.length >= 2 && OPEN.startsWith(suffix)) last else -1
     }
 
+    fun fromCall(body: String): Extracted = try {
+        require(body.length <= MAX_BLOCK) { "task_progress block is too long" }
+        Extracted("", listOf(parse(body)), emptyList())
+    } catch (error: IllegalArgumentException) {
+        Extracted("", emptyList(), listOf(error.message ?: "invalid task_progress call"))
+    }
+
     fun extract(text: String): Extracted {
         val updates = mutableListOf<CompletionUpdate>()
         val errors = mutableListOf<String>()

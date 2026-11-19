@@ -11,6 +11,7 @@ import com.wangzan101.mika.core.model.Role
 import com.wangzan101.mika.core.model.StreamingChatModel
 import com.wangzan101.mika.core.model.ToolSpec
 import com.wangzan101.mika.core.model.Usage
+import com.wangzan101.mika.core.net.RateLimitGovernor
 import com.wangzan101.mika.core.record.Redactor
 import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.tool.ToolDispatcher
@@ -146,7 +147,7 @@ internal class ModelCaller(
                 (e is ModelError.Server && e.status in 400..499)) r.disable()
             null
         }
-        val first = light?.parts?.filterIsInstance<Part.ToolCall>()?.firstOrNull()
+        val first = light?.parts?.firstActionCall()
         if (first != null && !needsMain(first)) return light to picked
         r.noteTrouble()
         val text = light?.parts?.filterIsInstance<Part.Text>()?.joinToString("") { it.text }?.trim().orEmpty()
@@ -251,6 +252,7 @@ internal class ModelCaller(
             try {
                 // 差异的 base 被裁掉或折叠时,下一次写操作要发全量
                 if (tools.inlineScreen) tools.setVisibleObservations(visibleReads(sent.messages))
+                if (policy.maxRetries > 0) RateLimitGovernor.awaitClear(using.name)
                 // Count time from the first actual request only once a new attempt is sent.
                 val sentAt = now()
                 lastRetryWaitMs = firstAttemptAt?.let { sentAt - it } ?: 0L
@@ -274,6 +276,7 @@ internal class ModelCaller(
                     trace.modelCall(step, using, tools::verb, change, sent.messages) { send() }
                 }
                 return reply.also { r ->
+                    if (policy.maxRetries > 0) RateLimitGovernor.reportSuccess(using.name)
                     lastOverhead[using] = overhead
                     r.usage?.let { compressor.calibrate(sent.estimate + overhead, it.inputTokens) }
                 }
@@ -289,6 +292,14 @@ internal class ModelCaller(
                 if (!again) throw e
             } catch (e: ModelError) {
                 onText?.invoke("")
+                if (e is ModelError.RateLimited && policy.maxRetries > 0) {
+                    val wait = RateLimitGovernor.reportRateLimited(using.name, e.retryAfterMs)
+                    taskRetryWaitMs += wait.coerceAtLeast(1_000L)
+                    if (taskRetryWaitMs > policy.taskWaitBudgetMs) throw e
+                    retries += 1
+                    emit(RunEvent.State(now(), "model_retry", "${roleOf(using)} rate_limited #$retries ${wait}ms"))
+                    continue
+                }
                 val wait = policy.delayFor(e, retries, taskRetryWaitMs) ?: throw e
                 retries += 1
                 taskRetryWaitMs += wait

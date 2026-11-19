@@ -1135,7 +1135,16 @@ class ShellService(
         val now = SystemClock.uptimeMillis()
         val down = KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, 0, VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD)
         val up = KeyEvent.changeAction(down, KeyEvent.ACTION_UP)
-        return injectPair(down, up, displayId) { exec("input", "-d", "$displayId", "keyevent", "$keyCode") == 0 }
+        var usedShellCommand = false
+        val injected = injectPair(down, up, displayId) {
+            usedShellCommand = true
+            exec("input", "-d", "$displayId", "keyevent", "$keyCode") == 0
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            val channel = if (usedShellCommand) "shell" else "input-manager"
+            Log.i(TAG, "injectKey BACK display=$displayId channel=$channel ok=$injected")
+        }
+        return injected
     }
 
     /** 自有虚拟屏上的 Ctrl+A / Ctrl+V,同时发送修饰键按下和抬起;松开修饰键失败不会把已经发出的正文判成未发送。 */

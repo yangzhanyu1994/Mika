@@ -11,6 +11,7 @@ import com.wangzan101.mika.core.oauth.OauthTokenResult
 import com.wangzan101.mika.core.oauth.OpenRouterAuth
 import com.wangzan101.mika.core.oauth.XaiAuth
 import com.wangzan101.mika.core.model.AnthropicModel
+import com.wangzan101.mika.core.model.ApiKeyText
 import com.wangzan101.mika.core.model.BearerToken
 import com.wangzan101.mika.core.model.Capabilities
 import com.wangzan101.mika.core.model.Author
