@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -257,13 +256,13 @@ internal fun ChatDrawer(
     onOpenPlan: (String) -> Unit = { onPlans() },
     onOpenCallTask: (String) -> Unit = {},
     tasks: DrawerTasks = DrawerTasks(),
+    modelStatuses: DrawerModelStatuses? = null,
     onScenes: () -> Unit = {},
     onMemory: () -> Unit,
     onModels: () -> Unit = {},
     onCallModel: () -> Unit = {},
     onReadoutModel: () -> Unit = {},
     onSpeechModel: () -> Unit = {},
-    onOpenModelUrl: (String) -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -277,6 +276,7 @@ internal fun ChatDrawer(
     /** 长按一条存过的对话:在它原地弹出操作菜单(置顶、改名、删除);带上那一行在窗口里的位置和大小。 */
     onActions: (DrawerConversation, Rect) -> Unit = { _, _ -> },
     onPersonal: () -> Unit = {},
+    onNewSideChat: () -> Unit = {},
     /** 多选模式:每行左边出现勾选框,点一行是勾选;底部换成「已选 N 条 / 全选 / 删除」。 */
     selecting: Boolean = false,
     selected: Set<String> = emptySet(),
@@ -327,6 +327,7 @@ internal fun ChatDrawer(
             }
         }
         if (canSearch && !selecting) DrawerSearchField(query, onQueryChange)
+        var conversationsExpanded by rememberSaveable { mutableStateOf(true) }
         var modelsExpanded by rememberSaveable { mutableStateOf(false) }
         var runningExpanded by rememberSaveable { mutableStateOf(true) }
         var scheduledExpanded by rememberSaveable { mutableStateOf(false) }
@@ -335,7 +336,7 @@ internal fun ChatDrawer(
         val list = rememberLazyListState()
         val first = when {
             searchActive -> "h-search"
-            !selecting -> "main-chat"
+            !selecting -> "conversation-tasks"
             sections.running.isNotEmpty() -> "h-running"
             sections.pinned.isNotEmpty() -> "h-pinned"
             sections.recent.isNotEmpty() -> "h-recent"
@@ -365,25 +366,36 @@ internal fun ChatDrawer(
                 }
             } else {
                 if (!selecting) {
-                    item("main-chat") {
-                        NavEntry(MikaIcons.Message, stringResource(R.string.drawer_main_chat),
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onPersonal)
+                    item("conversation-tasks") {
+                        DrawerTaskLabel(R.string.drawer_conversation_tasks, conversationsExpanded,
+                            onToggle = { conversationsExpanded = !conversationsExpanded })
                     }
-                    item("memory-skills") {
-                        NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills),
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp), onClick = onMemory)
+                    if (conversationsExpanded) {
+                        item("main-chat") {
+                            NavEntry(MikaIcons.Message, stringResource(R.string.drawer_main_chat),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), compact = true, onClick = onPersonal)
+                        }
+                        item("new-side-chat") {
+                            NavEntry(MikaIcons.New, stringResource(R.string.drawer_new_side_chat),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), enabled = canSwitch,
+                                compact = true, onClick = onNewSideChat)
+                        }
+                        item("memory-skills") {
+                            NavEntry(MikaIcons.Heart, stringResource(R.string.memory_and_skills),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp), compact = true, onClick = onMemory)
+                        }
                     }
                     item("model-config") {
                         DrawerTaskLabel(R.string.drawer_model_config, modelsExpanded,
+                            badge = modelStatuses?.summary?.takeUnless { modelsExpanded },
                             onToggle = { modelsExpanded = !modelsExpanded })
                     }
                     if (modelsExpanded) item("model-config-entries") {
                         Column(Modifier.padding(horizontal = 12.dp)) {
-                            DrawerModelEntry(R.string.drawer_language_model, "https://platform.deepseek.com/usage",
-                                onModels, onOpenModelUrl)
-                            DrawerModelEntry(R.string.drawer_call_model, ARK_MODEL_CONSOLE, onCallModel, onOpenModelUrl)
-                            DrawerModelEntry(R.string.drawer_readout_model, ARK_MODEL_CONSOLE, onReadoutModel, onOpenModelUrl)
-                            DrawerModelEntry(R.string.drawer_speech_model, ARK_MODEL_CONSOLE, onSpeechModel, onOpenModelUrl)
+                            DrawerModelEntry(R.string.drawer_language_model, modelStatuses?.language, onModels)
+                            DrawerModelEntry(R.string.drawer_call_model, modelStatuses?.call, onCallModel)
+                            DrawerModelEntry(R.string.drawer_readout_model, modelStatuses?.readout, onReadoutModel)
+                            DrawerModelEntry(R.string.drawer_speech_model, modelStatuses?.speech, onSpeechModel)
                         }
                     }
                     item("h-running") {
@@ -410,7 +422,7 @@ internal fun ChatDrawer(
                     if (scheduledExpanded) {
                         if (tasks.scheduled.isEmpty()) item("scheduled-empty") { DrawerTaskEmpty() }
                         items(tasks.scheduled, key = { "splan-${it.id}" }) { task ->
-                            DrawerTaskEntry(task.title, task.detail) { onOpenPlan(task.id) }
+                            DrawerTaskEntry(task.title, task.detail, task.badge) { onOpenPlan(task.id) }
                         }
                         item("scheduled-manage") {
                             NavEntry(MikaIcons.Clock, stringResource(R.string.drawer_plans),
@@ -424,7 +436,7 @@ internal fun ChatDrawer(
                     if (automationExpanded) {
                         if (tasks.automation.isEmpty()) item("automation-empty") { DrawerTaskEmpty() }
                         items(tasks.automation, key = { "auto-${it.source}-${it.id}" }) { task ->
-                            DrawerTaskEntry(task.title, task.detail) {
+                            DrawerTaskEntry(task.title, task.detail, task.badge) {
                                 if (task.source == DrawerTaskSource.Plan) onOpenPlan(task.id) else onScenes()
                             }
                         }
@@ -440,7 +452,7 @@ internal fun ChatDrawer(
                     if (callsExpanded) {
                         if (tasks.calls.isEmpty()) item("calls-empty") { DrawerTaskEmpty() }
                         items(tasks.calls, key = { "call-${it.id}" }) { task ->
-                            DrawerTaskEntry(task.title, task.detail) { onOpenCallTask(task.id) }
+                            DrawerTaskEntry(task.title, task.detail, task.badge) { onOpenCallTask(task.id) }
                         }
                         item("calls-manage") {
                             NavEntry(MikaIcons.Phone, stringResource(R.string.drawer_calls_title),
@@ -554,26 +566,17 @@ private fun DeleteStatusBar(batch: DeleteBatch) {
     }
 }
 
-private const val ARK_MODEL_CONSOLE = "https://ark.volcengine.com/region:cn-beijing/openManagement?advancedActiveKey=model"
-
 @Composable
-private fun DrawerModelEntry(
-    label: Int,
-    url: String,
-    onConfigure: () -> Unit,
-    onOpenUrl: (String) -> Unit,
-) {
+private fun DrawerModelEntry(label: Int, badge: DrawerBadge?, onConfigure: () -> Unit) {
     val colors = MikaTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            stringResource(label),
-            Modifier.weight(1f).heightIn(min = 48.dp).wrapContentHeight()
-                .clip(NavShape).clickable(role = Role.Button, onClick = onConfigure).padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MikaType.Caption, color = colors.ink,
-        )
-        TextButton(onClick = { onOpenUrl(url) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Text(stringResource(R.string.drawer_model_website), style = MikaType.Hint, color = colors.accent)
-        }
+    Row(
+        Modifier.fillMaxWidth().clip(NavShape).clickable(role = Role.Button, onClick = onConfigure)
+            .heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(label), Modifier.weight(1f), style = MikaType.Caption, color = colors.ink)
+        badge?.let { DrawerStatusBadge(it) }
     }
 }
 
@@ -841,7 +844,6 @@ fun ChatWithDrawer(
     onCallModel: () -> Unit = {},
     onReadoutModel: () -> Unit = {},
     onSpeechModel: () -> Unit = {},
-    onOpenModelUrl: (String) -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -854,6 +856,7 @@ fun ChatWithDrawer(
     reopen: Boolean = false,
     onReopened: () -> Unit = {},
     onPersonal: () -> Unit = {},
+    onNewSideChat: () -> Unit = {},
     onRegularChat: () -> Unit = {},
     /** 外部跳回对话页时变化:若之前因返回键留在展开的侧栏,当场收起侧栏。 */
     resetKey: Int = 0,
@@ -1040,6 +1043,8 @@ fun ChatWithDrawer(
                     search = searchView,
                     canSearch = candidates.isNotEmpty(),
                     onPersonal = { leave(onPersonal) },
+                    onNewSideChat = { close(onNewSideChat) },
+                    modelStatuses = rememberDrawerModelStatuses(open),
                     onPlans = { leave(onPlans) },
                     onOpenPlan = { id -> leave { onOpenPlan(id) } },
                     onOpenCallTask = { id -> leave { onOpenCallTask(id) } },
@@ -1049,7 +1054,6 @@ fun ChatWithDrawer(
                     onCallModel = { leave(onCallModel) },
                     onReadoutModel = { leave(onReadoutModel) },
                     onSpeechModel = { leave(onSpeechModel) },
-                    onOpenModelUrl = onOpenModelUrl,
                     onSettings = { leave(onSettings) },
                     onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },

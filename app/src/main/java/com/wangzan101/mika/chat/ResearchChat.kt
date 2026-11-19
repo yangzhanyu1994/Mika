@@ -60,6 +60,8 @@ internal class ResearchChat(
     private val _pending = MutableStateFlow<Map<String, ResearchDraft>>(emptyMap())
     val pending = _pending.asStateFlow()
 
+    fun canSearch(): Boolean = canDelegate() && WebSearchSettings.get(app).service() != null
+
     fun canDelegate(): Boolean = providers.configFor(ModelRole.Chat)?.capabilities?.toolCalls == true
 
     fun send(id: String, question: String, onWork: (() -> Boolean)? = null): Boolean = send(
@@ -156,6 +158,8 @@ internal class ResearchChat(
         val search = WebSearchSettings.get(app).service().takeIf { model.capabilities.toolCalls }
         val tools = if (search != null) listOf(SEARCH) else emptyList()
         val delegating = allowWork && model.capabilities.toolCalls
+        val liveWeather = delegating && isLiveWeatherRequest(question)
+        if (liveWeather && search == null) return null
         val persona = if (FeatureFlags.get(app).persona()) {
             (app as? MikaApp)?.personas?.get(store.persona(id)?.personaId)
         } else null
@@ -186,8 +190,11 @@ internal class ResearchChat(
             val reply = request(if (mayDelegate) tools + WORK else tools, stream = !mayDelegate)
             val calls = reply.parts.filterIsInstance<Part.ToolCall>()
             if (requestsWorkHandoff(calls, mayDelegate)) return null
-            if (calls.isEmpty()) return reply.parts.filterIsInstance<Part.Text>().joinToString("\n") { it.text }
-                .ifBlank { error("Empty reply") }
+            if (calls.isEmpty()) {
+                if (liveWeather && completedQueries.isEmpty()) return null
+                return reply.parts.filterIsInstance<Part.Text>().joinToString("\n") { it.text }
+                    .ifBlank { error("Empty reply") }
+            }
             onDraft(ResearchPhase.Searching, "")
             messages += Message(Role.Assistant, reply.parts, Author.Mika)
             val results = calls.mapIndexed { index, call ->
@@ -206,6 +213,7 @@ internal class ResearchChat(
             }
             messages += Message(Role.Tool, results, Author.Mika)
         }
+        if (liveWeather && completedQueries.isEmpty()) return null
         return request(emptyList()).parts.filterIsInstance<Part.Text>()
             .joinToString("\n") { it.text }.ifBlank { error("Empty reply") }
     }
@@ -214,7 +222,7 @@ internal class ResearchChat(
         when (val result = search.search(query, 5)) {
             is WebSearchResult.Success -> Part.ToolResult(id, result.hits.joinToString("\n\n") {
                 Untrusted.wrap("${it.title.take(300)}\n${it.url.take(500)}\n${it.snippet.take(1_000)}")
-            }.ifEmpty { "No results." }, false)
+            }.ifEmpty { "No results." }, result.hits.isEmpty())
             is WebSearchResult.Failure -> Part.ToolResult(id, "Search failed.", true)
         }
 
@@ -233,7 +241,9 @@ Use request_work before replying when the user asks you to do something that req
 an app-specific workflow, personalized app results, private data, or performing an action.
 This includes read-only checks, such as “我想买点水果帮我看看美团附近水果店” or “帮我看看我的日历”.
 A request for weather near the user, such as “我附近天气如何”, needs the current location. Hand it to Work.
-For weather in a city the user named, use public information.
+For a current forecast in a named city, call web_search if offered. If it is not offered, call request_work.
+For other time-sensitive public information without web_search, call request_work when a public page or app can answer the
+read-only request. Never promise a result from unavailable data. Keep instructions, historical explanations and hypothetical actions in Chat.
 Use recent turns to understand follow-ups like “第二家有车厘子吗？” after looking up app listings.
 Answer advice, public information, drafts and instructions yourself. “美团里怎么找水果店？” asks for instructions.
 If the intended app or action is materially ambiguous, ask one short question.

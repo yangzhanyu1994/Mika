@@ -60,9 +60,12 @@ import com.wangzan101.mika.ui.theme.MikaType
 import java.time.DayOfWeek
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.UUID
+
+private enum class PlanClockPick { First, Recurring, Add }
 
 /** 新建和编辑共用一份草稿；预览不另猜时间，直接显示将要保存的计划。 */
 @OptIn(ExperimentalLayoutApi::class)
@@ -84,11 +87,32 @@ fun PlanEditorDialog(
     var attempted by remember(original?.id) { mutableStateOf(false) }
     var parsing by remember { mutableStateOf(false) }
     var parseNote by remember { mutableStateOf<String?>(null) }
+    var pickClock by remember { mutableStateOf<PlanClockPick?>(null) }
     val scope = rememberCoroutineScope()
     val candidate = runCatching {
         editedTrigger(draft, original, newId, newThreadId, System.currentTimeMillis())
     }
     val preview = candidate.getOrNull()
+
+    pickClock?.let { pick ->
+        val times = draft.clock.split(',', '，', '、', ';', '；', '،', '\n').map(String::trim).filter(String::isNotEmpty)
+        val first = draft.firstAt.substringAfterLast(' ', "")
+        val currentText = if (pick == PlanClockPick.First) first else times.firstOrNull().orEmpty()
+        val current = runCatching { LocalTime.parse(currentText) }.getOrDefault(LocalTime.of(9, 0))
+        ClockWheelDialog(tr(R.string.clock_pick), current.hour * 60 + current.minute, { pickClock = null }) { minute ->
+            val chosen = formatClockMinute(minute)
+            draft = when (pick) {
+                PlanClockPick.First -> {
+                    val date = draft.firstAt.substringBefore(' ').takeIf { it.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")) }
+                        ?: newPlanDraft(System.currentTimeMillis(), runCatching { ZoneId.of(draft.zone) }
+                            .getOrDefault(ZoneId.systemDefault())).firstAt.substringBefore(' ')
+                    draft.copy(firstAt = "$date $chosen")
+                }
+                PlanClockPick.Recurring -> draft.copy(clock = (listOf(chosen) + times.drop(1)).distinct().joinToString(", "))
+                PlanClockPick.Add -> draft.copy(clock = (times + chosen).distinct().joinToString(", "))
+            }
+        }
+    }
 
     DialogFollowsIme()
     MikaDialog(
@@ -152,6 +176,7 @@ fun PlanEditorDialog(
                             draft.firstAt, { draft = draft.copy(firstAt = it) },
                             tr(R.string.plans_edit_label), "plan-editor-first-at",
                         )
+                        TextButton(onClick = { pickClock = PlanClockPick.First }) { Text(tr(R.string.clock_pick)) }
                         Spacer(Modifier.height(10.dp))
                     }
                     if (draft.repeat == PlanRepeat.Interval) {
@@ -167,6 +192,10 @@ fun PlanEditorDialog(
                             tr(R.string.plans_clock), "plan-editor-clock",
                             placeholder = "08:00, 12:30, 20:00",
                         )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { pickClock = PlanClockPick.Recurring }) { Text(tr(R.string.clock_pick)) }
+                            TextButton(onClick = { pickClock = PlanClockPick.Add }) { Text(tr(R.string.clock_add)) }
+                        }
                         Spacer(Modifier.height(10.dp))
                     }
                     if (draft.repeat == PlanRepeat.Weekly) {

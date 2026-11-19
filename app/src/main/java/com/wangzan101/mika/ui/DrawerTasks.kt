@@ -1,7 +1,10 @@
 package com.wangzan101.mika.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +37,8 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.automation.EnvironmentSceneStore
 import com.wangzan101.mika.automation.SceneStore
 import com.wangzan101.mika.calls.tasks.CallTaskStatus
+import com.wangzan101.mika.core.agent.TaskState
+import com.wangzan101.mika.core.run.RunOrigin
 import com.wangzan101.mika.core.trigger.TriggerDefinition
 import com.wangzan101.mika.task.TriggerRuntime
 import com.wangzan101.mika.ui.theme.MikaIcons
@@ -47,7 +52,7 @@ import kotlinx.coroutines.withContext
 internal enum class DrawerTaskSource { Plan, Bluetooth, Environment, Call }
 
 internal data class DrawerTask(
-    val id: String, val title: String, val detail: String, val source: DrawerTaskSource,
+    val id: String, val title: String, val detail: String, val source: DrawerTaskSource, val badge: DrawerBadge? = null,
 )
 
 internal data class DrawerTasks(
@@ -66,6 +71,13 @@ internal fun rememberDrawerTasks(open: Boolean): DrawerTasks {
     val bluetoothRules by bluetooth.rules.collectAsState()
     val environmentRules by environment.rules.collectAsState()
     val callTasks by app.calls.tasks.items.collectAsState()
+    val runs by app.taskState.runs.collectAsState()
+    val running = runs.filter { run ->
+        val state by run.state.collectAsState()
+        state is TaskState.Running
+    }
+    val runningPlans = running.mapNotNull { it.triggerWindowKey?.substringBeforeLast(':') }.toSet()
+    val runningThreads = running.filter { it.provenance.origin == RunOrigin.Trigger }.map { it.conversationId }.toSet()
     LaunchedEffect(app) {
         withContext(Dispatchers.IO) {
             bluetooth.load()
@@ -81,19 +93,21 @@ internal fun rememberDrawerTasks(open: Boolean): DrawerTasks {
         }
     }
     val (plans, now) = snapshot
-    val off = stringResource(R.string.chat_paused)
     val (scheduled, repeats) = plans.sortedWith(compareByDescending<TriggerDefinition> { it.enabled }.thenBy { it.nextAtMs })
         .partition { it.intervalMs == null && it.calendarTime == null && it.conditionGoal == null }
     fun planRow(plan: TriggerDefinition) = DrawerTask(
         plan.id, plan.reminderText ?: plan.goal,
-        if (plan.enabled) formatPlanTime(plan.nextAtMs) else off, DrawerTaskSource.Plan,
+        if (plan.enabled) formatPlanTime(plan.nextAtMs) else "", DrawerTaskSource.Plan,
+        taskBadge(plan.enabled, plan.id in runningPlans),
     )
     return DrawerTasks(
         scheduled = scheduled.map(::planRow),
         automation = repeats.map(::planRow) + bluetoothRules.map {
-            DrawerTask(it.id, it.title, if (it.enabled) it.deviceName else off, DrawerTaskSource.Bluetooth)
+            DrawerTask(it.id, it.title, it.deviceName, DrawerTaskSource.Bluetooth,
+                taskBadge(it.enabled, it.lastThreadId?.let(runningThreads::contains) == true))
         } + environmentRules.map {
-            DrawerTask(it.id, it.title, if (it.enabled) it.goal else off, DrawerTaskSource.Environment)
+            DrawerTask(it.id, it.title, it.goal, DrawerTaskSource.Environment,
+                taskBadge(it.enabled, it.lastThreadId?.let(runningThreads::contains) == true))
         },
         calls = callTasks.sortedWith(compareBy({ it.statusAt(now) == CallTaskStatus.DONE }, { it.dialAtMs ?: it.startMs ?: it.createdAtMs }))
             .map {
@@ -116,6 +130,7 @@ internal fun DrawerTaskLabel(
     expanded: Boolean,
     count: Int? = null,
     unread: Boolean = false,
+    badge: DrawerBadge? = null,
     onToggle: () -> Unit,
 ) {
     val c = MikaTheme.colors
@@ -129,21 +144,52 @@ internal fun DrawerTaskLabel(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = MikaType.Title.copy(fontWeight = FontWeight.Bold))
+        badge?.let { DrawerStatusBadge(it) }
         if (unread) Text(stringResource(R.string.drawer_calls_unread), color = c.accent, style = MikaType.Hint)
         if (count != null) Text(count.toString(), color = c.ink3, style = MikaType.Hint)
         Icon(MikaIcons.Chevron, null, Modifier.size(14.dp).rotate(if (expanded) 90f else 0f), tint = c.ink3)
     }
 }
 
+internal enum class DrawerBadge(@StringRes val label: Int, val positive: Boolean) {
+    Configured(R.string.drawer_config_active, true),
+    NoKey(R.string.drawer_config_missing_key, false),
+    NotConfigured(R.string.settings_not_set, false),
+    Disabled(R.string.plugins_disabled, false),
+    Enabled(R.string.plugins_enabled, true),
+    Running(R.string.task_running, true),
+}
+
+private fun taskBadge(enabled: Boolean, running: Boolean) = when {
+    running -> DrawerBadge.Running
+    enabled -> DrawerBadge.Enabled
+    else -> DrawerBadge.Disabled
+}
+
 @Composable
-internal fun DrawerTaskEntry(title: String, detail: String, onClick: () -> Unit) {
+internal fun DrawerStatusBadge(badge: DrawerBadge) {
+    val colors = MikaTheme.colors
+    val tone = if (badge.positive) colors.ok else colors.bad
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(Modifier.size(7.dp).background(tone, CircleShape))
+        Text(stringResource(badge.label), style = MikaType.Hint, color = tone, maxLines = 2)
+    }
+}
+
+@Composable
+internal fun DrawerTaskEntry(title: String, detail: String, badge: DrawerBadge? = null, onClick: () -> Unit) {
     val c = MikaTheme.colors
-    Column(
+    Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp).heightIn(min = 48.dp).clip(MikaShapes.Tile)
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 18.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title, color = c.ink, style = MikaType.Caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (detail.isNotBlank()) Text(detail, color = c.ink3, style = MikaType.Hint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.weight(1f)) {
+            Text(title, color = c.ink, style = MikaType.Caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (detail.isNotBlank()) Text(detail, color = c.ink3, style = MikaType.Hint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        badge?.let { DrawerStatusBadge(it) }
     }
 }
 

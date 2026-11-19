@@ -426,13 +426,16 @@ fun ProviderDetailContent(ui: ModelSetupUi, p: Provider, actions: ProviderDetail
             title = { Text(ModelsCopy.CHANGE_KEY) },
             text = {
                 KeyboardDismissArea {
-                    Box(Modifier.fillMaxWidth().keepsKeyboard().background(c.fill, MikaShapes.Button).padding(12.dp)) {
-                        if (key.isEmpty()) Text(ModelsCopy.NEW_KEY_HINT, style = MikaType.Body, color = c.ink3)
-                        BasicTextField(
-                            key, { key = it }, Modifier.fillMaxWidth().testTag("new-key"), singleLine = true,
-                            textStyle = MikaType.Body.copy(color = c.ink), cursorBrush = SolidColor(c.accent),
-                            visualTransformation = PasswordVisualTransformation(),
-                        )
+                    Column {
+                        Box(Modifier.fillMaxWidth().keepsKeyboard().background(c.fill, MikaShapes.Button).padding(12.dp)) {
+                            if (key.isEmpty()) Text(ModelsCopy.NEW_KEY_HINT, style = MikaType.Body, color = c.ink3)
+                            BasicTextField(
+                                key, { key = it }, Modifier.fillMaxWidth().testTag("new-key"), singleLine = true,
+                                textStyle = MikaType.Body.copy(color = c.ink), cursorBrush = SolidColor(c.accent),
+                                visualTransformation = PasswordVisualTransformation(),
+                            )
+                        }
+                        ModelKeyWebsite(modelKeyWebsite(p.baseUrl))
                     }
                 }
             },

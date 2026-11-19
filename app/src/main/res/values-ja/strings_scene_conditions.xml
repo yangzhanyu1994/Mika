@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">会話とタスク</string>
+    <string name="drawer_new_side_chat">新規サブチャット</string>
+    <string name="drawer_config_active">設定が有効</string>
+    <string name="drawer_config_missing_key">API キー未設定</string>
+    <string name="model_key_website_hint">プロバイダーのコンソールで API キーを作成してください。</string>
+    <string name="scene_compound_title">複数条件の自動化</string>
+    <string name="scene_conditions_title">条件</string>
+    <string name="scene_conditions_any">いずれかを満たす</string>
+    <string name="scene_conditions_all">すべてを満たす</string>
+    <string name="scene_condition_add">条件を追加</string>
+    <string name="scene_condition_remove">条件を削除</string>
+    <string name="scene_window_enabled">時間帯を指定</string>
+    <string name="scene_window_start">開始 %1$s</string>
+    <string name="scene_window_end">終了 %1$s</string>
+    <string name="scene_window_hint">端末のタイムゾーンを使用し、日付をまたげます。</string>
+    <string name="scene_window_invalid">開始と終了は異なる時刻を指定してください。</string>
+    <string name="scene_inside">範囲内</string>
+    <string name="scene_outside">範囲外</string>
+    <string name="scene_compound_bluetooth_hint">Bluetooth 条件には端末が検出した接続状態を使用します。</string>
+    <string name="clock_hour">時</string>
+    <string name="clock_minute">分</string>
+    <string name="clock_pick">時刻を選択</string>
+    <string name="clock_add">時刻を追加</string>
+</resources>

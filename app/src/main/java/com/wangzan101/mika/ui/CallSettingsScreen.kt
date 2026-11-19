@@ -1322,6 +1322,7 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true, enabled = !busy,
                 )
+                ModelKeyWebsite(DOUBAO_VOICE_KEY_GUIDE)
                 if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
             }
         },

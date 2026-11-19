@@ -332,6 +332,7 @@ fun DoubaoSetupPage(choice: SpeechChoice, configured: Boolean, actions: SpeechPi
                 InputRow("API Key", key, { key = it }, tr(R.string.speech_doubao_enter_key), first = true, secret = true, labelWidth = 110.dp)
             }
         }
+        ModelKeyWebsite(DOUBAO_VOICE_KEY_GUIDE)
         GroupLabel(tr(R.string.speech_doubao_plan))
         GroupCard {
             RadioRow(

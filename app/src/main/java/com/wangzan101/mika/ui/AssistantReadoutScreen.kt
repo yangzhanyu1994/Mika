@@ -99,6 +99,7 @@ internal fun AssistantReadoutScreen(onBack: () -> Unit) {
                 OutlinedTextField(key, { key = it }, Modifier.fillMaxWidth(), enabled = !busy, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), label = { Text("API Key") })
             }
+            ModelKeyWebsite(if (doubao) DOUBAO_VOICE_KEY_GUIDE else modelKeyWebsite(url))
             FooterNote(stringResource(R.string.assistant_readout_privacy))
             MikaButton(stringResource(R.string.save), onClick = {
                 val configuration = if (doubao) ReadoutModel(voice = voice.trim())
