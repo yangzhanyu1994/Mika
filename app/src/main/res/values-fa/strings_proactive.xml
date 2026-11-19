@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="proactive_title">پیش‌دستی (آزمایشی)</string>
+    <string name="proactive_title">پیش‌دستی</string>
     <string name="proactive_entry_sub">اعلان‌های برنامه‌هایی را که انتخاب می‌کنید می‌خواند</string>
     <string name="proactive_switch">روشن کردن</string>
     <string name="proactive_listener">شنونده: %1$s</string>
@@ -18,7 +18,7 @@
     <string name="proactive_helper_grant_confirm">اجازه</string>
     <string name="proactive_helper_unavailable">کنترل گوشی هنوز آماده نیست. اول آن را راه‌اندازی کنید یا از «دادن دسترسی» در بالا استفاده کنید.</string>
     <string name="proactive_helper_failed">از این راه اجازه داده نشد. «دادن دسترسی» در بالا را امتحان کنید.</string>
-    <string name="proactive_off_note">Turning this off stops reading and sending notifications and clears pending items. Revoke system access in Settings.</string>
+    <string name="proactive_off_note">با خاموش‌کردن کلید، دیگر چیزی خوانده یا فرستاده نمی‌شود و اعلان‌های پردازش‌نشده و متن ذخیره‌شدهٔ اعلان‌ها پاک می‌شوند. موضوع‌ها، مخاطبان و خلاصه‌هایی که گردآوری شده‌اند می‌مانند؛ آن‌ها را در «آنچه Mika گردآورده» پاک کنید. دسترسی به اعلان‌ها تا وقتی در تنظیمات سیستم لغوش نکنید برقرار می‌ماند.</string>
     <string name="proactive_triage_no_model">هیچ مدلی تنظیم نشده است. اول از تنظیمات › مدل‌ها یکی را انتخاب کنید.</string>
     <string name="proactive_triage_consent_title">اعلان‌ها به مدل فرستاده شوند؟</string>
     <string name="proactive_triage_reconfirm">ارائه‌دهنده یا مدل عوض شده است. تا تأیید دوبارهٔ شما متوقف است.</string>
@@ -53,17 +53,17 @@
     <string name="proactive_status_consent">هنوز تأیید نکرده‌اید اعلان‌ها به کدام مدل فرستاده شوند</string>
     <string name="proactive_status_working">در حال کار · اعلان‌های دریافتی امروز: %1$d</string>
     <string name="proactive_status_access">تنظیمات «دسترسی به برنامه‌ها» خوانده نمی‌شود، بنابراین قابلیت‌های پیش‌دستانه متوقف شده‌اند: اعلانی خوانده نمی‌شود و چیزی برای مدل فرستاده نمی‌شود. آنچه ذخیره شده باقی می‌ماند. برای ادامه، آن را در صفحهٔ «دسترسی به برنامه‌ها» بازنشانی کنید.</string>
-    <string name="proactive_apps_unreadable">The app list could not be read. No apps are read until you select them again.</string>
+    <string name="proactive_apps_unreadable">فهرست برنامه‌هایی که خوانده می‌شوند بارگیری نشد، پس اکنون هیچ‌کدام خوانده نمی‌شود. برنامه‌ها را دوباره انتخاب کنید؛ آنچه پیش‌تر گردآوری شده دست‌نخورده است.</string>
     <string name="proactive_apps_unsaved">این تغییر ذخیره نشد (ممکن است حافظه پر باشد). دوباره انتخاب کنید. اگر «خوانده نشود» را انتخاب کرده‌اید، خواندن این برنامه از همین حالا متوقف شده است.</string>
     <string name="proactive_apps_more">انتخاب برنامه‌های بیشتر</string>
-    <string name="proactive_apps_sub">Only notifications from selected apps are read.</string>
+    <string name="proactive_apps_sub">هر برنامه می‌تواند یکی از این‌ها باشد: خوانده نشود، پایین (فقط دسته‌بندی و نشان‌گذاری)، متوسط (از آن گردآوری هم می‌شود)، یا بالا (آنچه گردآوری شده می‌تواند وارد کارها شود). در «جسور»، آنچه از برنامه‌های «متوسط» گردآوری شده هم وارد کارها می‌شود. در برنامه‌های گفت‌وگو حرف دیگران است؛ پیش از آنکه بگذارید وارد کارها شوند خوب فکر کنید.</string>
     <string name="proactive_known_sub">موضوع‌ها: %1$d · افراد و گروه‌ها: %2$d</string>
     <string name="proactive_diag">عیب‌یابی</string>
-    <string name="proactive_footer_send">With your consent, selected notifications are sent to the model you confirm to assess reminders.</string>
-    <string name="proactive_footer_store">Reminder results stay in memory. Notifications opened from reminders are saved in a conversation.</string>
+    <string name="proactive_footer_send">آنچه برای مدل فرستاده می‌شود: عنوان، متن و پیام‌های اخیر اعلان‌های برنامه‌هایی که انتخاب کرده‌اید، هر بار یک برنامه، به مدلی که تأیید کرده‌اید؛ به‌همراه نام بستهٔ برنامه، گروهی یا خصوصی بودن گفت‌وگو، این‌که هر اعلان را باز کرده‌اید یا کنار زده‌اید، و نام حداکثر ۳۰ موضوع موجود. خلاصه‌های روزانه، هفتگی و ماهانه فقط از جمله‌های ازپیش‌نوشته‌شده ساخته می‌شوند، نه از متن اعلان‌ها. برای خلاصهٔ روزانه نام گفت‌وگوها هم فرستاده می‌شود.</string>
+    <string name="proactive_footer_store">آنچه رمزگذاری‌شده در این گوشی ذخیره می‌شود: موضوع‌های کوتاه، و نام و رابطهٔ حدسی افراد و گروه‌هایی که با آن‌ها گفت‌وگو می‌کنید. نتیجهٔ دسته‌بندی فقط در حافظه می‌ماند. وقتی یادآوری را باز می‌کنید، آن اعلان‌ها در یک گفت‌وگو نوشته و مثل گفت‌وگوهای دیگر ذخیره می‌شوند؛ اگر همان‌جا ادامه دهید، آن متن برای مدلی که کار را انجام می‌دهد فرستاده می‌شود. خاموش‌کردن کلید، یا حذف و پاک‌کردن آنچه در «آنچه Mika گردآورده» هست، آن گفت‌وگو را حذف نمی‌کند.</string>
     <string name="proactive_footer_digest">خلاصهٔ روز روشن است، پس این‌ها نیز ذخیره می‌شوند: متن اعلان‌ها (تا ۲ روز)، یادداشت‌های ساخته‌شده از آن (۸ روز)، خلاصهٔ هر روز (۳۵ روز)، خلاصه‌های هفتگی (۲۶ هفته) و ماهانه (۲ سال).</string>
     <string name="proactive_footer_no_text">جز یادآوری‌هایی که باز می‌کنید، متن اعلان‌ها ذخیره نمی‌شود: فقط تا پایان پردازش در حافظه می‌ماند.</string>
     <string name="proactive_app_off">خوانده نشود</string>
-    <string name="proactive_app_off_sub">Stop reading new notifications from this app.</string>
-    <string name="proactive_consent_body">Titles, text and recent messages from selected apps are sent to %1$s model %2$s to assess reminders.\n\nIf the provider or model changes, processing pauses until you confirm again. Turning the feature off stops sending.</string>
+    <string name="proactive_app_off_sub">اعلان‌هایش خوانده نمی‌شود. متن ذخیره‌شدهٔ اعلان‌ها و سطرهای خلاصهٔ ساخته‌شده از آن پاک می‌شوند؛ موضوع‌ها و مخاطبان می‌مانند.</string>
+    <string name="proactive_consent_body">متن اعلان‌های برنامه‌هایی که انتخاب کرده‌اید (عنوان، متن و پیام‌های اخیر) برای %1$s، مدل %2$s، فرستاده می‌شود تا مشخص شود کدام ارزش یادآوری دارد و موضوع‌های کوتاه و نام و رابطهٔ حدسی افراد و گروه‌هایی که با آن‌ها گفت‌وگو می‌کنید گردآوری شود. آنچه گردآوری می‌شود رمزگذاری‌شده در این گوشی ذخیره می‌شود.\n\nاگر بعداً ارائه‌دهنده یا مدل عوض شود، تا تأیید دوبارهٔ شما متوقف می‌ماند. خاموش‌کردن کلید اصلی فرستادن را متوقف می‌کند.</string>
 </resources>

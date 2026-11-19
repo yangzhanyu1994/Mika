@@ -7,7 +7,7 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * 提示词表面的金样:全文写出(不是摘要),审改动时直接看得到差在哪。
+ * 提示词表面的金样:通常保留全文,较大的指定快照保留完整 SHA-256。
  * 金样在 core/src/test/resources/prompt-surface/;重新生成:
  *   ./gradlew :core:test --tests '*PromptSurface*' -PupdateSnapshots
  */
@@ -15,8 +15,10 @@ object PromptSurface {
     private val dir = File(System.getProperty("mika.promptSurfaceDir") ?: "src/test/resources/prompt-surface")
     private val update = System.getProperty("mika.updateSnapshots") == "true"
 
-    fun check(name: String, actual: String) {
-        val file = File(dir, "$name.txt")
+    fun check(name: String, rendered: String) {
+        val digest = File(dir, "$name.sha256")
+        val file = if (digest.isFile) digest else File(dir, "$name.txt")
+        val actual = if (file == digest) snapshotDigest(rendered) else rendered
         if (update) {
             file.parentFile.mkdirs()
             file.writeText(actual)
@@ -67,6 +69,10 @@ object PromptSurface {
         items.forEach { (k, v) -> appendLine("### $k"); appendLine(v) }
     }
 
-    fun hash(s: String): String =
-        MessageDigest.getInstance("SHA-256").digest(s.toByteArray(Charsets.UTF_8)).take(6).joinToString("") { "%02x".format(it) }
+    fun hash(s: String): String = sha256(s).take(12)
+
+    internal fun snapshotDigest(s: String): String = sha256(s) + "\n"
+
+    private fun sha256(s: String): String =
+        MessageDigest.getInstance("SHA-256").digest(s.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 }

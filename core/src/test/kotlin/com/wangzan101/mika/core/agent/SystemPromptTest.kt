@@ -16,6 +16,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.wangzan101.mika.core.testing.PromptSurface
 import java.io.File
 import com.wangzan101.mika.core.assembly.toolDispatcher
 import com.wangzan101.mika.core.cap.sandbox.SandboxCapability
@@ -218,10 +219,12 @@ class SystemPromptAssemblyTest {
         val drift = mutableListOf<String>()
         for ((name, make) in combos) {
             val (d, flags) = make()
-            val actual = promptOf(d, flags) + "\n"
-            val file = File(dir, "$name.txt")
+            val rendered = promptOf(d, flags) + "\n"
+            val digest = File(dir, "$name.sha256")
+            val file = if (digest.isFile) digest else File(dir, "$name.txt")
+            val actual = if (file == digest) PromptSurface.snapshotDigest(rendered) else rendered
             if (update) { dir.mkdirs(); file.writeText(actual); continue }
-            val expected = javaClass.getResourceAsStream("/prompts/golden/$name.txt")?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            val expected = javaClass.getResourceAsStream("/prompts/golden/${file.name}")?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             if (expected != actual) drift += name
         }
         assertTrue("system prompt drifted for $drift; rerun with UPDATE_GOLDEN=1 if intended", drift.isEmpty())

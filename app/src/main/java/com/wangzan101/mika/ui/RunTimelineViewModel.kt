@@ -65,6 +65,8 @@ data class TimelineHeader(
     val modelCalls: Int,
     /** 这次运行的步数上限;不限制或旧记录为 null。 */
     val stepLimit: Int? = null,
+    /** 这次运行用的人格(名字 · 修订号);没有为 null。 */
+    val persona: String? = null,
     /** 用了几步(和 [stepLimit] 一起显示);步数用完后的最后一轮收尾记作第上限加一步,不算一步,所以不超过上限。 */
     val stepsUsed: Int = 0,
     /** 整个运行共享的已报告 Token 预算；旧记录或不限制为 null。 */
@@ -119,6 +121,7 @@ class RunTimelineViewModel(
             duration = endMs?.let { duration(it - startMs) },
             modelCalls = events.count { it is RunEvent.ModelReply },
             stepLimit = started?.stepLimit,
+            persona = events.filterIsInstance<RunEvent.State>().lastOrNull { it.name == "persona" }?.detail,
             stepsUsed = metrics?.steps?.let { n -> started?.stepLimit?.let { minOf(n, it) } ?: n } ?: 0,
             tokenBudget = started?.tokenBudget,
             tokensUsed = metrics?.let { m ->
@@ -199,7 +202,7 @@ class RunTimelineViewModel(
                 val outer = results.filter { it.source == "model" && it.durationMs > 0 }
                 val measured = (outer.ifEmpty { results.filter { it.durationMs > 0 } }).sumOf { it.durationMs }
                 row.copy(
-                    said = clipSaid(row.said),
+                    said = row.said,
                     timing = StepTiming(modelTimes[row.step], measured.takeIf { it > 0 }, retryTimes[row.step] ?: 0),
                 )
             }
@@ -233,6 +236,19 @@ class RunTimelineViewModel(
         // 结果可能被截短成不合法的 JSON:ok / error 只按顶层键的写法找(元素文字里的引号是转义过的,不会误中)
         private val NOT_OK = Regex(""""ok"\s*:\s*false""")
         private val ERROR = Regex(""""error"\s*:\s*"([a-z_]+)"""")
+
+        /** 回放按实际调用匹配结果后复用同一份错误译名，不从轮次或模型计划猜失败原因。 */
+        internal fun failureLabel(json: String): String? {
+            val parsed = parse(json)
+            if (parsed != null && parsed["ok"] != JsonPrimitive(false)) return null
+            if (parsed == null && !NOT_OK.containsMatchIn(json)) return null
+            val code = (parsed?.get("error") as? JsonPrimitive)?.contentOrNull
+                ?: ERROR.find(json)?.groupValues?.get(1)
+            val message = (parsed?.get("message") as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() }
+            val reason = ERROR_LABELS[code] ?: message?.let { com.wangzan101.mika.core.record.Redactor.text(it).take(240) }
+                ?: code?.takeIf { it.isNotBlank() }?.take(100)
+            return reason?.let { tr(R.string.result_error_detail, it) }
+        }
 
         private fun resultLabel(json: String, changed: Boolean?): String = when {
             NOT_OK.containsMatchIn(json) -> ERROR.find(json)?.groupValues?.get(1)?.let { ERROR_LABELS[it] }?.let { tr(R.string.result_error_detail, it) } ?: tr(R.string.result_error)

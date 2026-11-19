@@ -183,6 +183,9 @@ private fun HeaderGroup(h: TimelineHeader, onExport: () -> Unit) {
             RowChevron()
         }
         if (more) {
+            h.persona?.let { persona ->
+                ListRow(null, stringResource(R.string.persona_title)) { RowValue(persona) }
+            }
             ListRow(null, stringResource(R.string.timeline_model_calls)) { RowValue(trPlural(R.plurals.times, h.modelCalls)) }
             if (h.usedMemory.isNotEmpty()) {
                 ListRow(null, stringResource(R.string.timeline_memory_used)) { RowValue(trPlural(R.plurals.items, h.usedMemory.size)) }
@@ -207,10 +210,11 @@ private fun TimelineRow(s: TimelineStep, first: Boolean, last: Boolean, vm: RunT
     val c = MikaTheme.colors
     var open by rememberSaveable(s.step) { mutableStateOf(false) }
     val shot = s.screenshotId
+    val hasDetails = shot != null || s.said.isNotBlank() || s.detail != null || s.activities.isNotEmpty()
     val failed = s.result?.startsWith(stringResource(R.string.result_error_prefix)) == true
     StepItem(
         if (failed) StepState.Failed else StepState.Done, first, last,
-        Modifier.then(if (shot != null) Modifier.clickable { open = !open } else Modifier),
+        Modifier.then(if (hasDetails) Modifier.clickable { open = !open } else Modifier),
         dotY = 20.dp,
     ) {
         Column(Modifier.fillMaxWidth().padding(end = 16.dp, top = 11.dp, bottom = 11.dp)) {
@@ -234,10 +238,19 @@ private fun TimelineRow(s: TimelineStep, first: Boolean, last: Boolean, vm: RunT
                 }
             }
             Text(RunTimelineViewModel.timingLabel(s.timing), Modifier.padding(top = 2.dp), style = MikaType.Hint, color = c.ink3)
-            if (s.said.isNotEmpty()) {
-                Text(s.said, Modifier.padding(top = 3.dp), style = MikaType.Caption, color = c.ink2)
+            if (hasDetails) {
+                Text(
+                    stringResource(if (open) R.string.collapse else R.string.expand),
+                    Modifier.padding(top = 4.dp), style = MikaType.Label, color = c.accent,
+                )
             }
-            s.activities.forEach { a ->
+            if (open && s.said.isNotBlank()) {
+                MarkdownText(s.said, MikaType.Caption.copy(color = c.ink2), Modifier.padding(top = 6.dp))
+            }
+            if (open && s.activities.isNotEmpty()) s.detail?.let { detail ->
+                Text(detail, Modifier.padding(top = 3.dp), style = MikaType.Caption, color = c.ink2)
+            }
+            if (open) s.activities.forEach { a ->
                 val action = if (a.count > 1) trPlural(R.plurals.timeline_viewed_times, a.count) else a.label
                 // 和对话里点开一步用的是同一份说法(错误码只对开发有意义,给人看的是没成功)
                 val effect = ChatCopy.effectLabel(a.effect)
@@ -251,13 +264,7 @@ private fun TimelineRow(s: TimelineStep, first: Boolean, last: Boolean, vm: RunT
                     s.tags.forEach { TagChip(it) }
                 }
             }
-            if (shot != null) {
-                Text(
-                    if (open) stringResource(R.string.timeline_hide_screen) else stringResource(R.string.timeline_show_screen), Modifier.padding(top = 6.dp),
-                    style = MikaType.Label, color = c.accent,
-                )
-                if (open) Shot(vm, shot, s.step)
-            }
+            if (open && shot != null) Shot(vm, shot, s.step)
         }
     }
 }

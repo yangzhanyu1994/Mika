@@ -25,8 +25,10 @@ import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
 import com.wangzan101.mika.chat.routeAssistantConversation
+import com.wangzan101.mika.chat.isNearbyWeatherRequest
 import com.wangzan101.mika.ui.OrbMotion
 import com.wangzan101.mika.ui.orbMotion
+import com.wangzan101.mika.ui.toolOrbMotion
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.Attachments
@@ -496,7 +498,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             }
             try {
                 val adaptive = mode == AssistantMode.Auto && screen == null && cameraFile == null &&
-                    app.researchChat.canDelegate()
+                    !isNearbyWeatherRequest(words) && app.researchChat.canDelegate()
                 val target = when {
                     screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
                     mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
@@ -657,13 +659,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 val label = assistantProgressLabel(state.tool)
                 AssistantReply(
                     getString(label), body = state.preview.orEmpty(), running = true, waiting = true,
-                    motion = when {
-                        label == R.string.assistant_searching -> OrbMotion.Searching
-                        label == R.string.assistant_looking -> OrbMotion.Observing
-                        state.tool != null || state.progress != null -> OrbMotion.Working
-                        !state.preview.isNullOrBlank() -> OrbMotion.Writing
-                        else -> OrbMotion.Thinking
-                    },
+                    motion = state.orbMotion,
                     progress = state.narration?.takeIf(String::isNotBlank) ?: state.reason?.takeIf(String::isNotBlank),
                 )
             }
@@ -720,10 +716,10 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 }
 
-internal fun assistantProgressLabel(tool: String?): Int = when (tool) {
+internal fun assistantProgressLabel(tool: String?): Int = when (toolOrbMotion(tool)) {
     null -> R.string.assistant_thinking
-    "web_search", "knowledge_search", "skill_search", "search_files" -> R.string.assistant_searching
-    "phone_find", "find_visually", "list_elements", "observe", "screenshot" -> R.string.assistant_looking
+    OrbMotion.Searching -> R.string.assistant_searching
+    OrbMotion.Observing -> R.string.assistant_looking
     else -> R.string.task_running
 }
 

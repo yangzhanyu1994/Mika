@@ -1,6 +1,15 @@
 package com.wangzan101.mika.ui
 
+import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.core.agent.NoticeTurn
+import com.wangzan101.mika.core.agent.Turn
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.key
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onStart
 import com.wangzan101.mika.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +65,49 @@ internal fun currentConversationTokenText(usage: ConversationTokens?): String {
         else -> NumberFormat.getIntegerInstance().format(sum)
     }
     return stringResource(R.string.mode_current_tokens, label)
+}
+
+@Composable
+internal fun rememberModeTurns(app: MikaApp, id: String?): List<Turn>? = key(app, id) {
+    val turns by produceState<List<Turn>?>(null, app, id) {
+        value = null
+        if (id != null) app.conversations.changes.filter { it == id }.onStart { emit(id) }.collect {
+            value = withContext(Dispatchers.IO) { app.conversations.turns(id) }
+        }
+    }
+    turns
+}
+
+@Composable
+internal fun rememberModeConversationUsage(
+    app: MikaApp,
+    id: String?,
+    turns: List<Turn>?,
+    workRunIds: List<String> = emptyList(),
+    unrecordedWork: Int = 0,
+    knownMetrics: Map<String, RunMetrics> = emptyMap(),
+): ConversationTokens? {
+    val runs by app.taskState.runs.collectAsState()
+    val drafts by app.researchChat.pending.collectAsState()
+    val stored = turns.orEmpty().filterNot { it.runId?.startsWith(NoticeTurn.RUN_PREFIX) == true }
+    val chat = stored.filter { it.research }
+    val work = stored.filterNot { it.research }
+    val ids = (work.mapNotNull { it.runId } + workRunIds).distinct()
+    val metrics = rememberRunMetrics(ids.filterNot { it in knownMetrics })
+    val workMetrics = ids.map { knownMetrics[it] ?: metrics[it] }
+    val live = id?.let { conversationId ->
+        runs.firstOrNull { it.conversationId == conversationId && it.key !in ids }
+    }?.conversationUsage?.collectAsState()?.value
+    val draft = id?.let(drafts::get)?.takeUnless { active -> chat.any { it.atMs == active.startedAt } }
+    if (id != null && turns == null) return null
+    val counts = chat.map { it.reportedTokens } + workMetrics.map { it?.conversationReportedTokens() } +
+        listOfNotNull(live?.tokens) + listOfNotNull(draft?.reportedTokens)
+    val incomplete = chat.count { it.usageIncomplete && it.reportedTokens != null } +
+        workMetrics.count { it?.conversationUsageIncomplete() == true } +
+        maxOf(unrecordedWork, work.count { it.runId == null }) +
+        (if (live?.partial == true) 1 else 0) +
+        (if (draft != null && (draft.reportedTokens == null || draft.usageIncomplete)) 1 else 0)
+    return conversationUsage(counts, incomplete)
 }
 
 /**

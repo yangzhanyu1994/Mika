@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,10 +45,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.wangzan101.mika.R
 import com.wangzan101.mika.settings.RecommendedTask
+import com.wangzan101.mika.settings.TaskTemplate
 import com.wangzan101.mika.settings.RecommendedTaskError
 import com.wangzan101.mika.settings.RecommendedTaskStore
 import com.wangzan101.mika.ui.components.ButtonKind
@@ -65,9 +70,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 设置里的推荐任务:和首页是同一份列表,标题用来辨认,提示词留到点按后填进输入框。 */
+/** 常用任务共用首页的本地列表；设置入口编辑，聊天入口选取并填入输入框。 */
 @Composable
-fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit) {
+fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit, onPick: ((RecommendedTask) -> Unit)? = null, onOpenChecklists: (() -> Unit)? = null, onOpenWorkflows: (() -> Unit)? = null) {
     remember(store) { store.ensureLoaded { ChatCopy.recommendationSeeds() } }
     val tasks by store.tasks.collectAsState()
     val unreadable by store.unreadable.collectAsState()
@@ -140,6 +145,12 @@ fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit) {
     val c = MikaTheme.colors
     PageScaffold(stringResource(R.string.recommendations_title), onBack, scrollState = scroll,
         viewportModifier = Modifier.onGloballyPositioned { viewport = it.boundsInWindow() }) {
+        onOpenChecklists?.let { open ->
+            ListRow(MikaIcons.ListChecks, stringResource(R.string.checklists_title), first = true, onClick = open)
+        }
+        onOpenWorkflows?.let { open ->
+            ListRow(MikaIcons.Route, stringResource(R.string.workflows_title), first = false, onClick = open)
+        }
         if (unreadable) {
             FooterNote(stringResource(R.string.recommendations_unreadable), color = c.bad)
             if (resetError) FooterNote(stringResource(R.string.recommendations_save_failed), color = c.bad)
@@ -192,9 +203,16 @@ fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit) {
                                 }) {
                                 val preview = promptPreview(task.prompt)
                                 ListRow(MikaIcons.Message, task.title, preview.takeIf { it != task.title },
-                                    first = destination == 0, onClick = { if (!savingOrder && draggedId == null) editing = task }) {
+                                    first = destination == 0, onClick = { if (!savingOrder && draggedId == null) {
+                                        if (onPick != null) onPick(task) else editing = task
+                                    } }) {
+                                    if (onPick != null) androidx.compose.material3.IconButton(
+                                        onClick = { editing = task }, enabled = !savingOrder && draggedId == null,
+                                    ) {
+                                        Icon(MikaIcons.Edit, stringResource(R.string.recommendations_edit), Modifier.size(MikaSize.Icon), tint = c.ink3)
+                                    }
                                     DeleteTaskButton { if (!savingOrder && draggedId == null) { deleteError = null; deleting = task } }
-                                    Box(Modifier.size(MikaSize.IconButton)
+                                    if (onPick == null) Box(Modifier.size(MikaSize.IconButton)
                                         .onGloballyPositioned { if (moving || draggedId == null) handleTop = it.boundsInWindow().top }
                                         .testTag("recommendations-drag-${task.id}")
                                         .pointerInput(task.id, ids, savingOrder) {
@@ -230,8 +248,8 @@ fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit) {
                 FooterNote(stringResource(R.string.recommendations_too_many, RecommendedTaskStore.MAX_TASKS))
             }
             reorderError?.let { FooterNote(recommendationError(it), color = c.bad) }
-            if (tasks.size > 1) FooterNote(stringResource(R.string.recommendations_drag_hint))
-            FooterNote(stringResource(R.string.recommendations_footer))
+            if (onPick == null && tasks.size > 1) FooterNote(stringResource(R.string.recommendations_drag_hint))
+            if (onPick == null) FooterNote(stringResource(R.string.recommendations_footer))
         }
     }
 
@@ -283,9 +301,15 @@ fun RecommendedTasksScreen(store: RecommendedTaskStore, onBack: () -> Unit) {
 }
 
 @Composable
-private fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: RecommendedTask?, onDismiss: () -> Unit) {
-    var title by remember { mutableStateOf(initial?.title.orEmpty()) }
-    var prompt by remember { mutableStateOf(initial?.prompt.orEmpty()) }
+internal fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: RecommendedTask?, onDismiss: () -> Unit, seedPrompt: String = "") {
+    var title by rememberSaveable { mutableStateOf(initial?.title ?: seedPrompt.lineSequence().firstOrNull().orEmpty().take(60)) }
+    var prompt by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        val text = initial?.prompt ?: seedPrompt
+        mutableStateOf(TextFieldValue(text, TextRange(text.length)))
+    }
+    var fillIn by rememberSaveable { mutableStateOf(initial?.fillIn == true) }
+    var addingField by rememberSaveable { mutableStateOf(false) }
+    var fieldName by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<RecommendedTaskError?>(null) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -293,11 +317,12 @@ private fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: Recommen
     fun save() {
         if (saving) return
         val titleToSave = title
-        val promptToSave = prompt
+        val promptToSave = prompt.text
+        val fillInToSave = fillIn
         saving = true
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                if (initial == null) store.add(titleToSave, promptToSave) else store.update(initial.id, titleToSave, promptToSave)
+                if (initial == null) store.add(titleToSave, promptToSave, fillInToSave) else store.update(initial.id, titleToSave, promptToSave, fillInToSave)
             }
             saving = false
             if (result == null) onDismiss() else error = result
@@ -308,13 +333,13 @@ private fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: Recommen
         onDismissRequest = { if (!saving) onDismiss() },
         title = { Text(stringResource(if (initial == null) R.string.recommendations_add else R.string.recommendations_edit)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     title, { title = it; error = null },
                     label = { Text(stringResource(R.string.recommendations_title_label)) },
                     singleLine = true,
                     enabled = !saving,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("saved-task-title"),
                 )
                 OutlinedTextField(
                     prompt, { prompt = it; error = null },
@@ -322,8 +347,11 @@ private fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: Recommen
                     minLines = 4,
                     maxLines = 8,
                     enabled = !saving,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("saved-task-prompt"),
                 )
+                TextButton({ addingField = true }, enabled = !saving, modifier = Modifier.testTag("task-field-add")) {
+                    Text(stringResource(R.string.task_field_add))
+                }
                 error?.let {
                     Text(recommendationError(it), Modifier.padding(top = 8.dp), color = MikaTheme.colors.bad)
                 }
@@ -337,6 +365,37 @@ private fun RecommendedTaskDialog(store: RecommendedTaskStore, initial: Recommen
         dismissButton = { TextButton({ if (!saving) onDismiss() }) { Text(stringResource(R.string.cancel)) } },
         properties = DialogProperties(dismissOnClickOutside = false),
     )
+    if (addingField) MikaDialog(
+        onDismissRequest = { addingField = false },
+        title = { Text(stringResource(R.string.task_field_add)) },
+        text = {
+            OutlinedTextField(
+                fieldName, { fieldName = it }, singleLine = true, enabled = !saving,
+                label = { Text(stringResource(R.string.task_field_name)) },
+                isError = fieldName.isNotEmpty() && !TaskTemplate.validName(fieldName.trim()),
+                supportingText = if (fieldName.isNotEmpty() && !TaskTemplate.validName(fieldName.trim())) ({
+                    Text(stringResource(R.string.task_field_name_invalid))
+                }) else null,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("task-field-name"),
+            )
+        },
+        confirmButton = {
+            TextButton({
+                val token = "{{${fieldName.trim()}}}"
+                val start = prompt.selection.min
+                val text = prompt.text.replaceRange(start, prompt.selection.max, token)
+                prompt = TextFieldValue(text, TextRange(start + token.length))
+                fillIn = true
+                fieldName = ""
+                addingField = false
+                error = null
+            }, enabled = !saving && TaskTemplate.validName(fieldName.trim()), modifier = Modifier.testTag("task-field-insert")) {
+                Text(stringResource(R.string.task_field_insert))
+            }
+        },
+        dismissButton = { TextButton({ addingField = false }) { Text(stringResource(R.string.cancel)) } },
+    )
+
 }
 
 /** 行尾的删除。单独可点,不会连着打开编辑。 */
@@ -356,6 +415,7 @@ private fun recommendationError(error: RecommendedTaskError): String = when (err
     RecommendedTaskError.BlankTitle -> stringResource(R.string.recommendations_title_required)
     RecommendedTaskError.BlankPrompt -> stringResource(R.string.recommendations_prompt_required)
     RecommendedTaskError.TooLong -> stringResource(R.string.recommendations_too_long)
+    RecommendedTaskError.TooManyFields -> stringResource(R.string.task_fields_too_many, TaskTemplate.MAX_FIELDS)
     RecommendedTaskError.TooMany -> stringResource(R.string.recommendations_too_many, RecommendedTaskStore.MAX_TASKS)
     RecommendedTaskError.SaveFailed -> stringResource(R.string.recommendations_save_failed)
     RecommendedTaskError.Unreadable -> stringResource(R.string.recommendations_unreadable)

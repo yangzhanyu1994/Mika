@@ -73,6 +73,9 @@ class ShellService(
     // Bundle 将嵌套的 PFD 复制到 reply，但不会关掉服务端原件。写完 reply 后关闭，
     // 否则客户端关掉管道时，音频线程永远收不到 EOF。
     private val returnedCallPipes = ThreadLocal<List<ParcelFileDescriptor>>()
+    private data class FilePolicyState(val session: String, val revision: Long, val roots: List<String>, val recursive: List<Boolean>, val policy: DeviceFilePolicy)
+    private val filePolicyLock = Any()
+    @Volatile private var filePolicy: FilePolicyState? = null
     /** Mika 所在的用户:本来那份 App 装在这里;别的用户里的是另一份(分身、工作资料)。 */
     private val myUser = allowedUid / PER_USER_RANGE
 
@@ -528,6 +531,40 @@ class ShellService(
         } catch (t: Throwable) {
             Log.w(TAG, "startActivityAsUser unavailable, falling back to am start", t)
             exec(*ShareIntent.amArgs(displayId, packageName, text, intent.component?.flattenToShortString()).toTypedArray()) == 0
+        }
+        if (ok) START_OK else START_ERROR
+    }
+
+    /**
+     * 把一个工作区文件分享给 [packageName]:ACTION_SEND + EXTRA_STREAM,content URI 允许对方读,只交给这个包。
+     * 它没有收这类分享的页面返回 [START_UNRESOLVED];用户在主屏用着它时不启动。只打开分享页,发不发由模型在那一页上点。
+     */
+    override fun startShareFile(displayId: Int, packageName: String, uri: String, mime: String, text: String): Int = synchronized(launchLock) {
+        if (!ownDisplay(displayId)) return START_ERROR
+        val target = Uri.parse(uri)
+        val intent = ShareIntent.ofFile(packageName, target, mime, text)
+        val candidates = activitiesFor(intent, mime) ?: return START_ERROR
+        if (candidates.isEmpty()) return START_UNRESOLVED
+        try {
+            if (inUseOnMainScreen(packageName)) return START_IN_USE_ON_MAIN
+            if (onOtherOwnDisplay(listOf(packageName), displayId)) return START_IN_USE_BY_OTHER
+        } catch (t: Throwable) {
+            Log.e(TAG, "cannot inspect main-screen tasks", t)
+            return START_ERROR
+        }
+        candidates.singleOrNull()?.let { (pkg, cls) -> intent.component = ComponentName(pkg, cls) }
+        val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
+        val ok = try {
+            val start = taskManager.javaClass.methods.first { it.name == "startActivityAsUser" && it.parameterTypes.size == 12 }
+            val result = start.invoke(
+                taskManager, null, ShellContext.SHELL_PACKAGE, null, intent, mime, null, null,
+                0, 0, null, options, USER_CURRENT,
+            ) as Int
+            if (result < 0) Log.w(TAG, "startActivityAsUser(share file) -> $result")
+            result >= 0
+        } catch (t: Throwable) {
+            Log.w(TAG, "startActivityAsUser unavailable, falling back to am start", t)
+            exec(*ShareIntent.amArgsFile(displayId, packageName, target, mime, text, intent.component?.flattenToShortString()).toTypedArray()) == 0
         }
         if (ok) START_OK else START_ERROR
     }
@@ -1452,6 +1489,45 @@ class ShellService(
         }
     }
 
+    override fun setDeviceFilePolicy(protocol: Int, session: String?, revision: Long, roots: Array<out String>?, recursive: BooleanArray?): Bundle = asCallAudioShell {
+        synchronized(filePolicyLock) {
+            fun reply(status: String) = Bundle().apply { putString("status", status); putInt("protocol", 1); putString("session", session); putLong("revision", revision) }
+            if (protocol != 1 || session.isNullOrBlank() || session.length > 64 || revision < 0 || roots == null || recursive == null) return@synchronized reply("invalid")
+            val previous = filePolicy?.takeIf { it.session == session }
+            val paths = roots.toList()
+            val flags = recursive.toList()
+            if (previous != null && (revision < previous.revision || (revision == previous.revision && (paths != previous.roots || flags != previous.recursive)))) {
+                return@synchronized reply("stale_policy")
+            }
+            if (previous != null && revision == previous.revision) return@synchronized reply("ok")
+            val policy = try { DeviceFilePolicy.create(roots, recursive, myUser) } catch (_: Exception) { return@synchronized reply("invalid") }
+            filePolicy = FilePolicyState(session, revision, paths, flags, policy)
+            reply("ok")
+        }
+    }
+
+    private inline fun deviceFileCall(block: (DeviceFilePolicy) -> Bundle): Bundle = asCallAudioShell {
+        val snapshot = filePolicy ?: return@asCallAudioShell Bundle().apply { putString("status", "policy_unsynced") }
+        val response = block(snapshot.policy)
+        synchronized(filePolicyLock) {
+            if (filePolicy !== snapshot) {
+                response.getParcelable<ParcelFileDescriptor>("fd")?.close()
+                Bundle().apply { putString("status", "policy_changed") }
+            } else {
+                response.getParcelable<ParcelFileDescriptor>("fd")?.let { returnedCallPipes.set(listOf(it)) }
+                response
+            }
+        }
+    }
+
+    override fun listFiles(path: String?, afterName: String?, limit: Int): Bundle =
+        deviceFileCall { ShellFiles.list(path, afterName, limit, myUser, it) }
+
+    override fun searchFiles(path: String?, name: String?, extension: String?, modifiedAfter: Long, modifiedBefore: Long, maxDepth: Int, maxEntries: Int, timeoutMs: Int): Bundle =
+        deviceFileCall { ShellFiles.search(path, name, extension, modifiedAfter, modifiedBefore, maxDepth, maxEntries, timeoutMs, myUser, it) }
+
+    override fun openFile(path: String?): Bundle = deviceFileCall { ShellFiles.open(path, myUser, it) }
+
     override fun probeCallAudio(mode: Int): Bundle = asCallAudioShell { callAudio.probe(mode) }
 
     override fun openCallAudio(mode: Int, owner: IBinder): Bundle = asCallAudioShell {
@@ -1556,6 +1632,7 @@ class ShellService(
     }
 
     override fun releaseAll() {
+        synchronized(filePolicyLock) { filePolicy = null }
         asCallAudioShell { callAudio.stopAll() }
         restoreClip()
         synchronized(muted) { muted.packages() }.forEach { key ->

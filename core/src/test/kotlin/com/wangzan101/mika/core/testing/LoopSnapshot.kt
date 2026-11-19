@@ -21,8 +21,10 @@ object LoopSnapshot {
     private val update = System.getProperty("mika.updateSnapshots") == "true"
 
     /** 和金样比对;开了重新生成就直接写入。 */
-    fun check(name: String, actual: String) {
-        val file = File(dir, "$name.txt")
+    fun check(name: String, rendered: String) {
+        val digest = File(dir, "$name.sha256")
+        val file = if (digest.isFile) digest else File(dir, "$name.txt")
+        val actual = if (file == digest) PromptSurface.snapshotDigest(rendered) else rendered
         if (update) {
             file.parentFile.mkdirs()
             file.writeText(actual)

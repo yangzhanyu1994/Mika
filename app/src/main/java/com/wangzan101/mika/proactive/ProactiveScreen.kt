@@ -65,7 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 设置 › 高级 › 开发者选项 › 主动能力(实验)。只放要用户做决定的:
+ * 设置 › 主动能力。只放要用户做决定的:
  * 状态卡(总开关、一句现在的状态、要处理时给一个按钮)→「Mika 知道了什么」的入口
  * → 设置(激进程度、敏感类推断、当日消息归纳、每日上限)→ 读哪些 App(每个 App 不读 / 低 / 中 / 高;列表可能很长,放在设置后面)
  * → 诊断(默认折起:监听状态、计数、失败重试、最近的通知)→ 页尾说明
@@ -213,8 +213,39 @@ fun ProactiveScreen(onBack: () -> Unit) {
         // 值得提醒的入口(胶囊显示不了时从这里进)和两个反馈数
         if (enabled) NoticeHintEntry(runtime.hints.collectAsState().value)
 
+        // ---- 归纳出的内容在下一页 ----
+        GroupCard {
+            ListRow(
+                null, stringResource(R.string.proactive_learn_title),
+                stringResource(R.string.proactive_known_sub, topics.size, contactsView.contacts.size),
+                first = true, onClick = { knownOpen = true },
+            ) { RowChevron() }
+        }
+
+        // ---- 设置 ----
         GroupLabel(stringResource(R.string.settings_title))
         GroupCard {
+            // 激进程度:一次调一组门槛(话题几天算数、每天提醒多少、归纳出的东西带不带进任务)
+            ListRow(null, stringResource(R.string.proactive_learn_level), stringResource(levelDesc(level)), first = true, onClick = { pickLevel = true }) {
+                RowValue(stringResource(levelName(level)))
+            }
+            // 敏感类推断:默认关;打开先确认,关掉时问已存的敏感话题删不删
+            val toggleSensitive: (Boolean) -> Unit = { on -> if (on) confirmSensitiveOn = true else confirmSensitiveOff = true }
+            ListRow(
+                null, stringResource(R.string.proactive_learn_sensitive), stringResource(R.string.proactive_learn_sensitive_sub),
+                onClick = { toggleSensitive(!sensitiveOn) },
+            ) {
+                MikaSwitch(sensitiveOn, toggleSensitive, Modifier.testTag("proactive-learn-sensitive"))
+            }
+            // 当日消息归纳:要把通知原文存在本机,所以打开前单独说明、单独确认;关掉就把存着的原文删掉
+            val toggleDigest: (Boolean) -> Unit = { on -> if (on) confirmDigestOn = true else runtime.setLearnDigest(false) }
+            ListRow(
+                null, stringResource(R.string.proactive_learn_digest_switch),
+                if (digestOn) stringResource(R.string.proactive_learn_digest_on, learnState.journal) else stringResource(R.string.proactive_learn_digest_sub),
+                onClick = { toggleDigest(!digestOn) },
+            ) {
+                MikaSwitch(digestOn, toggleDigest, Modifier.testTag("proactive-learn-digest"))
+            }
             ListRow(
                 null,
                 stringResource(
@@ -228,6 +259,7 @@ fun ProactiveScreen(onBack: () -> Unit) {
             )
         }
         // 不是最保守的一档时,把「带进任务是什么意思、发给谁」那句常驻在这里(弹窗里也有)
+        if (level != LearnLevel.Conservative) FooterNote(stringResource(R.string.proactive_learn_level_note))
 
         // ---- 读哪些 App:选了的列在这里,每个是低 / 中 / 高;「选择更多」展开全部 App ----
         GroupLabel(stringResource(R.string.proactive_apps, allowed.size))
@@ -339,7 +371,7 @@ fun ProactiveScreen(onBack: () -> Unit) {
                         onClick = { unsaved = !runtime.setAppReading(pkg, null) || runtime.allowed.dirty; pickApp = null },
                         subtitle = stringResource(R.string.proactive_app_off_sub), first = true,
                     )
-                    listOf(SourceTier.Low).forEach { t ->
+                    SourceTier.entries.forEach { t ->
                         RadioRow(
                             stringResource(tierName(t)), selected = t == current,
                             onClick = { unsaved = !runtime.setAppReading(pkg, t) || runtime.allowed.dirty; pickApp = null },

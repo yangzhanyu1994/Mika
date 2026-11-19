@@ -33,16 +33,22 @@ import org.junit.Test
 class McpClientTest {
     private class FakeEndpoint : McpEndpoint {
         override val serverId = "demo"
+        override var instructions: String? = null
         var offered = listOf(McpToolDescriptor("search", "Search", buildJsonObject { put("type", "object") }, McpAnnotations(readOnlyHint = true)))
         var result = McpResult("found")
         var calls = 0
+        var lastArguments: JsonObject? = null
         var offeredResources: List<McpResourceDescriptor> = emptyList()
         var offeredPrompts: List<McpPromptDescriptor> = emptyList()
         var resourcesError: Exception? = null
         override fun tools() = offered
         override fun resources() = resourcesError?.let { throw it } ?: offeredResources
         override fun prompts() = offeredPrompts
-        override suspend fun call(name: String, arguments: JsonObject): McpResult { calls++; return result }
+        override suspend fun call(name: String, arguments: JsonObject): McpResult {
+            calls++
+            lastArguments = arguments
+            return result
+        }
         override suspend fun readResource(uri: String) = McpResult("resource:$uri")
         override suspend fun getPrompt(name: String, arguments: JsonObject) =
             McpResult("prompt:$name\n$arguments")
@@ -56,6 +62,26 @@ class McpClientTest {
         tools.definitions().single { it.name == "mcp_demo__search" }.parametersJsonSchema,
     ).jsonObject
 
+    @Test fun serverInstructionsReachTheModelWithoutGrantingApproval() {
+        val endpoint = FakeEndpoint().apply { instructions = "Use search before fetching a result." }
+        val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(McpConnection(endpoint)))
+        val sections = tools.promptSections(tools.definitions()).joinToString("\n")
+        assertTrue(sections, com.wangzan101.mika.core.observation.Untrusted.wrap(endpoint.instructions!!) in sections)
+        assertEquals(ActionRisk.Change, tools.approvalRisk("mcp_demo__search")?.level)
+    }
+
+    @Test fun blankInstructionsAddNoSectionAndLongInstructionsStayBounded() {
+        val endpoint = FakeEndpoint()
+        val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(McpConnection(endpoint)))
+        val baseline = tools.promptSections(tools.definitions())
+        endpoint.instructions = "  \n  "
+        assertEquals(baseline, tools.promptSections(tools.definitions()))
+        endpoint.instructions = "x".repeat(5000)
+        val section = tools.promptSections(tools.definitions()).single { "MCP server guidance" in it }
+        assertTrue(section, section.length < 4200)
+        assertFalse(section, "x".repeat(4001) in section)
+    }
+
     @Test fun nullPropertiesIsTreatedAsNoParameters() = runBlocking {
         val endpoint = endpointWithSchema("""{"type":"object","properties":null}""")
         val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(McpConnection(endpoint)))
@@ -63,6 +89,20 @@ class McpClientTest {
         val result = tools.execute(Part.ToolCall("c", "mcp_demo__search", "{}"), ActionPass())
         assertEquals(JsonPrimitive(true), result.content["ok"])
         assertEquals(1, endpoint.calls)
+    }
+
+    @Test fun forwardsOnlyServerArgumentsAndKeepsAnExplicitServerReason() = runBlocking {
+        val query = Part.ToolCall("c", "mcp_demo__search", """{"q":"lights","reason":"check status"}""")
+        for ((schema, expected) in listOf(
+            """{"properties":{"q":{}}}""" to """{"q":"lights"}""",
+            """{"properties":{"q":{},"reason":{}}}""" to query.argsJson,
+            """{"properties":{"q":{}},"required":["reason"]}""" to query.argsJson,
+        )) {
+            val endpoint = endpointWithSchema(schema)
+            val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(McpConnection(endpoint)))
+            assertEquals(JsonPrimitive(true), tools.execute(query, ActionPass()).content["ok"])
+            assertEquals(Json.parseToJsonElement(expected), endpoint.lastArguments)
+        }
     }
 
     @Test fun booleanPropertySchemaBecomesPermissiveObject() = runBlocking {
