@@ -117,7 +117,8 @@ class BackupEngineTest {
         assertTrue(manifest.entries.any { it.path == "files/proactive/topics.bin" && it.alias == "mika-proactive-topics" })
         assertTrue(manifest.entries.any { it.path == "files/workflows-v1.bin" && it.encrypted && it.alias == "mika-workflows" })
         assertTrue(manifest.entries.any { it.path == "files/saved-checklists-v1.bin" && it.encrypted && it.alias == "mika-saved-checklists" })
-        assertTrue(manifest.entries.any { it.path == "files/sms-login-consent.txt" && it.encrypted && it.alias == "mika-sms-login-profiles" })
+        assertTrue(manifest.entries.none { it.path == "files/sms-login-consent.txt" })
+        assertTrue("files/sms-login-consent.txt" in manifest.excluded)
         assertTrue(manifest.skippedProviderKeys.isEmpty())
         assertTrue(manifest.skippedPrefs.isEmpty())
 
@@ -141,7 +142,7 @@ class BackupEngineTest {
         assertEquals("contacts-plain", String(importCipher.decrypt(File(dstFiles, "proactive/contacts.bin").readBytes())))
         assertEquals("""{"templates":[],"runs":[]}""", String(importCipher.decrypt(File(dstFiles, "workflows-v1.bin").readBytes())))
         assertEquals("""[]""", String(importCipher.decrypt(File(dstFiles, "saved-checklists-v1.bin").readBytes())))
-        assertEquals("""{"version":2,"enabled":false}""", String(importCipher.decrypt(File(dstFiles, "sms-login-consent.txt").readBytes())))
+        assertFalse(File(dstFiles, "sms-login-consent.txt").exists())
 
         // Prefs: encrypted values were decrypted on export and re-encrypted on import;
         // plain values survive untouched.
