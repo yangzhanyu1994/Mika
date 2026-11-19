@@ -628,6 +628,7 @@ class TaskRun(
             // 用户在浏览器页上对着一页问的:那一页借给这个任务当当前网页标签(见 PageLoans);开跑时页面还开着才借得到
             val pageLoan = if (provenance.origin == RunOrigin.Ui) withContext(Dispatchers.Main) { UserBrowser.existing()?.claim(conversationId, key) } else null
             val light = env.lightModelFactory(service, session)
+            val decision = if (provenance.origin == RunOrigin.Ui) env.decisionModel(service) else null
             // 同一模型分成两个实例并不会更便宜或更快;禁止它给批量/收尾工具反而只会增加改派和逐步操作。
             // 这只跳过逐步分工,轻量角色仍可用于意图判断、标题和收尾等辅助调用。
             val routedLight = light?.takeIf {
@@ -1121,7 +1122,8 @@ class TaskRun(
                 router = routedLight?.let { ModelRouter(model, it) },
                 intentJudge = if (provenance.origin == RunOrigin.Ui) light ?: model else null,
                 // 选路线是辅助判断:用轻量模型,没配用主模型
-                routes = if (speed.replay) RouteMatcher(light ?: model, routeStore, knowledge) else null,
+                intentDecision = decision,
+                routes = if (speed.replay) RouteMatcher(light ?: model, routeStore, knowledge, decision) else null,
                 skills = catalog,
                 memory = memory,
                 interaction = service.interaction(conversationId, channelPeer),

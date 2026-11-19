@@ -899,6 +899,20 @@ class ProviderStore(
                 headers = headers(target.sessionHeader, session),
             )
         }
+    /** A Google Developer API key from a configured Gemini provider. */
+    @Synchronized
+    fun geminiDeveloperApiKey(): String? {
+        fun validKey(providerId: String): String? =
+            providerKey(providerId)?.trim()?.takeIf { it.isNotBlank() && it.all { c -> c.code in 33..126 } }
+        val main = configFor(ModelRole.Main)
+        if (main?.kind == ProviderConfig.Kind.Gemini) {
+            validKey(main.providerId)?.let { return it }
+        }
+        return _providers.value.asSequence()
+            .filter { it.kind == ProviderConfig.Kind.Gemini }
+            .firstNotNullOfOrNull { validKey(it.id) }
+    }
+
     /** 每次实际请求前重查配置和账本；达到预算时不发请求，也不记一笔虚假调用。 */
     private fun checkDailyBudget(source: UsageSource) {
         val p = provider(source.providerId) ?: return
