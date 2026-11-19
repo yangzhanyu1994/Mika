@@ -70,6 +70,12 @@ object MikaIcons {
     )
     /** 柱状图:Token 用量。 */
     val Chart = stroke("chart", "M4 20 h16", "M7 16 v-4 M12 16 V6 M17 16 v-7")
+    val Sliders = stroke("sliders", "M4 7 h5 M13 7 h7 M4 12 h10 M18 12 h2 M4 17 h2 M10 17 h10",
+        "M9 5 v4 M14 10 v4 M6 15 v4")
+    val Activity = stroke("activity", "M3 12 h4 l3 -6 l4 12 l3 -6 h4")
+    val Bolt = stroke("bolt", "M13 3 L5 13 h6 l-1 8 l9 -11 h-6 z")
+    val Handset = stroke("handset",
+        "M7 3.8 l3 4.6 l-2.2 2.2 a12 12 0 0 0 5.6 5.6 l2.2 -2.2 l4.6 3 a1.4 1.4 0 0 1 0.4 1.9 l-1.3 2 a1.5 1.5 0 0 1 -1.5 0.6 C10 20 4 14 2.5 6.2 a1.5 1.5 0 0 1 0.6 -1.5 l2 -1.3 a1.4 1.4 0 0 1 1.9 0.4")
     val Clock = stroke("clock", "M3 12 a9 9 0 1 0 18 0 a9 9 0 1 0 -18 0", "M12 7 v5 l3 2")
     val Alarm = stroke(
         "alarm", "M5 13 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0", "M12 10 v3 l2 1.5 M5 4 L2.5 6.5 M19 4 l2.5 2.5",

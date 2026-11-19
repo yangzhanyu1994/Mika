@@ -367,7 +367,7 @@ internal fun ChatDrawer(
             } else {
                 if (!selecting) {
                     item("conversation-tasks") {
-                        DrawerTaskLabel(R.string.drawer_conversation_tasks, conversationsExpanded,
+                        DrawerTaskLabel(R.string.drawer_conversation_tasks, MikaIcons.Chats, conversationsExpanded,
                             onToggle = { conversationsExpanded = !conversationsExpanded })
                     }
                     if (conversationsExpanded) {
@@ -386,7 +386,7 @@ internal fun ChatDrawer(
                         }
                     }
                     item("model-config") {
-                        DrawerTaskLabel(R.string.drawer_model_config, modelsExpanded,
+                        DrawerTaskLabel(R.string.drawer_model_config, MikaIcons.Sliders, modelsExpanded,
                             badge = modelStatuses?.summary?.takeUnless { modelsExpanded },
                             onToggle = { modelsExpanded = !modelsExpanded })
                     }
@@ -399,7 +399,7 @@ internal fun ChatDrawer(
                         }
                     }
                     item("h-running") {
-                        DrawerTaskLabel(R.string.drawer_task_running, runningExpanded, sections.running.size,
+                        DrawerTaskLabel(R.string.drawer_task_running, MikaIcons.Activity, runningExpanded, sections.running.size,
                             onToggle = { runningExpanded = !runningExpanded })
                     }
                 }
@@ -416,7 +416,7 @@ internal fun ChatDrawer(
                 }
                 if (!selecting) {
                     item("h-scheduled") {
-                        DrawerTaskLabel(R.string.drawer_task_scheduled, scheduledExpanded, tasks.scheduled.size,
+                        DrawerTaskLabel(R.string.drawer_task_scheduled, MikaIcons.Clock, scheduledExpanded, tasks.scheduled.size,
                             onToggle = { scheduledExpanded = !scheduledExpanded })
                     }
                     if (scheduledExpanded) {
@@ -430,7 +430,7 @@ internal fun ChatDrawer(
                         }
                     }
                     item("h-automation") {
-                        DrawerTaskLabel(R.string.drawer_task_automation, automationExpanded, tasks.automation.size,
+                        DrawerTaskLabel(R.string.drawer_task_automation, MikaIcons.Bolt, automationExpanded, tasks.automation.size,
                             onToggle = { automationExpanded = !automationExpanded })
                     }
                     if (automationExpanded) {
@@ -446,7 +446,7 @@ internal fun ChatDrawer(
                         }
                     }
                     item("h-calls") {
-                        DrawerTaskLabel(R.string.drawer_task_calls, callsExpanded, tasks.calls.size,
+                        DrawerTaskLabel(R.string.drawer_task_calls, MikaIcons.Handset, callsExpanded, tasks.calls.size,
                             unread = unhandledCalls > 0, onToggle = { callsExpanded = !callsExpanded })
                     }
                     if (callsExpanded) {
