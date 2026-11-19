@@ -45,6 +45,11 @@ internal class AssistantReadoutSettings(context: Context) {
             prefs.edit().putBoolean("enabled", enabled).commit()
     }
 
+    fun hasCredentials(): Boolean {
+        val snapshot = prefs.all
+        return credentials(snapshot, model(snapshot).provider) != null
+    }
+
     fun model(): ReadoutModel = model(prefs.all)
 
     private fun model(snapshot: Map<String, *>): ReadoutModel {

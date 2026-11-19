@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">Tugas percakapan</string>
+    <string name="drawer_new_side_chat">Obrolan sampingan baru</string>
+    <string name="drawer_config_active">Konfigurasi aktif</string>
+    <string name="drawer_config_missing_key">API Key belum diatur</string>
+    <string name="model_key_website_hint">Buat API Key di konsol penyedia Anda.</string>
+    <string name="scene_compound_title">Otomasi multikondisi</string>
+    <string name="scene_conditions_title">Kondisi</string>
+    <string name="scene_conditions_any">Salah satu kondisi</string>
+    <string name="scene_conditions_all">Semua kondisi</string>
+    <string name="scene_condition_add">Tambah kondisi</string>
+    <string name="scene_condition_remove">Hapus kondisi</string>
+    <string name="scene_window_enabled">Batasi ke rentang waktu</string>
+    <string name="scene_window_start">Mulai %1$s</string>
+    <string name="scene_window_end">Selesai %1$s</string>
+    <string name="scene_window_hint">Menggunakan zona waktu ponsel dan dapat melewati tengah malam.</string>
+    <string name="scene_window_invalid">Waktu mulai dan selesai harus berbeda.</string>
+    <string name="scene_inside">Di dalam area</string>
+    <string name="scene_outside">Di luar area</string>
+    <string name="scene_compound_bluetooth_hint">Bluetooth mengikuti status koneksi yang terdeteksi oleh ponsel.</string>
+    <string name="clock_hour">Jam</string>
+    <string name="clock_minute">Menit</string>
+    <string name="clock_pick">Pilih waktu</string>
+    <string name="clock_add">Tambah waktu</string>
+</resources>

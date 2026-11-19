@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">Задачи и чаты</string>
+    <string name="drawer_new_side_chat">Новый отдельный чат</string>
+    <string name="drawer_config_active">Настройка активна</string>
+    <string name="drawer_config_missing_key">Нет ключа API</string>
+    <string name="model_key_website_hint">Создайте ключ API в консоли поставщика.</string>
+    <string name="scene_compound_title">Автоматизация с условиями</string>
+    <string name="scene_conditions_title">Условия</string>
+    <string name="scene_conditions_any">Любое условие</string>
+    <string name="scene_conditions_all">Все условия</string>
+    <string name="scene_condition_add">Добавить условие</string>
+    <string name="scene_condition_remove">Убрать условие</string>
+    <string name="scene_window_enabled">Ограничить по времени</string>
+    <string name="scene_window_start">Начало %1$s</string>
+    <string name="scene_window_end">Конец %1$s</string>
+    <string name="scene_window_hint">Используется часовой пояс телефона. Интервал может пересекать полночь.</string>
+    <string name="scene_window_invalid">Начало и конец должны различаться.</string>
+    <string name="scene_inside">Внутри области</string>
+    <string name="scene_outside">Вне области</string>
+    <string name="scene_compound_bluetooth_hint">Учитывается состояние Bluetooth-соединения, обнаруженное телефоном.</string>
+    <string name="clock_hour">Час</string>
+    <string name="clock_minute">Минута</string>
+    <string name="clock_pick">Выбрать время</string>
+    <string name="clock_add">Добавить время</string>
+</resources>

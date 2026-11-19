@@ -58,9 +58,12 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         } else EnvironmentSceneMonitor.stop(context)
     }
     environmentKind?.let { kind ->
-        EnvironmentSceneEditor(context, kind, environmentEdit, error, onBack = { environmentKind = null; error = false }, onSave = { rule ->
+        val dismiss = { environmentKind = null; error = false }
+        val save: (EnvironmentScene) -> Unit = { rule ->
             try { environment.save(rule); refreshEnvironment(); environmentKind = null } catch (_: Exception) { error = true }
-        })
+        }
+        if (kind == "compound") CompoundSceneEditor(context, environmentEdit, error, dismiss, save)
+        else EnvironmentSceneEditor(context, kind, environmentEdit, error, dismiss, save)
         return
     }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -104,7 +107,9 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         }
         GroupLabel(stringResource(R.string.scene_trigger_types))
         GroupCard {
-            ListRow(MikaIcons.Clock, stringResource(R.string.scene_time), first = true, onClick = onPlans) { RowChevron() }
+            ListRow(MikaIcons.Spark, stringResource(R.string.scene_compound_title), first = true,
+                onClick = { environmentEdit = null; environmentKind = "compound" }) { RowChevron() }
+            ListRow(MikaIcons.Clock, stringResource(R.string.scene_time), onClick = onPlans) { RowChevron() }
             ListRow(MikaIcons.Screens, stringResource(R.string.scene_bluetooth), onClick = { editing = null; editor = true }) { RowChevron() }
             ListRow(MikaIcons.Globe, stringResource(R.string.scene_wifi), onClick = { environmentEdit = null; environmentKind = "wifi" }) { RowChevron() }
             ListRow(MikaIcons.Screens, stringResource(R.string.scene_location), onClick = { environmentEdit = null; environmentKind = "location" }) { RowChevron() }
@@ -146,9 +151,12 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
         }
         environmentRules.forEach { rule ->
             GroupCard {
-                ListRow(MikaIcons.Globe, rule.title, rule.target + " · " + stringResource(
+                val subtitle = rule.conditions?.let { compound ->
+                    compound.signals.joinToString(" · ") { condition -> condition.name.ifBlank { condition.target } }
+                } ?: (rule.target + " · " + stringResource(
                     if (rule.type == "wifi") { if (rule.enter) R.string.scene_connected else R.string.scene_disconnected }
-                    else { if (rule.enter) R.string.env_enter else R.string.env_exit }),
+                    else { if (rule.enter) R.string.env_enter else R.string.env_exit }))
+                ListRow(MikaIcons.Globe, rule.title, subtitle,
                     first = true, detail = rule.goal.take(80), onClick = { environmentEdit = rule; environmentKind = rule.type }) {
                     Switch(checked = rule.enabled, onCheckedChange = { enabled ->
                         try { environment.save(rule.copy(enabled = enabled)); refreshEnvironment() } catch (_: Exception) { error = true }
@@ -159,7 +167,7 @@ fun ScenesScreen(context: Context, onBack: () -> Unit, onPlans: () -> Unit, onOp
                 TextButton(onClick = { environmentDelete = rule }) { Text(stringResource(R.string.scene_delete)) }
             }
         }
-        Button(onClick = { editing = null; editor = true }, modifier = Modifier.fillMaxWidth().testTag("scene-new")) {
+        Button(onClick = { environmentEdit = null; environmentKind = "compound" }, modifier = Modifier.fillMaxWidth().testTag("scene-new")) {
             Text(stringResource(R.string.scene_new))
         }
     }

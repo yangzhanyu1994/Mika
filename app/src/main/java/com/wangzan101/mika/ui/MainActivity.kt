@@ -63,7 +63,7 @@ import com.wangzan101.mika.browser.UserBrowser
 import com.wangzan101.mika.BuildConfig
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.routeConversation
-import com.wangzan101.mika.chat.isNearbyWeatherRequest
+import com.wangzan101.mika.chat.routeLiveWeather
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.about.Diagnostics
 import com.wangzan101.mika.about.DiagnosticsCollector
@@ -526,7 +526,8 @@ private fun MikaRoot(
             return accepted
         }
 
-        if (!fromWork && !isNearbyWeatherRequest(question) && app.researchChat.canDelegate()) {
+        val weatherRoute = routeLiveWeather(question, app.researchChat.canSearch())
+        if (!fromWork && weatherRoute != ModelRole.Main && app.researchChat.canDelegate()) {
             if (inPersonal) {
                 return app.researchChat.send("personal-main", question, app.personal::researchHistory,
                     app.personal::recordResearch, onWork = {
@@ -539,7 +540,13 @@ private fun MikaRoot(
             })
         }
 
-        val target = routeConversation(question, store)
+        val target = weatherRoute ?: run {
+            val lastWork = withContext(Dispatchers.IO) {
+                val id = if (inPersonal) personalWorkId else before.conversationId
+                id?.let(app.conversations::turns)?.lastOrNull { !it.research && it.status in setOf("succeeded", "unverified") }
+            }
+            routeConversation(question, store, lastWork)
+        }
         val current = app.chat.ui.value
         if (!onOriginalScreen(before.conversationId) ||
             (fromWork && (current.input != before.input || current.composer != before.composer ||
@@ -771,7 +778,6 @@ private fun MikaRoot(
                 onCallModel = { nav.pushFromDrawer(Route.CallModel) },
                 onReadoutModel = { nav.pushFromDrawer(Route.ReadoutModel) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
-                onOpenModelUrl = { openInBrowser(context, it) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
@@ -782,6 +788,10 @@ private fun MikaRoot(
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,
                 onPersonal = { nav.show(Route.Personal) },
+                onNewSideChat = {
+                    newModeConversation()
+                    nav.reset()
+                },
                 onRegularChat = {
                     val id = app.chat.ui.value.conversationId
                     if (id == personalWorkId) showPersonalWork()

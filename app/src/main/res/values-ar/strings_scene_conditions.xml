@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">مهام المحادثات</string>
+    <string name="drawer_new_side_chat">محادثة جانبية جديدة</string>
+    <string name="drawer_config_active">الإعداد سارٍ</string>
+    <string name="drawer_config_missing_key">مفتاح API غير مهيأ</string>
+    <string name="model_key_website_hint">أنشئ مفتاح API من لوحة تحكم مزود الخدمة.</string>
+    <string name="scene_compound_title">أتمتة متعددة الشروط</string>
+    <string name="scene_conditions_title">الشروط</string>
+    <string name="scene_conditions_any">أي شرط</string>
+    <string name="scene_conditions_all">كل الشروط</string>
+    <string name="scene_condition_add">أضف شرطًا</string>
+    <string name="scene_condition_remove">أزل الشرط</string>
+    <string name="scene_window_enabled">تحديد فترة زمنية</string>
+    <string name="scene_window_start">البدء %1$s</string>
+    <string name="scene_window_end">الانتهاء %1$s</string>
+    <string name="scene_window_hint">يُستخدم توقيت الهاتف ويمكن أن تمتد الفترة بعد منتصف الليل.</string>
+    <string name="scene_window_invalid">يجب اختلاف وقتي البدء والانتهاء.</string>
+    <string name="scene_inside">داخل النطاق</string>
+    <string name="scene_outside">خارج النطاق</string>
+    <string name="scene_compound_bluetooth_hint">يعتمد شرط البلوتوث على حالة الاتصال التي يرصدها الهاتف.</string>
+    <string name="clock_hour">الساعة</string>
+    <string name="clock_minute">الدقيقة</string>
+    <string name="clock_pick">اختر الوقت</string>
+    <string name="clock_add">أضف وقتًا</string>
+</resources>

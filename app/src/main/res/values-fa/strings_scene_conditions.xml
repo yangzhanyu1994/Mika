@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">کارهای گفت‌وگو</string>
+    <string name="drawer_new_side_chat">گفت‌وگوی جانبی جدید</string>
+    <string name="drawer_config_active">پیکربندی فعال است</string>
+    <string name="drawer_config_missing_key">کلید API تنظیم نشده</string>
+    <string name="model_key_website_hint">کلید API را در کنسول ارائه‌دهنده بسازید.</string>
+    <string name="scene_compound_title">خودکارسازی چندشرطی</string>
+    <string name="scene_conditions_title">شرط‌ها</string>
+    <string name="scene_conditions_any">هر یک از شرط‌ها</string>
+    <string name="scene_conditions_all">همهٔ شرط‌ها</string>
+    <string name="scene_condition_add">افزودن شرط</string>
+    <string name="scene_condition_remove">حذف شرط</string>
+    <string name="scene_window_enabled">محدود به بازهٔ زمانی</string>
+    <string name="scene_window_start">آغاز %1$s</string>
+    <string name="scene_window_end">پایان %1$s</string>
+    <string name="scene_window_hint">از منطقهٔ زمانی تلفن استفاده می‌کند و می‌تواند از نیمه‌شب بگذرد.</string>
+    <string name="scene_window_invalid">زمان پایان و آغاز نباید یکسان باشد.</string>
+    <string name="scene_inside">درون محدوده</string>
+    <string name="scene_outside">بیرون محدوده</string>
+    <string name="scene_compound_bluetooth_hint">شرط بلوتوث بر اساس اتصال مشاهده‌شده توسط گوشی است.</string>
+    <string name="clock_hour">ساعت</string>
+    <string name="clock_minute">دقیقه</string>
+    <string name="clock_pick">انتخاب زمان</string>
+    <string name="clock_add">افزودن زمان</string>
+</resources>

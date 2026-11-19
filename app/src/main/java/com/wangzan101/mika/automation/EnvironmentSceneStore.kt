@@ -10,7 +10,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class EnvironmentScene(
+internal data class EnvironmentScene(
     val id: String,
     val title: String,
     val type: String,
@@ -24,12 +24,13 @@ data class EnvironmentScene(
     val enabled: Boolean = true,
     val sendWechat: Boolean = false,
     val lastThreadId: String? = null,
+    val conditions: SceneConditions? = null,
 ) {
     override fun toString() = "EnvironmentScene(type=$type, enabled=$enabled)"
 }
 
 /** An unreadable encrypted store is never overwritten. */
-class EnvironmentSceneStore private constructor(context: Context) {
+internal class EnvironmentSceneStore private constructor(context: Context) {
     private val prefs = context.getSharedPreferences("mika_environment_scenes", Context.MODE_PRIVATE)
     private val cipher = KeystoreKeyCipher("mika-environment-scenes")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -74,7 +75,8 @@ class EnvironmentSceneStore private constructor(context: Context) {
     private fun validate(rule: EnvironmentScene) {
         require(rule.id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
         require(rule.title.isNotBlank() && rule.title.length <= 80)
-        require(rule.type in setOf("wifi", "location"))
+        require(rule.type in setOf("wifi", "location", "compound"))
+        require(if (rule.type == "compound") rule.conditions?.valid == true else rule.conditions == null)
         require(rule.target.isNotBlank() && rule.target.length <= 128)
         require(rule.goal.isNotBlank() && rule.goal.length <= 4000)
         require(rule.delaySeconds in 0..600)

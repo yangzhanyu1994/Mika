@@ -452,6 +452,7 @@ private fun AddProviderForm(ui: ModelSetupUi, actions: ModelSetupActions) {
         ) {
             Text(if (showKey) stringResource(R.string.hide) else stringResource(R.string.show), Modifier.clickable { showKey = !showKey }, fontSize = 13.sp, color = c.accent)
         }
+        if (!f.isSelfHosted) ModelKeyWebsite(modelKeyWebsite(f.baseUrl))
         if (f.showModel) {
             InputRow(
                 ModelSetupCopy.MODEL_NAME, f.model, actions.setModel, ModelSetupCopy.modelExample(f.exampleKind),

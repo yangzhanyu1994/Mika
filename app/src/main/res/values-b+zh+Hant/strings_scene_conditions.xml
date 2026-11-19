@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">會話任務</string>
+    <string name="drawer_new_side_chat">新增旁聊</string>
+    <string name="drawer_config_active">設定已生效</string>
+    <string name="drawer_config_missing_key">未設定 API Key</string>
+    <string name="model_key_website_hint">請在所選服務商的控制台建立 API Key。</string>
+    <string name="scene_compound_title">多條件自動化</string>
+    <string name="scene_conditions_title">判斷條件</string>
+    <string name="scene_conditions_any">任一符合</string>
+    <string name="scene_conditions_all">全部符合</string>
+    <string name="scene_condition_add">新增條件</string>
+    <string name="scene_condition_remove">移除此條件</string>
+    <string name="scene_window_enabled">限定時段</string>
+    <string name="scene_window_start">開始 %1$s</string>
+    <string name="scene_window_end">結束 %1$s</string>
+    <string name="scene_window_hint">按手機時區判斷，可跨午夜。</string>
+    <string name="scene_window_invalid">開始和結束時間不能相同。</string>
+    <string name="scene_inside">在範圍內</string>
+    <string name="scene_outside">在範圍外</string>
+    <string name="scene_compound_bluetooth_hint">藍牙條件依手機偵測到的裝置連線狀態判斷。</string>
+    <string name="clock_hour">小時</string>
+    <string name="clock_minute">分鐘</string>
+    <string name="clock_pick">滾輪選時間</string>
+    <string name="clock_add">新增時間</string>
+</resources>

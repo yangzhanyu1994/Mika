@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_conversation_tasks">Conversation tasks</string>
+    <string name="drawer_new_side_chat">New side chat</string>
+    <string name="drawer_config_active">Configuration active</string>
+    <string name="drawer_config_missing_key">API key missing</string>
+    <string name="model_key_website_hint">Get the API key from your provider’s console.</string>
+    <string name="scene_compound_title">Multi-condition routine</string>
+    <string name="scene_conditions_title">Conditions</string>
+    <string name="scene_conditions_any">Any condition</string>
+    <string name="scene_conditions_all">All conditions</string>
+    <string name="scene_condition_add">Add condition</string>
+    <string name="scene_condition_remove">Remove condition</string>
+    <string name="scene_window_enabled">Limit to a time window</string>
+    <string name="scene_window_start">Start %1$s</string>
+    <string name="scene_window_end">End %1$s</string>
+    <string name="scene_window_hint">Uses your phone’s time zone. The window can span midnight.</string>
+    <string name="scene_window_invalid">Start and end must differ.</string>
+    <string name="scene_inside">Inside the area</string>
+    <string name="scene_outside">Outside the area</string>
+    <string name="scene_compound_bluetooth_hint">Bluetooth conditions use the selected device’s observed connection state.</string>
+    <string name="clock_hour">Hour</string>
+    <string name="clock_minute">Minute</string>
+    <string name="clock_pick">Pick time</string>
+    <string name="clock_add">Add time</string>
+</resources>
