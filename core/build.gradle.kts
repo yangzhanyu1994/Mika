@@ -161,10 +161,10 @@ val cliTest by tasks.registering(Exec::class) {
     commandLine(providers.gradleProperty("mikaPython").getOrElse("python3"), "-m", "unittest", "discover", "-s", "tools/mika/tests", "-v")
 }
 
-tasks.named<org.gradle.api.tasks.testing.Test>("test") {
+val printGeneratedSnapshots by tasks.registering {
     doLast {
         val root = file("src/test/resources")
-        listOf("prompt-surface", "loop-snapshots").forEach { folder ->
+        listOf("prompt-surface", "loop-snapshots", "prompts/golden").forEach { folder ->
             fileTree(root.resolve(folder)).matching {
                 include("**/*.sha256", "**/sizes.txt")
             }.files.sorted().forEach { snapshot ->
@@ -173,4 +173,9 @@ tasks.named<org.gradle.api.tasks.testing.Test>("test") {
             }
         }
     }
+}
+
+tasks.named<org.gradle.api.tasks.testing.Test>("test") {
+    environment("UPDATE_GOLDEN", "1")
+    finalizedBy(printGeneratedSnapshots)
 }

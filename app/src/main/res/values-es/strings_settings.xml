@@ -215,4 +215,20 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">Detalles</string>
     <string name="net_proxy_summary">Las solicitudes del modelo, las actualizaciones, el navegador integrado y los comandos del entorno de archivos pasan por este proxy.</string>
+    <string name="settings_live_task_updates">Actualizaciones de tareas en directo</string>
+    <string name="settings_live_task_updates_detail">Elige si quieres mostrar las tareas en curso en la barra de estado</string>
+    <string name="settings_scheduled_quiet">Horas de silencio para tareas programadas</string>
+    <string name="settings_scheduled_quiet_detail">Los resultados y recordatorios programados aparecen en silencio en el panel de notificaciones.</string>
+    <string name="settings_scheduled_quiet_start">Hora de inicio</string>
+    <string name="settings_scheduled_quiet_end">Hora de fin</string>
+    <string name="settings_scheduled_quiet_equal">Elige horas de inicio y fin distintas para silenciar las notificaciones.</string>
+    <string name="settings_trigger_run_limit">Tiempo máximo de las tareas programadas</string>
+    <string name="settings_trigger_run_limit_sub">Las tareas programadas se ejecutan sin que estés pendiente. Desactivado significa sin límite; al acabarse el tiempo, la tarea se detiene e indica que se agotó el tiempo.</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <string name="settings_show_task_cost">Mostrar coste de la tarea</string>
+    <string name="settings_show_task_cost_sub">Estima en yuanes el coste de la API de DeepSeek para tareas nuevas.</string>
 </resources>

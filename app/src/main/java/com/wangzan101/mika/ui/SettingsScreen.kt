@@ -1,6 +1,7 @@
 package com.wangzan101.mika.ui
 
 import com.wangzan101.mika.R
+import com.wangzan101.mika.pocket.PocketGuardManager
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.i18n.trPlural
 import androidx.compose.ui.res.pluralStringResource
@@ -8,6 +9,8 @@ import androidx.compose.ui.res.stringResource
 import com.wangzan101.mika.settings.ProviderConnection
 import android.app.ActivityManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import com.wangzan101.mika.ui.components.MikaDialog
 import androidx.compose.material3.AlertDialog
@@ -73,7 +76,7 @@ import kotlinx.coroutines.withContext
 private const val SHIZUKU_SETUP_GUIDE_URL = "https://shizuku.rikka.app/guide/setup/"
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, AssistantReadout, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
+private enum class SettingsPage { Home, Advanced, AppAccess, SmsLogin, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -105,6 +108,8 @@ fun SettingsScreen(
     openPhoneOps: Boolean = false,
     onPhoneOpsOpened: () -> Unit = {},
 ) {
+    val settingsScroll = rememberScrollState()
+    val advancedScroll = rememberScrollState()
     val configs by store.configs.collectAsState()
     val roles by store.roles.collectAsState()
     // 开发者选项里的「看图定位已验证」跟着看图模型(看图用主模型时是主模型那条配置)
@@ -141,6 +146,11 @@ fun SettingsScreen(
     var personalStart by remember { mutableStateOf(flags.personalStart()) }
     var parallelMax by remember { mutableIntStateOf(flags.parallelMax()) }
     var keepScreenOn by remember { mutableStateOf(flags.keepScreenOn()) }
+    val pocketPrefs = remember(context) { context.getSharedPreferences(PocketGuardManager.PREFS, 0) }
+    var pocketGuard by remember { mutableStateOf(pocketPrefs.getBoolean(PocketGuardManager.ENABLED, false)) }
+    var pocketCompletionLock by remember { mutableStateOf(pocketPrefs.getBoolean(PocketGuardManager.LOCK_ON_COMPLETION, false)) }
+    var showTaskCost by remember { mutableStateOf(flags.showTaskCost()) }
+    var triggerRunMinutes by remember { mutableStateOf(flags.triggerRunMinutes()) }
     var muteTarget by remember { mutableStateOf(flags.muteTarget()) }
     var operatingPace by remember { mutableStateOf(flags.operatingPace()) }
     var stepLimit by remember { mutableStateOf(flags.taskStepLimit()) }
@@ -190,7 +200,6 @@ fun SettingsScreen(
         ),
     )
     // 开发者选项只在调试版和性能测试版里列出:发布版的各开关按评测结果统一定默认值
-    val showDeveloper = com.wangzan101.mika.record.DetailedTraces.supportedBuild
     val toHome = { page = SettingsPage.Home }
     val toAdvanced = { page = SettingsPage.Advanced }
     val back = {
@@ -207,7 +216,6 @@ fun SettingsScreen(
     if (page != SettingsPage.Home) BackHandler { back() }
 
     val visiblePage = when {
-        !showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.DeviceDirectories || page == SettingsPage.RunStats) -> SettingsPage.Home
         page == SettingsPage.Root && !rootState.suPresent -> SettingsPage.Advanced
         else -> page
     }
@@ -223,12 +231,13 @@ fun SettingsScreen(
             onOpenAppAccess = { page = SettingsPage.AppAccess },
             onOpenBrowser = onOpenBrowser,
             onOpenFiles = onOpenFiles,
+            onOpenSmsLogin = { page = SettingsPage.SmsLogin },
             onOpenDuringWork = { page = SettingsPage.DuringWork },
             capsuleMode = capsuleMode, onOpenCapsule = { page = SettingsPage.Capsule },
             onOpenNotifications = { page = SettingsPage.Notifications },
             language = language, onOpenLanguage = { page = SettingsPage.Language },
             onOpenAssistantAppearance = { page = SettingsPage.AssistantAppearance },
-            onOpenAssistantReadout = { page = SettingsPage.AssistantReadout },
+            scrollState = settingsScroll,
             personalStart = personalStart,
             onPersonalStart = { flags.setPersonalStart(it); personalStart = it },
             onOpenMemory = onOpenMemory,
@@ -241,6 +250,7 @@ fun SettingsScreen(
             onQuit = { confirmingQuit = true },
         )
         SettingsPage.Advanced -> AdvancedSettingsContent(
+            scrollState = advancedScroll,
             proxy = proxy, proxyNote = proxy?.let { NetProxyCopy.subtitle(it, browserProxy) }, onOpenProxy = { editingProxy = true },
             webSearch = webSearch, onOpenWebSearch = { editingSearch = true },
             webFetch = webFetch, onOpenWebFetch = { editingFetch = true },
@@ -251,11 +261,12 @@ fun SettingsScreen(
             computerAccess = mcpOn, onOpenComputerAccess = { page = SettingsPage.ComputerAccess },
             mcpServersCount = mcpServers?.servers?.value?.size, onOpenMcpServers = { page = SettingsPage.McpServers },
             showRoot = rootState.suPresent, rootCommands = rootState.commands, onOpenRoot = { page = SettingsPage.Root },
-            showDeveloper = showDeveloper, onOpenDeveloper = { page = SettingsPage.Developer },
+            showDeveloper = true, onOpenDeveloper = { page = SettingsPage.Developer },
             onOpenProactive = { page = SettingsPage.Proactive },
             onBack = toHome,
         )
         SettingsPage.AppAccess -> AppAccessScreen(onBack = toHome)
+        SettingsPage.SmsLogin -> SmsLoginSettingsScreen(onBack = toHome)
         SettingsPage.Wechat -> WechatSettingsScreen(wechat, onBack = toHome)
         SettingsPage.PhoneOps -> PhoneOpsScreen(
             status, androidRelease, onProblem,
@@ -281,6 +292,16 @@ fun SettingsScreen(
             autonomous = autonomous, onAutonomous = onAutonomous,
             operatingPace = operatingPace, onOperatingPace = { flags.setOperatingPace(it); operatingPace = it },
             stepLimit = stepLimit, onStepLimit = { flags.setTaskStepLimit(it); stepLimit = it },
+            showTaskCost = showTaskCost, onShowTaskCost = { flags.setShowTaskCost(it); showTaskCost = it },
+            triggerRunMinutes = triggerRunMinutes, onTriggerRunMinutes = { flags.setTriggerRunMinutes(it); triggerRunMinutes = it },
+            pocketGuard = pocketGuard, onPocketGuard = {
+                pocketPrefs.edit().putBoolean(PocketGuardManager.ENABLED, it).apply()
+                pocketGuard = it
+            },
+            pocketCompletionLock = pocketCompletionLock, onPocketCompletionLock = {
+                pocketPrefs.edit().putBoolean(PocketGuardManager.LOCK_ON_COMPLETION, it).apply()
+                pocketCompletionLock = it
+            },
             tokenBudget = tokenBudget, onTokenBudget = { flags.setTaskTokenBudget(it); tokenBudget = it },
             selfConfig = selfConfig, onSelfConfig = { flags.setSelfConfig(it); selfConfig = it },
             selfOperate = selfOperate, onSelfOperate = { flags.setSelfOperate(it); selfOperate = it },
@@ -289,7 +310,6 @@ fun SettingsScreen(
             deviceSettings = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.settings,
             deviceAccess = (context.applicationContext as com.wangzan101.mika.MikaApp).deviceAccess.access,
         )
-        SettingsPage.AssistantReadout -> AssistantReadoutScreen(onBack = toHome)
         SettingsPage.AssistantAppearance -> AssistantAppearanceScreen(onBack = toHome)
         SettingsPage.Language -> LanguageScreen(language, onLanguage = { AppLanguage.set(context, it) }, onBack = toHome)
         SettingsPage.Recommendations -> RecommendedTasksScreen(recommendedTasks, onBack = toHome)
@@ -313,7 +333,7 @@ fun SettingsScreen(
             deviceFiles = deviceFiles, onDeviceFiles = { flags.setDeviceFiles(it); deviceFiles = it },
             grounding = visionConfig?.let { GroundingSetting(it.model, it.capabilities.groundingVerified) },
             onGrounding = { verified -> scope.launch { withContext(Dispatchers.IO) { store.setVisionGroundingVerified(verified) } } },
-            onOpenRunStats = { page = SettingsPage.RunStats },
+            onOpenRunStats = if (com.wangzan101.mika.record.DetailedTraces.supportedBuild) ({ page = SettingsPage.RunStats }) else null,
             onDeviceDirectories = { page = SettingsPage.DeviceDirectories },
         )
         SettingsPage.DeviceDirectories -> DeviceDirectoriesScreen(
@@ -420,6 +440,7 @@ fun SettingsContent(
     wechatBound: Boolean = false,
     onOpenWechat: () -> Unit = {},
     onOpenAppAccess: () -> Unit = {},
+    onOpenSmsLogin: () -> Unit = {},
     onOpenDuringWork: () -> Unit = {},
     /** 悬浮胶囊此刻的选择,写在「悬浮胶囊」一行的右边。 */
     capsuleMode: CapsuleMode = CapsuleMode.DEFAULT,
@@ -443,11 +464,11 @@ fun SettingsContent(
     onPersonalStart: ((Boolean) -> Unit)? = null,
     onQuit: () -> Unit = {},
     onOpenAssistantAppearance: (() -> Unit)? = null,
-    onOpenAssistantReadout: (() -> Unit)? = null,
+    scrollState: ScrollState = rememberScrollState(),
 ) {
     var pickingHome by remember { mutableStateOf(false) }
     val check = Prerequisites.check(status, hasMainModel = mainModel != null)
-    PageScaffold(stringResource(R.string.settings_title), onBack) {
+    PageScaffold(stringResource(R.string.settings_title), onBack, scrollState = scrollState) {
         StatusSummary(check, onProblem)
 
         GroupLabel(stringResource(R.string.settings_basic))
@@ -504,9 +525,6 @@ fun SettingsContent(
             onOpenAssistantAppearance?.let {
                 ListRow(MikaIcons.Spark, stringResource(R.string.assistant_appearance), onClick = it) { RowChevron() }
             }
-            onOpenAssistantReadout?.let {
-                ListRow(MikaIcons.Message, stringResource(R.string.assistant_readout_settings), onClick = it) { RowChevron() }
-            }
             val homeLabel = stringResource(R.string.settings_home_title)
             ListRow(MikaIcons.Spark, homeLabel, stringResource(R.string.settings_personal_start_sub), onClick = onPersonalStart?.let { { pickingHome = true } }) {
                 RowValue(stringResource(if (personalStart) R.string.settings_home_personal else R.string.settings_home_chat))
@@ -518,6 +536,7 @@ fun SettingsContent(
                 stringResource(R.string.recommendations_sub),
                 onClick = onOpenRecommendations,
             ) { RowChevron() }
+            ListRow(MikaIcons.Shield, stringResource(R.string.sms_login_title), stringResource(R.string.sms_login_default_off), onClick = onOpenSmsLogin) { RowChevron() }
         }
 
         GroupLabel(stringResource(R.string.settings_other))
@@ -568,6 +587,7 @@ fun SettingsContent(
 /** 高级与其他:网络与连接、维护、开发者三组;各能力仍使用原来的完整子页。 */
 @Composable
 fun AdvancedSettingsContent(
+    scrollState: ScrollState = rememberScrollState(),
     onBack: () -> Unit,
     proxy: String? = null,
     proxyNote: String? = null,
@@ -594,7 +614,7 @@ fun AdvancedSettingsContent(
     onOpenDeveloper: () -> Unit = {},
     onOpenProactive: () -> Unit = {},
 ) {
-    PageScaffold(stringResource(R.string.settings_advanced), onBack) {
+    PageScaffold(stringResource(R.string.settings_advanced), onBack, scrollState = scrollState) {
         val sandboxRow = sandbox?.takeIf { it !is SandboxStatus.Unsupported }
         GroupCard {
             ListRow(MikaIcons.Code, stringResource(R.string.env_vars_title), first = true, onClick = onOpenEnvVars) { RowChevron() }

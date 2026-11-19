@@ -252,4 +252,7 @@
     <string name="share_card_question">S</string>
     <string name="share_card_answer">Y</string>
     <string name="share_card_made_by">Mika tarafından tamamlandı</string>
+    <string name="chat_task_cost_estimate">Tahmini %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (kısmi)</string>
+    <string name="chat_task_cost_unavailable">Maliyet kullanılamıyor</string>
 </resources>

@@ -207,4 +207,18 @@
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
     <string name="details">詳細</string>
     <string name="net_proxy_summary">モデルのリクエスト、更新、内蔵ブラウザ、ファイル環境のコマンドはこのプロキシを通ります。</string>
+    <string name="settings_live_task_updates">タスクのライブ通知</string>
+    <string name="settings_live_task_updates_detail">実行中のタスクをステータスバーに表示するか選べます</string>
+    <string name="settings_scheduled_quiet">定期タスクの通知を静かにする時間帯</string>
+    <string name="settings_scheduled_quiet_detail">予定したタスクの結果やリマインダーは、通知欄に静かに表示されます。</string>
+    <string name="settings_scheduled_quiet_start">開始時刻</string>
+    <string name="settings_scheduled_quiet_end">終了時刻</string>
+    <string name="settings_scheduled_quiet_equal">通知を静かにするには、開始時刻と終了時刻を別々に設定してください。</string>
+    <string name="settings_trigger_run_limit">スケジュールタスクの最長実行時間</string>
+    <string name="settings_trigger_run_limit_sub">スケジュールタスクは見ていない間に動きます。オフは無制限です。時間になるとタスクは止まり、時間切れだったことを伝えます。</string>
+    <plurals name="settings_trigger_run_minutes_n">
+        <item quantity="other">%1$d 分</item>
+    </plurals>
+    <string name="settings_show_task_cost">タスクの費用を表示</string>
+    <string name="settings_show_task_cost_sub">新しいタスクの DeepSeek API 費用を人民元で見積もります。</string>
 </resources>

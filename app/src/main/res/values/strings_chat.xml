@@ -263,4 +263,7 @@
     <string name="share_card_question">Q</string>
     <string name="share_card_answer">A</string>
     <string name="share_card_made_by">Completed by Mika</string>
+    <string name="chat_task_cost_estimate">Est. %1$s</string>
+    <string name="chat_task_cost_partial">%1$s (partial)</string>
+    <string name="chat_task_cost_unavailable">Cost unavailable</string>
 </resources>

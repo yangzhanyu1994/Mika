@@ -7,6 +7,7 @@ import com.wangzan101.mika.core.agent.SystemPrompt
 import com.wangzan101.mika.core.prompt.PersonaPrompt
 import com.wangzan101.mika.settings.FeatureFlags
 import com.wangzan101.mika.core.agent.Turn
+import com.wangzan101.mika.core.usage.ConversationMeter
 import com.wangzan101.mika.core.model.Author
 import com.wangzan101.mika.core.model.Message
 import com.wangzan101.mika.core.model.ModelRole
@@ -85,7 +86,7 @@ internal class ResearchChat(
         if (question.isBlank() || id in _pending.value || providers.configFor(ModelRole.Chat) == null) return false
         val draft = ResearchDraft(question, System.currentTimeMillis())
         _pending.update { it + (id to draft) }
-        scope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO + store.meter(id)) {
             try {
                 val answer = present(id, draft, history().takeLast(12), onWork != null)
                 if (answer != null) {
@@ -176,13 +177,16 @@ internal class ResearchChat(
             }
             add(Message(Role.User, listOf(Part.Text(question)), Author.User))
         }.toMutableList()
+        var requestStep = 0
         suspend fun request(specs: List<ToolSpec>, stream: Boolean = true): com.wangzan101.mika.core.model.ModelReply {
             onDraft(ResearchPhase.Thinking, "")
-            val reply = if (stream && model is StreamingChatModel) {
-                model.completeStreaming(system, messages, specs) { text ->
-                    if (text.isNotBlank()) onDraft(ResearchPhase.Writing, text)
-                }
-            } else model.complete(system, messages, specs)
+            val reply = withContext(ConversationMeter.MainRequest(++requestStep)) {
+                if (stream && model is StreamingChatModel) {
+                    model.completeStreaming(system, messages, specs) { text ->
+                        if (text.isNotBlank()) onDraft(ResearchPhase.Writing, text)
+                    }
+                } else model.complete(system, messages, specs)
+            }
             recordUsage(id, reply.usage)
             return reply
         }

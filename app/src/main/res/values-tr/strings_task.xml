@@ -78,4 +78,7 @@
     <string name="screens_needs_you">Size ihtiyaç duyuyor</string>
     <string name="screens_zoom">Bu ekranı büyüt</string>
     <string name="task_no_phone_helper_shizuku">Telefon kontrolü hazır değil. Shizuku\'yu başlatın ve Mika\'ya izin verin (veya Ayarlar\'daki Telefon kontrolünü kontrol edin). Web ve dosya görevleri etkilenmez.</string>
+    <string name="task_trigger_time_limit">Zamanlanmış görev %1$d dakikadan uzun sürdü, bu yüzden durdu.</string>
+    <string name="trigger_failed_streak">Zamanlanmış görev art arda %1$d kez başarısız oldu</string>
+    <string name="trigger_failed_streak_hint">Bu planı Zamanlanmış görevler sayfasından duraklatabilir veya değiştirebilirsiniz.</string>
 </resources>
