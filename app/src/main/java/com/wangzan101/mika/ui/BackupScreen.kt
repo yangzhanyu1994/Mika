@@ -35,7 +35,6 @@ import com.wangzan101.mika.ui.components.TileTone
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
-import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -65,9 +64,8 @@ fun BackupScreen(onBack: () -> Unit) {
     suspend fun doImport(uri: Uri, replace: Boolean) {
         try {
             val manifest = withContext(Dispatchers.IO) {
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                context.contentResolver.openInputStream(uri)?.use { engine.import(it, replace) }
                     ?: throw IOException("Could not open the backup file")
-                engine.import(ByteArrayInputStream(bytes), replace)
             }
             importedManifest = manifest
         } catch (e: BackupException) {
@@ -121,9 +119,8 @@ fun BackupScreen(onBack: () -> Unit) {
             status = null
             try {
                 val manifest = withContext(Dispatchers.IO) {
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    context.contentResolver.openInputStream(uri)?.use { engine.inspect(it) }
                         ?: throw IOException("Could not open the backup file")
-                    engine.inspect(ByteArrayInputStream(bytes))
                 }
                 if (engine.hasExistingData()) {
                     pendingImportUri = uri

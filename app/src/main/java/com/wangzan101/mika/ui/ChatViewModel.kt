@@ -500,7 +500,11 @@ class ChatViewModel(
     /** 有没有可用的声音模型;没有时不显示朗读入口。 */
     val canSpeak: StateFlow<Boolean> get() = voiceReady
 
+    private val mutableReadAloudText = MutableStateFlow<String?>(null)
+    val readAloudText = mutableReadAloudText.asStateFlow()
+
     fun speak(text: String) {
+        mutableReadAloudText.value = text
         scope.launch { speakText(text) }
     }
 
@@ -509,6 +513,7 @@ class ChatViewModel(
     /** 播放这一轮生成的一段音频;没有对话编号时不做。 */
     fun playAudio(path: String) {
         val id = _ui.value.conversationId ?: return
+        mutableReadAloudText.value = null
         scope.launch { playAudio(id, path) }
     }
 

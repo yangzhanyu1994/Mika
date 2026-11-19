@@ -379,7 +379,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            // 朗读失败不应让聊天页的协程因服务商响应或配置问题退出。
+            voicePlayer.fail(getString(R.string.voice_play_failed, getString(R.string.retry)))
         }
     }
 

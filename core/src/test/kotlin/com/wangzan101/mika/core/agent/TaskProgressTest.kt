@@ -49,6 +49,27 @@ class TaskProgressTest {
         assertEquals("完成", parsed.text)
     }
 
+    @Test fun multipleOutcomesOnlyAdvanceForNewConfirmedIds() {
+        val published = CompletionPlanBlock.fromCall("""{"criteria":["First report","Second report"]}""")
+        val plan = CompletionPlan().apply(published.updates.single())
+        assertEquals("0/2", plan.state()?.display)
+
+        val first = CompletionPlanBlock.fromCall("""{"confirmed":[{"id":1,"evidence":"First report saved"}]}""")
+        val once = plan.apply(first.updates.single()).apply(first.updates.single())
+        assertEquals("1/2", once.state()?.display)
+        assertFalse(once.complete)
+
+        val second = CompletionPlanBlock.fromCall("""{"confirmed":[{"id":2,"evidence":"Second report saved"}]}""")
+        val done = once.apply(second.updates.single())
+        assertEquals("2/2", done.state()?.display)
+        assertTrue(done.complete)
+    }
+
+    @Test fun completingAPartialMetricDoesNotCompleteTheTask() {
+        val report = CompletionPlanBlock.fromCall("""{"metric":{"name":"Records","done":2,"total":2,"scope":"part"}}""")
+        assertFalse(CompletionPlan().apply(report.updates.single()).complete)
+    }
+
     @Test fun malformedProgressIsRemovedAndReportedWithoutBreakingTheReply() {
         val parsed = CompletionPlanBlock.extract("""<task_progress>{"metric":{"done":-1}}</task_progress>继续""")
         assertEquals("继续", parsed.text)

@@ -249,4 +249,7 @@
     <string name="chat_audio">Ses</string>
     <string name="chat_audio_play">Oynat</string>
     <string name="chat_audio_stop">Durdur</string>
+    <string name="share_card_question">S</string>
+    <string name="share_card_answer">Y</string>
+    <string name="share_card_made_by">Mika tarafından tamamlandı</string>
 </resources>

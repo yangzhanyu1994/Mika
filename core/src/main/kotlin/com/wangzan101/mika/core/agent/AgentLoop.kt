@@ -493,7 +493,7 @@ class AgentLoop(
         val track = StepTrack()
         var completion = CompletionPlan()
         val newData = NewDataTracker()
-        fun progressState() = completion.metric?.state()
+        fun progressState() = completion.state()
         fun acceptProgress(parsed: CompletionPlanBlock.Extracted): Boolean {
             var valid = parsed.errors.isEmpty()
             parsed.errors.forEach { emit(RunEvent.State(now(), "task_progress_invalid", RunEvent.clip(it))) }
@@ -535,6 +535,7 @@ class AgentLoop(
             appendSteers(history, inbox)
             if (maxSteps != Int.MAX_VALUE) TurnPolicy.beforeStep(TurnSnapshot(step, maxSteps))?.let { history += ctx.notice(it.source, it.text) }
             appendRuntimeState(history, place, labels, step)
+            completion.pending()?.let { history += ctx.notice("task_progress", it) }
             _state.value = TaskState.Running(step, note, progress = progressState())
             refreshOffer()
             var asked = now()
@@ -1039,7 +1040,7 @@ class AgentLoop(
         task: String, history: MutableList<Message>, specs: List<ToolSpec>, step: Int, labels: Map<String, String>, place: Place?, recorder: ActionRecorder,
         facts: ReviewFacts, inbox: RunInbox?, closeout: Closeout = Closeout.StepLimit, completion: CompletionPlan? = null,
     ): TaskState {
-        TurnPolicy.closeout(closeout, completion?.metric?.state()).let { history += ctx.notice(it.source, it.text) }
+        TurnPolicy.closeout(closeout, completion?.state()).let { history += ctx.notice(it.source, it.text) }
         repeat(3) { attempt ->
             appendSteers(history, inbox)
             appendRuntimeState(history, place, labels, step)

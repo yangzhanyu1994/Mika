@@ -249,4 +249,7 @@
     <string name="chat_audio">Audio</string>
     <string name="chat_audio_play">Play</string>
     <string name="chat_audio_stop">Stop</string>
+    <string name="share_card_question">質問</string>
+    <string name="share_card_answer">回答</string>
+    <string name="share_card_made_by">Mika が完了</string>
 </resources>

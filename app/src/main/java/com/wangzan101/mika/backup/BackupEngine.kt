@@ -343,6 +343,8 @@ class BackupEngine(
         val payloads = mutableListOf<Pair<String, ByteArray>>()
         var total = 0L
         var manifestBytes: ByteArray? = null
+        val seenPaths = mutableSetOf<String>()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         try {
             ZipInputStream(input).use { zip ->
                 while (true) {
@@ -351,9 +353,16 @@ class BackupEngine(
                     if (name.isBlank() || name.contains("..") || name.contains('\\') || name.startsWith("/") || name.endsWith("/")) {
                         throw BackupException("Backup has an unsafe entry name: $name")
                     }
-                    val bytes = ByteArrayOutputStream().also { out -> zip.copyTo(out) }.toByteArray()
-                    total += bytes.size
-                    if (total > MAX_BACKUP_BYTES) throw BackupException("Backup is too large (over 128 MB)")
+                    if (!seenPaths.add(name)) throw BackupException("Backup contains the same entry twice")
+                    val output = ByteArrayOutputStream()
+                    while (true) {
+                        val count = zip.read(buffer)
+                        if (count == -1) break
+                        total += count
+                        if (total > MAX_BACKUP_BYTES) throw BackupException("Backup is too large (over 128 MB)")
+                        output.write(buffer, 0, count)
+                    }
+                    val bytes = output.toByteArray()
                     if (name == MANIFEST_PATH) manifestBytes = bytes else payloads += name to bytes
                     zip.closeEntry()
                 }

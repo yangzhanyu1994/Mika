@@ -18,6 +18,7 @@ internal data class ProgressMetric(
     val done: Int? = null,
     val total: Int? = null,
     val boundary: String? = null,
+    val part: Boolean = false,
 ) {
     init {
         require(name.isNotBlank() && name.length <= MAX_NAME)
@@ -37,30 +38,52 @@ internal data class CompletionPlan(
     val criteria: List<String> = emptyList(),
     val metric: ProgressMetric? = null,
     val allCriteriaMet: Boolean = false,
+    val confirmedIds: Set<Int> = emptySet(),
 ) {
-    val complete: Boolean get() = allCriteriaMet || metric?.reached == true
+    val complete: Boolean get() = if (criteria.size > 1) confirmedIds.size == criteria.size
+        else allCriteriaMet || confirmedIds.isNotEmpty() || (metric?.reached == true && !metric.part)
+
+    fun state(): RunProgress.Task? =
+        if (criteria.size > 1) RunProgress.Task("", confirmedIds.size, criteria.size, null) else metric?.state()
+
+    fun pending(): String? {
+        if (criteria.size < 2 || complete) return null
+        val items = criteria.mapIndexedNotNull { i, text -> if (i + 1 in confirmedIds) null else "${i + 1}: ${JsonPrimitive(text)}" }
+        return "Pending goal IDs: " + items.joinToString("; ") +
+            """. Report each observed result in <task_progress>{"confirmed":[{"id":1,"evidence":"brief observed result"}]}</task_progress>. Use that goal's ID and actual evidence."""
+    }
 
     fun apply(u: CompletionUpdate): CompletionPlan {
+        val items = u.criteria ?: criteria
+        require(items.take(criteria.size) == criteria) { "criteria IDs cannot be removed or reassigned" }
+        require(u.confirmed.all { it in 1..items.size }) { "unknown criterion ID" }
         val metric = u.metric?.let { change ->
-            val old = metric
+            val old = metric?.takeIf { change.name == null || change.name == it.name }
             ProgressMetric(
                 change.name ?: old?.name ?: throw IllegalArgumentException("metric.name is required"),
                 change.done ?: old?.done,
                 change.total ?: old?.total,
                 change.boundary ?: old?.boundary,
+                change.part ?: old?.part ?: false,
             )
         } ?: metric
-        return CompletionPlan(u.criteria ?: criteria, metric, u.allCriteriaMet ?: allCriteriaMet)
+        return CompletionPlan(items, metric, u.allCriteriaMet ?: allCriteriaMet, confirmedIds + u.confirmed)
     }
 
-    fun event(atMs: Long) = RunEvent.Criteria(atMs, criteria, emptyList(), progress = metric?.event(), complete = complete)
+    fun event(atMs: Long) = RunEvent.Criteria(atMs, criteria, emptyList(),
+        progress = if (criteria.size > 1) RunEvent.Progress("", confirmedIds.size, criteria.size) else metric?.event(),
+        complete = complete)
 }
 
-internal data class MetricUpdate(val name: String? = null, val done: Int? = null, val total: Int? = null, val boundary: String? = null)
+internal data class MetricUpdate(
+    val name: String? = null, val done: Int? = null, val total: Int? = null,
+    val boundary: String? = null, val part: Boolean? = null,
+)
 internal data class CompletionUpdate(
     val criteria: List<String>? = null,
     val metric: MetricUpdate? = null,
     val allCriteriaMet: Boolean? = null,
+    val confirmed: Set<Int> = emptySet(),
 )
 
 /**
@@ -70,8 +93,8 @@ internal data class CompletionUpdate(
 internal object CompletionPlanBlock {
     private const val OPEN = "<task_progress>"
     private val BLOCK = Regex("$OPEN(.*?)</task_progress>", RegexOption.DOT_MATCHES_ALL)
-    private val ROOT_KEYS = setOf("criteria", "metric", "complete")
-    private val METRIC_KEYS = setOf("name", "done", "total", "boundary")
+    private val ROOT_KEYS = setOf("criteria", "metric", "complete", "confirmed")
+    private val METRIC_KEYS = setOf("name", "done", "total", "boundary", "scope")
 
     class Extracted(val text: String, val updates: List<CompletionUpdate>, val errors: List<String>)
 
@@ -130,6 +153,16 @@ internal object CompletionPlanBlock {
                 text
             }
         }
+        val confirmed = root["confirmed"]?.let { value ->
+            val entries = value as? JsonArray ?: throw IllegalArgumentException("confirmed must be an array")
+            require(entries.size <= MAX_CRITERIA) { "too many confirmations" }
+            entries.map { entry ->
+                val obj = entry as? JsonObject ?: throw IllegalArgumentException("invalid confirmation")
+                require(obj.keys == setOf("id", "evidence")) { "confirmation needs id and evidence" }
+                require((obj.string("evidence")?.trim()?.length ?: 0) in 1..MAX_CRITERION) { "missing or oversized evidence" }
+                obj.int("id") ?: throw IllegalArgumentException("missing criterion ID")
+            }.toSet()
+        }.orEmpty()
         val metric = root["metric"]?.let { value ->
             val obj = value as? JsonObject ?: throw IllegalArgumentException("metric must be an object")
             require(obj.keys.all { it in METRIC_KEYS }) { "unknown metric field" }
@@ -139,14 +172,18 @@ internal object CompletionPlanBlock {
                 obj.int("done")?.also { require(it >= 0) { "metric.done must be non-negative" } },
                 obj.int("total")?.also { require(it > 0) { "metric.total must be positive" } },
                 obj.string("boundary")?.also { require(it.length <= MAX_BOUNDARY) { "metric.boundary is too long" } },
+                obj.string("scope")?.let { scope ->
+                    require(scope == "part" || scope == "task") { "unknown metric scope" }
+                    scope == "part"
+                },
             ).also { change ->
                 if (change.done != null && change.total != null) require(change.done <= change.total) { "metric.done exceeds total" }
             }
         }
         val complete = (root["complete"] as? JsonPrimitive)?.booleanOrNull
         if (root.containsKey("complete")) require(complete != null) { "complete must be boolean" }
-        require(criteria != null || metric != null || complete != null) { "empty task_progress update" }
-        return CompletionUpdate(criteria, metric, complete)
+        require(criteria != null || metric != null || complete != null || confirmed.isNotEmpty()) { "empty task_progress update" }
+        return CompletionUpdate(criteria, metric, complete, confirmed)
     }
 
     private fun JsonObject.string(key: String): String? = this[key]?.let {

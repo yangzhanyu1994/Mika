@@ -260,4 +260,7 @@
     <string name="chat_audio">Audio</string>
     <string name="chat_audio_play">Play</string>
     <string name="chat_audio_stop">Stop</string>
+    <string name="share_card_question">پرسش</string>
+    <string name="share_card_answer">پاسخ</string>
+    <string name="share_card_made_by">توسط Mika انجام شد</string>
 </resources>
