@@ -143,4 +143,5 @@
     <string name="calls_notification_connecting_audio">通話音声を接続中</string>
     <string name="calls_notification_connected_waiting">AI が接続しました。相手の発話を待っています。いつでも引き継げます。</string>
     <string name="calls_notification_connected">AI が接続しました。いつでも自分で引き継げます。</string>
+    <string name="calls_openai_realtime_note">OpenAI Realtime が通話音声を処理します。音声サービスを切り替えると、自動応答は再度有効にするまで停止します。</string>
 </resources>

@@ -48,6 +48,7 @@ data class CallConfig(
     val autoAnswerPausedUntilMs: Long? = null,
     internal val backgroundStandbyAuthorized: Boolean = false,
     val outgoingGreeting: String = CallPolicy.DEFAULT_OUTGOING_GREETING,
+    val speechProvider: CallSpeechProvider = CallSpeechProvider.Volcengine,
 ) {
     companion object {
         const val MIN_AUTO_ANSWER_DELAY_SECONDS = 3

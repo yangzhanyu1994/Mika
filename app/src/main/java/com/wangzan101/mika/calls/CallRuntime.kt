@@ -455,14 +455,16 @@ class CallRuntime(private val app: MikaApp) {
 
     /** Opens a short realtime session so the settings row can show configured or failed. */
     suspend fun probeCredentials(): Boolean = withContext(Dispatchers.IO) {
-        val credentials = settings.credentials()
+        val configured = settings.state.value
+        val revision = settings.credentialsRevision.value
+        val credentials = settings.credentials(configured.speechProvider)
         if (credentials == null) {
-            settings.noteCredentialProbe(false)
+            if (settings.credentialsRevision.value == revision) settings.noteCredentialProbe(false)
             return@withContext false
         }
         val ok = try {
             val session = withTimeout(8_000L) {
-                VolcRealtimeClient().connect(credentials, VolcRealtimeConfig(speaker = settings.state.value.speaker))
+                VolcRealtimeClient().connect(credentials, configured.realtimeConfig())
             }
             session.close()
             true
@@ -471,9 +473,15 @@ class CallRuntime(private val app: MikaApp) {
         } catch (_: Exception) {
             false
         }
-        settings.noteCredentialProbe(ok)
+        if (settings.credentialsRevision.value == revision) settings.noteCredentialProbe(ok)
         ok
     }
+
+    private fun CallConfig.realtimeConfig(prompt: String = "") = VolcRealtimeConfig(
+        systemPrompt = prompt,
+        speaker = if (speechProvider == CallSpeechProvider.OpenAi) OpenAiCallProtocol.VOICE else speaker,
+        provider = speechProvider,
+    )
 
     private fun announced(message: String, number: String?): String {
         val label = runCatching { PhoneContacts(app).label(number) }.getOrDefault(number.orEmpty())
@@ -935,8 +943,10 @@ class CallRuntime(private val app: MikaApp) {
             prerequisite(ignoreWork = true)?.let { throw CallProblem(it) }
             validateTarget(w)
             val helper = shell ?: throw CallProblem("Mika 内置助手未连接")
-            val credentials = withContext(Dispatchers.IO) { settings.credentials() }
-                ?: throw CallProblem("火山凭据不可用，请重新保存")
+            val voiceProvider = w.config.speechProvider
+            val voiceRevision = settings.credentialsRevision.value
+            val credentials = withContext(Dispatchers.IO) { settings.credentials(voiceProvider) }
+                ?: throw CallProblem("实时语音凭据不可用，请重新保存")
             if (w.direction == CallDirection.OUTGOING && w.task != null) {
                 val model = app.providers.modelFor(ModelRole.Main)
                     ?: throw CallProblem("无法准备拨出时要交代的话，请检查主模型设置")
@@ -970,13 +980,15 @@ class CallRuntime(private val app: MikaApp) {
                 }
             }
             val session = withTimeoutOrNull(5_000L) {
-                VolcRealtimeClient().connect(credentials, VolcRealtimeConfig(
-                    systemPrompt = CallPolicy.prompt(notes, w.direction, rules.ifBlank { null }, task = w.task),
-                    speaker = w.config.speaker,
+                VolcRealtimeClient().connect(credentials, w.config.realtimeConfig(
+                    CallPolicy.prompt(notes, w.direction, rules.ifBlank { null }, task = w.task),
                 ))
-            } ?: throw CallProblem("火山实时语音连接超时，未由 AI 接管")
+            } ?: throw CallProblem("实时语音连接超时，未由 AI 接管")
             w.session = session
-            if (!session.setMuted(true)) throw CallProblem("火山实时语音未进入就绪状态")
+            if (voiceProvider != settings.state.value.speechProvider || voiceRevision != settings.credentialsRevision.value) {
+                throw CallProblem("实时语音设置已变化，请重试")
+            }
+            if (!session.setMuted(true)) throw CallProblem("实时语音未进入就绪状态")
             if (!withContext(Dispatchers.IO) { access.ready() }) {
                 armed = false
                 throw CallProblem("系统通话管理权限不可用，未由 AI 操作电话")
@@ -1271,6 +1283,15 @@ class CallRuntime(private val app: MikaApp) {
                                 liveCalls().singleOrNull() === target && liveTranscriptCallId == target.id &&
                                 appendTranscript(liveTranscript, role, text)) {
                                 publish()
+                            }
+                        },
+                        playedOutputFrames = {
+                            withContext(Dispatchers.IO) {
+                                val stats = runCatching { helper.callAudioStats(w.audioOwner) }.getOrNull()
+                                if (stats?.getBoolean("upPlaybackHeadFresh") == true && stats.getBoolean("upPlaybackRouteReady")) {
+                                    (stats.getLong("upPlaybackHeadFrames") - stats.getLong("upPlaybackPrimeFrames"))
+                                        .coerceIn(0L, stats.getLong("upPlaybackEpochDataBytes").coerceAtLeast(0L) / 2L)
+                                } else 0L
                             }
                         },
                         awaitFarewellDrain = { fence ->

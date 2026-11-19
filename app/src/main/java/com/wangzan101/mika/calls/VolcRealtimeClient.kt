@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,6 +47,11 @@ class VolcRealtimeCredentials(apiKey: String = "", appId: String = "", accessKey
             .header("X-Api-Request-Id", UUID.randomUUID().toString())
     }
 
+    internal fun applyOpenAiHeaders(builder: Request.Builder) {
+        if (!usesApiKey || !valid) throw VolcRealtimeException(VolcRealtimeException.Kind.AUTH)
+        builder.header("Authorization", "Bearer " + apiKey)
+    }
+
     private fun isHeaderValue(value: String): Boolean = value.isNotEmpty() && value.length <= 1024 &&
         value.all { it in '!'..'~' }
 
@@ -58,7 +66,7 @@ class VolcRealtimeException internal constructor(val kind: Kind, val code: Long?
 
 sealed interface VolcRealtimeEvent {
     /** PCM s16le, mono, 24 kHz. */
-    data class Audio(val pcm: ByteArray) : VolcRealtimeEvent
+    data class Audio(val pcm: ByteArray, val itemId: String? = null, val contentIndex: Int = 0) : VolcRealtimeEvent
     data object UserSpeaking : VolcRealtimeEvent
     data class UserTranscript(
         val text: String,
@@ -97,7 +105,15 @@ class VolcRealtimeClient internal constructor(
         credentials: VolcRealtimeCredentials,
         config: VolcRealtimeConfig = VolcRealtimeConfig(),
     ): VolcRealtimeSession {
-        val request = Request.Builder().url(endpoint).apply { credentials.applyHeaders(this) }.build()
+        val request = Request.Builder().apply {
+            if (config.provider == CallSpeechProvider.OpenAi) {
+                url(OpenAiCallProtocol.ENDPOINT + "?model=" + OpenAiCallProtocol.MODEL)
+                credentials.applyOpenAiHeaders(this)
+            } else {
+                url(endpoint)
+                credentials.applyHeaders(this)
+            }
+        }.build()
         val session = VolcRealtimeSession(config, closeTimeoutMs)
         try {
             session.attach(client.newWebSocket(request, session.listener))
@@ -129,8 +145,11 @@ class VolcRealtimeSession internal constructor(
     private val config: VolcRealtimeConfig,
     private val closeTimeoutMs: Long,
 ) : AutoCloseable {
-    private enum class Phase { CONNECTING, CREATING, ACTIVE, ENDING_SESSION, ENDING_SOCKET, ENDED }
+    private enum class Phase { CONNECTING, CREATING, CONFIGURING, ACTIVE, ENDING_SESSION, ENDING_SOCKET, ENDED }
     private var phase = Phase.CONNECTING
+    private val openAi = config.provider == CallSpeechProvider.OpenAi
+    private val resampler = if (openAi) CallPcm16To24() else null
+    internal val playbackTruncation = if (openAi) CallPlaybackTruncation(::truncateAudio) else null
     private var socket: WebSocket? = null
     private var closeWatchdog: Job? = null
     private var sequence = 0L
@@ -187,25 +206,30 @@ class VolcRealtimeSession internal constructor(
         if (phase != Phase.CONNECTING) { webSocket.cancel(); return }
         socket = webSocket
         phase = Phase.CREATING
-        send(VolcRealtimeProtocol.create(nextId(), config))
+        if (!openAi) send(VolcRealtimeProtocol.create(nextId(), config))
     }
 
     /** Accepts raw 16 kHz mono PCM16 LE in real time, preferably exactly 640 bytes per 20 ms. */
     @Synchronized fun sendPcm16(bytes: ByteArray, byteCount: Int = bytes.size): Boolean {
         if (phase != Phase.ACTIVE || muted || byteCount !in 2..VolcRealtimeProtocol.MAX_INPUT_BYTES ||
             byteCount > bytes.size || byteCount % 2 != 0) return false
-        return send(VolcRealtimeProtocol.audio(nextId(), bytes, byteCount))
+        val pcm = resampler?.convert(bytes, byteCount)
+        if (pcm != null && pcm.isEmpty()) return true
+        return send(VolcRealtimeProtocol.audio(nextId(), pcm ?: bytes, pcm?.size ?: byteCount))
     }
+
+    @Synchronized private fun truncateAudio(itemId: String, contentIndex: Int, playedMs: Int): Boolean =
+        phase == Phase.ACTIVE && send(OpenAiCallProtocol.truncate(itemId, contentIndex, playedMs))
 
     /** Call after phone audio is ready; no greeting is sent by connect(). */
     @Synchronized fun sendGreeting(text: String): Boolean {
         if (phase != Phase.ACTIVE || text.isBlank() || text.length > 1024) return false
-        return send(VolcRealtimeProtocol.greeting(nextId(), text))
+        return send(if (openAi) OpenAiCallProtocol.greeting(text) else VolcRealtimeProtocol.greeting(nextId(), text))
     }
 
     /** Synthesize the supplied text verbatim, independently of the call conversation. */
     @Synchronized internal fun synthesize(text: String): Boolean {
-        if (phase != Phase.ACTIVE || text.isBlank()) return false
+        if (phase != Phase.ACTIVE || text.isBlank() || openAi) return false
         var start = 0
         while (start < text.length) {
             val end = text.offsetByCodePoints(start, minOf(512, text.codePointCount(start, text.length)))
@@ -224,15 +248,21 @@ class VolcRealtimeSession internal constructor(
     @Synchronized fun setMuted(muted: Boolean): Boolean {
         if (phase != Phase.ACTIVE) return false
         if (this.muted == muted) return true
-        return send(VolcRealtimeProtocol.mute(nextId(), muted)).also { if (it) this.muted = muted }
+        return (openAi || send(VolcRealtimeProtocol.mute(nextId(), muted))).also { if (it) this.muted = muted }
     }
 
     /** Stops local media immediately; waits briefly for session.closed before closing the socket. */
     @Synchronized override fun close() {
         if (phase == Phase.ENDED) return
         discardPending = true
+        if (openAi) {
+            if (phase == Phase.ENDING_SOCKET) return
+            phase = Phase.ENDING_SOCKET
+            if (socket?.close(1000, null) == true) armCloseWatchdog() else end(null, cancelSocket = true)
+            return
+        }
         when (phase) {
-            Phase.ACTIVE, Phase.CREATING -> {
+            Phase.ACTIVE, Phase.CREATING, Phase.CONFIGURING -> {
                 phase = Phase.ENDING_SESSION
                 if (send(VolcRealtimeProtocol.close(nextId()))) armCloseWatchdog()
             }
@@ -248,16 +278,37 @@ class VolcRealtimeSession internal constructor(
     }
 
     @Synchronized private fun invalidFrame() {
-        if (phase == Phase.CREATING || phase == Phase.ACTIVE) abort(VolcRealtimeException(VolcRealtimeException.Kind.PROTOCOL))
+        if (phase == Phase.CREATING || phase == Phase.CONFIGURING || phase == Phase.ACTIVE) abort(VolcRealtimeException(VolcRealtimeException.Kind.PROTOCOL))
     }
 
     @Synchronized private fun received(text: String) {
         if (phase == Phase.ENDED || phase == Phase.ENDING_SOCKET) return
         val frame = VolcRealtimeProtocol.parse(text)
         if (frame == null) { invalidFrame(); return }
-        val type = frame.string("type")
+        val wireType = frame.string("type")
+        val response = if (openAi && wireType == "response.done") frame["response"] as? JsonObject else null
+        val type = if (!openAi) wireType else when (wireType) {
+            "input_audio_buffer.speech_started" -> VolcRealtimeProtocol.USER_STARTED
+            "response.output_audio_transcript.delta" -> VolcRealtimeProtocol.TEXT_DELTA
+            "response.output_audio_transcript.done" -> VolcRealtimeProtocol.TEXT_DONE
+            "response.done" -> when (response?.string("status")) {
+                "cancelled" -> VolcRealtimeProtocol.CANCELED
+                "failed", "incomplete" -> VolcRealtimeProtocol.ERROR
+                else -> wireType
+            }
+            else -> wireType
+        }
         when (type) {
             VolcRealtimeProtocol.SESSION_CREATED -> if (phase == Phase.CREATING) {
+                if (openAi) {
+                    phase = Phase.CONFIGURING
+                    send(OpenAiCallProtocol.configure(config))
+                } else {
+                    phase = Phase.ACTIVE
+                    ready.complete(Unit)
+                }
+            }
+            "session.updated" -> if (openAi && phase == Phase.CONFIGURING) {
                 phase = Phase.ACTIVE
                 ready.complete(Unit)
             }
@@ -272,7 +323,8 @@ class VolcRealtimeSession internal constructor(
             }
             VolcRealtimeProtocol.ERROR -> {
                 val code = VolcRealtimeProtocol.errorCode(frame)
-                val kind = when (code) {
+                val error = if (response != null) (response["status_details"] as? JsonObject)?.get("error") else frame["error"]
+                val kind = if (openAi) OpenAiCallProtocol.errorKind(error as? JsonObject) else when (code) {
                     401L, 403L -> VolcRealtimeException.Kind.AUTH
                     429L -> VolcRealtimeException.Kind.RATE_LIMITED
                     else -> VolcRealtimeException.Kind.PROVIDER
@@ -281,7 +333,7 @@ class VolcRealtimeSession internal constructor(
             }
         }
         if (phase != Phase.ACTIVE) return
-        val responseId = frame.string("response_id")?.takeIf { it.isNotBlank() }
+        val responseId = (frame.string("response_id") ?: response?.string("id"))?.takeIf { it.isNotBlank() }
         when (type) {
             VolcRealtimeProtocol.INPUT_AUDIO_COMMITTED -> publish(VolcRealtimeEvent.InputAudioCommitted)
             VolcRealtimeProtocol.USER_STARTED -> {
@@ -291,6 +343,7 @@ class VolcRealtimeSession internal constructor(
                 publish(VolcRealtimeEvent.UserSpeaking)
             }
             VolcRealtimeProtocol.USER_DELTA -> {
+                if (openAi) return
                 val itemId = frame.string("item_id")?.takeIf { it.isNotEmpty() }
                 if (itemId != null && itemId != currentUserItem) {
                     currentUserItem = itemId
@@ -335,7 +388,7 @@ class VolcRealtimeSession internal constructor(
                 }
             }
             VolcRealtimeProtocol.AUDIO_DELTA -> {
-                if (waitForAudioStart || (responseId != null && responseId == interruptedAudioId)) return
+                if ((waitForAudioStart && !openAi) || (responseId != null && responseId == interruptedAudioId)) return
                 val pcm = VolcRealtimeProtocol.pcm(frame) ?: run { invalidFrame(); return }
                 if (pcm.isEmpty()) return
                 if (!audioActive) {
@@ -343,7 +396,14 @@ class VolcRealtimeSession internal constructor(
                     publish(VolcRealtimeEvent.AssistantAudioStarted)
                 }
                 if (responseId != null) audioId = responseId
-                publish(VolcRealtimeEvent.Audio(pcm))
+                if (openAi) {
+                    val item = frame.string("item_id")
+                    val index = (frame["content_index"] as? JsonPrimitive)?.intOrNull
+                    if (item.isNullOrBlank() || index == null || index < 0) { invalidFrame(); return }
+                    publish(VolcRealtimeEvent.Audio(pcm, item, index))
+                } else {
+                    publish(VolcRealtimeEvent.Audio(pcm))
+                }
             }
             VolcRealtimeProtocol.AUDIO_DONE -> if (audioActive && (responseId == null || responseId == audioId || audioId == null)) {
                 audioActive = false

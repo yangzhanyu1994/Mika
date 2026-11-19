@@ -1276,6 +1276,7 @@ private fun SimpleTextDialog(
 
 @Composable
 private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, onResult: (String) -> Unit) {
+    var provider by remember { mutableStateOf(runtime.settings.state.value.speechProvider) }
     var legacy by remember { mutableStateOf(false) }
     var key by remember { mutableStateOf("") }
     var appId by remember { mutableStateOf("") }
@@ -1284,8 +1285,11 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val saved = stringResource(R.string.calls_key_saved)
-    val voiceOk = canEditCallSpeaker(speaker, runtime.settings.state.value.speaker)
-    val keyReady = key.isBlank() || (!legacy || appId.isNotBlank())
+    val openAi = provider == CallSpeechProvider.OpenAi
+    val voiceOk = openAi || canEditCallSpeaker(speaker, runtime.settings.state.value.speaker)
+    val changedProvider = provider != runtime.settings.state.value.speechProvider
+    val keyReady = if (key.isBlank()) !changedProvider || runtime.settings.hasCredentialsFor(provider) else !legacy || appId.isNotBlank()
+    val changedVoice = !openAi && speaker.trim() != runtime.settings.state.value.speaker
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text(stringResource(R.string.calls_credentials)) },
@@ -1293,15 +1297,37 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.calls_voice_row), style = MaterialTheme.typography.titleSmall)
-                Text(callVoiceLabel(speaker), color = MikaTheme.colors.ink3, style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(
-                    speaker, { speaker = it; error = false }, modifier = Modifier.fillMaxWidth().testTag("call-voice-field"),
-                    label = { Text(stringResource(R.string.calls_speaker)) }, singleLine = true, enabled = !busy,
-                    isError = !voiceOk, supportingText = { Text(stringResource(R.string.calls_speaker_edit_note)) },
-                )
-                HorizontalDivider()
-                Text(stringResource(R.string.calls_credentials_note))
-                Row(
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (option in CallSpeechProvider.entries) {
+                        val name = if (option == CallSpeechProvider.OpenAi) "OpenAI Realtime" else "Doubao"
+                        androidx.compose.material3.FilterChip(
+                            selected = provider == option, enabled = !busy,
+                            onClick = {
+                                if (provider != option) {
+                                    provider = option
+                                    key = ""
+                                    appId = ""
+                                    legacy = false
+                                    error = false
+                                }
+                            },
+                            label = { Text(name) },
+                        )
+                    }
+                }
+                if (openAi) {
+                    Text(stringResource(R.string.calls_openai_realtime_note))
+                } else {
+                    Text(callVoiceLabel(speaker), color = MikaTheme.colors.ink3, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        speaker, { speaker = it; error = false }, modifier = Modifier.fillMaxWidth().testTag("call-voice-field"),
+                        label = { Text(stringResource(R.string.calls_speaker)) }, singleLine = true, enabled = !busy,
+                        isError = !voiceOk, supportingText = { Text(stringResource(R.string.calls_speaker_edit_note)) },
+                    )
+                    HorizontalDivider()
+                    Text(stringResource(R.string.calls_credentials_note))
+                }
+                if (!openAi) Row(
                     Modifier.fillMaxWidth()
                         .toggleable(legacy, enabled = !busy, role = Role.Checkbox) { legacy = it; key = ""; appId = ""; error = false }
                         .heightIn(min = 48.dp),
@@ -1322,20 +1348,25 @@ private fun CallCredentialsDialog(runtime: CallRuntime, onDismiss: () -> Unit, o
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true, enabled = !busy,
                 )
-                ModelKeyWebsite(DOUBAO_VOICE_KEY_GUIDE)
+                if (!openAi) ModelKeyWebsite(DOUBAO_VOICE_KEY_GUIDE)
                 if (error) Text(stringResource(R.string.calls_action_failed), color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy && voiceOk && keyReady && (key.isNotBlank() || speaker.trim() != runtime.settings.state.value.speaker), onClick = {
+            TextButton(enabled = !busy && voiceOk && keyReady && (key.isNotBlank() || changedVoice || changedProvider), onClick = {
                 busy = true
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
-                            if (key.isNotBlank()) {
-                                runtime.settings.saveCredentials(if (legacy) appId else "", if (legacy) key else "", if (legacy) "" else key)
+                            if (openAi) {
+                                runtime.settings.selectOpenAiVoice(key)
+                            } else {
+                                if (key.isNotBlank()) {
+                                    runtime.settings.saveCredentials(if (legacy) appId else "", if (legacy) key else "", if (legacy) "" else key)
+                                }
+                                runtime.settings.selectVolcengineVoice()
+                                runtime.settings.save(runtime.settings.state.value.copy(speaker = speaker))
                             }
-                            runtime.settings.save(runtime.settings.state.value.copy(speaker = speaker))
                         }
                         key = ""; appId = ""
                         onResult(saved)

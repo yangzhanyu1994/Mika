@@ -30,6 +30,7 @@ internal class CallPcmBridge(
         onFinalTranscript: (String, String) -> Unit = { _, _ -> },
         awaitFarewellDrain: suspend (CallFarewellFence) -> Boolean = { false },
         commitFarewell: () -> Boolean = { false },
+        playedOutputFrames: suspend () -> Long = { 0L },
     ): Unit = coroutineScope {
         val playbackQueue = CallPlaybackQueue()
         val writerLock = Mutex()
@@ -93,6 +94,7 @@ internal class CallPcmBridge(
                 try {
                     session.events.collect { event ->
                         counters?.eventReceived(event)
+                        session.playbackTruncation?.observe(event)
                         when (event) {
                             is VolcRealtimeEvent.Audio -> {
                                 val queuedBytes = playbackQueue.offer(event.pcm)
@@ -108,6 +110,8 @@ internal class CallPcmBridge(
                                 cancelFarewellWaiter()
                                 farewell.cancelCandidate()
                                 if (farewell.hasPlaybackSinceFlush) {
+                                    val truncation = session.playbackTruncation
+                                    val played = if (truncation?.hasAudio == true) playedOutputFrames() else 0L
                                     playbackQueue.invalidate()
                                     // First release any writer blocked on a full pipe. Flush again under
                                     // the writer lock to remove the last chunk that raced the first flush.
@@ -116,6 +120,9 @@ internal class CallPcmBridge(
                                     } == true
                                     if (!cleared) throw CallMediaFailure("通话音频无法及时停止，已交还系统")
                                     farewell.afterPairedFlush()
+                                    if (truncation?.interrupt(played) == false) {
+                                        throw CallMediaFailure("无法同步已中断的实时语音，电话由系统处理")
+                                    }
                                 }
                                 // Some providers report a second cancellation after user speech starts.
                                 // Without newly accepted PCM, another flush would only reset the route.
