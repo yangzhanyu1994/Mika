@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -166,6 +168,6 @@ tasks.withType<Test>().configureEach {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     if (name == "testDebugUnitTest") {
         testLogging.events("started", "passed", "skipped", "failed")
-        timeout.set(java.time.Duration.ofMinutes(8))
+        timeout.set(Duration.ofMinutes(5))
     }
 }
