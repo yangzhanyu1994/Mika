@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">在這裡打字</string>
     <string name="selfcheck_target_tick">計時 %1$d</string>
     <string name="selfcheck_target_row">第 %1$d 行</string>
+    <string name="selfcheck_screen_off_start">熄屏自檢</string>
+    <string name="selfcheck_screen_off_wait">請在 45 秒內按電源鍵關閉螢幕並鎖定手機。測試完成後解鎖，回到這裡查看結果。</string>
+    <string name="selfcheck_screen_off_interrupted">測試期間主螢幕亮起、手機解鎖，或有其他工作開始。</string>
 </resources>

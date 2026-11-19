@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">Введите здесь</string>
     <string name="selfcheck_target_tick">Отметка %1$d</string>
     <string name="selfcheck_target_row">Строка %1$d</string>
+    <string name="selfcheck_screen_off_start">Проверка с выключенным экраном</string>
+    <string name="selfcheck_screen_off_wait">В течение 45 секунд нажмите кнопку питания, чтобы выключить экран и заблокировать телефон. После проверки вернитесь, чтобы увидеть результат.</string>
+    <string name="selfcheck_screen_off_interrupted">Во время проверки экран включился, телефон разблокировали или запустилась другая задача.</string>
 </resources>

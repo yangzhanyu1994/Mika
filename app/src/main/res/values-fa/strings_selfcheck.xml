@@ -76,4 +76,7 @@
     <string name="selfcheck_target_input">اینجا بنویسید</string>
     <string name="selfcheck_target_tick">تیک %1$d</string>
     <string name="selfcheck_target_row">ردیف %1$d</string>
+    <string name="selfcheck_screen_off_start">آزمایش با صفحه خاموش</string>
+    <string name="selfcheck_screen_off_wait">تا ۴۵ ثانیه دکمه روشن/خاموش را فشار دهید تا صفحه خاموش و گوشی قفل شود. بعد از آزمایش برای دیدن نتیجه برگردید.</string>
+    <string name="selfcheck_screen_off_interrupted">در طول آزمایش صفحه روشن شد، قفل گوشی باز شد یا کار دیگری شروع شد.</string>
 </resources>

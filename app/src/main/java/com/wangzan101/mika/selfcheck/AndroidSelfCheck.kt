@@ -1,15 +1,22 @@
 package com.wangzan101.mika.selfcheck
 
 import android.app.ActivityManager
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.Display
+import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewCompat
 import com.wangzan101.mika.BuildConfig
@@ -35,6 +42,7 @@ import com.wangzan101.mika.core.cap.sandbox.CommandResult
 import com.wangzan101.mika.core.cap.sandbox.SandboxStatus
 import com.wangzan101.mika.core.selfcheck.Advice
 import com.wangzan101.mika.core.selfcheck.CheckOutcome
+import com.wangzan101.mika.core.selfcheck.CheckStatus
 import com.wangzan101.mika.core.selfcheck.DeviceFacts
 import com.wangzan101.mika.core.selfcheck.SelfCheck
 import com.wangzan101.mika.core.selfcheck.SelfCheckPort
@@ -47,6 +55,7 @@ import com.wangzan101.mika.core.uistate.UiTreeNode
 import com.wangzan101.mika.settings.AccessibilityState
 import com.wangzan101.mika.settings.SystemStatus
 import com.wangzan101.mika.shell.IMikaShell
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -114,6 +123,168 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         SelfCheck.BROWSER -> browser()
         SelfCheck.SANDBOX -> sandbox()
         SelfCheck.APP_COPIES -> appCopies()
+    }
+
+    /** A manual diagnostic only. Use the real phone port, but never invoke task unlock or wake the main display. */
+    internal suspend fun checkScreenOff(taskBusy: () -> Boolean, report: (Int, CheckOutcome) -> Unit) {
+        val displays = app.getSystemService(DisplayManager::class.java)
+        val power = app.getSystemService(PowerManager::class.java)
+        val keyguard = app.getSystemService(KeyguardManager::class.java)
+        fun screenOff() = displays.getDisplay(Display.DEFAULT_DISPLAY)?.state == Display.STATE_OFF
+        fun lockedAndOff() = screenOff() && keyguard.isDeviceLocked
+        val armed = AtomicBoolean()
+        val invalidated = AtomicBoolean()
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (armed.get()) invalidated.set(true)
+            }
+        }
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayChanged(displayId: Int) {
+                if (displayId == Display.DEFAULT_DISPLAY && armed.get() && !lockedAndOff()) invalidated.set(true)
+            }
+        }
+        val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Mika:ScreenOffSelfCheck")
+        fun valid() = !invalidated.get() && !taskBusy() && lockedAndOff()
+        val waitStage = R.string.selfcheck_screen_off_start
+        val finalStage = R.string.selfcheck_check_main
+        var stage = waitStage
+        var registeredReceiver = false
+        var registeredListener = false
+        var completed = false
+        try {
+            ContextCompat.registerReceiver(app, receiver, IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }, ContextCompat.RECEIVER_NOT_EXPORTED)
+            registeredReceiver = true
+            displays.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+            registeredListener = true
+            lock.acquire(90_000L)
+            val ready = withTimeoutOrNull(45_000L) {
+                while (!lockedAndOff() && !taskBusy()) delay(POLL_MS)
+                !taskBusy()
+            }
+            if (ready != true) {
+                report(stage, CheckOutcome.fail(
+                    if (taskBusy()) tr(R.string.selfcheck_task_running) else tr(R.string.selfcheck_advice_timeout),
+                    Advice.TimedOut,
+                ))
+                return
+            }
+            armed.set(true)
+            report(stage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+            val finished = withTimeoutOrNull(35_000L) {
+                completed = runScreenOffStages(::valid, { stage = it }, report)
+                true
+            }
+            if (finished != true && valid()) report(stage, CheckOutcome.fail(tr(R.string.selfcheck_advice_timeout), Advice.TimedOut))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: ScreenOffInterrupted) {
+            // Report the interruption after the virtual display has been released.
+        } catch (e: Exception) {
+            report(stage, CheckOutcome.fail(e.javaClass.simpleName, Advice.Error))
+        } finally {
+            try {
+                release()
+                withContext(Dispatchers.Main.immediate) {
+                    if (armed.get() && !valid()) {
+                        report(finalStage, CheckOutcome.fail(tr(R.string.selfcheck_screen_off_interrupted), Advice.MainScreenChanged))
+                    } else if (completed) {
+                        report(finalStage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+                    }
+                }
+            } finally {
+                if (registeredListener) displays.unregisterDisplayListener(listener)
+                if (registeredReceiver) app.unregisterReceiver(receiver)
+                if (lock.isHeld) lock.release()
+            }
+        }
+    }
+
+    private class ScreenOffInterrupted : Exception()
+
+    private suspend fun runScreenOffStages(
+        valid: () -> Boolean,
+        starting: (Int) -> Unit,
+        report: (Int, CheckOutcome) -> Unit,
+    ): Boolean {
+        fun verifyLock() {
+            if (!valid()) throw ScreenOffInterrupted()
+        }
+        suspend fun step(label: Int, work: suspend () -> CheckOutcome): Boolean {
+            starting(label)
+            verifyLock()
+            val outcome = work()
+            verifyLock()
+            report(label, outcome)
+            return outcome.status == CheckStatus.Pass
+        }
+        if (!step(R.string.selfcheck_check_helper, ::helper)) return false
+        if (!step(R.string.selfcheck_check_display, ::virtualDisplay)) return false
+        val sh = checkNotNull(shell)
+        val d = checkNotNull(display)
+        val settings = SystemPickers.settingsPackage(app.packageManager)
+        var deviceScreen: AndroidScreen? = null
+        if (!step(R.string.selfcheck_check_launch) {
+            val a11y = ScreenAccessibility.instance.value
+            if (a11y == null || settings == null) {
+                return@step CheckOutcome.fail("Settings or accessibility unavailable", Advice.LaunchFailed)
+            }
+            val s = AndroidScreen(a11y, sh, LazyAgentDisplay(d.width, d.height) { d }.also { it.get() })
+            screen = s
+            deviceScreen = s
+            verifyLock()
+            // Open Settings on the newly created display without force-stopping the system Settings app.
+            val opened = s.openApp(settings, cold = false)
+            if (opened is ActionResult.Ok && poll(PAGE_WAIT_MS) {
+                    verifyLock()
+                    topPackage(sh, d.displayId) == settings
+                }) CheckOutcome.pass("Settings opened on the virtual display")
+            else CheckOutcome.fail("Settings: ${reason(opened)}", Advice.LaunchFailed)
+        }) return false
+        val s = checkNotNull(deviceScreen)
+        val pkg = checkNotNull(settings)
+        if (!step(R.string.selfcheck_check_reading) {
+            val readable = poll(PAGE_WAIT_MS) {
+                verifyLock()
+                selfCheckWindowContent(s.snapshot(), pkg)?.elements?.isNotEmpty() == true
+            }
+            if (!readable) return@step CheckOutcome.fail("Settings window is unreadable", Advice.ReadFailed)
+            val frame = awaitFrame(d) ?: return@step CheckOutcome.fail("No virtual display frame", Advice.BlankFrames)
+            val black = try { FrameMath.isBlack(frame.width, frame.height, frame::getPixel) }
+                finally { frame.recycle() }
+            if (black) CheckOutcome.fail("Virtual display frame is black", Advice.BlankFrames)
+            else CheckOutcome.pass("Settings tree and screenshot readable")
+        }) return false
+        return step(R.string.selfcheck_check_actions) {
+            val window = selfCheckWindowContent(s.snapshot(), pkg)
+                ?: return@step CheckOutcome.fail("Settings window is no longer readable", Advice.ReadFailed)
+            val search = window.elements.firstOrNull { element ->
+                element.clickable && !element.editable && !element.secret &&
+                    (element.resourceId?.substringAfterLast('/') in SETTINGS_SEARCH_IDS ||
+                        element.name in SETTINGS_SEARCH_LABELS)
+            } ?: return@step CheckOutcome.partial("Settings search button not identified", Advice.ActionFailed)
+            verifyLock()
+            if (s.tapRef(search.ref, window.snapshotId) !is ActionResult.Ok) {
+                return@step CheckOutcome.fail("Settings search tap failed", Advice.ActionFailed)
+            }
+            val changed = poll(PAGE_WAIT_MS) {
+                verifyLock()
+                val target = topPackage(sh, d.displayId)
+                target != null && systemPackage(target) &&
+                    selfCheckWindowContent(s.peek(), target)?.elements.orEmpty().any { element ->
+                        element.editable && !element.secret &&
+                            (element.searchField || element.focused) &&
+                            window.elements.none { old -> old.editable && old.resourceId == element.resourceId && old.name == element.name }
+                    }
+            }
+            if (changed) CheckOutcome.pass("Tapping Settings search opened a search field")
+            else CheckOutcome.fail("Settings search did not open", Advice.ActionFailed)
+        }
     }
 
     // ---------- 2 权限 ----------
@@ -607,6 +778,8 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         const val COMMAND_MS = 8_000L
         const val MAX_CHARS = 4_000
         const val SETTINGS_IN_USE = "Settings is open on the main screen, so it was not opened"
+        val SETTINGS_SEARCH_IDS = setOf("search", "search_icon", "search_action_bar_title", "search_button")
+        val SETTINGS_SEARCH_LABELS = setOf("Search", "Search settings", "搜索", "搜索设置", "搜尋", "搜尋設定")
         const val SETTINGS_ON_MAIN = "Settings opened on the main screen"
 
         const val COUNT = "selfcheck_count"
