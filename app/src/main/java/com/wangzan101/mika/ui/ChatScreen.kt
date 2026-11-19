@@ -1456,7 +1456,7 @@ private fun StatusCard(
         // 长按整块回答弹菜单;复制、引用的只是回答的字,不带上面的提示和下面的来源
         is ExchangeStatus.Done -> Box(Modifier.padding(bottom = 12.dp)) {
             val reply = remember(status.answer) { WorkReply.from(status.answer) }
-            var expanded by rememberSaveable(key, status.answer) { mutableStateOf(false) }
+            var expanded by rememberSaveable(key, status.answer) { mutableStateOf(true) }
             val visibleAnswer = if (expanded) reply.full else reply.summary
             AnswerArea(key, visibleAnswer, Modifier.fillMaxWidth().answerSurface()) {
                 Column {
