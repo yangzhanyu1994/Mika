@@ -904,7 +904,15 @@ class TaskService : Service() {
             .setStyle(Notification.BigTextStyle().bigText(text + warning))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setContentIntent(openApp())
+            .setContentIntent(openApp(run.conversationId))
+        if (Build.VERSION.SDK_INT >= 36 && run.provenance.origin == RunOrigin.Ui) {
+            liveProgressLabel(state)?.let { label ->
+                b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+                b.setShortCriticalText(label)
+                // SDK 36 uses the framework extra. The public constant is exposed by SDK 36.1.
+                b.extras.putBoolean("android.requestPromotedOngoing", true)
+            }
+        }
         val active = center.running().size
         if (active >= 2) b.setSubText(trPlural(R.plurals.task_active, active))
         when (state) {
@@ -921,6 +929,23 @@ class TaskService : Service() {
             }
         }
         return b.build()
+    }
+
+    private fun liveProgressLabel(state: TaskState): String? = when (state) {
+        is TaskState.Running -> when {
+            state.progress != null -> tr(R.string.task_running)
+            state.tool != null -> tr(R.string.task_running)
+            state.step <= 1 -> tr(R.string.runtime_preparing)
+            else -> tr(R.string.assistant_thinking)
+        }
+        is TaskState.WaitingConfirmation, is TaskState.WaitingInput, is TaskState.WaitingTakeover ->
+            tr(R.string.screens_needs_you)
+        is TaskState.Held -> when {
+            state.reason.queued -> null
+            state.reason.needsYou -> tr(R.string.screens_needs_you)
+            else -> tr(R.string.chat_paused)
+        }
+        TaskState.Idle, is TaskState.Terminal -> null
     }
 
     /** 忙着却还没有任务对象时(收尾被打断等)也得马上进前台。 */
@@ -1144,7 +1169,7 @@ class TaskService : Service() {
         /** 打开 Mika;给了 [threadId] 时直接到那个对话。通知和悬浮胶囊共用。 */
         internal fun openAppIntent(context: Context, threadId: String? = null): Intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .apply { if (threadId != null) putExtra(MainActivity.EXTRA_OPEN_CONVERSATION, threadId) }
+            .apply { if (threadId != null) setIdentifier(threadId).putExtra(MainActivity.EXTRA_OPEN_CONVERSATION, threadId) }
 
         /** 并行时结果通知的下一个编号(循环使用)。 */
         internal fun nextResultId() = ID_RESULT_FIRST + resultCount.getAndIncrement() % RESULT_IDS

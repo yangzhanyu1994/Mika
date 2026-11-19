@@ -208,4 +208,6 @@
     <string name="phone_transport_auto" translatable="false">Auto</string>
     <string name="phone_transport_wireless" translatable="false">Wireless debugging</string>
     <string name="phone_transport_shizuku" translatable="false">Shizuku</string>
+    <string name="phone_usage_summary_usb">Keep USB debugging on; after a restart run the start command again.</string>
+    <string name="phone_usage_summary">Keep USB debugging on; after a restart Mika reconnects by itself.</string>
 </resources>

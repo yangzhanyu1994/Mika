@@ -172,4 +172,6 @@
     <string name="phone_root_note">偵測到這台手機上有 su。用 root 啟動的手機助手仍以同樣的受限身分執行,權限和經無線偵錯啟動時一樣。</string>
     <string name="phone_root_entry_on">自動啟動助手;root 指令已開啟</string>
     <string name="phone_root_entry_off">自動啟動助手;root 指令已關閉</string>
+    <string name="phone_usage_summary_usb">「USB 除錯」要一直開著；重啟後需再執行一次啟動指令</string>
+    <string name="phone_usage_summary">「USB 除錯」要一直開著；重啟後 Mika 會自動重新連上</string>
 </resources>

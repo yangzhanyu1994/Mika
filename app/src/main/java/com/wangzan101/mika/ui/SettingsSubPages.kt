@@ -1,5 +1,6 @@
 package com.wangzan101.mika.ui
 
+import com.wangzan101.mika.ui.components.DetailNote
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.wangzan101.mika.i18n.tr
@@ -42,6 +43,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.wangzan101.mika.core.shell.HelperRestart
 import com.wangzan101.mika.core.shell.ShellTransport
 import com.wangzan101.mika.ui.components.SelectChip
 import com.wangzan101.mika.ui.components.MikaDialog
@@ -249,7 +251,11 @@ fun PhoneOpsScreen(
                     onClick = if (paired) ({ confirmUnpair = true }) else null,
                 )
             }
-            FooterNote(PhoneSetupCopy.usageNote(status.helperRestart))
+            DetailNote(
+                stringResource(if (status.helperRestart == HelperRestart.UsbCommand) R.string.phone_usage_summary_usb else R.string.phone_usage_summary),
+                PhoneSetupCopy.usageNote(status.helperRestart),
+                Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+            )
         }
     }
     if (confirmUnpair) {
@@ -728,6 +734,7 @@ fun languageLabel(l: AppLanguage): String = stringResource(
         AppLanguage.Portuguese -> R.string.language_portuguese
         AppLanguage.Russian -> R.string.language_russian
         AppLanguage.Indonesian -> R.string.language_indonesian
+        AppLanguage.Turkish -> R.string.language_turkish
     },
 )
 

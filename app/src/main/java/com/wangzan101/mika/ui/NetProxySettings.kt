@@ -1,5 +1,6 @@
 package com.wangzan101.mika.ui
 
+import com.wangzan101.mika.ui.components.DetailNote
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,7 +62,7 @@ fun NetProxyDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> U
         title = { Text(NetProxyCopy.TITLE) },
         text = {
             Column {
-                Text(NetProxyCopy.HINT, style = MikaType.Caption, color = MikaTheme.colors.ink3)
+                DetailNote(stringResource(R.string.net_proxy_summary), NetProxyCopy.HINT, Modifier.padding(bottom = 4.dp))
                 OutlinedTextField(
                     text, { text = it }, Modifier.fillMaxWidth().padding(top = 8.dp).testTag("net-proxy-input"),
                     singleLine = true, isError = !ok, placeholder = { Text("http://127.0.0.1:7890") },

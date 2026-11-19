@@ -12,6 +12,7 @@
     <string name="language_portuguese" translatable="false">Português</string>
     <string name="language_russian" translatable="false">Русский</string>
     <string name="language_indonesian" translatable="false">Bahasa Indonesia</string>
+    <string name="language_turkish" translatable="false">Türkçe</string>
     <string name="language_arabic" translatable="false">العربية</string>
     <string name="language_persian" translatable="false">فارسی</string>
     <string name="settings_basic">Accounts</string>
@@ -220,4 +221,6 @@
     <string name="accent_preview">Preview</string>
     <string name="accent_preview_reply">Hi! I’m Mika. How can I help?</string>
     <string name="accent_preview_user">Help me organize today’s tasks.</string>
+    <string name="details">Details</string>
+    <string name="net_proxy_summary">Model requests, updates, the in-app browser and file-environment commands go through this proxy.</string>
 </resources>

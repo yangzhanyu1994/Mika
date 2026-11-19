@@ -128,4 +128,5 @@
     <string name="proactive_know_raw_unavailable">The notification text can\'t be read right now. Try again later.</string>
     <string name="proactive_know_raw_none">No notification text was found for that period.</string>
     <string name="proactive_know_delete_note">Delete this note</string>
+    <string name="proactive_learn_level_summary">Goes into tasks = each task gets today\'s and yesterday\'s digest, marked as coming from notifications.</string>
 </resources>

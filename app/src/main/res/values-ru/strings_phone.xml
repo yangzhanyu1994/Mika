@@ -172,4 +172,6 @@
     <string name="phone_root_note">Mika нашла su на этом телефоне. Помощник, запущенный с root, по-прежнему работает от того же ограниченного пользователя и с теми же правами, что при запуске через отладку по Wi-Fi.</string>
     <string name="phone_root_entry_on">Автозапуск помощника; команды root включены</string>
     <string name="phone_root_entry_off">Автозапуск помощника; команды root выключены</string>
+    <string name="phone_usage_summary_usb">Держите отладку по USB включённой; после перезагрузки запустите команду старта ещё раз.</string>
+    <string name="phone_usage_summary">Держите отладку по USB включённой; после перезагрузки Mika подключится сам.</string>
 </resources>

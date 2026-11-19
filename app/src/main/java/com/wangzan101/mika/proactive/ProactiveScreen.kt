@@ -1,5 +1,6 @@
 package com.wangzan101.mika.proactive
 
+import com.wangzan101.mika.ui.components.DetailNote
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
@@ -259,7 +260,11 @@ fun ProactiveScreen(onBack: () -> Unit) {
             )
         }
         // 不是最保守的一档时,把「带进任务是什么意思、发给谁」那句常驻在这里(弹窗里也有)
-        if (level != LearnLevel.Conservative) FooterNote(stringResource(R.string.proactive_learn_level_note))
+        if (level != LearnLevel.Conservative) DetailNote(
+            stringResource(R.string.proactive_learn_level_summary),
+            stringResource(R.string.proactive_learn_level_note),
+            Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+        )
 
         // ---- 读哪些 App:选了的列在这里,每个是低 / 中 / 高;「选择更多」展开全部 App ----
         GroupLabel(stringResource(R.string.proactive_apps, allowed.size))
