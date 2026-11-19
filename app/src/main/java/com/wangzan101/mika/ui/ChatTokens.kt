@@ -29,7 +29,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.math.RoundingMode
-import java.text.NumberFormat
 import java.util.Currency
 
 /** 对话页上的 token 用量:每轮结束那一行带上这一轮的,顶栏闲着时写这个对话合起来的。数字和「查看过程」顶上那一行同一个。 */

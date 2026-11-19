@@ -48,7 +48,7 @@ import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ConversationUsageSheet(id: String?, onDismiss: () -> Unit) {
+internal fun ConversationUsageSheet(id: String?, reportedTotal: Long?, onDismiss: () -> Unit) {
     val c = MikaTheme.colors
     val context = LocalContext.current
     val updates = remember(id, context) {
@@ -69,7 +69,7 @@ internal fun ConversationUsageSheet(id: String?, onDismiss: () -> Unit) {
             }
             val usage = result?.getOrNull()
             when {
-                usage != null -> UsageDetails(usage)
+                usage != null -> UsageDetails(usage, reportedTotal)
                 result == null -> CircularProgressIndicator(Modifier.padding(top = 12.dp).size(24.dp))
                 else -> Text(stringResource(R.string.usage_allowance_unavailable), color = c.ink2)
             }
@@ -78,10 +78,12 @@ internal fun ConversationUsageSheet(id: String?, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun UsageDetails(usage: ConversationUsage) {
+private fun UsageDetails(usage: ConversationUsage, reportedTotal: Long?) {
     val c = MikaTheme.colors
-    val total = "${UsageCopy.compactTokens(usage.input + usage.output)} ${UsageCopy.UNIT}"
-    Text(stringResource(if (usage.partial) R.string.chat_conversation_tokens_partial else R.string.chat_conversation_tokens, total),
+    val detailed = usage.input + usage.output
+    val knownTotal = maxOf(detailed, reportedTotal ?: 0)
+    val total = "${UsageCopy.compactTokens(knownTotal)} ${UsageCopy.UNIT}"
+    Text(stringResource(if (usage.partial || knownTotal > detailed) R.string.chat_conversation_tokens_partial else R.string.chat_conversation_tokens, total),
         Modifier.padding(top = 16.dp), style = MikaType.BodyStrong, color = c.ink)
     CountRow(stringResource(R.string.metrics_input_tokens), UsageCopy.compactTokens(usage.input))
     CountRow(stringResource(R.string.metrics_output_tokens), UsageCopy.compactTokens(usage.output))

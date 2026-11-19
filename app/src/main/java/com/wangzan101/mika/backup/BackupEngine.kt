@@ -226,7 +226,8 @@ class BackupEngine(
             throw BackupException("This install already has chats and providers; import needs Replace all")
         }
         val byPath = payloads.toMap()
-        val restored = manifest.entries.filterNot { it.path == SMS_CONSENT_PATH }
+        val consentFile = targetFile(SMS_CONSENT_PATH)
+        val restored = manifest.entries.filterNot { targetFile(it.path) == consentFile }
         restored.forEach { info ->
             val bytes = byPath[info.path]
                 ?: throw BackupException("Backup is missing ${info.path}")

@@ -127,7 +127,7 @@ internal fun ConversationModeHeader(
         }
         profile?.invoke()
     }
-    if (showUsage) ConversationUsageSheet(conversationId) { showUsage = false }
+    if (showUsage) ConversationUsageSheet(conversationId, usage?.tokens) { showUsage = false }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
