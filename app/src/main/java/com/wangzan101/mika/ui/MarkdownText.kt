@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -113,19 +114,52 @@ private fun Block(b: MdBlock, style: TextStyle, depth: Int) {
             Box(Modifier.width(3.dp).fillMaxHeight().background(MikaTheme.colors.hair, RoundedCornerShape(2.dp)))
             MarkdownBlocks(b.blocks, style.copy(color = MikaTheme.colors.ink2), Modifier.padding(start = 10.dp), depth + 1)
         }
-        is MdBlock.ListBlock -> Column(verticalArrangement = Arrangement.spacedBy(if (b.tight) 3.dp else 8.dp)) {
-            b.items.forEachIndexed { i, item ->
-                val reportItem = LocalReportStyle.current && depth == 0
-                Row(Modifier.then(if (reportItem) Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                    .background(MikaTheme.colors.bg).padding(14.dp) else Modifier)) {
-                    val marker = if (b.start != null) "${b.start + i}." else if (depth % 2 == 0) "•" else "◦"
-                    Text(marker, Modifier.widthIn(min = 18.dp).padding(end = 6.dp), style = style.copy(color = if (reportItem) MikaTheme.colors.accent else MikaTheme.colors.ink2))
-                    MarkdownBlocks(item, style, depth = depth + 1, gap = if (b.tight) 3 else 8)
+        is MdBlock.ListBlock -> {
+            val rows = if (depth == 0 && !LocalReportStyle.current) remember(b) { b.resultRows() } else null
+            if (rows != null) {
+                ResultRows(rows, style)
+            } else Column(verticalArrangement = Arrangement.spacedBy(if (b.tight) 3.dp else 8.dp)) {
+                b.items.forEachIndexed { i, item ->
+                    val reportItem = LocalReportStyle.current && depth == 0
+                    Row(Modifier.then(if (reportItem) Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(MikaTheme.colors.bg).padding(14.dp) else Modifier)) {
+                        val marker = if (b.start != null) "${b.start + i}." else if (depth % 2 == 0) "•" else "◦"
+                        Text(marker, Modifier.widthIn(min = 18.dp).padding(end = 6.dp), style = style.copy(color = if (reportItem) MikaTheme.colors.accent else MikaTheme.colors.ink2))
+                        MarkdownBlocks(item, style, depth = depth + 1, gap = if (b.tight) 3 else 8)
+                    }
                 }
             }
         }
-        is MdBlock.Table -> TableBlock(b, style)
+        is MdBlock.Table -> if (!LocalReportStyle.current && b.header.size == 2) {
+            ResultRows(b.rows.map { it[0] to it[1] }, style, b.header[0] to b.header[1])
+        } else TableBlock(b, style)
         MdBlock.Rule -> Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(0.5.dp).background(MikaTheme.colors.hair))
+    }
+}
+
+/** Two columns fit the available width, including the assistant's narrow floating window. */
+@Composable
+private fun ResultRows(
+    rows: List<Pair<AnnotatedString, AnnotatedString>>,
+    style: TextStyle,
+    header: Pair<AnnotatedString, AnnotatedString>? = null,
+) {
+    val colors = MikaTheme.colors
+    Column(Modifier.fillMaxWidth()) {
+        val allRows = listOfNotNull(header) + rows
+        allRows.forEachIndexed { index, (label, value) ->
+            if (index > 0) Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.hair))
+            val titleRow = header != null && index == 0
+            Row(
+                Modifier.fillMaxWidth()
+                    .then(if (titleRow) Modifier.background(colors.fill) else Modifier)
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(label, Modifier.weight(0.36f), style = style.copy(fontWeight = FontWeight.SemiBold, color = colors.ink2))
+                Text(value, Modifier.weight(0.64f), style = if (titleRow) style.copy(fontWeight = FontWeight.SemiBold) else style)
+            }
+        }
     }
 }
 

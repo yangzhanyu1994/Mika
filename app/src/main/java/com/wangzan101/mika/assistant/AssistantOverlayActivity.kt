@@ -784,7 +784,13 @@ internal fun assistantProgressLabel(tool: String?): Int = when (toolOrbMotion(to
 
 /** Use the opening result or verification note, with a status fallback for long unbroken text. */
 internal fun assistantSpokenSummary(plain: String, fallback: String): String {
-    val opening = plain.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+    val lines = plain.lineSequence().dropWhile(String::isBlank)
+    val opening = lines.firstOrNull()?.trim().orEmpty()
+    if (opening.startsWith("• ")) {
+        val fields = lines.takeWhile { it.startsWith("• ") }.take(3).map { it.removePrefix("• ").trim() }.toList()
+        val spoken = fields.runningReduce { result, field -> "$result。$field" }.lastOrNull { it.length <= 120 }
+        if (!spoken.isNullOrBlank()) return spoken
+    }
     val sentences = opening.split(Regex("(?<=[。！？!?])\\s*|(?<=\\.)\\s+")).filter(String::isNotBlank)
     val short = sentences.take(2).joinToString(" ")
     return short.takeIf { it.isNotBlank() && it.length <= 120 }
