@@ -1,5 +1,6 @@
 package com.wangzan101.mika.task
 
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.i18n.trPlural
 import android.app.ActivityManager
@@ -662,7 +663,7 @@ class TaskService : Service() {
                 // Persist the whole delivery before marking the result ready; recovery must know about its images too.
                 // A storage failure skips sending but must still release this task's slot below.
                 prepareResult(run, end, deliveryId)
-                center.markResult(run, describe(end).second, deliveryId, successful = end is TaskState.Succeeded)
+                center.markResult(run, resultDescription(run, end).second, deliveryId, successful = end is TaskState.Succeeded)
                 RunLearning.launchAfter(MemoryRuntime.of(this@TaskService).scope, {
                     delivered = notifyResult(run, end, deliveryId) == DeliveryState.Delivered
                     // 定时任务的结果当场按结局记(和以前一样),判下来没办成再改记;不靠服务一直在
@@ -1045,8 +1046,17 @@ class TaskService : Service() {
         return Notification.Action.Builder(null, option, pi).build()
     }
 
-    private suspend fun prepareResult(run: TaskRun, end: TaskState, deliveryId: String) {
+    private fun resultDescription(run: TaskRun, end: TaskState): Pair<String, String> {
         val (title, text) = describeDelivery(end, run.provenance.origin == RunOrigin.Trigger)
+        if (run.provenance.origin != RunOrigin.Ui || end !is TaskState.Succeeded) return title to text
+        val reply = WorkReply.from(end.answer)
+        if (reply.full == end.answer) return title to text
+        val reason = if (end.doubtful) end.note?.let { tr(R.string.task_reason, it) + "\n" }.orEmpty() else ""
+        return title to (reason + reply.summary)
+    }
+
+    private suspend fun prepareResult(run: TaskRun, end: TaskState, deliveryId: String) {
+        val (title, text) = resultDescription(run, end)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
         ResultDelivery.prepare(outbox, channelFor(peer), peer,
             Delivery.Result(deliveryId, run.conversationId, text, title = title), run.sharedFiles.value)
@@ -1054,7 +1064,7 @@ class TaskService : Service() {
 
     private suspend fun notifyResult(run: TaskRun, end: TaskState, deliveryId: String): DeliveryState {
         prepareResult(run, end, deliveryId)
-        val (title, text) = describeDelivery(end, run.provenance.origin == RunOrigin.Trigger)
+        val (title, text) = resultDescription(run, end)
         val peer = run.channelPeer ?: ChannelPeer(LocalChannel.ID, "phone-owner", run.conversationId)
         val started = SystemClock.elapsedRealtime()
         val delivered = ResultDelivery.send(outbox, channelFor(peer), peer,

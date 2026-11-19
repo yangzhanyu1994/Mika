@@ -1,5 +1,6 @@
 package com.wangzan101.mika.ui
 
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.core.record.PlaybackMark
 import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.i18n.ChineseTexts
@@ -27,6 +28,14 @@ class TaskReportViewModelTest {
         assertTrue(report.playback.isEmpty())
         assertEquals(241, TaskReportViewModel.excerpt(answer).length)
         assertEquals("简短回答", TaskReportViewModel.excerpt("简短回答"))
+    }
+
+    @Test fun reportIncludesSummaryAndSupplementaryDetails() {
+        val run = store.open("查看车辆状态")
+        run.event(RunEvent.TaskStarted(1, "查看车辆状态", "m"))
+        run.event(RunEvent.TaskEnded(2, "succeeded", "已熄火。\n${WorkReply.DETAILS_MARKER}\n- 蓄电池电压 12.4 V"))
+        run.close()
+        assertEquals("已熄火。\n\n- 蓄电池电压 12.4 V", TaskReportViewModel(store, run.runId).load()?.answer)
     }
 
     @Test fun preservesBeforeAfterAndBatchActionsInTheSameStep() {

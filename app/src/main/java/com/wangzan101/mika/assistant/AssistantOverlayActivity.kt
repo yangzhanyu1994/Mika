@@ -24,6 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
 import com.wangzan101.mika.chat.ResearchPhase
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.chat.routeAssistantConversation
 import com.wangzan101.mika.chat.routeLiveWeather
 import com.wangzan101.mika.chat.invokesSavedSkill
@@ -365,7 +366,11 @@ class AssistantOverlayActivity : ComponentActivity() {
             val played = try {
                 val uncertain = turn.status == "unverified"
                 val fallback = getString(if (uncertain) R.string.chat_unverified else R.string.task_done)
-                val headline = if (uncertain) turn.note.orEmpty() else turn.outcome
+                val headline = when {
+                    uncertain -> turn.note?.takeIf(String::isNotBlank) ?: WorkReply.from(turn.outcome).summary
+                    turn.research -> turn.outcome
+                    else -> WorkReply.from(turn.outcome).summary
+                }
                 val words = withContext(Dispatchers.Default) {
                     assistantSpokenSummary(MarkdownModel.toPlainText(headline), fallback)
                 }
@@ -691,12 +696,15 @@ class AssistantOverlayActivity : ComponentActivity() {
         val (title, body) = TaskService.describe(state)
         return when (state) {
             is TaskState.Succeeded -> AssistantReply(
-                if (state.doubtful) title else getString(R.string.task_done), body, completed = true,
+                if (state.doubtful) title else getString(R.string.task_done),
+                workResultSummary(state.answer, state.note.takeIf { state.doubtful }),
+                completed = true,
             )
             is TaskState.Running -> {
                 val label = assistantProgressLabel(state.tool)
                 AssistantReply(
-                    getString(label), body = state.preview.orEmpty(), running = true, waiting = true,
+                    getString(label), body = WorkReply.from(state.preview.orEmpty(), streaming = true).summary,
+                    running = true, waiting = true,
                     motion = state.orbMotion,
                     progress = state.narration?.takeIf(String::isNotBlank) ?: state.reason?.takeIf(String::isNotBlank),
                 )
@@ -711,15 +719,23 @@ class AssistantOverlayActivity : ComponentActivity() {
     private fun savedReply(turn: Turn): AssistantReply = when (turn.status) {
         "unverified" -> AssistantReply(
             getString(R.string.chat_unverified),
-            listOfNotNull(turn.note?.takeIf(String::isNotBlank), turn.outcome).joinToString("\n\n"),
+            workResultSummary(turn.outcome, turn.note),
         )
         "failed" -> AssistantReply(getString(R.string.task_not_done), turn.outcome)
         "cancelled" -> AssistantReply(
             getString(R.string.task_stopped),
             Conversation.stopSummary(turn) ?: getString(R.string.task_stopped_body),
         )
-        else -> AssistantReply(getString(R.string.task_done), turn.outcome, completed = true)
+        else -> AssistantReply(
+            getString(R.string.task_done),
+            if (turn.research) turn.outcome else WorkReply.from(turn.outcome).summary,
+            completed = true,
+        )
     }
+
+    private fun workResultSummary(answer: String, note: String?): String =
+        listOfNotNull(note?.takeIf(String::isNotBlank), WorkReply.from(answer).summary.takeIf(String::isNotBlank))
+            .joinToString("\n\n")
 
     private fun openConversation() {
         val id = conversationId ?: return

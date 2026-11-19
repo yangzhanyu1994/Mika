@@ -1,6 +1,7 @@
 package com.wangzan101.mika.task
 
 import com.wangzan101.mika.R
+import com.wangzan101.mika.chat.WorkReply
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.i18n.trPlural
 import com.wangzan101.mika.core.uistate.IdleScroll
@@ -1076,9 +1077,11 @@ class TaskRun(
             val (chainModels, chainFbTags) = if (env.modelFactory === TaskEnvironment.defaultModelFactory)
                 chainStore.mainFallbackChain(session) else (emptyList<ChatModel>() to emptyList<String?>())
             val chainTags = listOf(chainStore.mainProviderTag()) + chainFbTags
+            val resultStyle = if (provenance.origin == RunOrigin.Ui && !conditionCheck && workflowAttemptId == null)
+                WORK_RESULT_STYLE else ""
             val agent = AgentLoop(
                 model, tools,
-                basePrompt + USER_REPLY_STYLE +
+                basePrompt + USER_REPLY_STYLE + resultStyle +
                     (if (mcpEndpoints().isNotEmpty()) MCP_LOOKUP_STYLE else ""),
                 promptTransform = { promptHook.transform(it) },
                 // 助手断开、被挪走只在这一步用的是手机时才查
@@ -1663,6 +1666,19 @@ User-facing progress and final replies:
   available current-location view or another authorized location capability first. If none
   provides the current area, ask for the city or district. Do not guess their location.
 - Continue to follow any required output format for machine-readable results.
+"""
+
+private const val WORK_RESULT_STYLE = """
+
+For the final text shown on the work result card:
+- Lead with one short paragraph of one to three sentences. Include the outcome, the requested key
+  figures, and relevant anomalies or facts you could not confirm. Group related normal readings.
+- For simple results, stop there. When supporting detail is useful, put it below
+  ${WorkReply.DETAILS_MARKER}
+  on its own line, followed by the supplementary facts or evidence. Do not repeat the summary.
+- Leave out unrelated fields (such as IDs or addresses), unavailable secondary readings, and
+  routine steps. Keep requested details in the answer, with longer lists below the marker.
+- If the user requires a specific output format, follow it without adding the marker.
 """
 
 private const val MCP_LOOKUP_STYLE = """
