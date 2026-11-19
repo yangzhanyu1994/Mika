@@ -149,11 +149,18 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Mika:ScreenOffSelfCheck")
         fun valid() = !invalidated.get() && !taskBusy() && lockedAndOff()
         val waitStage = R.string.selfcheck_screen_off_lock
-        val finalStage = R.string.selfcheck_check_main
+        val finalStage = R.string.selfcheck_screen_off_start
         var stage = waitStage
         var registeredReceiver = false
         var registeredListener = false
         var completed = false
+        var firstProblem: Pair<Int, CheckOutcome>? = null
+        fun reportStep(label: Int, outcome: CheckOutcome) {
+            if (outcome.status != CheckStatus.Pass && firstProblem == null) {
+                firstProblem = label to outcome
+            }
+            report(label, outcome)
+        }
         try {
             ContextCompat.registerReceiver(app, receiver, IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
@@ -168,33 +175,39 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
                 !taskBusy()
             }
             if (ready != true) {
-                report(stage, CheckOutcome.fail(
+                reportStep(stage, CheckOutcome.fail(
                     if (taskBusy()) tr(R.string.selfcheck_task_running) else tr(R.string.selfcheck_advice_timeout),
                     Advice.TimedOut,
                 ))
                 return
             }
             armed.set(true)
-            report(stage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+            reportStep(stage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
             val finished = withTimeoutOrNull(35_000L) {
-                completed = runScreenOffStages(::valid, { stage = it }, report)
+                completed = runScreenOffStages(::valid, { stage = it }, ::reportStep)
                 true
             }
-            if (finished != true && valid()) report(stage, CheckOutcome.fail(tr(R.string.selfcheck_advice_timeout), Advice.TimedOut))
+            if (finished != true && valid()) reportStep(stage, CheckOutcome.fail(tr(R.string.selfcheck_advice_timeout), Advice.TimedOut))
         } catch (e: CancellationException) {
             throw e
         } catch (_: ScreenOffInterrupted) {
             // Report the interruption after the virtual display has been released.
         } catch (e: Exception) {
-            report(stage, CheckOutcome.fail(e.javaClass.simpleName, Advice.Error))
+            reportStep(stage, CheckOutcome.fail(e.javaClass.simpleName, Advice.Error))
         } finally {
             try {
                 release()
                 withContext(Dispatchers.Main.immediate) {
                     if (armed.get() && !valid()) {
                         report(finalStage, CheckOutcome.fail(tr(R.string.selfcheck_screen_off_interrupted), Advice.MainScreenChanged))
-                    } else if (completed) {
-                        report(finalStage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+                    } else {
+                        val problem = firstProblem
+                        if (problem != null) {
+                            val (label, outcome) = problem
+                            report(finalStage, outcome.copy(detail = tr(label)))
+                        } else if (completed) {
+                            report(finalStage, CheckOutcome.pass(tr(R.string.selfcheck_status_pass)))
+                        }
                     }
                 }
             } finally {
