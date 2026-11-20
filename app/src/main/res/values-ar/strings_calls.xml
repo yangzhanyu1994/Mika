@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">اتصل بـ Mika</string>
+    <string name="mika_voice_call_ended">انتهت المكالمة</string>
     <string name="calls_title">مكالمات هاتفية بالذكاء الاصطناعي</string>
     <string name="calls_entry_sub">مكالمات عبر شبكة المحمول باستخدام خدمة الصوت الفوري من Volcengine</string>
     <string name="calls_action_failed">تعذّر تنفيذ إجراء المكالمة. تحقّق من الجاهزية وحاول مجددًا.</string>

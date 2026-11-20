@@ -28,6 +28,8 @@ class PcmRecorder(
     private val streaming: Boolean = false,
     /** 流式时不留整段录音、录多久都行(不预留 [maxMs] 的缓冲,也不到点自停);[stop] 返回空。用于不封顶的会话。 */
     private val unbounded: Boolean = false,
+    private val inputSource: Int = MediaRecorder.AudioSource.MIC,
+    private val chunkSamples: Int = Wav.RATE / 20,
 ) : StreamingRecorder {
     // At most five seconds while a connection is opening. Never silently drop a sample.
     private val audio = Channel<ShortArray>(100)
@@ -48,10 +50,10 @@ class PcmRecorder(
             if (record != null) return false
             val minBuf = AudioRecord.getMinBufferSize(Wav.RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             if (minBuf <= 0) return false
-            val chunk = Wav.RATE / 20 // 50ms 一块
+            val chunk = chunkSamples
             val rec = try {
                 AudioRecord(
-                    MediaRecorder.AudioSource.MIC, Wav.RATE,
+                    inputSource, Wav.RATE,
                     AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
                     maxOf(minBuf, chunk * 2 * 4),
                 )

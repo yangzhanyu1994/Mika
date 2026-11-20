@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">打電話給 Mika</string>
+    <string name="mika_voice_call_ended">通話已結束</string>
     <string name="calls_title">來電助理</string>
     <string name="calls_entry_sub">火山方舟 Doubao 即時語音</string>
     <string name="calls_action_failed">操作未完成，請檢查是否就緒後再試一次。</string>

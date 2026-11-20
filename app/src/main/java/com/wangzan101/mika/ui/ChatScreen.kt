@@ -226,6 +226,7 @@ fun ChatScreen(
     openReport: (String) -> Unit = {},
     openPlayback: (String) -> Unit = {},
     checklists: SavedChecklistStore? = null,
+    onVoiceCall: (() -> Unit)? = null,
 ) {
     val checklistStore = checklists ?: (LocalContext.current.applicationContext as? MikaApp)?.savedChecklists
     val workflowRuntime = workflows ?: (LocalContext.current.applicationContext as? MikaApp)?.workflows
@@ -620,6 +621,7 @@ fun ChatScreen(
             voiceAutoSend = true,
             thinkVoiceMotion = true,
             onPickSpeech = openSpeechModel,
+            onVoiceCall = onVoiceCall,
             steerTarget = if (ui.followUpMode == FollowUpMode.Steer) last?.goal?.let(ChatCopy::plainTitle) else null,
             onVoiceHolding = { voiceHolding = it },
             editRequest = editRequest,
@@ -1807,6 +1809,7 @@ internal fun Composer(
     thinkVoiceMotion: Boolean = false,
     /** 输入栏上方的人格 chip;为 null 时不显示。 */
     personaBar: (@Composable () -> Unit)? = null,
+    onVoiceCall: (() -> Unit)? = null,
 ) {
     val c = MikaTheme.colors
     var fieldFocused by remember { mutableStateOf(false) }
@@ -1992,6 +1995,21 @@ internal fun Composer(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(MikaIcons.Mic, hint, Modifier.size(MikaSize.Icon), tint = c.ink)
+                    }
+                }
+                if (onVoiceCall != null) {
+                    val callLabel = stringResource(R.string.mika_voice_call)
+                    Box(
+                        Modifier.size(MikaSize.IconButton).clip(CircleShape).testTag("composer-voice-call")
+                            .clickable(enabled = !voiceHolding && vState !is HoldToTalk.State.Converting, onClickLabel = callLabel) {
+                                panel = Panel.Closed
+                                focus.clearFocus()
+                                keyboard?.hide()
+                                onVoiceCall()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(MikaIcons.Phone, callLabel, Modifier.size(MikaSize.Icon), tint = c.ink)
                     }
                 }
                 // 任务在跑时停止一直在;写了字再多一个发送,发出去的话交给当前任务

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">Позвонить Mika</string>
+    <string name="mika_voice_call_ended">Звонок завершён</string>
     <string name="calls_title">Звонки с ИИ</string>
     <string name="calls_entry_sub">Звонки по мобильной сети с голосом Volcengine в реальном времени</string>
     <string name="calls_action_failed">Не удалось выполнить действие со звонком. Проверьте готовность и повторите попытку.</string>

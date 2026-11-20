@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">Mika에게 전화하기</string>
+    <string name="mika_voice_call_ended">통화가 종료되었습니다</string>
     <string name="calls_title">AI 전화</string>
     <string name="calls_entry_sub">Volcengine 실시간 음성을 사용하는 이동통신 통화</string>
     <string name="calls_action_failed">통화 작업에 실패했습니다. 준비 상태를 확인한 후 다시 시도하세요.</string>

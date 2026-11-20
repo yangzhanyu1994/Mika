@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">Telepon Mika</string>
+    <string name="mika_voice_call_ended">Panggilan berakhir</string>
     <string name="calls_title">Panggilan telepon AI</string>
     <string name="calls_entry_sub">Panggilan seluler dengan suara real-time Volcengine</string>
     <string name="calls_action_failed">Tindakan pada panggilan gagal. Periksa kesiapan lalu coba lagi.</string>

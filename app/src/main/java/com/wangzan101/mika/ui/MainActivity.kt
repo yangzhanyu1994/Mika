@@ -837,6 +837,14 @@ private fun MikaRoot(
                 resetKey = nav.resetSerial,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
+                    var showMikaCall by remember { mutableStateOf(false) }
+                    val openMikaCall = { showMikaCall = true }
+                    if (showMikaCall) {
+                        MikaVoiceCallDialog(app.calls, onConfigure = {
+                            showMikaCall = false
+                            nav.push(Route.CallModel)
+                        }, onDismiss = { showMikaCall = false })
+                    }
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
                     val updateBackdrop = if (readyRelease != null) rememberGlassBackdrop() else null
                     Box(Modifier.fillMaxSize().glassSource(updateBackdrop)) {
@@ -855,6 +863,7 @@ private fun MikaRoot(
                                 voice = app.voice,
                                 onSelectTask = { personalTask = it.id },
                                 onPickSpeech = { nav.push(Route.SpeechModel) },
+                                onVoiceCall = openMikaCall,
                                 modeHeader = { usage ->
                                     ConversationModeHeader(
                                         true, selectedModel(ModelRole.Chat), usage,
@@ -888,6 +897,7 @@ private fun MikaRoot(
                                     onSend = { sendByIntent(it, inPersonal = false) },
                                     onTransfer = ::prepareWorkTransfer,
                                     onPickSpeech = { nav.push(Route.SpeechModel) },
+                                    onVoiceCall = openMikaCall,
                                 )
                             }
                         } else ChatScreen(
@@ -931,6 +941,7 @@ private fun MikaRoot(
                             },
                             voice = app.voice,
                             openSpeechModel = { nav.push(Route.SpeechModel) },
+                            onVoiceCall = openMikaCall,
                             onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else ({}),
                             onOpenTeach = { hint ->
                                 app.teach.prefill(hint)
