@@ -173,6 +173,7 @@ internal fun ResearchConversationScreen(
     onSend: suspend (String) -> Boolean,
     onTransfer: (Turn) -> Unit,
     onPickSpeech: () -> Unit,
+    onVoiceCall: (() -> Unit)? = null,
 ) {
     val c = MikaTheme.colors
     val loaded = rememberModeTurns(app, id)
@@ -253,6 +254,7 @@ internal fun ResearchConversationScreen(
                     send()
                 },
                 onPickSpeech = onPickSpeech,
+                onVoiceCall = onVoiceCall,
                 draftKey = id,
                 sendEnabled = !routing && id?.let(pending::containsKey) != true,
             )

@@ -36,7 +36,7 @@
     <string name="drawer_model_config">Настройка моделей</string>
     <string name="drawer_language_model">Модель ИИ (задачи и чат)</string>
     <string name="drawer_call_model">Модель речи в реальном времени (звонки)</string>
-    <string name="drawer_readout_model">Модель синтеза речи (озвучивание)</string>
+    <string name="drawer_readout_model">Модель озвучивания</string>
     <string name="drawer_speech_model">Потоковое распознавание речи (ввод)</string>
     <string name="drawer_model_website">Сайт</string>
     <string name="drawer_task_center">Центр задач</string>

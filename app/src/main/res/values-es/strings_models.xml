@@ -207,6 +207,11 @@
     <string name="main_fallback_hint">The main model runs first. If it runs out of quota or fails, the fallback takes over automatically.</string>
     <string name="main_fallback_failed">Could not set the fallback model</string>
     <string name="main_fallback_is_main">This is the current main model, so it cannot also be its fallback</string>
+    <string name="voice_sample_text">Hola, soy Mika. Así sonarán mis respuestas.</string>
+    <string name="voice_doubao_shared">Usa la misma clave de Doubao y la misma voz que las llamadas de IA.</string>
+    <string name="voice_key_reuse">Déjalo vacío para usar la clave guardada.</string>
+    <string name="voice_test_use">Probar y usar</string>
+    <string name="voice_invalid_key">Comprueba la clave y el acceso al servicio</string>
     <string name="role_voice">Voice model</string>
     <string name="role_voice_what">Lets Mika speak and read answers aloud</string>
     <string name="voice_hint">Mika can read answers aloud and say a line with your own speech model. Text is sent to the service you pick.</string>

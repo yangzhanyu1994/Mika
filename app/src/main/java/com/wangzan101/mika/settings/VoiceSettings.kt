@@ -23,7 +23,8 @@ enum class TtsProtocol(val wire: String) {
     OpenAiSpeech("openai-speech"),
 
     /** Gemini TTS:generateContent + responseModalities AUDIO。 */
-    GeminiTts("gemini-tts");
+    GeminiTts("gemini-tts"),
+    DeepSeekTts("deepseek-tts");
 
     companion object {
         fun of(wire: String?): TtsProtocol? = entries.firstOrNull { it.wire == wire }
@@ -54,7 +55,11 @@ data class VoiceSettingsState(
     /** 每次保存前是否问用户;默认问。 */
     val askBeforeSave: Boolean = true,
     val maxCharsPerSpeak: Int = DEFAULT_MAX_CHARS,
+    val useDoubao: Boolean = false,
 ) {
+    fun hasModel(doubaoConfigured: Boolean): Boolean =
+        if (useDoubao) doubaoConfigured else !choice?.model.isNullOrBlank()
+
     companion object {
         const val DEFAULT_MAX_CHARS = 2000
         const val MAX_CHARS_LIMIT = 20_000
@@ -70,9 +75,10 @@ class VoiceSettings(private val prefs: SharedPreferences) {
     val state: StateFlow<VoiceSettingsState> = _state.asStateFlow()
 
     fun setEnabled(on: Boolean) = update { copy(enabled = on) }
+    fun setUseDoubao(on: Boolean) = update { copy(useDoubao = on) }
 
     fun setChoice(choice: VoiceChoice?) = update {
-        copy(choice = choice?.copy(speed = choice.speed.coerceIn(0.25f, 4.0f)))
+        copy(useDoubao = false, choice = choice?.copy(speed = choice.speed.coerceIn(0.25f, 4.0f)))
     }
 
     fun setAutoRead(on: Boolean) = update { copy(autoRead = on) }
@@ -87,7 +93,9 @@ class VoiceSettings(private val prefs: SharedPreferences) {
 
     /** 按当前协议给的能力。音色不限制（由服务商校验）；OpenAI 支持多种容器，Gemini 这里统一回到 WAV。 */
     fun capabilities(): TtsCapabilities? {
-        val choice = _state.value.choice ?: return null
+        val state = _state.value
+        if (state.useDoubao) return TtsCapabilities(maxChars = minOf(state.maxCharsPerSpeak, 4_000), formats = setOf("wav"))
+        val choice = state.choice ?: return null
         return when (choice.protocol) {
             TtsProtocol.OpenAiSpeech -> TtsCapabilities(
                 voices = null,
@@ -98,6 +106,9 @@ class VoiceSettings(private val prefs: SharedPreferences) {
                 voices = null,
                 maxChars = _state.value.maxCharsPerSpeak,
                 formats = setOf("wav"),
+            )
+            TtsProtocol.DeepSeekTts -> TtsCapabilities(
+                maxChars = minOf(state.maxCharsPerSpeak, 10_000), formats = setOf("wav"),
             )
         }
     }
@@ -115,6 +126,7 @@ class VoiceSettings(private val prefs: SharedPreferences) {
 
     private fun encode(state: VoiceSettingsState): JsonObject = buildJsonObject {
         put("enabled", state.enabled)
+        put("useDoubao", state.useDoubao)
         put("autoRead", state.autoRead)
         put("speakTool", state.speakTool)
         put("saveEnabled", state.saveEnabled)
@@ -144,6 +156,7 @@ class VoiceSettings(private val prefs: SharedPreferences) {
         )
         return VoiceSettingsState(
             enabled = bool("enabled", true),
+            useDoubao = bool("useDoubao", false),
             choice = choice,
             autoRead = bool("autoRead", false),
             speakTool = bool("speakTool", false),

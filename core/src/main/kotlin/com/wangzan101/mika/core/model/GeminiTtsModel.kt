@@ -28,7 +28,7 @@ class GeminiTtsModel(
     private val headers: Map<String, String> = emptyMap(),
 ) : TtsModel {
     override val name: String get() = model
-    private val endpoint = baseUrl.trimEnd('/') + "/v1beta/models/$model:generateContent"
+    private val apiBase = baseUrl.trimEnd('/') + "/v1beta"
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun synthesize(request: TtsRequest): TtsResponse {
@@ -37,6 +37,7 @@ class GeminiTtsModel(
         if (text.length > capabilities.maxChars) throw TtsError.Unsupported("text is longer than ${capabilities.maxChars} characters")
         val voice = request.voice ?: capabilities.voices?.firstOrNull() ?: throw TtsError.Unsupported("voice is required")
         capabilities.voices?.let { if (voice !in it) throw TtsError.Unsupported("voice $voice is not supported") }
+        if (model in setOf(DEFAULT_MODEL, "gemini-3.8-flash-tts")) return interactionsSpeech(text, voice)
         val payload = buildJsonObject {
             putJsonArray("contents") {
                 add(buildJsonObject {
@@ -52,7 +53,7 @@ class GeminiTtsModel(
                 }
             }
         }
-        val req = Request.Builder().url(endpoint)
+        val req = Request.Builder().url("$apiBase/models/$model:generateContent")
             .withHeaders(headers)
             .headerOrReject("x-goog-api-key", apiKey)
             .postInference(InferenceProtocol.Gemini, payload)
@@ -62,6 +63,55 @@ class GeminiTtsModel(
             throw ModelHttp.geminiError(response.status, response.retryAfter, response.body, model)
         }
         return parse(response.body)
+    }
+
+    private suspend fun interactionsSpeech(text: String, voice: String): TtsResponse {
+        val payload = buildJsonObject {
+            put("model", model)
+            putJsonArray("input") {
+                add(buildJsonObject {
+                    put("type", "user_input")
+                    putJsonArray("content") {
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", text)
+                        })
+                    }
+                })
+            }
+            putJsonObject("response_format") { put("type", "audio") }
+            putJsonObject("generation_config") {
+                putJsonArray("speech_config") { add(buildJsonObject { put("voice", voice) }) }
+            }
+        }
+        val req = Request.Builder().url("$apiBase/interactions")
+            .withHeaders(headers)
+            .headerOrReject("x-goog-api-key", apiKey)
+            .postInference(InferenceProtocol.Gemini, payload)
+            .build()
+        val response = HttpSupport.execute(http, req)
+        if (response.status !in 200..299) throw ModelHttp.geminiError(response.status, response.retryAfter, response.body, model)
+        val root = runCatching { json.parseToJsonElement(response.body) }.getOrNull() as? JsonObject
+            ?: throw ModelError.BadResponse("Invalid Gemini speech response")
+        val audio = (root["steps"] as? JsonArray).orEmpty()
+            .filterIsInstance<JsonObject>()
+            .filter { (it["type"] as? JsonPrimitive)?.contentOrNull == "model_output" }
+            .flatMap { (it["content"] as? JsonArray).orEmpty() }
+            .filterIsInstance<JsonObject>()
+            .lastOrNull { (it["type"] as? JsonPrimitive)?.contentOrNull == "audio" }
+        val data = (audio?.get("data") as? JsonPrimitive)?.contentOrNull
+            ?: throw ModelError.BadResponse("No speech audio in Gemini response")
+        if (data.length > 4 * ((MAX_TTS_BYTES + 2) / 3)) throw TtsError.TooLarge(MAX_TTS_BYTES + 1L)
+        val bytes = decodeBase64Audio(data, null)
+        checkTtsSize(bytes)
+        if (sniffAudioMime(bytes) != "audio/wav") throw TtsError.BadAudio("Gemini did not return WAV")
+        return TtsResponse(bytes, "audio/wav", 24_000)
+    }
+
+    companion object {
+        const val BASE_URL = "https://generativelanguage.googleapis.com"
+        const val DEFAULT_MODEL = "gemini-3.8-flash-lite-tts"
+        const val DEFAULT_VOICE = "Kore"
     }
 
     private fun parse(body: String): TtsResponse {

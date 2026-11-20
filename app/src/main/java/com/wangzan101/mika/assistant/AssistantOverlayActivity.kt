@@ -53,7 +53,6 @@ import com.wangzan101.mika.ui.theme.animationsOff
 import com.wangzan101.mika.voice.HoldToTalk
 import com.wangzan101.mika.voice.SpeechEngineSpec
 import com.wangzan101.mika.voice.SpeechEvent
-import com.wangzan101.mika.media.readAloud
 import com.wangzan101.mika.voice.VoicePlayback
 import com.wangzan101.mika.voice.VoicePlayer
 import com.wangzan101.mika.voice.assistantSpeech
@@ -188,7 +187,7 @@ class AssistantOverlayActivity : ComponentActivity() {
         window.isNavigationBarContrastEnforced = false
         val appearance = AssistantAppearance(this)
         setContent {
-            val voiceSettings by app.voiceSettings.state.collectAsState()
+            val voiceReady by app.voiceReady.collectAsState()
             MikaTheme(dark = isSystemInDarkTheme(), reduceMotion = animationsOff(this)) {
                 AssistantOverlay(
                     history = history,
@@ -215,7 +214,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                         status = null
                     },
                     reply = reply,
-                    onReadResult = if (voiceSettings.enabled && !voiceSettings.choice?.model.isNullOrBlank()) ({
+                    onReadResult = if (voiceReady) ({
                         reply?.let { latest -> playResult(latest.collapsedBody ?: latest.body, latest.title) }
                     }) else null,
                     onOpenConversation = ::openConversation,
@@ -381,8 +380,7 @@ class AssistantOverlayActivity : ComponentActivity() {
 
     private fun playResult(headline: String, fallback: String) {
         if (!resumed || listening || converting || isFinishing) return
-        val voice = app.voiceSettings.state.value
-        if (!voice.enabled || voice.choice?.model.isNullOrBlank()) return
+        if (!app.voiceReady.value) return
         stopPlayback()
         val activityBefore = interactions
         playbackJob = lifecycleScope.launch {
@@ -392,7 +390,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                     assistantSpokenSummary(MarkdownModel.toPlainText(headline), fallback)
                 }
                 var finished = false
-                if (words.isNotBlank()) readAloud(words, app.voiceSettings, app.providers::ttsModel) {
+                if (words.isNotBlank()) app.readReply(words) {
                     readoutPlayer.play(it.bytes, it.mime)
                     finished = readoutPlayer.state.first { state ->
                         state == VoicePlayback.Idle || state is VoicePlayback.Error

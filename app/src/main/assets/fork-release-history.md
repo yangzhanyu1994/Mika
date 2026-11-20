@@ -1,6 +1,7 @@
 ### 近期版本更新说明
 
-#### [v0.2.9](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.9) · 2026-11-20
+#### [v0.2.10](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.10) · 2026-11-20
 
-- 改善 ModelBest VoxCPM2 的播放兼容性，将流式 WAV 转成带完整文件头的 16 位 PCM 音频。
-- 声音模型试听按实际播放器状态显示，播放失败时只显示错误。
+- 聊天和工作输入框新增电话按钮，可在应用内与 Mika 实时语音聊天。通话使用电话页中已保存的豆包实时语音模型凭据和音色。
+- 声音模型页可选豆包、DeepSeek、ModelBest 或 Gemini，填入 API Key 后即可试听和启用。浮窗播报和应用内朗读使用同一设置。
+- 首页「关键配置」新增「朗读模型」入口，显示当前服务商和配置状态。

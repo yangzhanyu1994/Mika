@@ -193,6 +193,12 @@
     <string name="models_daily_token_budget">Günlük token bütçesi</string>
     <string name="models_daily_token_budget_sub">Bu sağlayıcı için tüm modelleri ve amaçları yerel takvim gününde sayar. Yalnızca bildirilen giriş ve çıkış tokenları sayılır. Sınıra gelindiğinde sonraki istek engellenir; uçuştaki istekler sınırı aşabilir. Yerel tarih değişince sıfırlanır.</string>
     <string name="models_daily_token_budget_save_failed">Bütçe kaydedilemedi. Önceki ayar hâlâ etkin.</string>
+    <string name="drawer_readout_model">Sesli okuma modeli</string>
+    <string name="voice_sample_text">Merhaba, ben Mika. Yanıtlarım böyle duyulacak.</string>
+    <string name="voice_doubao_shared">Yapay zekâ aramalarıyla aynı Doubao API anahtarını ve sesi kullanır.</string>
+    <string name="voice_key_reuse">Kayıtlı API anahtarını kullanmak için boş bırakın.</string>
+    <string name="voice_test_use">Dene ve kullan</string>
+    <string name="voice_invalid_key">API anahtarını ve hizmet erişimini kontrol edin</string>
     <string name="role_voice">Ses modeli</string>
     <string name="role_voice_what">Mika\'nın konuşmasını ve yanıtları sesli okumasını sağlar</string>
     <string name="voice_enable">Mika\'nın konuşmasına izin ver</string>

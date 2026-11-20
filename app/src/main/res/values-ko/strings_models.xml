@@ -197,6 +197,11 @@
     <string name="main_fallback_hint">The main model runs first. If it runs out of quota or fails, the fallback takes over automatically.</string>
     <string name="main_fallback_failed">Could not set the fallback model</string>
     <string name="main_fallback_is_main">This is the current main model, so it cannot also be its fallback</string>
+    <string name="voice_sample_text">안녕하세요, Mika입니다. 이 음성으로 답변을 읽어드려요.</string>
+    <string name="voice_doubao_shared">AI 통화와 같은 Doubao API 키와 음성을 사용합니다.</string>
+    <string name="voice_key_reuse">비워두면 저장된 API 키를 사용합니다.</string>
+    <string name="voice_test_use">테스트 후 사용</string>
+    <string name="voice_invalid_key">API 키와 서비스 접근 권한을 확인하세요</string>
     <string name="role_voice">Voice model</string>
     <string name="role_voice_what">Lets Mika speak and read answers aloud</string>
     <string name="voice_hint">Mika can read answers aloud and say a line with your own speech model. Text is sent to the service you pick.</string>

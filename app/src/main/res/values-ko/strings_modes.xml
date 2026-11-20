@@ -36,7 +36,7 @@
     <string name="drawer_model_config">모델 설정</string>
     <string name="drawer_language_model">AI 모델(작업 및 채팅)</string>
     <string name="drawer_call_model">실시간 음성 모델(AI 통화)</string>
-    <string name="drawer_readout_model">음성 합성 모델(결과 읽기)</string>
+    <string name="drawer_readout_model">읽어주기 모델</string>
     <string name="drawer_speech_model">스트리밍 음성 인식(입력)</string>
     <string name="drawer_model_website">공식 사이트</string>
     <string name="drawer_task_center">작업 센터</string>

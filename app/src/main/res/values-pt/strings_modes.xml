@@ -36,7 +36,7 @@
     <string name="drawer_model_config">Configuração de modelos</string>
     <string name="drawer_language_model">Modelo de IA (tarefas e chat)</string>
     <string name="drawer_call_model">Modelo de voz em tempo real (chamadas)</string>
-    <string name="drawer_readout_model">Modelo de síntese de voz (leitura)</string>
+    <string name="drawer_readout_model">Modelo de leitura em voz alta</string>
     <string name="drawer_speech_model">Reconhecimento de voz em tempo real (entrada)</string>
     <string name="drawer_model_website">Site oficial</string>
     <string name="drawer_task_center">Central de tarefas</string>

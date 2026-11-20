@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="mika_voice_call">Call Mika</string>
+    <string name="mika_voice_call_microphone">Allow microphone access to call Mika.</string>
+    <string name="mika_voice_call_ended">Call ended</string>
     <string name="calls_title">Call assistant</string>
     <string name="calls_entry_sub">Volcengine Ark Doubao realtime voice</string>
     <string name="calls_action_failed">The call action failed. Check readiness and retry.</string>

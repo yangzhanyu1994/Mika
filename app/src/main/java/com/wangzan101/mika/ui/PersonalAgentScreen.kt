@@ -163,6 +163,7 @@ internal fun PersonalAgentScreen(
     researchDraft: ResearchDraft?,
     onResearchSend: suspend (String) -> Boolean,
     onTransfer: (String, String) -> Unit,
+    onVoiceCall: (() -> Unit)? = null,
 ) {
     val state by runtime.state.collectAsState()
     val legacyThinking by runtime.agent.busy.collectAsState()
@@ -318,6 +319,7 @@ internal fun PersonalAgentScreen(
             onVoiceSend = { send(HoldToTalk.join(draft, it)) },
             voiceAutoSend = true,
             onPickSpeech = onPickSpeech,
+            onVoiceCall = onVoiceCall,
             onVoiceHolding = { voiceHolding = it },
             sendFromIme = true,
         )

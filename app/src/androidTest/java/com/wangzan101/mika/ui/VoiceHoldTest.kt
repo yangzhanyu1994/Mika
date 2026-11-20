@@ -43,6 +43,23 @@ class VoiceHoldTest {
 
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun phoneButtonStartsVoiceCallWithoutSendingDraft() {
+        var calls = 0
+        var sends = 0
+        compose.setContent {
+            MikaTheme {
+                Composer(Modifier, "draft", {}, ComposerMode.Idle, false, { sends++ }, {},
+                    onVoiceCall = { calls++ })
+            }
+        }
+        compose.onNodeWithTag("composer-voice-call").performClick()
+        compose.runOnIdle {
+            assertEquals(1, calls)
+            assertEquals(0, sends)
+        }
+        compose.onNodeWithTag("composer-field").assertTextEquals("draft")
+    }
+
     /** 假会话:事件由测试喂;记下松开、取消的次数。 */
     private class FakeSession : SpeechSession {
         val out = Channel<SpeechEvent>(Channel.UNLIMITED)

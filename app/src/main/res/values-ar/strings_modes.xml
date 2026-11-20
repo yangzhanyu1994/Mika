@@ -36,7 +36,7 @@
     <string name="drawer_model_config">إعداد النماذج</string>
     <string name="drawer_language_model">نموذج الذكاء الاصطناعي (المهام والمحادثة)</string>
     <string name="drawer_call_model">نموذج الصوت الفوري (المكالمات)</string>
-    <string name="drawer_readout_model">نموذج تحويل النص إلى كلام (القراءة)</string>
+    <string name="drawer_readout_model">نموذج القراءة الصوتية</string>
     <string name="drawer_speech_model">التعرف الفوري على الكلام (الإدخال)</string>
     <string name="drawer_model_website">الموقع الرسمي</string>
     <string name="drawer_task_center">مركز المهام</string>

@@ -200,6 +200,11 @@
     <string name="models_daily_token_budget">服务商每日 Token 预算</string>
     <string name="models_daily_token_budget_sub">按本地日历日统计这家所有模型和用途的已报告输入与输出 Token。达到预算后不再发起下一次请求；在途请求可能超量，未报告用量按 0 计。本地日期变更后自动恢复。</string>
     <string name="models_daily_token_budget_save_failed">预算保存失败，原设置未变。</string>
+    <string name="voice_sample_text">你好，我是 Mika。这是你听到的回复声音。</string>
+    <string name="voice_doubao_shared">豆包播报与 AI 电话共用 API Key 和音色。</string>
+    <string name="voice_key_reuse">留空可继续使用已保存的凭据。</string>
+    <string name="voice_test_use">试听并使用</string>
+    <string name="voice_invalid_key">请检查 API Key 和服务权限</string>
     <string name="role_voice">声音模型</string>
     <string name="role_voice_what">让 Mika 说话、朗读回答</string>
     <string name="voice_hint">Mika 可以用你自己的语音模型朗读回答、说一句话。文字会发给你选的服务商。</string>

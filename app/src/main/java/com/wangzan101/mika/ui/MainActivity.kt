@@ -801,6 +801,7 @@ private fun MikaRoot(
                 onPhoneSetup = { openPhoneOps = true; nav.pushFromDrawer(Route.Settings) },
                 onWebSearch = { openWebSearch = true; nav.pushFromDrawer(Route.Settings) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
+                onReadoutModel = { nav.pushFromDrawer(Route.VoiceModel) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
@@ -837,6 +838,14 @@ private fun MikaRoot(
                 resetKey = nav.resetSerial,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
+                    var showMikaCall by remember { mutableStateOf(false) }
+                    val openMikaCall = { showMikaCall = true }
+                    if (showMikaCall) {
+                        MikaVoiceCallDialog(app.calls, onConfigure = {
+                            showMikaCall = false
+                            nav.push(Route.CallModel)
+                        }, onDismiss = { showMikaCall = false })
+                    }
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
                     val updateBackdrop = if (readyRelease != null) rememberGlassBackdrop() else null
                     Box(Modifier.fillMaxSize().glassSource(updateBackdrop)) {
@@ -855,6 +864,7 @@ private fun MikaRoot(
                                 voice = app.voice,
                                 onSelectTask = { personalTask = it.id },
                                 onPickSpeech = { nav.push(Route.SpeechModel) },
+                                onVoiceCall = openMikaCall,
                                 modeHeader = { usage ->
                                     ConversationModeHeader(
                                         true, selectedModel(ModelRole.Chat), usage,
@@ -888,6 +898,7 @@ private fun MikaRoot(
                                     onSend = { sendByIntent(it, inPersonal = false) },
                                     onTransfer = ::prepareWorkTransfer,
                                     onPickSpeech = { nav.push(Route.SpeechModel) },
+                                    onVoiceCall = openMikaCall,
                                 )
                             }
                         } else ChatScreen(
@@ -931,6 +942,7 @@ private fun MikaRoot(
                             },
                             voice = app.voice,
                             openSpeechModel = { nav.push(Route.SpeechModel) },
+                            onVoiceCall = openMikaCall,
                             onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else ({}),
                             onOpenTeach = { hint ->
                                 app.teach.prefill(hint)
@@ -982,7 +994,7 @@ private fun MikaRoot(
                 onOpenVoice = { nav.push(Route.VoiceModel) }, onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
         Route.CallModel -> CallSettingsScreen(app.calls, onBack = back, standalone = true, openModelCredentials = true)
-        Route.VoiceModel -> VoiceModelScreen(store, onBack = back)
+        Route.VoiceModel -> VoiceModelScreen(app, onBack = back, onCallModel = { nav.push(Route.CallModel) })
         Route.Usage -> UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) })
         Route.SpeechModel -> SpeechModelScreen(store, onBack = back)
         Route.About -> {

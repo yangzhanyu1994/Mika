@@ -544,13 +544,16 @@ class TaskRun(
      */
     private val audioPort by lazy {
         val state = audioSettings.state.value
-        val choice = state.choice
-        if (!state.enabled || choice == null || provenance.origin != RunOrigin.Ui) null
+        val choice = state.choice.takeUnless { state.useDoubao }
+        val app = service.application as com.wangzan101.mika.MikaApp
+        if (!state.enabled || !state.hasModel(app.calls.settings.state.value.credentialsConfigured) ||
+            provenance.origin != RunOrigin.Ui) null
         else audioSettings.capabilities()?.let { caps ->
-            com.wangzan101.mika.settings.ProviderStore.get(service).ttsModel(choice, caps)?.let { model ->
+            val voiceModel = if (state.useDoubao) app.doubaoReadout(caps) else choice?.let { app.providers.ttsModel(it, caps) }
+            voiceModel?.let { model ->
                 com.wangzan101.mika.media.AndroidAudioPort(service, conversationId, model, caps, onSaved = ::addSavedAudio,
-                    onGenerated = ::addAudio, defaultVoice = choice.voice.ifBlank { null }, defaultSpeed = choice.speed,
-                    onSpeak = { response -> (service.application as com.wangzan101.mika.MikaApp).voicePlayer.play(response.bytes, response.mime) })
+                    onGenerated = ::addAudio, defaultVoice = choice?.voice?.ifBlank { null }, defaultSpeed = choice?.speed ?: 1f,
+                    onSpeak = { response -> app.voicePlayer.play(response.bytes, response.mime) })
             }
         }
     }

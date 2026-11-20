@@ -1627,6 +1627,8 @@ class CallRuntime(private val app: MikaApp) {
     private fun confirmedEnded(t: Tracked): Boolean = t.call.state == Call.STATE_DISCONNECTED ||
         (t.call !in tracked && managedCallPresent() == false)
 
+    internal fun isPhoneAudioBusy(): Boolean = work != null || liveCalls().isNotEmpty() || managedCallPresent() == true
+
     private fun managedCallPresent(): Boolean? = runCatching { telecom?.isInManagedCall }.getOrNull()
 
     private fun isEmergency(number: String): Boolean? = runCatching { telephony?.isEmergencyNumber(number) }.getOrNull()
