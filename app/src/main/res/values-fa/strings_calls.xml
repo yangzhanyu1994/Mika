@@ -146,4 +146,12 @@
     <string name="calls_notification_connecting_audio">در حال اتصال صدای تماس</string>
     <string name="calls_notification_connected_waiting">هوش مصنوعی متصل شد. در انتظار صحبت طرف مقابل است؛ هر زمان می‌توانید تماس را بر عهده بگیرید.</string>
     <string name="calls_notification_connected">هوش مصنوعی متصل شد. هر زمان می‌توانید خودتان تماس را بر عهده بگیرید.</string>
+    <string name="mika_voice_call_audio_focus">Android did not grant audio focus. Keep Mika in the foreground and stop other calls or audio apps, then retry.</string>
+    <string name="mika_voice_call_audio_output">Mika could not play the call audio. Check the current audio output and retry.</string>
+    <string name="mika_voice_call_mic_unavailable">Microphone access is allowed, but no input is available. Check the Microphone access switch in Quick Settings and close other apps recording audio.</string>
+    <string name="mika_voice_call_connection_lost">The Doubao realtime voice connection was interrupted. Check the network and retry.</string>
+    <string name="mika_voice_call_connection_timeout">Doubao realtime voice did not connect within 10 seconds. Check the network and retry.</string>
+    <string name="mika_voice_call_realtime_key">Open call model settings and enter an API Key from a Doubao Voice project with Realtime Voice 3.0 (Seeduplex) enabled.</string>
+    <string name="mika_voice_call_provider_error">Doubao could not start realtime voice. Check the project service and voice settings, then retry.</string>
+    <string name="mika_voice_call_speak">Connected. You can speak now.</string>
 </resources>

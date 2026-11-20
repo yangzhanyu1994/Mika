@@ -10,6 +10,7 @@ import android.media.MediaRecorder
 import com.wangzan101.mika.R
 import com.wangzan101.mika.voice.PcmRecorder
 import com.wangzan101.mika.voice.pcmBytes
+import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -28,7 +29,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
         val credentials = withContext(Dispatchers.IO) { phone.settings.credentials() }
             ?: throw Failure(R.string.calls_setup_credentials)
         val audio = context.getSystemService(AudioManager::class.java)
-            ?: throw Failure(R.string.calls_action_failed)
+            ?: throw Failure(R.string.mika_voice_call_audio_output)
         checkPhoneIdle(audio)
         val session = VolcRealtimeClient().connect(credentials, VolcRealtimeConfig(
             systemPrompt = "You are Mika, speaking with the app user. Reply naturally and concisely in the user's language.",
@@ -55,25 +56,52 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
             .setOnAudioFocusChangeListener { if (it < 0) focusLost.complete(Unit) }
             .build()
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            throw Failure(R.string.calls_action_failed)
+            throw Failure(R.string.mika_voice_call_audio_focus)
         }
-        val mic = PcmRecorder(
-            streaming = true, unbounded = true,
-            inputSource = MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-            chunkSamples = VolcRealtimeClient.INPUT_CHUNK_BYTES / 2,
-        )
         try {
-            val speaker = openSpeaker(attributes)
+            if (audio.isMicrophoneMute) throw Failure(R.string.mika_voice_call_mic_unavailable)
+            val mic = startRecorder(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                ?: startRecorder(MediaRecorder.AudioSource.MIC)
+                ?: throw Failure(R.string.mika_voice_call_mic_unavailable)
             try {
-                speaker.play()
-                if (!mic.start()) throw Failure(R.string.voice_mic_blocked_title)
-                bridge(audio, session, mic, speaker, focusLost, onConnected)
+                val first = withTimeoutOrNull(3_000) { mic.chunks.receiveCatching().getOrNull() }
+                if (first == null || first.isEmpty() || mic.isSilenced) {
+                    throw Failure(R.string.mika_voice_call_mic_unavailable)
+                }
+                val speaker = openSpeaker(attributes)
+                try {
+                    try {
+                        speaker.play()
+                    } catch (_: IllegalStateException) {
+                        throw Failure(R.string.mika_voice_call_audio_output)
+                    }
+                    sendAudio(session, first)
+                    bridge(audio, session, mic, speaker, focusLost, onConnected)
+                } finally {
+                    speaker.release()
+                }
             } finally {
-                speaker.release()
+                mic.cancel()
             }
         } finally {
-            mic.cancel()
             audio.abandonAudioFocusRequest(focus)
+        }
+    }
+
+    private fun startRecorder(source: Int): PcmRecorder? {
+        val mic = PcmRecorder(
+            streaming = true, unbounded = true,
+            inputSource = source,
+            chunkSamples = VolcRealtimeClient.INPUT_CHUNK_BYTES / 2,
+        )
+        if (mic.start()) return mic
+        mic.cancel()
+        return null
+    }
+
+    private fun sendAudio(session: VolcRealtimeSession, chunk: ShortArray) {
+        if (chunk.isNotEmpty() && !session.sendPcm16(pcmBytes(chunk))) {
+            throw session.terminalFailure() ?: Failure(R.string.mika_voice_call_connection_lost)
         }
     }
 
@@ -94,7 +122,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
                     var offset = 0
                     while (offset < block.byteCount && queue.isCurrent(block)) {
                         val written = speaker.write(buffer, offset, block.byteCount - offset, AudioTrack.WRITE_NON_BLOCKING)
-                        if (written < 0) throw Failure(R.string.calls_action_failed)
+                        if (written < 0) throw Failure(R.string.mika_voice_call_audio_output)
                         if (written == 0) delay(5) else offset += written
                     }
                 } finally {
@@ -103,14 +131,18 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
             }
         }
         val recording = launch {
-            for (chunk in mic.chunks) {
-                if (chunk.isNotEmpty() && !session.sendPcm16(pcmBytes(chunk))) throw Failure(R.string.calls_action_failed)
+            try {
+                for (chunk in mic.chunks) sendAudio(session, chunk)
+            } catch (e: VolcRealtimeException) {
+                throw e
+            } catch (_: IOException) {
+                throw Failure(R.string.mika_voice_call_mic_unavailable)
             }
-            throw Failure(R.string.voice_mic_blocked_title)
+            throw Failure(R.string.mika_voice_call_mic_unavailable)
         }
         val interrupted = launch {
             focusLost.await()
-            throw Failure(R.string.calls_action_failed)
+            throw Failure(R.string.mika_voice_call_audio_focus)
         }
         val phoneCall = launch {
             phone.state.first { it.phase != CallPhase.IDLE }
@@ -121,7 +153,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
             onConnected()
             session.events.collect { event ->
                 when (event) {
-                    is VolcRealtimeEvent.Audio -> if (queue.offer(event.pcm) == null) throw Failure(R.string.calls_action_failed)
+                    is VolcRealtimeEvent.Audio -> if (queue.offer(event.pcm) == null) throw Failure(R.string.mika_voice_call_audio_output)
                     VolcRealtimeEvent.AssistantInterrupted -> {
                         queue.invalidate()
                         speaker.pause()
@@ -151,15 +183,19 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
     private fun openSpeaker(attributes: AudioAttributes): AudioTrack {
         val rate = VolcRealtimeClient.OUTPUT_SAMPLE_RATE
         val minimum = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minimum <= 0) throw Failure(R.string.calls_action_failed)
-        val track = AudioTrack.Builder().setAudioAttributes(attributes)
-            .setAudioFormat(AudioFormat.Builder().setSampleRate(rate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
-            .setBufferSizeInBytes(maxOf(minimum, CallPlaybackQueue.WRITE_BYTES * 2))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        if (minimum <= 0) throw Failure(R.string.mika_voice_call_audio_output)
+        val track = try {
+            AudioTrack.Builder().setAudioAttributes(attributes)
+                .setAudioFormat(AudioFormat.Builder().setSampleRate(rate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
+                .setBufferSizeInBytes(maxOf(minimum, CallPlaybackQueue.WRITE_BYTES * 2))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+        } catch (_: UnsupportedOperationException) {
+            throw Failure(R.string.mika_voice_call_audio_output)
+        }
         if (track.state == AudioTrack.STATE_INITIALIZED) return track
         track.release()
-        throw Failure(R.string.calls_action_failed)
+        throw Failure(R.string.mika_voice_call_audio_output)
     }
 }

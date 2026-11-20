@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.withResumed
 import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallRuntime
 import com.wangzan101.mika.calls.MikaVoiceCall
@@ -66,6 +67,7 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
     LaunchedEffect(calling) {
         if (!calling) return@LaunchedEffect
         try {
+            lifecycle.withResumed { }
             MikaVoiceCall(context, runtime).run { connected = true }
             finished = true
         } catch (e: CancellationException) {
@@ -73,7 +75,13 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
         } catch (e: MikaVoiceCall.Failure) {
             failure = e.messageId
         } catch (e: VolcRealtimeException) {
-            failure = if (e.kind == VolcRealtimeException.Kind.AUTH) R.string.calls_setup_credentials else R.string.calls_action_failed
+            failure = when (e.kind) {
+                VolcRealtimeException.Kind.AUTH -> R.string.mika_voice_call_realtime_key
+                VolcRealtimeException.Kind.TIMEOUT -> R.string.mika_voice_call_connection_timeout
+                VolcRealtimeException.Kind.NETWORK -> R.string.mika_voice_call_connection_lost
+                VolcRealtimeException.Kind.RATE_LIMITED -> R.string.voice_test_quota
+                else -> R.string.mika_voice_call_provider_error
+            }
         } catch (_: Exception) {
             failure = R.string.calls_action_failed
         } finally {
@@ -81,14 +89,15 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
             calling = false
         }
     }
-    val needsConfig = !config.credentialsConfigured || failure == R.string.calls_setup_credentials
+    val needsConfig = !config.credentialsConfigured || failure == R.string.calls_setup_credentials ||
+        failure == R.string.mika_voice_call_realtime_key
     val needsMic = config.credentialsConfigured && !micGranted
     val message = when {
-        needsConfig -> R.string.calls_setup_credentials
+        needsConfig -> R.string.mika_voice_call_realtime_key
         needsMic && micDenied -> R.string.mika_voice_call_mic_settings
         needsMic -> R.string.mika_voice_call_microphone
         failure != null -> failure ?: R.string.calls_action_failed
-        connected -> R.string.calls_connected
+        connected -> R.string.mika_voice_call_speak
         finished -> R.string.mika_voice_call_ended
         else -> R.string.calls_connecting
     }
@@ -96,6 +105,7 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
         needsConfig -> R.string.voice_permission_open
         needsMic && micDenied -> R.string.voice_permission_open
         needsMic -> R.string.mika_voice_call_allow_mic
+        failure != null -> R.string.retry
         calling -> R.string.calls_hangup
         else -> R.string.done
     }
@@ -112,13 +122,18 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
                         context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri))
                     }
                     needsMic -> microphone.launch(permission)
+                    failure != null -> {
+                        failure = null
+                        finished = false
+                        calling = true
+                    }
                     else -> onDismiss()
                 }
             }) {
                 Text(stringResource(buttonLabel))
             }
         },
-        dismissButton = if (needsConfig || needsMic) {
+        dismissButton = if (needsConfig || needsMic || failure != null) {
             { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         } else null,
     )
