@@ -104,7 +104,12 @@ class ShizukuController internal constructor(
                 runCatching { bridge.unbindUserService(this, remove = true) }
                 return
             }
-            val attached = attach(binder)
+            val attached = try {
+                attach(binder)
+            } catch (e: RuntimeException) {
+                runCatching { Log.w(TAG, "Shizuku helper handoff failed", e) }
+                null
+            }
             var rejectLate = false
             synchronized(lock) {
                 if (!bindRequested || bindGeneration != activeGeneration) {

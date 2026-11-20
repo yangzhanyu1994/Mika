@@ -336,7 +336,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: RuntimeException) {
+            } catch (e: Exception) {
                 Log.w("MikaAssistant", "Dictation failed", e)
                 status = getString(R.string.voice_mic_unavailable)
             }
@@ -351,7 +351,8 @@ class AssistantOverlayActivity : ComponentActivity() {
             afterSpeech = null
             if (resumed) {
                 if (action != null) action()
-                else if (!finishSpeech && !finalText.isNullOrBlank()) send()
+                // Ending microphone capture and requesting a different UI action are separate.
+                else if (!finalText.isNullOrBlank()) send()
             }
         }
     }
