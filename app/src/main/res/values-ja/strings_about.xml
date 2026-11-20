@@ -9,7 +9,7 @@
     <string name="about_offline">GitHub に接続できません</string>
     <string name="about_offline_toast">今は GitHub に接続できません。しばらくしてからもう一度お試しください。</string>
     <string name="about_changelog">リリースノート</string>
-    <string name="about_changelog_sub">各バージョンの変更点</string>
+    <string name="about_changelog_sub">最新バージョンの変更点</string>
     <string name="about_changelog_empty">リリースノートはまだありません。オンラインで「アップデートを確認」をタップしてください。</string>
     <string name="about_changelog_all">GitHub ですべて見る</string>
     <string name="about_feedback">フィードバックを送信</string>

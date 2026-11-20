@@ -39,4 +39,25 @@
     <string name="drawer_readout_model">音声合成モデル（読み上げ）</string>
     <string name="drawer_speech_model">ストリーミング音声認識（入力）</string>
     <string name="drawer_model_website">公式サイト</string>
+    <string name="drawer_task_center">タスクセンター</string>
+    <string name="drawer_key_configuration">主要設定</string>
+    <string name="drawer_mcp_connectors">MCP コネクタ</string>
+    <string name="drawer_accessibility">ユーザー補助サービス</string>
+    <string name="drawer_work_model">作業モデル</string>
+    <string name="drawer_stream_model">ストリーミング音声モデル</string>
+    <string name="drawer_web_search">ウェブ検索</string>
+    <string name="drawer_phone_listener">通話監視の状態</string>
+    <string name="drawer_automation_listener">自動化監視の状態</string>
+    <string name="drawer_configured">設定済み</string>
+    <string name="drawer_unconfigured">未設定</string>
+    <string name="drawer_enabled">有効</string>
+    <string name="drawer_not_enabled">無効</string>
+    <string name="drawer_connected">接続済み</string>
+    <string name="drawer_disconnected">未接続</string>
+    <string name="drawer_none">なし</string>
+    <string name="drawer_recent_more">すべての会話を表示</string>
+    <string name="drawer_recent_less">表示件数を減らす</string>
+    <plurals name="drawer_running_count">
+        <item quantity="other">%d 件のタスクが進行中</item>
+    </plurals>
 </resources>

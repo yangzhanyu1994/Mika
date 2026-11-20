@@ -9,7 +9,7 @@
     <string name="about_offline">Não foi possível acessar o GitHub</string>
     <string name="about_offline_toast">Não foi possível acessar o GitHub agora. Tente de novo mais tarde.</string>
     <string name="about_changelog">Notas da versão</string>
-    <string name="about_changelog_sub">O que mudou em cada versão</string>
+    <string name="about_changelog_sub">O que mudou na versão mais recente</string>
     <string name="about_changelog_empty">Ainda não há notas da versão. Conecte-se à internet e toque em “Verificar atualizações”.</string>
     <string name="about_changelog_all">Ver tudo no GitHub</string>
     <string name="about_feedback">Enviar feedback</string>

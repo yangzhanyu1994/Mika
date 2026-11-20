@@ -107,7 +107,7 @@ fun McpServersScreen(store: McpServerStore, onBack: () -> Unit) {
 }
 
 @Composable
-private fun McpServerDialog(
+internal fun McpServerDialog(
     store: McpServerStore,
     initial: McpServerConfig?,
     onDismiss: () -> Unit,

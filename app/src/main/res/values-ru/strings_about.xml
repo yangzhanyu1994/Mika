@@ -9,7 +9,7 @@
     <string name="about_offline">Нет связи с GitHub</string>
     <string name="about_offline_toast">Сейчас нет связи с GitHub. Попробуйте позже.</string>
     <string name="about_changelog">Список изменений</string>
-    <string name="about_changelog_sub">Что нового в каждой версии</string>
+    <string name="about_changelog_sub">Изменения в последней версии</string>
     <string name="about_changelog_empty">Списка изменений пока нет. Подключитесь к интернету и нажмите «Проверить обновления».</string>
     <string name="about_changelog_all">Все версии на GitHub</string>
     <string name="about_feedback">Отправить отзыв</string>

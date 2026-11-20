@@ -202,6 +202,7 @@ class ChatDeleteAndSelectTest {
         val vm = vm(DeleteImpact(runningTask = true, schedules = 2))
         show(vm, drawerOpen = true)
 
+        compose.onNodeWithTag("drawer-conversation-menu").performClick()
         compose.onNodeWithTag("drawer-select").performClick()
         compose.waitForIdle()
         // 每行左边出现勾选框;点一行是勾选,不再是打开对话
@@ -242,7 +243,7 @@ class ChatDeleteAndSelectTest {
         compose.onNodeWithText("订票").assertExists()
         // 删完自动退出多选
         compose.onNodeWithTag("drawer-select-bar").assertDoesNotExist()
-        compose.onNodeWithTag("drawer-select").assertExists()
+        compose.onNodeWithTag("drawer-conversation-menu").assertExists()
     }
 
     /** 长按在原地弹出菜单:抬起的那一行(还是那个标题)和三项置顶、改名、删除;只是打开菜单什么都不改。 */

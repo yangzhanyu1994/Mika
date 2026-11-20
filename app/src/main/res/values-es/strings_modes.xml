@@ -39,4 +39,27 @@
     <string name="drawer_readout_model">Modelo de síntesis de voz (lectura)</string>
     <string name="drawer_speech_model">Reconocimiento de voz en directo (entrada)</string>
     <string name="drawer_model_website">Sitio oficial</string>
+    <string name="drawer_task_center">Centro de tareas</string>
+    <string name="drawer_key_configuration">Configuración clave</string>
+    <string name="drawer_mcp_connectors">Conectores MCP</string>
+    <string name="drawer_accessibility">Servicio de accesibilidad</string>
+    <string name="drawer_work_model">Modelo de trabajo</string>
+    <string name="drawer_stream_model">Modelo de voz en tiempo real</string>
+    <string name="drawer_web_search">Búsqueda web</string>
+    <string name="drawer_phone_listener">Escucha de llamadas</string>
+    <string name="drawer_automation_listener">Supervisión de automatizaciones</string>
+    <string name="drawer_configured">Configurado</string>
+    <string name="drawer_unconfigured">Sin configurar</string>
+    <string name="drawer_enabled">Activado</string>
+    <string name="drawer_not_enabled">Desactivado</string>
+    <string name="drawer_connected">Conectado</string>
+    <string name="drawer_disconnected">Sin conectar</string>
+    <string name="drawer_none">Ninguna</string>
+    <string name="drawer_recent_more">Ver todas las conversaciones</string>
+    <string name="drawer_recent_less">Ver menos conversaciones</string>
+    <plurals name="drawer_running_count">
+        <item quantity="one">%d tarea en curso</item>
+        <item quantity="many">%d tareas en curso</item>
+        <item quantity="other">%d tareas en curso</item>
+    </plurals>
 </resources>

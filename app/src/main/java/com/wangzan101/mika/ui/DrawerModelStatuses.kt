@@ -1,35 +1,65 @@
 package com.wangzan101.mika.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import com.wangzan101.mika.MikaApp
+import com.wangzan101.mika.R
+import com.wangzan101.mika.automation.BluetoothSceneMonitor
+import com.wangzan101.mika.automation.EnvironmentSceneMonitor
 import com.wangzan101.mika.core.model.ModelRole
+import com.wangzan101.mika.settings.McpServerConfig
+import com.wangzan101.mika.settings.McpServerStore
 import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
 import com.wangzan101.mika.settings.ProviderPresets
+import com.wangzan101.mika.settings.WebSearchSettings
+import com.wangzan101.mika.ui.theme.MikaIcons
+import com.wangzan101.mika.ui.theme.MikaShapes
+import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.ui.theme.MikaType
 import com.wangzan101.mika.voice.SpeechEngineSpec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal data class DrawerModelStatuses(
-    val language: DrawerBadge,
-    val call: DrawerBadge,
-    val readout: DrawerBadge,
-    val speech: DrawerBadge,
-) {
-    val summary: DrawerBadge
-        get() = listOf(language, call, readout, speech).let { statuses ->
-            statuses.firstOrNull { it == DrawerBadge.NoKey }
-                ?: statuses.firstOrNull { !it.positive }
-                ?: DrawerBadge.Configured
-        }
-}
+internal data class DrawerConfiguration(
+    val accessibility: DrawerBadge?,
+    val work: DrawerBadge?,
+    val speech: DrawerBadge?,
+    val search: DrawerBadge?,
+    val automation: DrawerBadge,
+)
+
+internal fun enabledBadge(enabled: Boolean): DrawerBadge =
+    if (enabled) DrawerBadge.Monitoring else DrawerBadge.NotEnabled
+
+private fun configuredBadge(configured: Boolean): DrawerBadge =
+    if (configured) DrawerBadge.Configured else DrawerBadge.NotConfigured
 
 @Composable
-internal fun rememberDrawerModelStatuses(open: Boolean): DrawerModelStatuses? {
+internal fun rememberDrawerConfiguration(open: Boolean, accessibilityEnabled: Boolean?): DrawerConfiguration? {
     val app = LocalContext.current.applicationContext as? MikaApp ?: return null
     if (!open) return null
     val providers = app.providers
@@ -37,50 +67,100 @@ internal fun rememberDrawerModelStatuses(open: Boolean): DrawerModelStatuses? {
     val configs by providers.configs.collectAsState()
     val keyRevisions by providers.providerKeyRevisions.collectAsState()
     val providerList by providers.providers.collectAsState()
-    val call by app.calls.settings.state.collectAsState()
-    val speech by app.speech.choice.collectAsState()
+    val speechChoice by app.speech.choice.collectAsState()
     val silent by app.speech.systemSilent.collectAsState()
-    val voice by app.voiceSettings.state.collectAsState()
-    val status by produceState<DrawerModelStatuses?>(null, listOf(roles, configs, keyRevisions, providerList, call, speech, silent, voice)) {
+    val bluetooth by BluetoothSceneMonitor.monitoring.collectAsState()
+    val environment by EnvironmentSceneMonitor.monitoring.collectAsState()
+    val searchSettings = remember(app) { WebSearchSettings.get(app) }
+    val configured by produceState<Triple<DrawerBadge, DrawerBadge, DrawerBadge>?>(null,
+        listOf(roles, configs, keyRevisions, providerList, speechChoice, silent)) {
         value = withContext(Dispatchers.IO) {
-            fun hasKey(provider: Provider): Boolean = !providers.providerKey(provider.id).isNullOrBlank()
-            fun needsKey(provider: Provider): Boolean {
+            fun ready(provider: Provider): Boolean {
                 val preset = ProviderPresets.forHost(provider.baseUrl)
-                return provider.kind != ProviderConfig.Kind.OpenAiCompat || provider.signIn != null ||
+                val needsKey = provider.kind != ProviderConfig.Kind.OpenAiCompat || provider.signIn != null ||
                     preset != null && !preset.selfHosted
+                return !needsKey || !providers.providerKey(provider.id).isNullOrBlank()
             }
 
-            val selected = listOf(providers.configFor(ModelRole.Main), providers.configFor(ModelRole.Chat))
-                .map { config -> config?.let { providers.provider(it.providerId) } }
-            val language = when {
-                selected.filterNotNull().distinctBy(Provider::id).any { needsKey(it) && !hasKey(it) } -> DrawerBadge.NoKey
-                selected.any { it == null } -> DrawerBadge.NotConfigured
-                else -> DrawerBadge.Configured
-            }
-            val readoutStatus = when {
-                !voice.enabled -> DrawerBadge.Disabled
-                voice.choice?.model.isNullOrBlank() -> DrawerBadge.NotConfigured
-                else -> {
-                    val provider = voice.choice?.providerId?.let(providers::provider)
-                    if (provider == null) DrawerBadge.NotConfigured
-                    else configured(!needsKey(provider) || hasKey(provider))
-                }
-            }
-            val speechStatus = when (val engine = app.voice.spec()) {
-                is SpeechEngineSpec.Doubao -> configured(app.speech.doubaoCredentials() != null)
-                is SpeechEngineSpec.Bailian -> configured(!app.speech.bailianKey(engine.region).isNullOrBlank())
-                is SpeechEngineSpec.Provider -> configured(!needsKey(engine.provider) || hasKey(engine.provider))
-                is SpeechEngineSpec.FunAsr, is SpeechEngineSpec.System -> DrawerBadge.Configured
+            val work = configuredBadge(providers.configFor(ModelRole.Main)?.let { providers.provider(it.providerId) }?.let(::ready) == true)
+            val speech = when (val engine = app.voice.spec()) {
+                is SpeechEngineSpec.Doubao -> configuredBadge(app.speech.doubaoCredentials() != null)
+                is SpeechEngineSpec.Bailian -> configuredBadge(!app.speech.bailianKey(engine.region).isNullOrBlank())
+                is SpeechEngineSpec.Provider -> configuredBadge(ready(engine.provider))
+                is SpeechEngineSpec.FunAsr -> DrawerBadge.Configured
+                is SpeechEngineSpec.System -> DrawerBadge.NotConfigured
                 is SpeechEngineSpec.Unavailable -> when (engine.why) {
-                    SpeechEngineSpec.Why.Off -> DrawerBadge.Disabled
-                    SpeechEngineSpec.Why.DoubaoNotConfigured, SpeechEngineSpec.Why.BailianNotConfigured -> DrawerBadge.NoKey
+                    SpeechEngineSpec.Why.Off -> DrawerBadge.NotEnabled
                     else -> DrawerBadge.NotConfigured
                 }
             }
-            DrawerModelStatuses(language, configured(call.credentialsConfigured), readoutStatus, speechStatus)
+            val search = searchSettings.get().let { settings ->
+                when {
+                    settings.problem != null -> DrawerBadge.NotConfigured
+                    !settings.enabled -> DrawerBadge.NotEnabled
+                    else -> DrawerBadge.Configured
+                }
+            }
+            Triple(work, speech, search)
         }
     }
-    return status
+    return DrawerConfiguration(
+        accessibilityEnabled?.let(::enabledBadge),
+        configured?.first,
+        configured?.second,
+        configured?.third,
+        enabledBadge(bluetooth || environment),
+    )
 }
 
-private fun configured(present: Boolean) = if (present) DrawerBadge.Configured else DrawerBadge.NoKey
+@Composable
+internal fun DrawerInset(content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
+        .clip(MikaShapes.Tile).background(MikaTheme.colors.bg)) {
+        content()
+    }
+}
+
+@Composable
+internal fun DrawerStatusEntry(
+    icon: ImageVector,
+    title: String,
+    badge: DrawerBadge?,
+    onClick: () -> Unit,
+) {
+    val c = MikaTheme.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Icon(icon, null, Modifier.size(18.dp), tint = c.ink2)
+        Text(title, Modifier.weight(1f), style = MikaType.Caption, color = c.ink)
+        badge?.let { DrawerStatusBadge(it) }
+        Icon(MikaIcons.Chevron, null, Modifier.size(12.dp), tint = c.ink3)
+    }
+}
+
+@Composable
+internal fun DrawerConnectors(store: McpServerStore, onEdit: (McpServerConfig) -> Unit, onAdd: () -> Unit) {
+    val servers by store.servers.collectAsState()
+    val health by store.health.collectAsState()
+    val c = MikaTheme.colors
+    DrawerInset {
+        if (servers.isEmpty()) {
+            Text(stringResource(R.string.mcp_servers_empty), Modifier.padding(12.dp),
+                style = MikaType.Hint, color = c.ink3)
+        }
+        servers.forEach { server ->
+            val badge = when {
+                !server.enabled -> DrawerBadge.NotEnabled
+                health[server.id]?.ok == true -> DrawerBadge.Connected
+                else -> DrawerBadge.Disconnected
+            }
+            DrawerStatusEntry(MikaIcons.Link, server.name, badge) { onEdit(server) }
+        }
+        HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = c.hair)
+        DrawerStatusEntry(MikaIcons.Plus, stringResource(R.string.mcp_servers_add), null, onAdd)
+    }
+}

@@ -246,10 +246,11 @@ class AboutScreenTest {
 
     @Test
     fun changelogSheetShowsLatestNotes() {
-        val calls = about(UpdateState(latest = r020))
+        val calls = about(UpdateState(latest = r020.copy(version = "9.2.0")))
         compose.onNodeWithText("更新记录").performClick()
         compose.awaitOne(AboutCopy.CHANGELOG_ALL)
-        compose.onNodeWithText("0.2.0 · 2026-11-05").assertExists()
+        compose.onNodeWithText("9.2.0 · 2026-11-05").assertExists()
+        compose.onNodeWithText("v0.2.6 · 2026-11-20").assertDoesNotExist()
         compose.onNodeWithText(AboutCopy.CHANGELOG_ALL).performClick()
         compose.waitForIdle()
         assertEquals(listOf(MikaLinks.RELEASES), calls.urls)

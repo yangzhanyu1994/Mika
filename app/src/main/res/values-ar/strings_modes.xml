@@ -39,4 +39,30 @@
     <string name="drawer_readout_model">نموذج تحويل النص إلى كلام (القراءة)</string>
     <string name="drawer_speech_model">التعرف الفوري على الكلام (الإدخال)</string>
     <string name="drawer_model_website">الموقع الرسمي</string>
+    <string name="drawer_task_center">مركز المهام</string>
+    <string name="drawer_key_configuration">الإعدادات الأساسية</string>
+    <string name="drawer_mcp_connectors">موصلات MCP</string>
+    <string name="drawer_accessibility">خدمة إمكانية الوصول</string>
+    <string name="drawer_work_model">نموذج العمل</string>
+    <string name="drawer_stream_model">نموذج الصوت المتدفق</string>
+    <string name="drawer_web_search">البحث على الويب</string>
+    <string name="drawer_phone_listener">حالة مراقبة المكالمات</string>
+    <string name="drawer_automation_listener">حالة مراقبة الأتمتة</string>
+    <string name="drawer_configured">تم الإعداد</string>
+    <string name="drawer_unconfigured">غير مُعد</string>
+    <string name="drawer_enabled">مفعّل</string>
+    <string name="drawer_not_enabled">غير مفعّل</string>
+    <string name="drawer_connected">متصل</string>
+    <string name="drawer_disconnected">غير متصل</string>
+    <string name="drawer_none">لا توجد</string>
+    <string name="drawer_recent_more">عرض كل المحادثات</string>
+    <string name="drawer_recent_less">عرض محادثات أقل</string>
+    <plurals name="drawer_running_count">
+        <item quantity="zero">مهام قيد التنفيذ: %d</item>
+        <item quantity="one">مهام قيد التنفيذ: %d</item>
+        <item quantity="two">مهام قيد التنفيذ: %d</item>
+        <item quantity="few">مهام قيد التنفيذ: %d</item>
+        <item quantity="many">مهام قيد التنفيذ: %d</item>
+        <item quantity="other">مهام قيد التنفيذ: %d</item>
+    </plurals>
 </resources>

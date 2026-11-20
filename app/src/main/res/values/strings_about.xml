@@ -9,7 +9,7 @@
     <string name="about_offline">Can’t reach GitHub</string>
     <string name="about_offline_toast">Can’t reach GitHub right now. Try again later.</string>
     <string name="about_changelog">Release notes</string>
-    <string name="about_changelog_sub">What changed in each version</string>
+    <string name="about_changelog_sub">What changed in the latest release</string>
     <string name="about_changelog_empty">No release notes yet. Go online and tap “Check for updates”.</string>
     <string name="about_changelog_all">See all on GitHub</string>
     <string name="about_feedback">Send feedback</string>

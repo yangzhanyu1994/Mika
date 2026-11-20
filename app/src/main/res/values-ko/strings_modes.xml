@@ -39,4 +39,25 @@
     <string name="drawer_readout_model">음성 합성 모델(결과 읽기)</string>
     <string name="drawer_speech_model">스트리밍 음성 인식(입력)</string>
     <string name="drawer_model_website">공식 사이트</string>
+    <string name="drawer_task_center">작업 센터</string>
+    <string name="drawer_key_configuration">주요 설정</string>
+    <string name="drawer_mcp_connectors">MCP 연결 도구</string>
+    <string name="drawer_accessibility">접근성 서비스</string>
+    <string name="drawer_work_model">작업 모델</string>
+    <string name="drawer_stream_model">스트리밍 음성 모델</string>
+    <string name="drawer_web_search">웹 검색</string>
+    <string name="drawer_phone_listener">전화 감지 상태</string>
+    <string name="drawer_automation_listener">자동화 감지 상태</string>
+    <string name="drawer_configured">설정됨</string>
+    <string name="drawer_unconfigured">설정 안 됨</string>
+    <string name="drawer_enabled">사용 중</string>
+    <string name="drawer_not_enabled">사용 안 함</string>
+    <string name="drawer_connected">연결됨</string>
+    <string name="drawer_disconnected">연결 안 됨</string>
+    <string name="drawer_none">없음</string>
+    <string name="drawer_recent_more">모든 대화 보기</string>
+    <string name="drawer_recent_less">대화 접기</string>
+    <plurals name="drawer_running_count">
+        <item quantity="other">작업 %d개 진행 중</item>
+    </plurals>
 </resources>

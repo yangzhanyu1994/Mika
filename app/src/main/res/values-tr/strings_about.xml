@@ -9,7 +9,7 @@
     <string name="about_offline">GitHub\'a ulaşılamıyor</string>
     <string name="about_offline_toast">Şu an GitHub\'a ulaşılamıyor. Daha sonra tekrar deneyin.</string>
     <string name="about_changelog">Sürüm notları</string>
-    <string name="about_changelog_sub">Her sürümde ne değişti</string>
+    <string name="about_changelog_sub">Son sürümdeki değişiklikler</string>
     <string name="about_changelog_empty">Henüz sürüm notu yok. Çevrimiçi olun ve \“Güncellemeleri denetle\”ye dokunun.</string>
     <string name="about_changelog_all">Tümünü GitHub\'da gör</string>
     <string name="about_feedback">Geri bildirim gönder</string>

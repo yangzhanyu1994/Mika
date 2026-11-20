@@ -9,7 +9,7 @@
     <string name="about_offline">تعذر الاتصال بـ GitHub</string>
     <string name="about_offline_toast">يتعذر الاتصال بـ GitHub حالياً. حاول مجدداً لاحقاً.</string>
     <string name="about_changelog">ملاحظات الإصدار</string>
-    <string name="about_changelog_sub">التغييرات في كل إصدار</string>
+    <string name="about_changelog_sub">التغييرات في أحدث إصدار</string>
     <string name="about_changelog_empty">لا توجد ملاحظات إصدار بعد. اتصل بالإنترنت وانقر على «التحقق من وجود تحديثات».</string>
     <string name="about_changelog_all">عرض الكل على GitHub</string>
     <string name="about_feedback">إرسال ملاحظات</string>

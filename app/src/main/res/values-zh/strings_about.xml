@@ -9,7 +9,7 @@
     <string name="about_offline">连不上 GitHub</string>
     <string name="about_offline_toast">暂时连不上 GitHub，稍后再试</string>
     <string name="about_changelog">更新记录</string>
-    <string name="about_changelog_sub">每个版本改了什么</string>
+    <string name="about_changelog_sub">最近一次更新改了什么</string>
     <string name="about_changelog_empty">还没取到更新记录，连上网后点「检查更新」</string>
     <string name="about_changelog_all">在 GitHub 上看全部</string>
     <string name="about_feedback">反馈问题</string>
