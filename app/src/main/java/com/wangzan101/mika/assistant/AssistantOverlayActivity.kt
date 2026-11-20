@@ -104,7 +104,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var replyJob: Job? = null
     private val readoutPlayer by lazy { VoicePlayer(applicationContext) }
     private var playbackJob: Job? = null
-    private var closeAfterPlayback: Job? = null
+    private var followUpTimeout: Job? = null
     private var interactions = 0L
     private var pendingPhoto: Uri? = null
     private var photoUri: Uri? = null
@@ -215,7 +215,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                     },
                     reply = reply,
                     onReadResult = if (voiceReady) ({
-                        reply?.let { latest -> playResult(latest.collapsedBody ?: latest.body, latest.title) }
+                        reply?.let { latest -> playResult(latest.body, latest.title) }
                     }) else null,
                     onOpenConversation = ::openConversation,
                     onText = { noteInteraction(); text = it },
@@ -264,8 +264,8 @@ class AssistantOverlayActivity : ComponentActivity() {
 
     private fun noteInteraction() {
         interactions++
-        closeAfterPlayback?.cancel()
-        closeAfterPlayback = null
+        followUpTimeout?.cancel()
+        followUpTimeout = null
     }
 
     override fun onPause() {
@@ -318,16 +318,16 @@ class AssistantOverlayActivity : ComponentActivity() {
                     when (event) {
                         is SpeechEvent.Level -> {
                             level = event.value
-                            if (level >= 0.12f && closeAfterPlayback != null) noteInteraction()
+                            if (level >= 0.12f && followUpTimeout != null) noteInteraction()
                         }
                         is SpeechEvent.Partial -> {
                             partial = event.stable + event.tail
-                            if (partial.isNotBlank() && closeAfterPlayback != null) noteInteraction()
+                            if (partial.isNotBlank() && followUpTimeout != null) noteInteraction()
                         }
                         SpeechEvent.Converting -> { converting = true; listening = false }
                         is SpeechEvent.Final -> finalText = event.text.trim()
                         is SpeechEvent.Failed -> {
-                            if (closeAfterPlayback != null) noteInteraction()
+                            if (followUpTimeout != null) noteInteraction()
                             status = VoiceCopy.failure(event.why)
                         }
                         SpeechEvent.EndOfSpeech -> Unit
@@ -340,7 +340,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                 status = getString(R.string.voice_mic_unavailable)
             }
             val recognized = finalText?.ifBlank { partial } ?: partial
-            if (recognized.isNotBlank() && closeAfterPlayback != null) noteInteraction()
+            if (recognized.isNotBlank() && followUpTimeout != null) noteInteraction()
             if (recognized.isNotBlank()) text = HoldToTalk.join(text, recognized)
             partial = ""
             level = 0f
@@ -370,15 +370,12 @@ class AssistantOverlayActivity : ComponentActivity() {
         if (!app.voiceSettings.state.value.autoRead) return
         val uncertain = turn.status == "unverified"
         val fallback = getString(if (uncertain) R.string.chat_unverified else R.string.task_done)
-        val headline = when {
-            uncertain -> turn.note?.takeIf(String::isNotBlank) ?: WorkReply.from(turn.outcome).summary
-            turn.research -> turn.outcome
-            else -> WorkReply.from(turn.outcome).summary
-        }
-        playResult(headline, fallback)
+        val verification = turn.note?.takeIf { uncertain && it.isNotBlank() }
+        val fullResult = listOfNotNull(verification, turn.outcome).distinct().joinToString("\n\n")
+        playResult(fullResult, fallback)
     }
 
-    private fun playResult(headline: String, fallback: String) {
+    private fun playResult(markdown: String, fallback: String) {
         if (!resumed || listening || converting || isFinishing) return
         if (!app.voiceReady.value) return
         stopPlayback()
@@ -387,7 +384,7 @@ class AssistantOverlayActivity : ComponentActivity() {
             status = getString(R.string.assistant_reading_result)
             val played = try {
                 val words = withContext(Dispatchers.Default) {
-                    assistantSpokenSummary(MarkdownModel.toPlainText(headline), fallback)
+                    assistantReadoutText(markdown, fallback)
                 }
                 var finished = false
                 if (words.isNotBlank()) app.readReply(words) {
@@ -414,9 +411,12 @@ class AssistantOverlayActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
             app.voice.spec() is SpeechEngineSpec.Unavailable
         ) return
-        closeAfterPlayback = lifecycleScope.launch {
+        followUpTimeout = lifecycleScope.launch {
             delay(3_000)
-            if (resumed && !isFinishing && !sending && text.isBlank() && partial.isBlank()) finish()
+            followUpTimeout = null
+            if (resumed && !isFinishing && !sending && text.isBlank() && partial.isBlank()) {
+                stopSpeech(keepText = true)
+            }
         }
         startSpeech()
     }
@@ -802,18 +802,14 @@ internal fun assistantProgressLabel(tool: String?): Int = when (toolOrbMotion(to
     else -> R.string.task_running
 }
 
-/** Use the opening result or verification note, with a status fallback for long unbroken text. */
-internal fun assistantSpokenSummary(plain: String, fallback: String): String {
-    val lines = plain.lineSequence().dropWhile(String::isBlank)
-    val opening = lines.firstOrNull()?.trim().orEmpty()
-    if (opening.startsWith("• ")) {
-        val fields = lines.takeWhile { it.startsWith("• ") }.take(3).map { it.removePrefix("• ").trim() }.toList()
-        val spoken = fields.runningReduce { result, field -> "$result。$field" }.lastOrNull { it.length <= 120 }
-        if (!spoken.isNullOrBlank()) return spoken
-    }
-    val sentences = opening.split(Regex("(?<=[。！？!?])\\s*|(?<=\\.)\\s+")).filter(String::isNotBlank)
-    val short = sentences.take(2).joinToString(" ")
-    return short.takeIf { it.isNotBlank() && it.length <= 120 }
-        ?: sentences.firstOrNull()?.takeIf { it.length <= 120 }
-        ?: fallback
-}
+private val SPOKEN_EMPHASIS = Regex("(?<!\\d)[*＊]{2,}|[*＊]{2,}(?!\\d)")
+
+/** Prepare the whole reply for speech, including pasted or unfinished emphasis markers. */
+internal fun assistantReadoutText(markdown: String, fallback: String): String =
+    MarkdownModel.toPlainText(markdown)
+        .replace(SPOKEN_EMPHASIS, "")
+        .lineSequence()
+        .map { it.trim().removePrefix("> ").removePrefix("• ").trim() }
+        .joinToString("\n")
+        .trim()
+        .ifBlank { fallback }
