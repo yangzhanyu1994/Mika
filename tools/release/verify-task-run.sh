@@ -38,7 +38,7 @@ adb shell wm dismiss-keyguard
 if ! timeout 150 adb shell am instrument -w \
     -e class com.wangzan101.mika.task.TaskStartupDeviceTest,com.wangzan101.mika.ui.MikaVoiceCallDeviceTest \
     com.wangzan101.mika.fork.test/androidx.test.runner.AndroidJUnitRunner | tee "$work/result.log" ||
-    ! tr -d '\r' < "$work/result.log" | grep -Fx 'OK (2 tests)'; then
+    ! tr -d '\r' < "$work/result.log" | grep -Fx 'OK (3 tests)'; then
     adb logcat -b crash -d
     exit 1
 fi
