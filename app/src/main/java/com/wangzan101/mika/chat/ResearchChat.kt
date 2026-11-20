@@ -65,7 +65,9 @@ internal class ResearchChat(
 
     fun canDelegate(): Boolean = providers.configFor(ModelRole.Chat)?.capabilities?.toolCalls == true
 
-    fun send(id: String, question: String, onWork: (() -> Boolean)? = null): Boolean = send(
+    fun send(
+        id: String, question: String, onWork: (() -> Boolean)? = null, onFinished: ((Turn) -> Unit)? = null,
+    ): Boolean = send(
         id, question,
         history = { store.turns(id).filter { turn ->
             turn.status == "succeeded" && (turn.research || onWork != null) ||
@@ -76,29 +78,37 @@ internal class ResearchChat(
             if (turn.status == "succeeded") store.setTitle(id, question.lineSequence().first().take(40))
         },
         onWork = onWork,
+        onFinished = onFinished,
     )
 
     @Synchronized
     fun send(
         id: String, question: String, history: () -> List<Turn>, persist: (Turn) -> Unit,
         onWork: (() -> Boolean)? = null,
+        onFinished: ((Turn) -> Unit)? = null,
     ): Boolean {
         if (question.isBlank() || id in _pending.value || providers.configFor(ModelRole.Chat) == null) return false
         val draft = ResearchDraft(question, System.currentTimeMillis())
         _pending.update { it + (id to draft) }
         scope.launch(Dispatchers.IO + store.meter(id)) {
+            fun finish(turn: Turn) {
+                persist(turn)
+                onFinished?.invoke(turn)
+            }
             try {
                 val answer = present(id, draft, history().takeLast(12), onWork != null)
                 if (answer != null) {
-                    persist(researchTurn(id, draft, answer, "succeeded"))
+                    finish(researchTurn(id, draft, answer, "succeeded"))
                 } else if (onWork == null || !withContext(Dispatchers.Main.immediate) { onWork() }) {
-                    persist(researchTurn(id, draft, app.getString(R.string.assistant_send_failed), "failed"))
+                    finish(researchTurn(id, draft, app.getString(R.string.assistant_send_failed), "failed"))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 recordUsage(id, null)
-                runCatching { persist(researchTurn(id, draft, app.getString(R.string.mode_chat_error), "failed")) }
+                val failure = researchTurn(id, draft, app.getString(R.string.mode_chat_error), "failed")
+                runCatching { persist(failure) }
+                onFinished?.invoke(failure)
             } finally {
                 _pending.update { it - id }
             }

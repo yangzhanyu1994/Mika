@@ -159,4 +159,10 @@
     <string name="mika_voice_call_transcript_failed">Could not save the call transcript. Check the phone storage.</string>
     <string name="mika_voice_call_connected">通話中</string>
     <string name="mika_voice_call_mika_speaking">Mika が話しています</string>
+    <string name="mika_voice_call_time_limit">通話時間が10分の上限に達しました。</string>
+    <string name="mika_voice_call_observing">観察中</string>
+    <string name="mika_voice_call_writing">返信を準備中</string>
+    <string name="mika_voice_call_open_task">通話を終了してタスクを開く</string>
+    <string name="mika_voice_call_request_failed">Mika はリクエストを開始できませんでした。チャットと作業のモデル設定を確認して再試行してください。</string>
+    <string name="mika_voice_call_task_waiting">作業画面でこのタスクに対応してください。</string>
 </resources>

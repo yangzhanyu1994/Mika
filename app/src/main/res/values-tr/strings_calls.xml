@@ -159,4 +159,10 @@
     <string name="mika_voice_call_transcript_failed">Could not save the call transcript. Check the phone storage.</string>
     <string name="mika_voice_call_connected">Bağlandı</string>
     <string name="mika_voice_call_mika_speaking">Mika konuşuyor</string>
+    <string name="mika_voice_call_time_limit">Arama 10 dakika sınırına ulaştı.</string>
+    <string name="mika_voice_call_observing">Gözlemleniyor</string>
+    <string name="mika_voice_call_writing">Yanıt hazırlanıyor</string>
+    <string name="mika_voice_call_open_task">Aramayı bitir ve görevi aç</string>
+    <string name="mika_voice_call_request_failed">Mika isteği başlatamadı. Sohbet ve iş modeli ayarlarını kontrol edip tekrar deneyin.</string>
+    <string name="mika_voice_call_task_waiting">Bu görev için iş ekranında işlem yapmanız gerekiyor.</string>
 </resources>

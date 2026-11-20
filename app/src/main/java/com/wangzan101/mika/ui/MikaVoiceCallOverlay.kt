@@ -7,10 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -38,18 +36,38 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import com.wangzan101.mika.R
 import com.wangzan101.mika.ui.theme.MikaIcons
-import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import java.util.Locale
+
+internal val OrbMotion.callLabel: Int
+    get() = when (this) {
+        OrbMotion.Idle, OrbMotion.Listening -> R.string.mika_voice_call_speak
+        OrbMotion.Speaking -> R.string.mika_voice_call_mika_speaking
+        OrbMotion.Connecting -> R.string.calls_connecting
+        OrbMotion.Thinking -> R.string.assistant_thinking
+        OrbMotion.Searching -> R.string.assistant_searching
+        OrbMotion.Observing -> R.string.mika_voice_call_observing
+        OrbMotion.Working -> R.string.chat_working
+        OrbMotion.Writing -> R.string.mika_voice_call_writing
+        OrbMotion.Waiting -> R.string.screens_waiting
+        OrbMotion.Complete -> R.string.result_completed
+    }
+
+private val CallBackground = Color(0xFF101013)
+private val CallInk = Color(0xFFF0F0F3)
+private val CallAccent = Color(0xFF74CEFF)
 
 @Composable
 internal fun MikaVoiceCallOverlay(
     active: Boolean,
     connected: Boolean,
     seconds: Long,
-    speaking: Boolean,
+    motion: OrbMotion,
+    connector: String?,
+    needsTaskView: Boolean,
     input: Float,
     output: Float,
     message: Int,
@@ -58,62 +76,93 @@ internal fun MikaVoiceCallOverlay(
     onAction: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val colors = MikaTheme.colors
-    val readable = MikaType.Body.copy(
-        textAlign = TextAlign.Center,
-        shadow = Shadow(color = colors.bg.copy(alpha = 0.82f), blurRadius = 8f),
-    )
+    val readable = MikaType.Body.copy(textAlign = TextAlign.Center)
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        SideEffect { window?.setDimAmount(0f) }
-        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            val diameter = minOf(maxWidth * 0.56f, maxHeight * 0.42f, 260.dp)
-            Column(
-                modifier = Modifier.widthIn(max = 430.dp).verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (connected) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(8.dp).background(colors.ok, CircleShape))
-                        Text(stringResource(R.string.mika_voice_call_connected), color = colors.ink, style = readable)
-                    }
-                    Text(
-                        String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60),
-                        Modifier.padding(top = 6.dp).testTag("mika-call-timer"),
-                        color = colors.ink, style = readable.copy(fontFamily = FontFamily.Monospace, fontSize = 22.sp),
-                    )
-                } else if (active) {
-                    Text(stringResource(message), color = colors.ink, style = readable)
-                    Spacer(Modifier.height(31.dp))
-                } else {
-                    Text(stringResource(R.string.mika_voice_call), color = colors.ink, style = MikaType.Title)
-                    Text(stringResource(message), Modifier.padding(top = 14.dp), color = colors.ink, style = readable)
+        val view = LocalView.current
+        val window = (view.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            window?.let {
+                WindowCompat.getInsetsController(it, view).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
                 }
-
-                if (active) {
-                    MikaCallOrb(diameter, speaking, input, output)
-                    Text(
-                        stringResource(if (connected) message else R.string.mika_voice_call_transcript_note),
-                        color = colors.ink, style = readable,
-                    )
+            }
+        }
+        Box(
+            Modifier.fillMaxSize().background(CallBackground).safeDrawingPadding(),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (active) {
+                BoxWithConstraints(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
+                    val diameter = minOf(maxWidth * 0.70f, maxHeight * 0.44f, 320.dp)
                     Column(
-                        modifier = Modifier.padding(top = 22.dp).clip(CircleShape)
-                            .clickable(role = Role.Button, onClick = onAction).padding(horizontal = 14.dp, vertical = 8.dp),
+                        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Box(Modifier.size(58.dp).background(colors.bad, CircleShape), contentAlignment = Alignment.Center) {
-                            Icon(MikaIcons.Handset, null, Modifier.size(27.dp).rotate(135f), tint = Color.White)
+                        Text(stringResource(R.string.app_name), color = CallInk, style = MikaType.Title)
+                        if (connected) {
+                            Row(
+                                Modifier.padding(top = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            ) {
+                                Box(Modifier.size(7.dp).background(Color(0xFF58D698), CircleShape))
+                                Text(stringResource(R.string.mika_voice_call_connected), color = CallInk, style = readable)
+                            }
+                            Text(
+                                String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60),
+                                Modifier.padding(top = 4.dp).testTag("mika-call-timer"),
+                                color = CallInk,
+                                style = readable.copy(fontFamily = FontFamily.Monospace, fontSize = 24.sp),
+                            )
                         }
-                        Text(stringResource(action), Modifier.padding(top = 7.dp), color = colors.ink, style = readable)
+                        Column(
+                            Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            MikaCallOrb(diameter, motion, input, output)
+                            Text(
+                                text = if (connector != null) stringResource(R.string.progress_calling_mcp, connector)
+                                else stringResource(message),
+                                modifier = Modifier.padding(top = 8.dp).testTag("mika-call-state"),
+                                color = CallInk, style = readable,
+                            )
+                            if (needsTaskView) {
+                                TextButton(onClick = onDismiss) {
+                                    Text(stringResource(R.string.mika_voice_call_open_task), color = CallAccent)
+                                }
+                            }
+                        }
+                        Column(
+                            Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onAction)
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(Modifier.size(58.dp).background(Color(0xFFFF655F), CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(MikaIcons.Handset, null, Modifier.size(27.dp).rotate(135f), tint = Color.White)
+                            }
+                            Text(stringResource(action), Modifier.padding(top = 6.dp), color = CallInk, style = readable)
+                        }
                     }
-                } else {
+                }
+            } else {
+                Column(
+                    Modifier.widthIn(max = 430.dp).verticalScroll(rememberScrollState()).padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(stringResource(R.string.mika_voice_call), color = CallInk, style = MikaType.Title)
+                    Text(stringResource(message), Modifier.padding(top = 14.dp), color = CallInk, style = readable)
                     Row(Modifier.padding(top = 17.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (showCancel) TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-                        TextButton(onClick = onAction) { Text(stringResource(action)) }
+                        if (showCancel) TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = CallAccent) }
+                        TextButton(onClick = onAction) { Text(stringResource(action), color = CallAccent) }
                     }
                 }
             }

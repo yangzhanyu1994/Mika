@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
@@ -76,6 +78,8 @@ sealed interface VolcRealtimeEvent {
     data object AssistantInterrupted : VolcRealtimeEvent
     data class AssistantTranscript(val delta: String) : VolcRealtimeEvent
     data object AssistantTextEnded : VolcRealtimeEvent
+    data object ResponseDone : VolcRealtimeEvent
+    data class FunctionCall(val callId: String, val name: String, val arguments: String) : VolcRealtimeEvent
     data class Failed(val error: VolcRealtimeException) : VolcRealtimeEvent
     data object Closed : VolcRealtimeEvent
 }
@@ -215,6 +219,9 @@ class VolcRealtimeSession internal constructor(
         return send(speechFrame("speech_text_buffer.replacement.commit"))
     }
 
+    @Synchronized internal fun sendFunctionResult(callId: String, result: String): Boolean =
+        phase == Phase.ACTIVE && send(VolcRealtimeProtocol.functionResult(nextId(), callId, result.take(6_000)))
+
     private fun speechFrame(type: String, text: String? = null): String = buildJsonObject {
         put("type", type)
         put("event_id", nextId())
@@ -326,6 +333,17 @@ class VolcRealtimeSession internal constructor(
                 publish(VolcRealtimeEvent.AssistantTranscript(it))
             }
             VolcRealtimeProtocol.TEXT_DONE -> publish(VolcRealtimeEvent.AssistantTextEnded)
+            VolcRealtimeProtocol.RESPONSE_DONE -> if (config.mikaActions) publish(VolcRealtimeEvent.ResponseDone)
+            VolcRealtimeProtocol.FUNCTIONS_DONE -> if (config.mikaActions) {
+                val items = frame["items"] as? JsonArray ?: return
+                for (item in items) {
+                    val call = item as? JsonObject ?: continue
+                    val id = call.string("call_id")?.takeIf { it.isNotBlank() && it.length <= 256 } ?: continue
+                    publish(VolcRealtimeEvent.FunctionCall(
+                        id, call.string("name").orEmpty(), call.string("arguments").orEmpty(),
+                    ))
+                }
+            }
             VolcRealtimeProtocol.AUDIO_STARTED -> if (responseId == null || responseId != interruptedAudioId) {
                 waitForAudioStart = false
                 if (!audioActive || (responseId != null && responseId != audioId)) {
