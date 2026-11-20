@@ -505,14 +505,27 @@ class ConversationStore(
     @Synchronized
     fun append(conversationId: String, turn: Turn, files: List<SharedFile> = emptyList()) {
         deleted -= safe(conversationId)
+        appendRecords(conversationId, listOf(turn to files))
+    }
+
+    /** Persist all turns from one voice call together, without resurrecting a deleted chat. */
+    @Synchronized
+    internal fun appendVoiceCall(conversationId: String, turns: List<Turn>, research: Boolean) {
+        if (safe(conversationId) in deleted || turns.isEmpty()) return
+        appendRecords(conversationId, turns.map { it.copy(research = research) to emptyList() })
+    }
+
+    private fun appendRecords(conversationId: String, records: List<Pair<Turn, List<SharedFile>>>) {
         val f = file(conversationId)
         val prior = if (f.isFile) read(f) else emptyList()
         if (prior == null) {
             // 损坏的文件挪到一边留着,不拿新内容覆盖掉
             f.renameTo(File(dir, "${f.name}.corrupt-${System.currentTimeMillis()}"))
         }
-        val stored = if (turn.atMs == null) turn.copy(atMs = clock()) else turn
-        write(conversationId, prior.orEmpty() + (stored to files))
+        val stored = records.map { (turn, files) ->
+            (if (turn.atMs == null) turn.copy(atMs = clock()) else turn) to files
+        }
+        write(conversationId, prior.orEmpty() + stored)
     }
 
     @Synchronized

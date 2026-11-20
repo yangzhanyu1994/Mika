@@ -161,15 +161,18 @@ class PersonalRuntime(private val app: MikaApp) {
         } else null
     }
 
-    internal fun recordResearch(turn: Turn) {
-        val at = turn.atMs ?: System.currentTimeMillis()
-        store.update {
-            it.copy(messages = it.messages + listOf(
-                PersonalMessage(UUID.randomUUID().toString(), "user", turn.userText, at),
-                PersonalMessage(UUID.randomUUID().toString(), "assistant", turn.outcome, at,
-                    error = turn.status != "succeeded", reportedTokens = turn.reportedTokens, usageIncomplete = turn.usageIncomplete),
-            ))
+    internal fun recordResearch(turn: Turn) = recordConversationTurns(listOf(turn))
+
+    internal fun recordConversationTurns(turns: List<Turn>) {
+        val messages = turns.flatMap { turn ->
+            val at = turn.atMs ?: System.currentTimeMillis()
+            buildList {
+                if (turn.userText.isNotBlank()) add(PersonalMessage(UUID.randomUUID().toString(), "user", turn.userText, at))
+                if (turn.outcome.isNotBlank()) add(PersonalMessage(UUID.randomUUID().toString(), "assistant", turn.outcome, at,
+                    error = turn.status != "succeeded", reportedTokens = turn.reportedTokens, usageIncomplete = turn.usageIncomplete))
+            }
         }
+        store.update { it.copy(messages = it.messages + messages) }
     }
 
     private val submit = Mutex()

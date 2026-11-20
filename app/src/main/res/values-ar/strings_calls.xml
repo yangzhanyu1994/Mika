@@ -154,4 +154,7 @@
     <string name="mika_voice_call_realtime_key">Open call model settings and enter an API Key from a Doubao Voice project with Realtime Voice 3.0 (Seeduplex) enabled.</string>
     <string name="mika_voice_call_provider_error">Doubao could not start realtime voice. Check the project service and voice settings, then retry.</string>
     <string name="mika_voice_call_speak">Connected. You can speak now.</string>
+    <string name="mika_voice_call_foreground">Mika could not start the call while waiting to return to the foreground. Keep the app open and retry.</string>
+    <string name="mika_voice_call_transcript_note">The call transcript is saved in this conversation.</string>
+    <string name="mika_voice_call_transcript_failed">Could not save the call transcript. Check the phone storage.</string>
 </resources>

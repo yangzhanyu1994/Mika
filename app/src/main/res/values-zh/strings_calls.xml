@@ -154,4 +154,7 @@
     <string name="mika_voice_call_realtime_key">请到通话模型设置，填写已开通「豆包实时语音 3.0（Seeduplex）」项目的 API Key。</string>
     <string name="mika_voice_call_provider_error">豆包未能启动实时语音。请核对项目的服务开通状态和音色配置，再重试。</string>
     <string name="mika_voice_call_speak">已接通，可以开始说话。</string>
+    <string name="mika_voice_call_foreground">等待 Mika 回到前台时超时。请保持应用打开，再点重试。</string>
+    <string name="mika_voice_call_transcript_note">通话文字会保存在当前聊天。</string>
+    <string name="mika_voice_call_transcript_failed">通话文字未能保存，请检查手机存储空间。</string>
 </resources>

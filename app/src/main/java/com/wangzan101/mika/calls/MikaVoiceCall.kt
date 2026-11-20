@@ -8,11 +8,13 @@ import android.media.AudioManager
 import android.media.AudioTrack
 import android.media.MediaRecorder
 import com.wangzan101.mika.R
+import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.voice.PcmRecorder
 import com.wangzan101.mika.voice.pcmBytes
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -24,7 +26,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal class MikaVoiceCall(private val context: Context, private val phone: CallRuntime) {
     class Failure(val messageId: Int) : Exception()
 
-    suspend fun run(onConnected: () -> Unit) {
+    suspend fun run(onConnected: () -> Unit, saveTranscript: suspend (List<Turn>) -> Unit) {
         val config = phone.settings.state.value
         val credentials = withContext(Dispatchers.IO) { phone.settings.credentials() }
             ?: throw Failure(R.string.calls_setup_credentials)
@@ -35,16 +37,21 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
             systemPrompt = "You are Mika, speaking with the app user. Reply naturally and concisely in the user's language.",
             speaker = config.speaker,
         ))
+        val transcript = VoiceCallTranscript()
         try {
             checkPhoneIdle(audio)
-            withTimeoutOrNull(config.maxCallSeconds * 1_000L) { audioConversation(audio, session, onConnected) }
+            withTimeoutOrNull(config.maxCallSeconds * 1_000L) {
+                audioConversation(audio, session, transcript, onConnected)
+            }
         } finally {
             session.close()
+            val turns = transcript.finish()
+            if (turns.isNotEmpty()) withContext(NonCancellable + Dispatchers.IO) { saveTranscript(turns) }
         }
     }
 
     private suspend fun audioConversation(
-        audio: AudioManager, session: VolcRealtimeSession, onConnected: () -> Unit,
+        audio: AudioManager, session: VolcRealtimeSession, transcript: VoiceCallTranscript, onConnected: () -> Unit,
     ) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -76,7 +83,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
                         throw Failure(R.string.mika_voice_call_audio_output)
                     }
                     sendAudio(session, first)
-                    bridge(audio, session, mic, speaker, focusLost, onConnected)
+                    bridge(audio, session, mic, speaker, focusLost, transcript, onConnected)
                 } finally {
                     speaker.release()
                 }
@@ -111,6 +118,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
         mic: PcmRecorder,
         speaker: AudioTrack,
         focusLost: CompletableDeferred<Unit>,
+        transcript: VoiceCallTranscript,
         onConnected: () -> Unit,
     ) = coroutineScope {
         val queue = CallPlaybackQueue()
@@ -152,6 +160,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
             checkPhoneIdle(audio)
             onConnected()
             session.events.collect { event ->
+                transcript.accept(event)
                 when (event) {
                     is VolcRealtimeEvent.Audio -> if (queue.offer(event.pcm) == null) throw Failure(R.string.mika_voice_call_audio_output)
                     VolcRealtimeEvent.AssistantInterrupted -> {
