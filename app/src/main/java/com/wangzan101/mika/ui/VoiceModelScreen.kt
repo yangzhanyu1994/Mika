@@ -63,6 +63,7 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
     var voice by remember { mutableStateOf(state.choice?.voice.orEmpty()) }
     var speed by remember { mutableStateOf((state.choice?.speed ?: 1.0f).toString()) }
     var test by remember { mutableStateOf<String?>(null) }
+    var synthesizingTest by remember { mutableStateOf(false) }
     var modelBestDialog by remember { mutableStateOf(false) }
     var modelBestKey by remember { mutableStateOf("") }
     var savingModelBest by remember { mutableStateOf(false) }
@@ -183,9 +184,11 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
                 val choice = state.choice ?: return@MikaButton
                 val caps = settings.capabilities() ?: return@MikaButton
                 val tts = store.ttsModel(choice, caps) ?: return@MikaButton
+                player.stop()
+                test = null
+                synthesizingTest = true
                 scope.launch {
-                    test = tr(R.string.voice_testing)
-                    test = try {
+                    try {
                         val response = tts.synthesize(
                             TtsRequest(
                                 "你好，我是 Mika。这是一段声音测试。",
@@ -195,25 +198,26 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
                             ),
                         )
                         player.play(response.bytes, response.mime)
-                        tr(R.string.voice_test_ok)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
-                        tr(R.string.voice_test_failed, e.message ?: e.javaClass.simpleName)
+                        test = tr(R.string.voice_test_failed, e.message ?: e.javaClass.simpleName)
+                    } finally {
+                        synthesizingTest = false
                     }
                 }
             },
-            enabled = state.choice != null && model.isNotBlank(),
+            enabled = state.choice != null && model.isNotBlank() && !synthesizingTest && playback != VoicePlayback.Loading,
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         )
-        playback.let { p ->
-            val line = when (p) {
-                VoicePlayback.Playing -> tr(R.string.voice_playing)
-                VoicePlayback.Loading -> tr(R.string.voice_loading)
-                is VoicePlayback.Error -> tr(R.string.voice_play_failed, p.message)
-                VoicePlayback.Idle -> null
-            }
-            line?.let { FooterNote(it, Modifier.padding(top = 8.dp)) }
+        val testStatus = if (synthesizingTest && playback == VoicePlayback.Idle) tr(R.string.voice_testing)
+        else when (val p = playback) {
+            VoicePlayback.Playing -> tr(R.string.voice_playing)
+            VoicePlayback.Loading -> tr(R.string.voice_loading)
+            is VoicePlayback.Error -> tr(R.string.voice_play_failed, p.message)
+            VoicePlayback.Idle -> test
         }
-        test?.let { FooterNote(it, Modifier.padding(top = 8.dp)) }
+        testStatus?.let { FooterNote(it, Modifier.padding(top = 8.dp)) }
         FooterNote(tr(R.string.voice_footer), Modifier.padding(top = 10.dp))
     }
 

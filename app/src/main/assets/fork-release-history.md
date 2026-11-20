@@ -1,5 +1,6 @@
 ### 近期版本更新说明
 
-#### [v0.2.8](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.8) · 2026-11-20
+#### [v0.2.9](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.9) · 2026-11-20
 
-- 「声音模型」新增 ModelBest VoxCPM2。填写 ModelBest API Key 后可试听，并用于回复朗读和生成 WAV 音频。
+- 改善 ModelBest VoxCPM2 的播放兼容性，将流式 WAV 转成带完整文件头的 16 位 PCM 音频。
+- 声音模型试听按实际播放器状态显示，播放失败时只显示错误。
