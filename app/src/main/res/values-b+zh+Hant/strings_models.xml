@@ -204,6 +204,7 @@
     <string name="voice_hint">Mika can read answers aloud and say a line with your own speech model. Text is sent to the service you pick.</string>
     <string name="voice_enable">Allow Mika to speak</string>
     <string name="voice_enable_note">Speech is only made when you tap Read aloud, unless auto-read is on</string>
+    <string name="voice_setup_modelbest">設定 ModelBest VoxCPM2</string>
     <string name="voice_provider">Service</string>
     <string name="voice_no_providers">Add a model service first (speech uses the same service and key).</string>
     <string name="voice_model_name">Model</string>

@@ -197,6 +197,7 @@
     <string name="role_voice_what">Mika\'nın konuşmasını ve yanıtları sesli okumasını sağlar</string>
     <string name="voice_enable">Mika\'nın konuşmasına izin ver</string>
     <string name="voice_enable_note">Otomatik okuma açık değilse, konuşma yalnızca Sesli oku\'ya dokunduğunuzda yapılır</string>
+    <string name="voice_setup_modelbest">ModelBest VoxCPM2 kurulumu</string>
     <string name="voice_provider">Hizmet</string>
     <string name="voice_no_providers">Önce bir model hizmeti ekleyin (konuşma aynı hizmeti ve anahtarı kullanır).</string>
     <string name="voice_model_name">Model</string>

@@ -3,6 +3,7 @@ package com.wangzan101.mika.ui
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -17,9 +18,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.R
+import com.wangzan101.mika.core.model.ModelBestSpeechModel
 import com.wangzan101.mika.core.model.TtsRequest
 import com.wangzan101.mika.i18n.tr
+import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
+import com.wangzan101.mika.settings.ProviderPresets
 import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.settings.TtsProtocol
 import com.wangzan101.mika.settings.VoiceChoice
@@ -30,12 +34,16 @@ import com.wangzan101.mika.ui.components.GroupLabel
 import com.wangzan101.mika.ui.components.InputRow
 import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.MikaButton
+import com.wangzan101.mika.ui.components.MikaDialog
 import com.wangzan101.mika.ui.components.MikaSwitch
 import com.wangzan101.mika.ui.components.RadioRow
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.voice.VoicePlayback
 import com.wangzan101.mika.voice.VoicePlayer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 设置 › 模型 › 声音模型:选服务商、模型、接口、音色、语速;打开朗读/自动朗读/主动说话。
@@ -55,7 +63,28 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
     var voice by remember { mutableStateOf(state.choice?.voice.orEmpty()) }
     var speed by remember { mutableStateOf((state.choice?.speed ?: 1.0f).toString()) }
     var test by remember { mutableStateOf<String?>(null) }
+    var modelBestDialog by remember { mutableStateOf(false) }
+    var modelBestKey by remember { mutableStateOf("") }
+    var savingModelBest by remember { mutableStateOf(false) }
+    val modelBestSelected = providers.any { it.id == state.choice?.providerId && ProviderPresets.isModelBest(it.baseUrl) }
     DisposableEffect(Unit) { onDispose { player.stop() } }
+
+    fun selectProvider(provider: Provider) {
+        val switching = state.choice?.providerId != null && state.choice?.providerId != provider.id
+        val modelBest = ProviderPresets.isModelBest(provider.baseUrl)
+        val protocol = if (provider.kind == ProviderConfig.Kind.Gemini) TtsProtocol.GeminiTts else TtsProtocol.OpenAiSpeech
+        val nextModel = if (modelBest) {
+            model.takeIf { !switching && state.choice?.providerId == provider.id && it.isNotBlank() }
+                ?: ModelBestSpeechModel.DEFAULT_MODEL
+        } else if (switching) "" else model
+        val nextVoice = if (switching) "" else voice
+        val nextSpeed = if (switching || modelBest) "1.0" else speed
+        model = nextModel
+        voice = nextVoice
+        speed = nextSpeed
+        settings.setChoice(VoiceChoice(provider.id, nextModel, protocol, nextVoice, nextSpeed.toFloatOrNull() ?: 1.0f))
+        test = null
+    }
 
     Page(tr(R.string.role_voice), onBack) {
         Text(tr(R.string.voice_hint), Modifier.padding(top = 4.dp, bottom = 12.dp), fontSize = 14.5.sp, lineHeight = 22.sp, color = c.ink2)
@@ -75,37 +104,31 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
                     RadioRow(
                         ModelsCopy.providerName(p), selected = state.choice?.providerId == p.id, first = i == 0,
                         subtitle = p.baseUrl,
-                        onClick = {
-                            val protocol = if (p.kind == ProviderConfig.Kind.Gemini) TtsProtocol.GeminiTts else TtsProtocol.OpenAiSpeech
-                            val switchingProvider = state.choice?.providerId != null && state.choice?.providerId != p.id
-                            val nextModel = if (switchingProvider) "" else model
-                            val nextVoice = if (switchingProvider) "" else voice
-                            val nextSpeed = if (switchingProvider) "1.0" else speed
-                            val speedValue = nextSpeed.toFloatOrNull()?.coerceIn(0.25f, 4.0f) ?: 1.0f
-                            model = nextModel
-                            voice = nextVoice
-                            speed = nextSpeed
-                            settings.setChoice(VoiceChoice(p.id, nextModel, protocol, nextVoice, speedValue))
-                            test = null
-                        },
+                        onClick = { selectProvider(p) },
                     )
                 }
             }
         }
+
+        MikaButton(
+            tr(R.string.voice_setup_modelbest),
+            onClick = { modelBestKey = ""; modelBestDialog = true },
+            modifier = Modifier.padding(top = 10.dp),
+        )
 
         state.choice?.let { choice ->
             GroupCard {
                 InputRow(
                     tr(R.string.voice_model_name), model,
                     onChange = { model = it; settings.setChoice(choice.copy(model = it)); test = null },
-                    placeholder = "gpt-4o-mini-tts / gemini-2.5-flash-preview-tts", first = true,
+                    placeholder = if (modelBestSelected) ModelBestSpeechModel.DEFAULT_MODEL else "gpt-4o-mini-tts / gemini-2.5-flash-preview-tts", first = true,
                 )
                 InputRow(
                     tr(R.string.voice_name), voice,
                     onChange = { voice = it; settings.setChoice(choice.copy(voice = it)); test = null },
-                    placeholder = "alloy / Kore",
+                    placeholder = if (modelBestSelected) "default" else "alloy / Kore",
                 )
-                InputRow(
+                if (!modelBestSelected) InputRow(
                     tr(R.string.voice_speed), speed,
                     onChange = {
                         speed = it
@@ -115,16 +138,18 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
                     placeholder = "1.0", keyboard = KeyboardType.Decimal,
                 )
             }
-            GroupLabel(tr(R.string.voice_protocol))
-            GroupCard {
-                RadioRow(
-                    tr(R.string.voice_protocol_openai), choice.protocol == TtsProtocol.OpenAiSpeech, first = true,
-                    onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.OpenAiSpeech)); test = null },
-                )
-                RadioRow(
-                    tr(R.string.voice_protocol_gemini), choice.protocol == TtsProtocol.GeminiTts,
-                    onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.GeminiTts)); test = null },
-                )
+            if (!modelBestSelected) {
+                GroupLabel(tr(R.string.voice_protocol))
+                GroupCard {
+                    RadioRow(
+                        tr(R.string.voice_protocol_openai), choice.protocol == TtsProtocol.OpenAiSpeech, first = true,
+                        onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.OpenAiSpeech)); test = null },
+                    )
+                    RadioRow(
+                        tr(R.string.voice_protocol_gemini), choice.protocol == TtsProtocol.GeminiTts,
+                        onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.GeminiTts)); test = null },
+                    )
+                }
             }
         }
 
@@ -190,5 +215,45 @@ fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
         }
         test?.let { FooterNote(it, Modifier.padding(top = 8.dp)) }
         FooterNote(tr(R.string.voice_footer), Modifier.padding(top = 10.dp))
+    }
+
+    if (modelBestDialog) {
+        val dismiss = {
+            if (!savingModelBest) {
+                modelBestDialog = false
+                modelBestKey = ""
+            }
+        }
+        MikaDialog(
+            onDismissRequest = dismiss,
+            title = { Text(tr(R.string.voice_setup_modelbest)) },
+            text = {
+                InputRow(ModelSetupCopy.API_KEY, modelBestKey, { modelBestKey = it }, "",
+                    first = true, keyboard = KeyboardType.Password, secret = true)
+            },
+            confirmButton = {
+                TextButton(enabled = modelBestKey.isNotBlank() && !savingModelBest, onClick = {
+                    val key = modelBestKey.trim()
+                    savingModelBest = true
+                    scope.launch {
+                        try {
+                            val provider = withContext(Dispatchers.IO) {
+                                store.connect(ProviderPresets.MODELBEST_LABEL, ProviderConfig.Kind.OpenAiCompat,
+                                    ModelBestSpeechModel.BASE_URL, key, emptyList(), untested = true)
+                            }
+                            selectProvider(provider)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            test = tr(R.string.model_context_save_failed)
+                        } finally {
+                            savingModelBest = false
+                            dismiss()
+                        }
+                    }
+                }) { Text(tr(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = dismiss, enabled = !savingModelBest) { Text(tr(R.string.cancel)) } },
+        )
     }
 }
