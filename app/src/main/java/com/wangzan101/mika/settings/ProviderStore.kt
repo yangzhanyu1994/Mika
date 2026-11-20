@@ -919,9 +919,14 @@ class ProviderStore(
         val client = modelHttp.newBuilder().readTimeout(120, TimeUnit.SECONDS).build()
         val header = headers(p.sessionHeader, ModelSession.fresh())
         val key = providerKey(p.id)
-        if (choice.protocol == TtsProtocol.DeepSeekTts) {
-            if (!VoiceProviderPreset.DeepSeek.matches(p)) return null
-            return com.wangzan101.mika.core.model.DeepSeekSpeechModel(key, capabilities.maxChars, client)
+        val fixed = when (choice.protocol) {
+            TtsProtocol.DeepSeekTts -> VoiceProviderPreset.DeepSeek
+            TtsProtocol.DoubaoTts -> VoiceProviderPreset.Doubao
+            else -> null
+        }
+        if (fixed != null) {
+            if (!fixed.matches(p)) return null
+            return fixed.model(key, capabilities.maxChars, client)
         }
         if (ProviderPresets.isModelBest(p.baseUrl)) {
             return ModelBestSpeechModel(p.baseUrl.trim(), key, choice.model, capabilities.maxChars, client)
@@ -929,7 +934,7 @@ class ProviderStore(
         return when (choice.protocol) {
             TtsProtocol.OpenAiSpeech -> OpenAiSpeechModel(p.baseUrl, key, choice.model, capabilities, client, header)
             TtsProtocol.GeminiTts -> GeminiTtsModel(p.baseUrl, key.orEmpty(), choice.model, capabilities, client, header)
-            TtsProtocol.DeepSeekTts -> null
+            TtsProtocol.DeepSeekTts, TtsProtocol.DoubaoTts -> null
         }
     }
 

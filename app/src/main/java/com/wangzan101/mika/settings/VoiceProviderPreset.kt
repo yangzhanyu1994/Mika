@@ -1,6 +1,7 @@
 package com.wangzan101.mika.settings
 
 import com.wangzan101.mika.core.model.DeepSeekSpeechModel
+import com.wangzan101.mika.core.model.DoubaoSpeechModel
 import com.wangzan101.mika.core.model.GeminiTtsModel
 import com.wangzan101.mika.core.model.ModelBestSpeechModel
 import com.wangzan101.mika.core.model.TtsCapabilities
@@ -16,6 +17,9 @@ internal enum class VoiceProviderPreset(
     val voice: String,
     val keyWebsite: String,
 ) {
+    Doubao("Doubao", DoubaoSpeechModel.BASE_URL, ProviderConfig.Kind.OpenAiCompat,
+        TtsProtocol.DoubaoTts, DoubaoSpeechModel.RESOURCE, DoubaoSpeechModel.DEFAULT_VOICE,
+        "https://docs.volcengine.com/docs/doubao-voice/unidirectional-streaming-text-to-speech-http?lang=zh"),
     DeepSeek("DeepSeek", DeepSeekSpeechModel.BASE_URL, ProviderConfig.Kind.OpenAiCompat,
         TtsProtocol.DeepSeekTts, "DeepSeek TTS", DeepSeekSpeechModel.DEFAULT_VOICE, "https://platform.deepseek.com/api_keys"),
     ModelBest("ModelBest", ModelBestSpeechModel.BASE_URL, ProviderConfig.Kind.OpenAiCompat,
@@ -30,10 +34,11 @@ internal enum class VoiceProviderPreset(
 
     fun choice(provider: Provider) = VoiceChoice(provider.id, modelId, protocol, voice)
 
-    fun model(key: String, maxChars: Int, client: OkHttpClient): TtsModel = when (this) {
+    fun model(key: String?, maxChars: Int, client: OkHttpClient): TtsModel = when (this) {
+        Doubao -> DoubaoSpeechModel(key, maxChars, client)
         DeepSeek -> DeepSeekSpeechModel(key, maxChars, client)
         ModelBest -> ModelBestSpeechModel(baseUrl, key, modelId, maxChars, client)
-        Gemini -> GeminiTtsModel(baseUrl, key, modelId, TtsCapabilities(maxChars = maxChars, formats = setOf("wav")), client)
+        Gemini -> GeminiTtsModel(baseUrl, key.orEmpty(), modelId, TtsCapabilities(maxChars = maxChars, formats = setOf("wav")), client)
     }
 
     val storedLabel: String get() = "$label TTS"

@@ -238,4 +238,17 @@
     <string name="tool_audio_save">保存音频</string>
     <string name="tool_share_audio">分享音频到 App</string>
     <string name="tool_audio_transcribe">转写音频</string>
+    <string name="voice_doubao_tts">豆包语音合成</string>
+    <string name="voice_doubao_tts_setup">在豆包语音控制台开通「语音合成 2.0」，填入同一项目的 API Key。</string>
+    <string name="voice_test_timeout">20 秒内没有收到音频。请检查网络后重试。</string>
+    <string name="voice_test_network">无法连接语音服务。请检查网络或代理。</string>
+    <string name="voice_test_quota">请检查服务额度，或稍后再试。</string>
+    <string name="voice_doubao_tts_error">豆包返回错误 %1$s。请核对 API Key，并确认对应项目已开通「语音合成 2.0」。</string>
+    <string name="voice_custom_provider">自定义朗读服务商</string>
+    <string name="voice_custom_provider_detail">为已连接的服务商手动设置模型、音色和接口。</string>
+    <string name="voice_task_audio">任务语音与音频保存</string>
+    <string name="voice_speak_tool_detail">允许任务执行时主动播报需要告诉你的信息。</string>
+    <string name="voice_char_limit_detail">限制每次朗读发送给服务商的文字长度。</string>
+    <string name="mika_voice_call_allow_mic">授权麦克风</string>
+    <string name="mika_voice_call_mic_settings">点「去设置」，进入「权限 → 麦克风」，选择「仅在使用应用时允许」。</string>
 </resources>

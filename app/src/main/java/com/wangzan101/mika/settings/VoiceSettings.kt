@@ -24,7 +24,8 @@ enum class TtsProtocol(val wire: String) {
 
     /** Gemini TTS:generateContent + responseModalities AUDIO。 */
     GeminiTts("gemini-tts"),
-    DeepSeekTts("deepseek-tts");
+    DeepSeekTts("deepseek-tts"),
+    DoubaoTts("doubao-tts");
 
     companion object {
         fun of(wire: String?): TtsProtocol? = entries.firstOrNull { it.wire == wire }
@@ -106,6 +107,9 @@ class VoiceSettings(private val prefs: SharedPreferences) {
                 voices = null,
                 maxChars = _state.value.maxCharsPerSpeak,
                 formats = setOf("wav"),
+            )
+            TtsProtocol.DoubaoTts -> TtsCapabilities(
+                maxChars = minOf(state.maxCharsPerSpeak, 4_000), formats = setOf("wav"),
             )
             TtsProtocol.DeepSeekTts -> TtsCapabilities(
                 maxChars = minOf(state.maxCharsPerSpeak, 10_000), formats = setOf("wav"),
