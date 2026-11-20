@@ -12,21 +12,33 @@ import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.voice.PcmRecorder
 import com.wangzan101.mika.voice.pcmBytes
 import java.io.IOException
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+internal data class VoiceCallSpeakerSample(val level: Float, val sequence: Long)
+
+internal data class VoiceCallLevels(
+    val microphone: StateFlow<Float>,
+    val speaker: StateFlow<VoiceCallSpeakerSample?>,
+)
+
 /** Foreground microphone and speaker transport for the same realtime model used by phone calls. */
 internal class MikaVoiceCall(private val context: Context, private val phone: CallRuntime) {
     class Failure(val messageId: Int) : Exception()
 
-    suspend fun run(onConnected: () -> Unit, saveTranscript: suspend (List<Turn>) -> Unit) {
+    suspend fun run(onConnected: (VoiceCallLevels) -> Unit, saveTranscript: suspend (List<Turn>) -> Unit) {
         val config = phone.settings.state.value
         val credentials = withContext(Dispatchers.IO) { phone.settings.credentials() }
             ?: throw Failure(R.string.calls_setup_credentials)
@@ -51,7 +63,7 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
     }
 
     private suspend fun audioConversation(
-        audio: AudioManager, session: VolcRealtimeSession, transcript: VoiceCallTranscript, onConnected: () -> Unit,
+        audio: AudioManager, session: VolcRealtimeSession, transcript: VoiceCallTranscript, onConnected: (VoiceCallLevels) -> Unit,
     ) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -119,11 +131,20 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
         speaker: AudioTrack,
         focusLost: CompletableDeferred<Unit>,
         transcript: VoiceCallTranscript,
-        onConnected: () -> Unit,
+        onConnected: (VoiceCallLevels) -> Unit,
     ) = coroutineScope {
         val queue = CallPlaybackQueue()
+        val speakerLevels = MutableStateFlow<VoiceCallSpeakerSample?>(null)
         val writer = launch {
+            val tone = connectedTone()
+            var toneOffset = 0
+            while (toneOffset < tone.size) {
+                val written = speaker.write(tone, toneOffset, tone.size - toneOffset, AudioTrack.WRITE_NON_BLOCKING)
+                if (written < 0) throw Failure(R.string.mika_voice_call_audio_output)
+                if (written == 0) delay(5) else toneOffset += written
+            }
             val buffer = ByteArray(CallPlaybackQueue.WRITE_BYTES)
+            var sampleSequence = 0L
             while (true) {
                 val block = queue.take(buffer) ?: break
                 try {
@@ -131,7 +152,14 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
                     while (offset < block.byteCount && queue.isCurrent(block)) {
                         val written = speaker.write(buffer, offset, block.byteCount - offset, AudioTrack.WRITE_NON_BLOCKING)
                         if (written < 0) throw Failure(R.string.mika_voice_call_audio_output)
-                        if (written == 0) delay(5) else offset += written
+                        if (written == 0) {
+                            delay(5)
+                        } else {
+                            if (offset == 0) speakerLevels.value = VoiceCallSpeakerSample(
+                                playbackLevel(buffer, block.byteCount), ++sampleSequence,
+                            )
+                            offset += written
+                        }
                     }
                 } finally {
                     queue.release(block)
@@ -158,13 +186,14 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
         }
         try {
             checkPhoneIdle(audio)
-            onConnected()
+            onConnected(VoiceCallLevels(mic.level, speakerLevels))
             session.events.collect { event ->
                 transcript.accept(event)
                 when (event) {
                     is VolcRealtimeEvent.Audio -> if (queue.offer(event.pcm) == null) throw Failure(R.string.mika_voice_call_audio_output)
                     VolcRealtimeEvent.AssistantInterrupted -> {
                         queue.invalidate()
+                        speakerLevels.value = null
                         speaker.pause()
                         speaker.flush()
                         speaker.play()
@@ -207,4 +236,30 @@ internal class MikaVoiceCall(private val context: Context, private val phone: Ca
         track.release()
         throw Failure(R.string.mika_voice_call_audio_output)
     }
+}
+
+/** Two short notes on the local call track and outside the model's playback meter. */
+private fun connectedTone(): ByteArray {
+    val rate = VolcRealtimeClient.OUTPUT_SAMPLE_RATE
+    val samplesPerNote = rate * 65 / 1_000
+    val gapSamples = rate * 12 / 1_000
+    val frequencies = listOf(720.0, 960.0)
+    val samples = ShortArray(samplesPerNote * frequencies.size + gapSamples)
+    frequencies.forEachIndexed { note, hz ->
+        for (sample in 0 until samplesPerNote) {
+            val envelope = sin(PI * sample / samplesPerNote)
+            val value = 4_000 * envelope * sin(2 * PI * hz * sample / rate)
+            samples[note * (samplesPerNote + gapSamples) + sample] = value.toInt().toShort()
+        }
+    }
+    return pcmBytes(samples)
+}
+
+private fun playbackLevel(pcm: ByteArray, count: Int): Float {
+    var squared = 0.0
+    for (i in 0 until count step 2) {
+        val sample = (pcm[i + 1].toInt() shl 8) or (pcm[i].toInt() and 0xff)
+        squared += sample.toDouble() * sample
+    }
+    return (sqrt(squared / (count / 2)) / 8_000).toFloat().coerceIn(0f, 1f)
 }
