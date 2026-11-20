@@ -12,6 +12,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.Base64
 
 class ModelBestSpeechModelTest {
@@ -35,6 +37,38 @@ class ModelBestSpeechModelTest {
             assertEquals(JsonPrimitive("wav"), body["response_format"])
             assertFalse("speed" in body)
             assertFalse("voice" in body)
+        }
+    }
+
+    @Test fun finalizesOpenEndedWavSizesAndConvertsFloatSamplesForPlayback() = runTest {
+        MockWebServer().use { server ->
+            val floatWav = wrapPcm16Wav(ByteArray(12), 48_000)
+            ByteBuffer.wrap(floatWav).order(ByteOrder.LITTLE_ENDIAN).apply {
+                putInt(4, -1)
+                putShort(20, 3)
+                putInt(28, 48_000 * 4)
+                putShort(32, 4)
+                putShort(34, 32)
+                putInt(40, -1)
+                putFloat(44, -1f)
+                putFloat(48, 0f)
+                putFloat(52, 1f)
+            }
+            server.enqueue(sse(chunk(floatWav.copyOfRange(0, 39)) + chunk(floatWav.copyOfRange(39, floatWav.size)) + DONE))
+
+            val response = model(server).synthesize(TtsRequest("hello"))
+
+            val expected = wrapPcm16Wav(byteArrayOf(0, 0x80.toByte(), 0, 0, 0xff.toByte(), 0x7f), 48_000)
+            assertArrayEquals(expected, response.bytes)
+            assertEquals(48_000, response.sampleRate)
+        }
+    }
+
+    @Test fun rejectsIncompleteAudioFramesAfterDone() = runTest {
+        MockWebServer().use { server ->
+            val wav = wrapPcm16Wav(byteArrayOf(1, 2, 3), 24_000)
+            server.enqueue(sse(chunk(wav) + DONE))
+            assertTrue(runCatching { model(server).synthesize(TtsRequest("hello")) }.exceptionOrNull() is TtsError.BadAudio)
         }
     }
 

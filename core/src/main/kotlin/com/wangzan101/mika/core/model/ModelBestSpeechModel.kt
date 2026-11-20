@@ -68,9 +68,7 @@ class ModelBestSpeechModel(
         }
         if (response.body.isNotBlank()) throw ModelError.BadResponse(ModelAccessErrors.detail(response.body))
         if (!complete) throw ModelError.StreamCut()
-        val wav = audio.toByteArray()
-        if (wav.size <= 44 || sniffAudioMime(wav) != "audio/wav") throw TtsError.BadAudio("ModelBest returned no playable WAV")
-        return TtsResponse(wav, "audio/wav")
+        return playableModelBestWav(audio.toByteArray())
     }
 
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
