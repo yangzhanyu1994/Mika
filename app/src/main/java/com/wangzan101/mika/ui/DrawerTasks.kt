@@ -132,13 +132,14 @@ internal fun DrawerTaskLabel(
     expanded: Boolean,
     count: Int? = null,
     unread: Boolean = false,
-    badge: DrawerBadge? = null,
+    trailing: String? = null,
+    inset: Boolean = false,
     onToggle: () -> Unit,
 ) {
     val c = MikaTheme.colors
     val state = stringResource(if (expanded) R.string.drawer_task_expanded else R.string.drawer_task_collapsed)
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
+        Modifier.fillMaxWidth().padding(horizontal = if (inset) 0.dp else 12.dp, vertical = 2.dp)
             .heightIn(min = 48.dp).clip(MikaShapes.Tile)
             .clickable(role = Role.Button, onClick = onToggle)
             .semantics { stateDescription = state }.padding(horizontal = 12.dp),
@@ -146,8 +147,8 @@ internal fun DrawerTaskLabel(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(icon, null, Modifier.size(18.dp), tint = c.ink2)
-        Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = MikaType.Title.copy(fontWeight = FontWeight.Bold))
-        badge?.let { DrawerStatusBadge(it) }
+        Text(stringResource(label), Modifier.weight(1f), color = c.ink, style = if (inset) MikaType.Caption else MikaType.Body.copy(fontWeight = FontWeight.SemiBold))
+        if (trailing != null) Text(trailing, color = c.ink3, style = MikaType.Hint)
         if (unread) Text(stringResource(R.string.drawer_calls_unread), color = c.accent, style = MikaType.Hint)
         if (count != null) Text(count.toString(), color = c.ink3, style = MikaType.Hint)
         Icon(MikaIcons.Chevron, null, Modifier.size(14.dp).rotate(if (expanded) 90f else 0f), tint = c.ink3)
@@ -155,9 +156,12 @@ internal fun DrawerTaskLabel(
 }
 
 internal enum class DrawerBadge(@StringRes val label: Int, val positive: Boolean) {
-    Configured(R.string.drawer_config_active, true),
-    NoKey(R.string.drawer_config_missing_key, false),
-    NotConfigured(R.string.settings_not_set, false),
+    Configured(R.string.drawer_configured, true),
+    NotConfigured(R.string.drawer_unconfigured, false),
+    NotEnabled(R.string.drawer_not_enabled, false),
+    Monitoring(R.string.drawer_enabled, true),
+    Connected(R.string.drawer_connected, true),
+    Disconnected(R.string.drawer_disconnected, false),
     Disabled(R.string.plugins_disabled, false),
     Enabled(R.string.plugins_enabled, true),
     Running(R.string.task_running, true),

@@ -39,4 +39,26 @@
     <string name="drawer_readout_model">Text-to-speech model (readout)</string>
     <string name="drawer_speech_model">Streaming speech recognition (input)</string>
     <string name="drawer_model_website">Website</string>
+    <string name="drawer_task_center">Task center</string>
+    <string name="drawer_key_configuration">Key configuration</string>
+    <string name="drawer_mcp_connectors">MCP connectors</string>
+    <string name="drawer_accessibility">Accessibility service</string>
+    <string name="drawer_work_model">Work model</string>
+    <string name="drawer_stream_model">Streaming voice model</string>
+    <string name="drawer_web_search">Web search</string>
+    <string name="drawer_phone_listener">Phone listening</string>
+    <string name="drawer_automation_listener">Automation listening</string>
+    <string name="drawer_configured">Configured</string>
+    <string name="drawer_unconfigured">Not configured</string>
+    <string name="drawer_enabled">Enabled</string>
+    <string name="drawer_not_enabled">Not enabled</string>
+    <string name="drawer_connected">Connected</string>
+    <string name="drawer_disconnected">Not connected</string>
+    <string name="drawer_none">None</string>
+    <string name="drawer_recent_more">See all conversations</string>
+    <string name="drawer_recent_less">Show fewer conversations</string>
+    <plurals name="drawer_running_count">
+        <item quantity="one">%d task in progress</item>
+        <item quantity="other">%d tasks in progress</item>
+    </plurals>
 </resources>

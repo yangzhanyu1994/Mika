@@ -448,6 +448,7 @@ private fun MikaRoot(
     // 首次上手正在走哪一步;为空时不在上手流程里。配置模型页从哪儿来就回哪儿去
     var onboarding by rememberSaveable { mutableStateOf<OnboardingStep?>(null) }
     var openPhoneOps by rememberSaveable { mutableStateOf(false) }
+    var openWebSearch by rememberSaveable { mutableStateOf(false) }
     val onFix: (Fix) -> Unit = { fix ->
         when (fix) {
             Fix.AddModel -> nav.push(Route.Models)
@@ -796,15 +797,21 @@ private fun MikaRoot(
                 onScenes = { nav.pushFromDrawer(Route.Scenes) },
                 onMemory = { nav.pushFromDrawer(Route.Memory) },
                 onModels = { nav.pushFromDrawer(Route.Models) },
-                onCallModel = { nav.pushFromDrawer(Route.CallModel) },
-                onReadoutModel = { nav.pushFromDrawer(Route.VoiceModel) },
+                accessibilityEnabled = status.accessibility == com.wangzan101.mika.settings.AccessibilityState.On,
+                onPhoneSetup = { openPhoneOps = true; nav.pushFromDrawer(Route.Settings) },
+                onWebSearch = { openWebSearch = true; nav.pushFromDrawer(Route.Settings) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
                 updateAvailable = AboutCopy.drawerDot(updateState),
                 unhandledCalls = callHistory.count { !it.handled },
-                callsListening = callState.autoAnswerStage == com.wangzan101.mika.calls.CallAutoAnswerStage.STANDBY,
+                callsListening = when (callState.autoAnswerStage) {
+                    com.wangzan101.mika.calls.CallAutoAnswerStage.OFF,
+                    com.wangzan101.mika.calls.CallAutoAnswerStage.BLOCKED,
+                    com.wangzan101.mika.calls.CallAutoAnswerStage.PAUSED -> false
+                    else -> true
+                },
                 currentVersion = com.wangzan101.mika.BuildConfig.VERSION_NAME,
                 reopen = nav.reopenDrawer,
                 onReopened = nav::drawerReopened,
@@ -966,7 +973,8 @@ private fun MikaRoot(
                     filesConversation = app.chat.ui.value.conversationId
                     nav.push(Route.Files)
                 },
-                openPhoneOps = openPhoneOps, onPhoneOpsOpened = { openPhoneOps = false })
+                openPhoneOps = openPhoneOps, onPhoneOpsOpened = { openPhoneOps = false },
+                openWebSearch = openWebSearch, onWebSearchOpened = { openWebSearch = false })
         }
         Route.Persona -> if (personasOn) PersonaScreen(app.personas, onBack = back) else LaunchedEffect(Unit) { nav.back() }
         Route.Models -> {

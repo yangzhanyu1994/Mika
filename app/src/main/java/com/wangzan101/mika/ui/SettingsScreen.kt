@@ -107,6 +107,8 @@ fun SettingsScreen(
     onOpenFiles: (() -> Unit)? = null,
     openPhoneOps: Boolean = false,
     onPhoneOpsOpened: () -> Unit = {},
+    openWebSearch: Boolean = false,
+    onWebSearchOpened: () -> Unit = {},
 ) {
     val settingsScroll = rememberScrollState()
     val advancedScroll = rememberScrollState()
@@ -180,8 +182,14 @@ fun SettingsScreen(
     }
     val searchSettings = remember { WebSearchSettings.get(context) }
     var webSearch by remember { mutableStateOf<WebSearchConfig?>(null) }
-    var editingSearch by remember { mutableStateOf(false) }
+    var editingSearch by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { webSearch = withContext(Dispatchers.IO) { searchSettings.get() } }
+    LaunchedEffect(openWebSearch, webSearch != null) {
+        if (openWebSearch && webSearch != null) {
+            editingSearch = true
+            onWebSearchOpened()
+        }
+    }
     val fetchSettings = remember { WebFetchSettings.get(context) }
     var webFetch by remember { mutableStateOf<WebFetchConfig?>(null) }
     var editingFetch by remember { mutableStateOf(false) }
