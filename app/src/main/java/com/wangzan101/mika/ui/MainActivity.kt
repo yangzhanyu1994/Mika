@@ -838,13 +838,28 @@ private fun MikaRoot(
                 resetKey = nav.resetSerial,
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
-                    var showMikaCall by remember { mutableStateOf(false) }
-                    val openMikaCall = { showMikaCall = true }
-                    if (showMikaCall) {
+                    var saveMikaCall by remember { mutableStateOf<((List<Turn>) -> Unit)?>(null) }
+                    fun openMikaCall(research: Boolean, personal: Boolean = false) {
+                        if (personal) {
+                            saveMikaCall = app.personal::recordConversationTurns
+                        } else {
+                            val id = app.chat.ui.value.conversationId ?: app.conversations.newConversation().also(app.chat::openConversation)
+                            saveMikaCall = { turns -> app.conversations.appendVoiceCall(id, turns, research) }
+                        }
+                    }
+                    saveMikaCall?.let { save ->
                         MikaVoiceCallDialog(app.calls, onConfigure = {
-                            showMikaCall = false
+                            saveMikaCall = null
                             nav.push(Route.CallModel)
-                        }, onDismiss = { showMikaCall = false })
+                        }, onDismiss = { saveMikaCall = null }, saveTranscript = { turns ->
+                            try {
+                                save(turns)
+                            } catch (_: Exception) {
+                                withContext(Dispatchers.Main.immediate) {
+                                    Toast.makeText(app, R.string.mika_voice_call_transcript_failed, Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        })
                     }
                     val readyRelease = readyUpdate?.takeIf { autoUpdate && it.apkUrl == updateState.update?.apkUrl }
                     val updateBackdrop = if (readyRelease != null) rememberGlassBackdrop() else null
@@ -864,7 +879,7 @@ private fun MikaRoot(
                                 voice = app.voice,
                                 onSelectTask = { personalTask = it.id },
                                 onPickSpeech = { nav.push(Route.SpeechModel) },
-                                onVoiceCall = openMikaCall,
+                                onVoiceCall = { openMikaCall(research = true, personal = true) },
                                 modeHeader = { usage ->
                                     ConversationModeHeader(
                                         true, selectedModel(ModelRole.Chat), usage,
@@ -898,7 +913,7 @@ private fun MikaRoot(
                                     onSend = { sendByIntent(it, inPersonal = false) },
                                     onTransfer = ::prepareWorkTransfer,
                                     onPickSpeech = { nav.push(Route.SpeechModel) },
-                                    onVoiceCall = openMikaCall,
+                                    onVoiceCall = { openMikaCall(research = true) },
                                 )
                             }
                         } else ChatScreen(
@@ -942,7 +957,7 @@ private fun MikaRoot(
                             },
                             voice = app.voice,
                             openSpeechModel = { nav.push(Route.SpeechModel) },
-                            onVoiceCall = openMikaCall,
+                            onVoiceCall = { openMikaCall(research = false) },
                             onOpenPersonas = if (personasOn) ({ nav.push(Route.Persona) }) else ({}),
                             onOpenTeach = { hint ->
                                 app.teach.prefill(hint)

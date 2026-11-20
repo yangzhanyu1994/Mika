@@ -155,4 +155,6 @@
     <string name="mika_voice_call_provider_error">豆包未能啟動即時語音。請核對專案的服務啟用狀態和音色設定，再重試。</string>
     <string name="mika_voice_call_speak">已接通，可以開始說話。</string>
     <string name="mika_voice_call_foreground">等待 Mika 回到前景時逾時。請保持應用程式開啟，再點重試。</string>
+    <string name="mika_voice_call_transcript_note">通話文字會儲存在目前的聊天。</string>
+    <string name="mika_voice_call_transcript_failed">通話文字未能儲存，請檢查手機儲存空間。</string>
 </resources>

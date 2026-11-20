@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallRuntime
 import com.wangzan101.mika.calls.MikaVoiceCall
 import com.wangzan101.mika.calls.VolcRealtimeException
+import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.ui.components.MikaDialog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -36,11 +38,16 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
-internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, onDismiss: () -> Unit) {
+internal fun MikaVoiceCallDialog(
+    runtime: CallRuntime,
+    onConfigure: () -> Unit,
+    onDismiss: () -> Unit,
+    saveTranscript: suspend (List<Turn>) -> Unit,
+) {
     val context = LocalContext.current
     val config by runtime.settings.state.collectAsState()
     MikaVoiceCallDialog(config.credentialsConfigured, onConfigure, onDismiss) { onConnected ->
-        MikaVoiceCall(context, runtime).run(onConnected)
+        MikaVoiceCall(context, runtime).run(onConnected, saveTranscript)
     }
 }
 
@@ -135,7 +142,12 @@ internal fun MikaVoiceCallDialog(
     MikaDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.mika_voice_call)) },
-        text = { Text(stringResource(message)) },
+        text = {
+            Column {
+                Text(stringResource(message))
+                if (activeCall) Text(stringResource(R.string.mika_voice_call_transcript_note))
+            }
+        },
         confirmButton = {
             TextButton(onClick = {
                 when {

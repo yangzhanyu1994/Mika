@@ -227,9 +227,11 @@ internal fun ResearchConversationScreen(
                 }
                 items(stored.asReversed()) { turn ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ResearchQuestion(turn.userText, Modifier.align(Alignment.End))
-                        ResearchResultCard(app, id, turn, onShare = { share = ShareRequest(turn.userText, turn.outcome) })
-                        if (turn.status == "succeeded") {
+                        if (turn.userText.isNotBlank()) ResearchQuestion(turn.userText, Modifier.align(Alignment.End))
+                        if (turn.outcome.isNotBlank()) {
+                            ResearchResultCard(app, id, turn, onShare = { share = ShareRequest(turn.userText, turn.outcome) })
+                        }
+                        if (turn.status == "succeeded" && turn.userText.isNotBlank() && turn.outcome.isNotBlank()) {
                             TextButton(onClick = { onTransfer(turn) }) {
                                 Text(stringResource(R.string.mode_transfer), color = c.accent)
                             }
