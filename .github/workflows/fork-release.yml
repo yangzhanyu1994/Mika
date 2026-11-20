@@ -74,7 +74,7 @@ jobs:
           echo "MIKA_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "MIKA_RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
       - name: Build signed fork APKs
-        run: ./gradlew :app:assembleForkRelease :app:assembleForkReleaseAndroidTest -PmikaReleaseSmoke -PmikaVersionName="$MIKA_VERSION" -PmikaVersionCode="$MIKA_VERSION_CODE" -PmikaBeta=false --stacktrace
+        run: ./gradlew :app:assembleForkRelease :app:assembleForkReleaseAndroidTest -PmikaReleaseSmoke -PmikaVersionName="$MIKA_VERSION" -PmikaVersionCode="$MIKA_VERSION_CODE" -PmikaBeta=false --no-build-cache --stacktrace
       - name: Prepare and verify release assets
         shell: bash
         run: |
