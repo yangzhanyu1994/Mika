@@ -153,8 +153,10 @@
     <string name="mika_voice_call_connection_timeout">豆包即時語音 10 秒內未接通。請檢查網路後重試。</string>
     <string name="mika_voice_call_realtime_key">請到通話模型設定，填寫已開通「豆包即時語音 3.0（Seeduplex）」專案的 API Key。</string>
     <string name="mika_voice_call_provider_error">豆包未能啟動即時語音。請核對專案的服務啟用狀態和音色設定，再重試。</string>
-    <string name="mika_voice_call_speak">已接通，可以開始說話。</string>
+    <string name="mika_voice_call_speak">正在聽你說</string>
     <string name="mika_voice_call_foreground">等待 Mika 回到前景時逾時。請保持應用程式開啟，再點重試。</string>
     <string name="mika_voice_call_transcript_note">通話文字會儲存在目前的聊天。</string>
     <string name="mika_voice_call_transcript_failed">通話文字未能儲存，請檢查手機儲存空間。</string>
+    <string name="mika_voice_call_connected">已接通</string>
+    <string name="mika_voice_call_mika_speaking">Mika 正在說</string>
 </resources>

@@ -5,16 +5,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.wangzan101.mika.R
+import com.wangzan101.mika.calls.VoiceCallLevels
+import com.wangzan101.mika.calls.VoiceCallSpeakerSample
 import com.wangzan101.mika.ui.theme.MikaTheme
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +35,8 @@ class MikaVoiceCallDeviceTest {
         val starts = AtomicInteger()
         val interruptFirst = CompletableDeferred<Unit>()
         val secondStopped = CompletableDeferred<Unit>()
+        val speak = CompletableDeferred<Unit>()
+        val speaker = MutableStateFlow<VoiceCallSpeakerSample?>(null)
         compose.activityRule.scenario.onActivity { host ->
             host.setContentView(ComposeView(host).apply {
                 setContent {
@@ -45,9 +51,14 @@ class MikaVoiceCallDeviceTest {
                                     interruptFirst.await()
                                     throw CancellationException("Scripted call interruption")
                                 }
-                                onConnected()
+                                onConnected(VoiceCallLevels(MutableStateFlow(0f), speaker))
                                 try {
-                                    awaitCancellation()
+                                    speak.await()
+                                    var sequence = 0L
+                                    while (true) {
+                                        speaker.value = VoiceCallSpeakerSample(0.65f, ++sequence)
+                                        delay(50)
+                                    }
                                 } finally {
                                     secondStopped.complete(Unit)
                                 }
@@ -68,6 +79,12 @@ class MikaVoiceCallDeviceTest {
         compose.onNodeWithText(label(R.string.retry)).performClick()
         compose.waitUntil(5_000) { starts.get() == 2 }
         compose.onNodeWithText(label(R.string.mika_voice_call_speak)).assertIsDisplayed()
+        compose.onNodeWithTag("mika-call-timer").assertIsDisplayed()
+        speak.complete(Unit)
+        compose.waitUntil(5_000) {
+            compose.onAllNodes(androidx.compose.ui.test.hasText(label(R.string.mika_voice_call_mika_speaking)))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText(label(R.string.calls_hangup)).performClick()
         compose.waitUntil(5_000) { secondStopped.isCompleted }
         compose.onNodeWithText(label(R.string.mika_voice_call)).assertDoesNotExist()

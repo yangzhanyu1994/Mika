@@ -4,24 +4,23 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -30,10 +29,12 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallRuntime
 import com.wangzan101.mika.calls.MikaVoiceCall
 import com.wangzan101.mika.calls.VolcRealtimeException
+import com.wangzan101.mika.calls.VoiceCallLevels
 import com.wangzan101.mika.core.agent.Turn
-import com.wangzan101.mika.ui.components.MikaDialog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -58,7 +59,7 @@ internal fun MikaVoiceCallDialog(
     credentialsConfigured: Boolean,
     onConfigure: () -> Unit,
     onDismiss: () -> Unit,
-    runCall: suspend (() -> Unit) -> Unit,
+    runCall: suspend ((VoiceCallLevels) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -71,7 +72,38 @@ internal fun MikaVoiceCallDialog(
     var attempt by remember { mutableIntStateOf(0) }
     var progress by remember(canStart, attempt, lifecycle) { mutableStateOf(CallProgress.Connecting) }
     var failure by remember(canStart, attempt, lifecycle) { mutableStateOf<Int?>(null) }
-    val activeCall by rememberUpdatedState(canStart && failure == null && progress != CallProgress.Ended)
+    var levels by remember(attempt, canStart) { mutableStateOf<VoiceCallLevels?>(null) }
+    var connectedAt by remember(attempt, canStart) { mutableStateOf<Long?>(null) }
+    var seconds by remember(attempt, canStart) { mutableLongStateOf(0L) }
+    var speaking by remember(attempt, canStart) { mutableStateOf(false) }
+    var output by remember(attempt, canStart) { mutableFloatStateOf(0f) }
+    val active = canStart && failure == null && progress != CallProgress.Ended
+    val connected = active && progress == CallProgress.Connected
+    val activeCall by rememberUpdatedState(active)
+    val input = levels?.microphone?.collectAsState()
+    LaunchedEffect(connected, connectedAt) {
+        val start = connectedAt ?: return@LaunchedEffect
+        while (connected) {
+            val elapsed = SystemClock.elapsedRealtime() - start
+            seconds = elapsed / 1_000
+            delay(1_000 - elapsed % 1_000)
+        }
+    }
+    LaunchedEffect(levels, connected) {
+        val meter = levels ?: return@LaunchedEffect
+        if (!connected) return@LaunchedEffect
+        meter.speaker.collectLatest { sample ->
+            output = sample?.level ?: 0f
+            if (sample == null) {
+                speaking = false
+            } else {
+                if (sample.level >= 0.035f) speaking = true
+                delay(180)
+                speaking = false
+                output = 0f
+            }
+        }
+    }
     val startCall by rememberUpdatedState(runCall)
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micGranted = granted
@@ -95,7 +127,11 @@ internal fun MikaVoiceCallDialog(
                 failure = R.string.mika_voice_call_foreground
                 return@LaunchedEffect
             }
-            startCall { progress = CallProgress.Connected }
+            startCall { meters ->
+                levels = meters
+                connectedAt = SystemClock.elapsedRealtime()
+                progress = CallProgress.Connected
+            }
             currentCoroutineContext().ensureActive()
             if (progress == CallProgress.Connected) progress = CallProgress.Ended
             else failure = R.string.mika_voice_call_connection_lost
@@ -126,7 +162,8 @@ internal fun MikaVoiceCallDialog(
         needsMic && micDenied -> R.string.mika_voice_call_mic_settings
         needsMic -> R.string.mika_voice_call_microphone
         failure != null -> failure ?: R.string.calls_action_failed
-        progress == CallProgress.Connected -> R.string.mika_voice_call_speak
+        connected && speaking -> R.string.mika_voice_call_mika_speaking
+        connected -> R.string.mika_voice_call_speak
         progress == CallProgress.Ended -> R.string.mika_voice_call_ended
         else -> R.string.calls_connecting
     }
@@ -139,33 +176,28 @@ internal fun MikaVoiceCallDialog(
         progress == CallProgress.Connected -> R.string.calls_hangup
         else -> R.string.done
     }
-    MikaDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.mika_voice_call)) },
-        text = {
-            Column {
-                Text(stringResource(message))
-                if (activeCall) Text(stringResource(R.string.mika_voice_call_transcript_note))
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                when {
-                    needsConfig -> onConfigure()
-                    needsMic && micDenied -> {
-                        val appUri = Uri.fromParts("package", context.packageName, null)
-                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri))
-                    }
-                    needsMic -> microphone.launch(permission)
-                    failure != null -> attempt++
-                    else -> onDismiss()
+    MikaVoiceCallOverlay(
+        active = active,
+        connected = connected,
+        seconds = seconds,
+        speaking = speaking,
+        input = input?.value ?: 0f,
+        output = output,
+        message = message,
+        action = buttonLabel,
+        showCancel = needsConfig || needsMic || failure != null,
+        onAction = {
+            when {
+                needsConfig -> onConfigure()
+                needsMic && micDenied -> {
+                    val appUri = Uri.fromParts("package", context.packageName, null)
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri))
                 }
-            }) {
-                Text(stringResource(buttonLabel))
+                needsMic -> microphone.launch(permission)
+                failure != null -> attempt++
+                else -> onDismiss()
             }
         },
-        dismissButton = if (needsConfig || needsMic || failure != null) {
-            { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
-        } else null,
+        onDismiss = onDismiss,
     )
 }
