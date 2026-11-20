@@ -105,6 +105,6 @@ jobs:
             tail -100 "$RUNNER_TEMP/mika-emulator.log"
             exit 1
           fi
-          bash tools/release/verify-task-run.sh "release-assets/Mika-v$MIKA_VERSION.apk"
+          bash tools/release/verify-task-run.sh "release-assets/Mika-v$MIKA_VERSION.apk" "release-assets/Mika-v$MIKA_VERSION-arm64.apk"
       - name: Publish GitHub Release
         run: gh release create "$MIKA_RELEASE_TAG" release-assets/*.apk --repo "$GITHUB_REPOSITORY" --title "Mika Fork $MIKA_RELEASE_TAG" --generate-notes --target "$GITHUB_SHA"

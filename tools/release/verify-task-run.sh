@@ -2,6 +2,25 @@
 set -euo pipefail
 
 apk=${1:?Pass a signed Mika Fork APK}
+arm64_apk=${2:?Pass the signed ARM64 APK}
+python3 - "$apk" "$arm64_apk" <<'VERIFY_DEX'
+import hashlib
+import re
+import sys
+import zipfile
+
+def dex_digests(path):
+    with zipfile.ZipFile(path) as apk:
+        return {
+            name: hashlib.sha256(apk.read(name)).hexdigest()
+            for name in apk.namelist() if re.fullmatch(r"classes[0-9]*[.]dex", name)
+        }
+
+universal = dex_digests(sys.argv[1])
+if not universal or universal != dex_digests(sys.argv[2]):
+    sys.exit("ARM64 and universal APKs have different DEX contents")
+print("ARM64 and universal APKs have identical DEX contents")
+VERIFY_DEX
 build_tools="$ANDROID_HOME/build-tools/35.0.0"
 android_jar="$ANDROID_HOME/platforms/android-36/android.jar"
 work=$(mktemp -d)
