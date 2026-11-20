@@ -579,6 +579,26 @@ class TaskRun(
         return RetestHint.apply(end, ProviderStore.get(service).untestedMainProvider()) { tr(R.string.fail_model_untested, it) }
     }
 
+    private suspend fun openRunRecord(
+        onStore: (RunStore) -> Unit,
+        onRecord: (RunHandle) -> Unit,
+    ): RunHandle? = withContext(Dispatchers.IO) {
+        runCatching {
+            val runs = RunStore(service).also(onStore)
+            val opened = runs.open(goal)
+            onRecord(opened)
+            _runId.value = opened.runId
+            service.rememberRecord(this@TaskRun, opened.runId)
+            mcpExternalId?.let { ext ->
+                (service.application as? MikaApp)?.remoteTasks?.rememberRun(ext, opened.runId)
+            }
+            opened
+        }.onFailure { Log.w(TAG, "run record unavailable, running without it", it) }.getOrNull()
+    }
+
+    // Keep this interface conversion outside the large suspend method's register flow.
+    private fun recordSink(record: RunHandle?): RunSink = record ?: RunSink.NONE
+
     suspend fun execute(priorTurns: List<Turn>): TaskState {
         noticeTainted = NoticeTurn.tainted(priorTurns)
         // 手机一侧(内置助手、无障碍、虚拟屏)第一次 launch_app 时才接上:只用网页、沙箱的任务不需要它们
@@ -848,20 +868,7 @@ class TaskRun(
                 t != null && t.taskId >= 0 && moveBackToAgent(t.taskId)
             }
             gate = taskGate
-            // 记录开不起来就不记,任务照跑
-            val sink: RunSink = withContext(Dispatchers.IO) {
-                runCatching {
-                    val runs = RunStore(service).also { runStore = it }
-                    runs.open(goal).also { opened ->
-                        record = opened
-                        _runId.value = opened.runId
-                        service.rememberRecord(this@TaskRun, opened.runId)
-                        mcpExternalId?.let { ext ->
-                            (service.application as? com.wangzan101.mika.MikaApp)?.remoteTasks?.rememberRun(ext, opened.runId)
-                        }
-                    }
-                }.onFailure { Log.w(TAG, "run record unavailable, running without it", it) }.getOrNull()
-            } ?: RunSink.NONE
+            val registeredRecord = openRunRecord(onStore = { runStore = it }, onRecord = { record = it })
             val trace = record?.takeIf { traceTicket != null }?.let { run ->
                 resources.acquire(Dispatchers.IO, traces.store::finish) { traces.start(traceTicket, run.runId) }
             }
@@ -1105,7 +1112,7 @@ class TaskRun(
                     if (phoneScreen.acquired && dispatcher?.surface != WEB) phone?.screen?.let { awaitUserPick(it, taskGate, w) }
                     if (taskGate.pass({ phoneScreen.acquired && dispatcher?.surface != WEB }, w))
                         throw com.wangzan101.mika.core.gate.ScreenRecoveryRequired()
-                }, knowledge = knowledge, sink = sink, trace = trace, installedApps = { apps },
+                }, knowledge = knowledge, sink = recordSink(registeredRecord), trace = trace, installedApps = { apps },
                 // 选渠道用的事实:装了哪些 App、在 Mika 里登录过哪些网站、有没有内置浏览器
                 channelFacts = {
                     val registry = WebSites.registry(service)

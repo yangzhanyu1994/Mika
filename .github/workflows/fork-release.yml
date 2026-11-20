@@ -89,5 +89,22 @@ jobs:
           mkdir -p release-assets
           cp "$UNIVERSAL" "release-assets/Mika-v$MIKA_VERSION.apk"
           cp "$ARM64" "release-assets/Mika-v$MIKA_VERSION-arm64.apk"
+      - name: Verify TaskRun on Android 16 ART
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chmod a+rw /dev/kvm
+          IMAGE="system-images;android-36;google_apis;x86_64"
+          sdkmanager "emulator" "$IMAGE"
+          echo no | avdmanager create avd -n mika-art -k "$IMAGE" --force
+          "$ANDROID_HOME/emulator/emulator" -avd mika-art -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/mika-emulator.log" 2>&1 &
+          emulator_pid=$!
+          trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          if ! timeout 230 bash -c 'adb wait-for-device
+            until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = 1 ]; do sleep 2; done'; then
+            tail -100 "$RUNNER_TEMP/mika-emulator.log"
+            exit 1
+          fi
+          bash tools/release/verify-task-run.sh "release-assets/Mika-v$MIKA_VERSION.apk" "release-assets/Mika-v$MIKA_VERSION-arm64.apk"
       - name: Publish GitHub Release
         run: gh release create "$MIKA_RELEASE_TAG" release-assets/*.apk --repo "$GITHUB_REPOSITORY" --title "Mika Fork $MIKA_RELEASE_TAG" --generate-notes --target "$GITHUB_SHA"
