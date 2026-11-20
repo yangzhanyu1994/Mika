@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -53,6 +54,27 @@ class GeminiTtsModelTest {
         val bytes = r.bytes
         val rate = (bytes[24].toInt() and 0xFF) or ((bytes[25].toInt() and 0xFF) shl 8) or ((bytes[26].toInt() and 0xFF) shl 16) or ((bytes[27].toInt() and 0xFF) shl 24)
         assertEquals(16_000, rate)
+    }
+
+    @Test fun flashLitePresetUsesInteractionsAndReturnsCompleteWav() = runTest {
+        val wav = wrapPcm16Wav(byteArrayOf(1, 2, 3, 4), 24_000)
+        val audio = Base64.getEncoder().encodeToString(wav)
+        server.enqueue(MockResponse().setBody(
+            """{"steps":[{"type":"model_output","content":[{"type":"audio","data":"$audio"}]}]}""",
+        ))
+        val model = GeminiTtsModel(
+            server.url("/").toString(), "gk", GeminiTtsModel.DEFAULT_MODEL, caps(), OkHttpClient(),
+        )
+        assertArrayEquals(wav, model.synthesize(TtsRequest("你好", "Kore")).bytes)
+        val request = server.takeRequest()
+        assertEquals("/v1beta/interactions", request.path)
+        assertEquals("gk", request.getHeader("x-goog-api-key"))
+        val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+        assertEquals(GeminiTtsModel.DEFAULT_MODEL, body.getValue("model").jsonPrimitive.content)
+        val input = body.getValue("input").jsonArray.single().jsonObject
+        assertEquals("你好", input.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content)
+        val config = body.getValue("generation_config").jsonObject
+        assertEquals("Kore", config.getValue("speech_config").jsonArray.single().jsonObject.getValue("voice").jsonPrimitive.content)
     }
 
     @Test fun refusesBlockedPrompt() = runTest {

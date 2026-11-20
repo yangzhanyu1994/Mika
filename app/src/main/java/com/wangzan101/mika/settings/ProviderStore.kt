@@ -919,14 +919,22 @@ class ProviderStore(
         val client = modelHttp.newBuilder().readTimeout(120, TimeUnit.SECONDS).build()
         val header = headers(p.sessionHeader, ModelSession.fresh())
         val key = providerKey(p.id)
+        if (choice.protocol == TtsProtocol.DeepSeekTts) {
+            if (!VoiceProviderPreset.DeepSeek.matches(p)) return null
+            return com.wangzan101.mika.core.model.DeepSeekSpeechModel(key, capabilities.maxChars, client)
+        }
         if (ProviderPresets.isModelBest(p.baseUrl)) {
             return ModelBestSpeechModel(p.baseUrl.trim(), key, choice.model, capabilities.maxChars, client)
         }
         return when (choice.protocol) {
             TtsProtocol.OpenAiSpeech -> OpenAiSpeechModel(p.baseUrl, key, choice.model, capabilities, client, header)
             TtsProtocol.GeminiTts -> GeminiTtsModel(p.baseUrl, key.orEmpty(), choice.model, capabilities, client, header)
+            TtsProtocol.DeepSeekTts -> null
         }
     }
+
+    internal fun voicePresetModel(preset: VoiceProviderPreset, key: String, maxChars: Int): TtsModel =
+        preset.model(key, maxChars, modelHttp.newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
 
     /**
      * 「测试并保存」的试调用:还没存下的服务商,按真实任务同一条路([modelFactory]、同样的请求头)建出 [model],

@@ -55,4 +55,31 @@ class ReadAloudTest {
         assertEquals(1, played)
         assertEquals(listOf(TtsRequest("answ", "alloy", 1.2f, "wav")), requests)
     }
+
+    @Test fun doubaoSelectionSurvivesRestartAndLeavesCompatibleChoiceAvailable() = runTest {
+        val prefs = MemoryPrefs()
+        val oldChoice = VoiceChoice("p", "m", TtsProtocol.OpenAiSpeech, "alloy")
+        VoiceSettings(prefs).apply {
+            setChoice(oldChoice)
+            setUseDoubao(true)
+        }
+        val restored = VoiceSettings(prefs)
+        val requests = mutableListOf<TtsRequest>()
+        val model = object : TtsModel {
+            override val name = "Doubao"
+            override val capabilities = TtsCapabilities()
+            override suspend fun synthesize(request: TtsRequest): TtsResponse {
+                requests += request
+                return TtsResponse(byteArrayOf(1, 2), "audio/wav")
+            }
+        }
+        readAloud("你好", restored,
+            model = { _, _ -> error("must use Doubao") },
+            doubao = { model },
+            play = {},
+        )
+        assertEquals(listOf(TtsRequest("你好")), requests)
+        restored.setUseDoubao(false)
+        assertEquals(oldChoice, VoiceSettings(prefs).state.value.choice)
+    }
 }

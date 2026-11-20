@@ -180,7 +180,6 @@
     <string name="drawer_model_website">Website</string>
     <string name="drawer_new_chat">New chat</string>
     <string name="drawer_new_side_chat">New side chat</string>
-    <string name="drawer_readout_model">Text-to-speech model (readout)</string>
     <string name="drawer_speech_model">Streaming speech recognition (input)</string>
     <string name="drawer_task_automation">Automations</string>
     <string name="drawer_task_calls">Call tasks</string>

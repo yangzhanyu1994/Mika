@@ -801,6 +801,7 @@ private fun MikaRoot(
                 onPhoneSetup = { openPhoneOps = true; nav.pushFromDrawer(Route.Settings) },
                 onWebSearch = { openWebSearch = true; nav.pushFromDrawer(Route.Settings) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
+                onReadoutModel = { nav.pushFromDrawer(Route.VoiceModel) },
                 onSettings = { nav.pushFromDrawer(Route.Settings) },
                 onCalls = { nav.pushFromDrawer(Route.Calls) },
                 onScreens = { nav.pushFromDrawer(Route.Screens) },
@@ -993,7 +994,7 @@ private fun MikaRoot(
                 onOpenVoice = { nav.push(Route.VoiceModel) }, onOpenUsage = { nav.push(Route.Usage) }, initialRole = requestedModelRole)
         }
         Route.CallModel -> CallSettingsScreen(app.calls, onBack = back, standalone = true, openModelCredentials = true)
-        Route.VoiceModel -> VoiceModelScreen(store, onBack = back)
+        Route.VoiceModel -> VoiceModelScreen(app, onBack = back, onCallModel = { nav.push(Route.CallModel) })
         Route.Usage -> UsageScreen(app.usage, store, onBack = back, onOpenUrl = { openInBrowser(context, it) })
         Route.SpeechModel -> SpeechModelScreen(store, onBack = back)
         Route.About -> {

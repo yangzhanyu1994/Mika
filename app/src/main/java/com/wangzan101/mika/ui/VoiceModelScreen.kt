@@ -1,5 +1,6 @@
 package com.wangzan101.mika.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -13,21 +14,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.wangzan101.mika.MikaApp
 import com.wangzan101.mika.R
-import com.wangzan101.mika.core.model.ModelBestSpeechModel
+import com.wangzan101.mika.calls.VolcRealtimeCredentials
+import com.wangzan101.mika.calls.VolcRealtimeException
+import com.wangzan101.mika.core.model.ModelError
+import com.wangzan101.mika.core.model.TtsCapabilities
 import com.wangzan101.mika.core.model.TtsRequest
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
 import com.wangzan101.mika.settings.ProviderPresets
-import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.settings.TtsProtocol
 import com.wangzan101.mika.settings.VoiceChoice
-import com.wangzan101.mika.settings.VoiceSettings
+import com.wangzan101.mika.settings.VoiceProviderPreset
 import com.wangzan101.mika.ui.components.FooterNote
 import com.wangzan101.mika.ui.components.GroupCard
 import com.wangzan101.mika.ui.components.GroupLabel
@@ -37,7 +40,7 @@ import com.wangzan101.mika.ui.components.MikaButton
 import com.wangzan101.mika.ui.components.MikaDialog
 import com.wangzan101.mika.ui.components.MikaSwitch
 import com.wangzan101.mika.ui.components.RadioRow
-import com.wangzan101.mika.ui.theme.MikaTheme
+import com.wangzan101.mika.voice.DoubaoReadoutModel
 import com.wangzan101.mika.voice.VoicePlayback
 import com.wangzan101.mika.voice.VoicePlayer
 import kotlinx.coroutines.CancellationException
@@ -45,219 +48,251 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * 设置 › 模型 › 声音模型:选服务商、模型、接口、音色、语速;打开朗读/自动朗读/主动说话。
- * 不在 [com.wangzan101.mika.core.model.ModelRole] 里;和语音转写、图片模型一样独立。
- */
+private data class VoiceSetup(val label: String, val preset: VoiceProviderPreset? = null, val provider: Provider? = null)
+
 @Composable
-fun VoiceModelScreen(store: ProviderStore, onBack: () -> Unit) {
-    val context = LocalContext.current
-    val settings = remember { VoiceSettings.get(context) }
+internal fun VoiceModelScreen(app: MikaApp, onBack: () -> Unit, onCallModel: () -> Unit) {
+    val settings = app.voiceSettings
+    val store = app.providers
     val state by settings.state.collectAsState()
+    val calls by app.calls.settings.state.collectAsState()
     val providers by store.providers.collectAsState()
-    val player = remember { VoicePlayer(context) }
+    val keyRevisions by store.providerKeyRevisions.collectAsState()
+    val player = remember(app) { VoicePlayer(app) }
     val playback by player.state.collectAsState()
     val scope = rememberCoroutineScope()
-    val c = MikaTheme.colors
-    var model by remember { mutableStateOf(state.choice?.model.orEmpty()) }
-    var voice by remember { mutableStateOf(state.choice?.voice.orEmpty()) }
-    var speed by remember { mutableStateOf((state.choice?.speed ?: 1.0f).toString()) }
-    var test by remember { mutableStateOf<String?>(null) }
-    var synthesizingTest by remember { mutableStateOf(false) }
-    var modelBestDialog by remember { mutableStateOf(false) }
-    var modelBestKey by remember { mutableStateOf("") }
-    var savingModelBest by remember { mutableStateOf(false) }
-    val modelBestSelected = providers.any { it.id == state.choice?.providerId && ProviderPresets.isModelBest(it.baseUrl) }
-    DisposableEffect(Unit) { onDispose { player.stop() } }
+    val doubaoLabel = stringResource(R.string.speech_doubao_provider)
+    val sample = stringResource(R.string.voice_sample_text)
+    var setup by remember { mutableStateOf<VoiceSetup?>(null) }
+    var apiKey by remember { mutableStateOf("") }
+    var setupStatus by remember { mutableStateOf<String?>(null) }
+    var testStatus by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var advanced by remember { mutableStateOf(false) }
+    val activeProvider = providers.firstOrNull { it.id == state.choice?.providerId }
+    val presetProviders = remember(providers, keyRevisions, activeProvider) {
+        VoiceProviderPreset.entries.associateWith { preset ->
+            val official = providers.filter { preset.matches(it) && it.signIn == null }
+            official.firstOrNull { it.id == activeProvider?.id && store.hasKey(it.id) }
+                ?: official.firstOrNull { it.name == preset.storedLabel && store.hasKey(it.id) }
+                ?: official.firstOrNull { store.hasKey(it.id) }
+        }
+    }
+    val ready = state.hasModel(calls.credentialsConfigured) && (state.useDoubao || activeProvider != null)
+    DisposableEffect(player) { onDispose { player.stop() } }
 
-    fun selectProvider(provider: Provider) {
-        val switching = state.choice?.providerId != null && state.choice?.providerId != provider.id
-        val modelBest = ProviderPresets.isModelBest(provider.baseUrl)
-        val protocol = if (provider.kind == ProviderConfig.Kind.Gemini) TtsProtocol.GeminiTts else TtsProtocol.OpenAiSpeech
-        val nextModel = if (modelBest) {
-            model.takeIf { !switching && state.choice?.providerId == provider.id && it.isNotBlank() }
-                ?: ModelBestSpeechModel.DEFAULT_MODEL
-        } else if (switching) "" else model
-        val nextVoice = if (switching) "" else voice
-        val nextSpeed = if (switching || modelBest) "1.0" else speed
-        model = nextModel
-        voice = nextVoice
-        speed = nextSpeed
-        settings.setChoice(VoiceChoice(provider.id, nextModel, protocol, nextVoice, nextSpeed.toFloatOrNull() ?: 1.0f))
-        test = null
+    fun openSetup(row: VoiceSetup) {
+        if (busy) return
+        player.stop()
+        testStatus = null
+        setupStatus = null
+        apiKey = ""
+        setup = row
+    }
+
+    fun closeSetup() {
+        setup = null
+        apiKey = ""
+        setupStatus = null
+    }
+
+    fun testFailure(error: Exception): String {
+        val credentials = error is ModelError.Auth ||
+            (error is VolcRealtimeException && error.kind == VolcRealtimeException.Kind.AUTH)
+        return tr(R.string.voice_test_failed, tr(if (credentials) R.string.voice_invalid_key else R.string.retry))
     }
 
     Page(tr(R.string.role_voice), onBack) {
-        Text(tr(R.string.voice_hint), Modifier.padding(top = 4.dp, bottom = 12.dp), fontSize = 14.5.sp, lineHeight = 22.sp, color = c.ink2)
+        GroupLabel(tr(R.string.voice_provider), Modifier.padding(top = 6.dp))
         GroupCard {
-            ListRow(
-                null, tr(R.string.voice_enable), tr(R.string.voice_enable_note), first = true,
-                trailing = { MikaSwitch(state.enabled, settings::setEnabled) },
+            RadioRow(
+                doubaoLabel, selected = state.useDoubao, first = true, enabled = !busy,
+                subtitle = stringResource(R.string.assistant_readout_doubao),
+                onClick = { openSetup(VoiceSetup(doubaoLabel)) },
             )
-        }
-
-        GroupLabel(tr(R.string.voice_provider), Modifier.padding(top = 12.dp))
-        if (providers.isEmpty()) {
-            FooterNote(tr(R.string.voice_no_providers))
-        } else {
-            GroupCard {
-                providers.forEachIndexed { i, p ->
-                    RadioRow(
-                        ModelsCopy.providerName(p), selected = state.choice?.providerId == p.id, first = i == 0,
-                        subtitle = p.baseUrl,
-                        onClick = { selectProvider(p) },
-                    )
-                }
+            VoiceProviderPreset.entries.forEach { preset ->
+                val provider = presetProviders[preset]
+                RadioRow(
+                    preset.label, selected = !state.useDoubao && activeProvider?.let(preset::matches) == true,
+                    subtitle = preset.modelId, enabled = !busy,
+                    onClick = { openSetup(VoiceSetup(preset.label, preset, provider)) },
+                )
             }
         }
 
+        val playing = playback == VoicePlayback.Playing || playback == VoicePlayback.Loading
         MikaButton(
-            tr(R.string.voice_setup_modelbest),
-            onClick = { modelBestKey = ""; modelBestDialog = true },
-            modifier = Modifier.padding(top = 10.dp),
-        )
-
-        state.choice?.let { choice ->
-            GroupCard {
-                InputRow(
-                    tr(R.string.voice_model_name), model,
-                    onChange = { model = it; settings.setChoice(choice.copy(model = it)); test = null },
-                    placeholder = if (modelBestSelected) ModelBestSpeechModel.DEFAULT_MODEL else "gpt-4o-mini-tts / gemini-2.5-flash-preview-tts", first = true,
-                )
-                InputRow(
-                    tr(R.string.voice_name), voice,
-                    onChange = { voice = it; settings.setChoice(choice.copy(voice = it)); test = null },
-                    placeholder = if (modelBestSelected) "default" else "alloy / Kore",
-                )
-                if (!modelBestSelected) InputRow(
-                    tr(R.string.voice_speed), speed,
-                    onChange = {
-                        speed = it
-                        it.toFloatOrNull()?.let { v -> settings.setChoice(choice.copy(speed = v.coerceIn(0.25f, 4.0f))) }
-                        test = null
-                    },
-                    placeholder = "1.0", keyboard = KeyboardType.Decimal,
-                )
-            }
-            if (!modelBestSelected) {
-                GroupLabel(tr(R.string.voice_protocol))
-                GroupCard {
-                    RadioRow(
-                        tr(R.string.voice_protocol_openai), choice.protocol == TtsProtocol.OpenAiSpeech, first = true,
-                        onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.OpenAiSpeech)); test = null },
-                    )
-                    RadioRow(
-                        tr(R.string.voice_protocol_gemini), choice.protocol == TtsProtocol.GeminiTts,
-                        onClick = { settings.setChoice(choice.copy(protocol = TtsProtocol.GeminiTts)); test = null },
-                    )
-                }
-            }
-        }
-
-        GroupCard {
-            ListRow(
-                null, tr(R.string.voice_auto_read), first = true,
-                trailing = { MikaSwitch(state.autoRead, settings::setAutoRead) },
-            )
-            ListRow(
-                null, tr(R.string.voice_speak_tool),
-                trailing = { MikaSwitch(state.speakTool, settings::setSpeakTool) },
-            )
-            ListRow(
-                null, tr(R.string.voice_save_enabled), tr(R.string.voice_save_note),
-                trailing = { MikaSwitch(state.saveEnabled, settings::setSaveEnabled) },
-            )
-            ListRow(
-                null, tr(R.string.voice_ask_before_save),
-                trailing = { MikaSwitch(state.askBeforeSave, settings::setAskBeforeSave, enabled = state.saveEnabled) },
-            )
-            InputRow(
-                tr(R.string.voice_max_chars), state.maxCharsPerSpeak.toString(),
-                onChange = { it.toIntOrNull()?.let(settings::setMaxChars) }, placeholder = "2000",
-                keyboard = KeyboardType.Number,
-            )
-        }
-
-        MikaButton(
-            tr(R.string.voice_test),
+            tr(if (playing) R.string.terminal_stop else R.string.voice_test),
             onClick = {
-                val choice = state.choice ?: return@MikaButton
-                val caps = settings.capabilities() ?: return@MikaButton
-                val tts = store.ttsModel(choice, caps) ?: return@MikaButton
-                player.stop()
-                test = null
-                synthesizingTest = true
-                scope.launch {
-                    try {
-                        val response = tts.synthesize(
-                            TtsRequest(
-                                "你好，我是 Mika。这是一段声音测试。",
-                                voice.ifBlank { null },
-                                speed.toFloatOrNull()?.coerceIn(0.25f, 4.0f),
-                                "wav",
-                            ),
-                        )
-                        player.play(response.bytes, response.mime)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        test = tr(R.string.voice_test_failed, e.message ?: e.javaClass.simpleName)
-                    } finally {
-                        synthesizingTest = false
-                    }
-                }
-            },
-            enabled = state.choice != null && model.isNotBlank() && !synthesizingTest && playback != VoicePlayback.Loading,
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-        )
-        val testStatus = if (synthesizingTest && playback == VoicePlayback.Idle) tr(R.string.voice_testing)
-        else when (val p = playback) {
-            VoicePlayback.Playing -> tr(R.string.voice_playing)
-            VoicePlayback.Loading -> tr(R.string.voice_loading)
-            is VoicePlayback.Error -> tr(R.string.voice_play_failed, p.message)
-            VoicePlayback.Idle -> test
-        }
-        testStatus?.let { FooterNote(it, Modifier.padding(top = 8.dp)) }
-        FooterNote(tr(R.string.voice_footer), Modifier.padding(top = 10.dp))
-    }
-
-    if (modelBestDialog) {
-        val dismiss = {
-            if (!savingModelBest) {
-                modelBestDialog = false
-                modelBestKey = ""
-            }
-        }
-        MikaDialog(
-            onDismissRequest = dismiss,
-            title = { Text(tr(R.string.voice_setup_modelbest)) },
-            text = {
-                InputRow(ModelSetupCopy.API_KEY, modelBestKey, { modelBestKey = it }, "",
-                    first = true, keyboard = KeyboardType.Password, secret = true)
-            },
-            confirmButton = {
-                TextButton(enabled = modelBestKey.isNotBlank() && !savingModelBest, onClick = {
-                    val key = modelBestKey.trim()
-                    savingModelBest = true
+                if (playing) player.stop()
+                else {
+                    testStatus = null
+                    busy = true
                     scope.launch {
                         try {
-                            val provider = withContext(Dispatchers.IO) {
-                                store.connect(ProviderPresets.MODELBEST_LABEL, ProviderConfig.Kind.OpenAiCompat,
-                                    ModelBestSpeechModel.BASE_URL, key, emptyList(), untested = true)
+                            var played = false
+                            app.readReply(sample, preview = true) {
+                                player.play(it.bytes, it.mime)
+                                played = true
                             }
-                            selectProvider(provider)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            test = tr(R.string.model_context_save_failed)
+                            if (!played) testStatus = tr(R.string.calls_key_missing)
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Exception) {
+                            testStatus = testFailure(error)
                         } finally {
-                            savingModelBest = false
-                            dismiss()
+                            busy = false
                         }
                     }
-                }) { Text(tr(R.string.save)) }
+                }
             },
-            dismissButton = { TextButton(onClick = dismiss, enabled = !savingModelBest) { Text(tr(R.string.cancel)) } },
+            enabled = playing || (ready && !busy),
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
         )
+        val status = when (val result = playback) {
+            VoicePlayback.Playing -> tr(R.string.voice_playing)
+            VoicePlayback.Loading -> tr(R.string.voice_loading)
+            is VoicePlayback.Error -> tr(R.string.voice_play_failed, result.message)
+            VoicePlayback.Idle -> if (busy && setup == null) tr(R.string.voice_testing) else testStatus
+        }
+        status?.let { FooterNote(it, Modifier.padding(vertical = 6.dp)) }
+
+        GroupCard {
+            ListRow(null, tr(R.string.voice_enable), first = true,
+                trailing = { MikaSwitch(state.enabled, settings::setEnabled) })
+            ListRow(null, tr(R.string.voice_auto_read),
+                trailing = { MikaSwitch(state.autoRead, settings::setAutoRead, enabled = state.enabled) })
+        }
+        FooterNote(tr(R.string.voice_hint))
+
+        GroupCard {
+            ListRow(null, tr(R.string.calls_advanced), first = true, onClick = { advanced = !advanced }) { RowChevron() }
+        }
+        if (advanced) {
+            VoiceCustomSettings(providers, state.choice.takeUnless { state.useDoubao }, settings::setChoice, busy)
+            GroupCard {
+                ListRow(null, tr(R.string.assistant_readout_doubao), calls.speaker, first = true, onClick = onCallModel) { RowChevron() }
+                ListRow(null, tr(R.string.voice_speak_tool),
+                    trailing = { MikaSwitch(state.speakTool, settings::setSpeakTool) })
+                ListRow(null, tr(R.string.voice_save_enabled), tr(R.string.voice_save_note),
+                    trailing = { MikaSwitch(state.saveEnabled, settings::setSaveEnabled) })
+                ListRow(null, tr(R.string.voice_ask_before_save),
+                    trailing = { MikaSwitch(state.askBeforeSave, settings::setAskBeforeSave, enabled = state.saveEnabled) })
+                InputRow(tr(R.string.voice_max_chars), state.maxCharsPerSpeak.toString(),
+                    onChange = { it.toIntOrNull()?.let(settings::setMaxChars) }, placeholder = "2000", keyboard = KeyboardType.Number)
+            }
+        }
+    }
+
+    setup?.let { target ->
+        val preset = target.preset
+        val hasSavedKey = if (preset == null) calls.credentialsConfigured else target.provider != null
+        MikaDialog(
+            onDismissRequest = { if (!busy) closeSetup() },
+            title = { Text(target.label) },
+            text = {
+                Column {
+                    if (preset == null) FooterNote(tr(R.string.voice_doubao_shared))
+                    InputRow(ModelSetupCopy.API_KEY, apiKey, { if (!busy) apiKey = it }, "",
+                        first = true, keyboard = KeyboardType.Password, secret = true)
+                    if (hasSavedKey) FooterNote(tr(R.string.voice_key_reuse))
+                    ModelKeyWebsite(preset?.keyWebsite ?: DOUBAO_VOICE_KEY_GUIDE)
+                    setupStatus?.let { FooterNote(it) }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !busy && (apiKey.isNotBlank() || hasSavedKey), onClick = {
+                    val replacement = apiKey.trim()
+                    val maxChars = maxOf(state.maxCharsPerSpeak, sample.length)
+                    busy = true
+                    setupStatus = tr(R.string.voice_testing)
+                    scope.launch {
+                        try {
+                            val audio = withContext(Dispatchers.IO) {
+                                if (preset == null) {
+                                    val model = DoubaoReadoutModel(
+                                        TtsCapabilities(maxChars = minOf(maxChars, 4_000), formats = setOf("wav")), calls.speaker,
+                                    ) {
+                                        if (replacement.isNotEmpty()) VolcRealtimeCredentials(apiKey = replacement)
+                                        else app.calls.settings.credentials()
+                                    }
+                                    model.synthesize(TtsRequest(sample.take(model.capabilities.maxChars))).also {
+                                        if (replacement.isNotEmpty()) app.calls.settings.saveCredentials("", "", replacement)
+                                    }
+                                } else {
+                                    val key = replacement.ifEmpty { target.provider?.let { store.providerKey(it.id) }.orEmpty() }
+                                    val model = store.voicePresetModel(preset, key, maxChars)
+                                    model.synthesize(TtsRequest(sample.take(model.capabilities.maxChars), preset.voice.ifBlank { null }))
+                                }
+                            }
+                            if (preset == null) settings.setUseDoubao(true)
+                            else {
+                                val provider = withContext(Dispatchers.IO) {
+                                    if (replacement.isEmpty()) checkNotNull(target.provider)
+                                    else store.connect(preset.storedLabel, preset.kind, preset.baseUrl, replacement, emptyList(), untested = true)
+                                }
+                                settings.setChoice(preset.choice(provider))
+                            }
+                            player.play(audio.bytes, audio.mime)
+                            closeSetup()
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Exception) {
+                            setupStatus = testFailure(error)
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }) { Text(tr(R.string.voice_test_use)) }
+            },
+            dismissButton = { TextButton(onClick = ::closeSetup, enabled = !busy) { Text(tr(R.string.cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun VoiceCustomSettings(
+    providers: List<Provider>, choice: VoiceChoice?, select: (VoiceChoice) -> Unit, busy: Boolean,
+) {
+    val provider = providers.firstOrNull { it.id == choice?.providerId }
+    GroupLabel(tr(R.string.voice_provider))
+    if (providers.isEmpty()) FooterNote(tr(R.string.voice_no_providers))
+    else GroupCard {
+        providers.forEachIndexed { index, candidate ->
+            RadioRow(ModelsCopy.providerName(candidate), candidate.id == choice?.providerId, first = index == 0, enabled = !busy,
+                onClick = {
+                    if (candidate.id != choice?.providerId) {
+                        val preset = VoiceProviderPreset.entries.firstOrNull { it.matches(candidate) }
+                        select(preset?.choice(candidate) ?: VoiceChoice(
+                            candidate.id, "", if (candidate.kind == ProviderConfig.Kind.Gemini) TtsProtocol.GeminiTts else TtsProtocol.OpenAiSpeech,
+                        ))
+                    }
+                })
+        }
+    }
+    if (choice == null || provider == null) return
+    val modelBest = ProviderPresets.isModelBest(provider.baseUrl)
+    GroupCard {
+        if (choice.protocol != TtsProtocol.DeepSeekTts) {
+            InputRow(tr(R.string.voice_model_name), choice.model, onChange = { if (!busy) select(choice.copy(model = it)) },
+                placeholder = "", first = true)
+        }
+        InputRow(tr(R.string.voice_name), choice.voice, onChange = { if (!busy) select(choice.copy(voice = it)) },
+            placeholder = "", first = choice.protocol == TtsProtocol.DeepSeekTts)
+        if (!modelBest && choice.protocol == TtsProtocol.OpenAiSpeech) {
+            var speed by remember(provider.id) { mutableStateOf(choice.speed.toString()) }
+            InputRow(tr(R.string.voice_speed), speed, onChange = {
+                if (!busy) {
+                    speed = it
+                    it.toFloatOrNull()?.let { value -> select(choice.copy(speed = value)) }
+                }
+            }, placeholder = "1.0", keyboard = KeyboardType.Decimal)
+        }
+        if (!modelBest && choice.protocol != TtsProtocol.DeepSeekTts) {
+            RadioRow(tr(R.string.voice_protocol_openai), choice.protocol == TtsProtocol.OpenAiSpeech, enabled = !busy,
+                onClick = { select(choice.copy(protocol = TtsProtocol.OpenAiSpeech)) })
+            RadioRow(tr(R.string.voice_protocol_gemini), choice.protocol == TtsProtocol.GeminiTts, enabled = !busy,
+                onClick = { select(choice.copy(protocol = TtsProtocol.GeminiTts)) })
+        }
     }
 }

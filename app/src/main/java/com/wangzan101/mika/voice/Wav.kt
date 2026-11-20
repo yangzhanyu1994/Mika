@@ -9,7 +9,17 @@ object Wav {
     private const val HEADER = 44
 
     fun encode(pcm16: ShortArray, rate: Int = RATE): ByteArray {
-        val dataSize = pcm16.size * 2
+        val buf = header(pcm16.size * 2, rate)
+        for (s in pcm16) buf.putShort(s)
+        return buf.array()
+    }
+
+    internal fun encode(pcm16: ByteArray, rate: Int): ByteArray {
+        require(pcm16.size % 2 == 0)
+        return header(pcm16.size, rate).put(pcm16).array()
+    }
+
+    private fun header(dataSize: Int, rate: Int): ByteBuffer {
         val buf = ByteBuffer.allocate(HEADER + dataSize).order(ByteOrder.LITTLE_ENDIAN)
         buf.put("RIFF".toByteArray(Charsets.US_ASCII))
         buf.putInt(36 + dataSize)
@@ -24,8 +34,7 @@ object Wav {
         buf.putShort(16)            // 位深
         buf.put("data".toByteArray(Charsets.US_ASCII))
         buf.putInt(dataSize)
-        for (s in pcm16) buf.putShort(s)
-        return buf.array()
+        return buf
     }
 
     /** 一段全零的静音 WAV,用来试探某个模型能不能转文字(不需要真录音)。 */

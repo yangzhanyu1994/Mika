@@ -15,6 +15,8 @@ import com.wangzan101.mika.chat.ConversationDeleter
 import com.wangzan101.mika.chat.ConversationStore
 import com.wangzan101.mika.chat.SharedDraftStore
 import com.wangzan101.mika.core.cap.sandbox.SandboxStatus
+import com.wangzan101.mika.core.model.TtsCapabilities
+import com.wangzan101.mika.core.model.TtsResponse
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.Attachments
 import com.wangzan101.mika.ui.AttachFiles
@@ -62,6 +64,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.wangzan101.mika.cap.web.cdp.WebDevtools
 import com.wangzan101.mika.cap.web.WebOwner
 import com.wangzan101.mika.cap.web.SiteRegistry
@@ -350,6 +353,25 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
     override val voiceSettings by lazy {
         com.wangzan101.mika.settings.VoiceSettings(getSharedPreferences(FeatureFlags.PREFS, MODE_PRIVATE))
     }
+    internal val voiceReady by lazy {
+        combine(voiceSettings.state, calls.settings.state) { voice, calls ->
+            voice.enabled && voice.hasModel(calls.credentialsConfigured)
+        }.stateIn(scope, SharingStarted.Eagerly, voiceSettings.state.value.let {
+            it.enabled && it.hasModel(calls.settings.state.value.credentialsConfigured)
+        })
+    }
+
+    internal fun doubaoReadout(caps: TtsCapabilities) = com.wangzan101.mika.voice.DoubaoReadoutModel(
+        caps, calls.settings.state.value.speaker,
+    ) {
+        withContext(Dispatchers.IO) { calls.settings.credentials() }
+    }
+
+    internal suspend fun readReply(text: String, preview: Boolean = false, play: suspend (TtsResponse) -> Unit) {
+        com.wangzan101.mika.media.readAloud(
+            text, voiceSettings, providers::ttsModel, ::doubaoReadout, preview, play,
+        )
+    }
 
     /** 播放工作区里的一段音频(生成结果);读不到时什么都不做。 */
     private suspend fun playWorkspaceAudio(conversationId: String, path: String) {
@@ -372,12 +394,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
     /** 合成一句话并在本机播放;总开关关闭或没配置声音模型时跳过。 */
     private suspend fun speak(text: String) {
         try {
-            com.wangzan101.mika.media.readAloud(
-                text,
-                voiceSettings,
-                model = { choice, caps -> ProviderStore.get(this).ttsModel(choice, caps) },
-                play = { voicePlayer.play(it.bytes, it.mime) },
-            )
+            readReply(text) { voicePlayer.play(it.bytes, it.mime) }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -484,8 +501,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
                 android.widget.Toast.makeText(app, tr(R.string.teach_blocked_task), android.widget.Toast.LENGTH_LONG).show()
             },
             personaStore = if (FeatureFlags.get(this).persona()) personas else null,
-            voiceReady = voiceSettings.state.map { it.enabled && it.choice != null }
-                .stateIn(scope, SharingStarted.Eagerly, voiceSettings.state.value.enabled && voiceSettings.state.value.choice != null),
+            voiceReady = voiceReady,
             autoRead = voiceSettings.state.map { it.enabled && it.autoRead }
                 .stateIn(scope, SharingStarted.Eagerly, voiceSettings.state.value.let { it.enabled && it.autoRead }),
             voicePlayback = voicePlayer.state,

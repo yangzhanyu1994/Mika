@@ -203,6 +203,11 @@
     <string name="models_daily_token_budget">Daily token budget</string>
     <string name="models_daily_token_budget_sub">Counts all models and purposes for this provider in the local calendar day. Only reported input and output tokens count. At the limit, the next request is blocked; in-flight requests may exceed it. Resets when the local date changes.</string>
     <string name="models_daily_token_budget_save_failed">The budget could not be saved. The previous setting is still active.</string>
+    <string name="voice_sample_text">Hello, I’m Mika. This is how your replies will sound.</string>
+    <string name="voice_doubao_shared">Uses the same Doubao API key and voice as AI calls.</string>
+    <string name="voice_key_reuse">Leave blank to use the saved API key.</string>
+    <string name="voice_test_use">Test and use</string>
+    <string name="voice_invalid_key">Check the API key and service access</string>
     <string name="role_voice">Voice model</string>
     <string name="role_voice_what">Lets Mika speak and read answers aloud</string>
     <string name="voice_hint">Mika can read answers aloud and say a line with your own speech model. Text is sent to the service you pick.</string>

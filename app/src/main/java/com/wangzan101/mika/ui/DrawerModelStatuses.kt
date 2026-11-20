@@ -36,6 +36,7 @@ import com.wangzan101.mika.settings.Provider
 import com.wangzan101.mika.settings.ProviderConfig
 import com.wangzan101.mika.settings.ProviderPresets
 import com.wangzan101.mika.settings.WebSearchSettings
+import com.wangzan101.mika.settings.VoiceProviderPreset
 import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaShapes
 import com.wangzan101.mika.ui.theme.MikaTheme
@@ -50,6 +51,8 @@ internal data class DrawerConfiguration(
     val speech: DrawerBadge?,
     val search: DrawerBadge?,
     val automation: DrawerBadge,
+    val readout: DrawerBadge? = null,
+    val readoutName: String? = null,
 )
 
 internal fun enabledBadge(enabled: Boolean): DrawerBadge =
@@ -69,6 +72,8 @@ internal fun rememberDrawerConfiguration(open: Boolean, accessibilityEnabled: Bo
     val providerList by providers.providers.collectAsState()
     val speechChoice by app.speech.choice.collectAsState()
     val silent by app.speech.systemSilent.collectAsState()
+    val voice by app.voiceSettings.state.collectAsState()
+    val calls by app.calls.settings.state.collectAsState()
     val bluetooth by BluetoothSceneMonitor.monitoring.collectAsState()
     val environment by EnvironmentSceneMonitor.monitoring.collectAsState()
     val searchSettings = remember(app) { WebSearchSettings.get(app) }
@@ -104,12 +109,24 @@ internal fun rememberDrawerConfiguration(open: Boolean, accessibilityEnabled: Bo
             Triple(work, speech, search)
         }
     }
+    val selectedProvider = providerList.firstOrNull { it.id == voice.choice?.providerId }
+    val readoutName = if (voice.useDoubao) stringResource(R.string.speech_doubao_provider)
+    else selectedProvider?.let { provider ->
+        VoiceProviderPreset.entries.firstOrNull { it.matches(provider) }?.label ?: ModelsCopy.providerName(provider)
+    }
+    val readout = when {
+        !voice.enabled -> DrawerBadge.NotEnabled
+        voice.useDoubao -> configuredBadge(calls.credentialsConfigured)
+        else -> configuredBadge(selectedProvider != null && voice.hasModel(false))
+    }
     return DrawerConfiguration(
         accessibilityEnabled?.let(::enabledBadge),
         configured?.first,
         configured?.second,
         configured?.third,
         enabledBadge(bluetooth || environment),
+        readout,
+        readoutName,
     )
 }
 

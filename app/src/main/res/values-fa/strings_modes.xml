@@ -36,7 +36,7 @@
     <string name="drawer_model_config">تنظیم مدل‌ها</string>
     <string name="drawer_language_model">مدل هوش مصنوعی (کار و گفت‌وگو)</string>
     <string name="drawer_call_model">مدل صوتی بلادرنگ (تماس)</string>
-    <string name="drawer_readout_model">مدل تبدیل متن به گفتار (خواندن پاسخ)</string>
+    <string name="drawer_readout_model">مدل خواندن با صدا</string>
     <string name="drawer_speech_model">تشخیص گفتار جریانی (ورودی)</string>
     <string name="drawer_model_website">وب‌سایت رسمی</string>
     <string name="drawer_task_center">مرکز کارها</string>

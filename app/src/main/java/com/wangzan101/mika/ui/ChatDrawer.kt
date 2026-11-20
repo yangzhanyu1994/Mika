@@ -260,6 +260,7 @@ internal fun ChatDrawer(
     onMemory: () -> Unit,
     onModels: () -> Unit = {},
     onSpeechModel: () -> Unit = {},
+    onReadoutModel: () -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -481,6 +482,10 @@ internal fun ChatDrawer(
                                 enabledBadge(check.phoneReady), onPhoneSetup)
                             DrawerStatusEntry(MikaIcons.Spark, stringResource(R.string.drawer_work_model), configuration?.work, onModels)
                             DrawerStatusEntry(MikaIcons.Mic, stringResource(R.string.drawer_stream_model), configuration?.speech, onSpeechModel)
+                            val readout = stringResource(R.string.drawer_readout_model)
+                            val readoutName = configuration?.readoutName
+                            DrawerStatusEntry(MikaIcons.Sound, if (readoutName == null) readout else "$readout · $readoutName",
+                                configuration?.readout, onReadoutModel)
                             DrawerStatusEntry(MikaIcons.Globe, stringResource(R.string.drawer_web_search), configuration?.search, onWebSearch)
                             DrawerStatusEntry(MikaIcons.Handset, stringResource(R.string.drawer_phone_listener), enabledBadge(callsListening), onCalls)
                             DrawerStatusEntry(MikaIcons.Bolt, stringResource(R.string.drawer_automation_listener), configuration?.automation, onScenes)
@@ -843,6 +848,7 @@ fun ChatWithDrawer(
     onMemory: () -> Unit,
     onModels: () -> Unit = {},
     onSpeechModel: () -> Unit = {},
+    onReadoutModel: () -> Unit = {},
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
@@ -1053,6 +1059,7 @@ fun ChatWithDrawer(
                     onMemory = { leave(onMemory) },
                     onModels = { leave(onModels) },
                     onSpeechModel = { leave(onSpeechModel) },
+                    onReadoutModel = { leave(onReadoutModel) },
                     onSettings = { leave(onSettings) },
                     onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },

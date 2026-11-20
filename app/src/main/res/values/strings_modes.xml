@@ -36,7 +36,7 @@
     <string name="drawer_model_config">Model configuration</string>
     <string name="drawer_language_model">AI model (work and chat)</string>
     <string name="drawer_call_model">Realtime voice model (AI calls)</string>
-    <string name="drawer_readout_model">Text-to-speech model (readout)</string>
+    <string name="drawer_readout_model">Read-aloud model</string>
     <string name="drawer_speech_model">Streaming speech recognition (input)</string>
     <string name="drawer_model_website">Website</string>
     <string name="drawer_task_center">Task center</string>
