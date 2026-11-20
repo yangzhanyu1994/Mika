@@ -173,6 +173,35 @@ class ShizukuTransportTest {
     }
 
     @Test
+    fun failedHandoffCleansUpAndAllowsRetry() = runTest {
+        val bridge = FakeBridge().apply {
+            binderAlive = true
+            permission = PackageManager.PERMISSION_GRANTED
+        }
+        val shell = fakeShell()
+        var failAttach = true
+        var changed = 0
+        val detached = mutableListOf<IMikaShell?>()
+        val controller = ShizukuController(this, bridge, {
+            if (failAttach) throw IllegalStateException("Helper disconnected during handoff")
+            shell
+        }, { detached += it }, { changed++ })
+
+        assertNull(controller.launchHelper())
+        controller.connection.onServiceConnected(null, fakeBinder())
+        assertEquals(listOf(true), bridge.unbindRemoveFlags)
+        assertEquals(1, changed)
+        assertTrue(detached.isEmpty())
+
+        failAttach = false
+        assertNull(controller.launchHelper())
+        controller.connection.onServiceConnected(null, fakeBinder())
+        controller.stopHelper()
+        assertEquals(listOf<IMikaShell?>(shell), detached)
+        assertEquals(2, bridge.bindCalls)
+    }
+
+    @Test
     fun serviceConnectionAttachDetachAndLateBindCleanup() = runTest {
         val bridge = FakeBridge().apply {
             installed = true
