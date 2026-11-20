@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mika_voice_call">Mika に電話する</string>
+    <string name="mika_voice_call_microphone">Mika と通話するには、マイクへのアクセスを許可してください。</string>
     <string name="mika_voice_call_ended">通話が終了しました</string>
     <string name="calls_title">AI 電話</string>
     <string name="calls_entry_sub">Volcengine のリアルタイム音声を使った携帯回線での通話</string>

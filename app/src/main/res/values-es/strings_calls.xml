@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mika_voice_call">Llamar a Mika</string>
+    <string name="mika_voice_call_microphone">Permite el acceso al micrófono para llamar a Mika.</string>
     <string name="mika_voice_call_ended">Llamada finalizada</string>
     <string name="calls_title">Llamadas con IA</string>
     <string name="calls_entry_sub">Llamadas por la red móvil con voz en tiempo real de Volcengine</string>

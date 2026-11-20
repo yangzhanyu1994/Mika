@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mika_voice_call">تماس با Mika</string>
+    <string name="mika_voice_call_microphone">برای تماس با Mika، دسترسی به میکروفون را مجاز کنید.</string>
     <string name="mika_voice_call_ended">تماس پایان یافت</string>
     <string name="calls_title">تماس‌های تلفنی هوش مصنوعی</string>
     <string name="calls_entry_sub">تماس‌های سلولی با صدای بلادرنگ Volcengine</string>

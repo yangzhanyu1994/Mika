@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mika_voice_call">Ligar para Mika</string>
+    <string name="mika_voice_call_microphone">Permita o acesso ao microfone para ligar para a Mika.</string>
     <string name="mika_voice_call_ended">Chamada encerrada</string>
     <string name="calls_title">Chamadas com IA</string>
     <string name="calls_entry_sub">Chamadas pela rede móvel com voz em tempo real da Volcengine</string>

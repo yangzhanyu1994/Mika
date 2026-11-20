@@ -1,7 +1,10 @@
 package com.wangzan101.mika.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Text
@@ -39,7 +42,7 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
     var failure by remember { mutableStateOf<Int?>(null) }
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) calling = true
-        else if (!granted) failure = R.string.voice_permission_title
+        else if (!granted) failure = R.string.mika_voice_call_microphone
     }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) dismiss() }
@@ -79,19 +82,35 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
         connected -> R.string.calls_connected
         calling -> R.string.calls_connecting
         finished -> R.string.mika_voice_call_ended
-        else -> R.string.voice_permission_title
+        else -> R.string.mika_voice_call_microphone
+    }
+    val needsConfig = message == R.string.calls_setup_credentials
+    val micDenied = failure == R.string.mika_voice_call_microphone
+    val buttonLabel = when {
+        needsConfig || micDenied -> R.string.voice_permission_open
+        calling -> R.string.calls_hangup
+        else -> R.string.done
     }
     MikaDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.mika_voice_call)) },
         text = { Text(stringResource(message)) },
         confirmButton = {
-            val needsConfig = !config.credentialsConfigured || failure == R.string.calls_setup_credentials
-            TextButton(onClick = if (needsConfig) onConfigure else onDismiss) {
-                Text(stringResource(if (needsConfig) R.string.voice_permission_open else if (calling) R.string.calls_hangup else R.string.done))
+            TextButton(onClick = {
+                when {
+                    needsConfig -> onConfigure()
+                    micDenied -> {
+                        val appUri = Uri.fromParts("package", context.packageName, null)
+                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri))
+                        onDismiss()
+                    }
+                    else -> onDismiss()
+                }
+            }) {
+                Text(stringResource(buttonLabel))
             }
         },
-        dismissButton = if (!config.credentialsConfigured || failure == R.string.calls_setup_credentials) {
+        dismissButton = if (needsConfig || micDenied) {
             { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         } else null,
     )

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mika_voice_call">给 Mika 打电话</string>
+    <string name="mika_voice_call_microphone">请允许使用麦克风，才能给 Mika 打电话。</string>
     <string name="mika_voice_call_ended">通话已结束</string>
     <string name="calls_title">来电助理</string>
     <string name="calls_entry_sub">火山方舟 Doubao 实时语音</string>
