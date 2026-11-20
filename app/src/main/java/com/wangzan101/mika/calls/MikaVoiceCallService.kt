@@ -22,6 +22,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Keeps the microphone available while a user-started call briefly leaves the app. */
 class MikaVoiceCallService : Service() {
+    internal class HungUp : Exception()
+
     private var current: Lease? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -114,7 +116,10 @@ class MikaVoiceCallService : Service() {
                 val audio = async { runCall() }
                 select<Unit> {
                     audio.onAwait { }
-                    lease.end.onAwait { audio.cancel() }
+                    lease.end.onAwait {
+                        audio.cancel()
+                        throw HungUp()
+                    }
                 }
             } finally {
                 if (requested === lease) {

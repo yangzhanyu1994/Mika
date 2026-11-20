@@ -63,7 +63,11 @@ internal fun MikaVoiceCallDialog(
         MikaVoiceCallService.withMicrophone(context.applicationContext) {
             MikaVoiceCall(context, runtime).run(onConnected, saveTranscript) { words ->
                 work = VoiceCallProgress(OrbMotion.Thinking)
-                handle(words) { work = it }
+                try {
+                    handle(words) { work = it }
+                } finally {
+                    if (work?.motion != OrbMotion.Complete && work?.needsTaskView != true) work = null
+                }
             }
         }
     }
@@ -161,6 +165,8 @@ internal fun MikaVoiceCallDialog(
             // within the call transport still needs to leave a usable retry action.
             currentCoroutineContext().ensureActive()
             failure = R.string.mika_voice_call_connection_lost
+        } catch (_: MikaVoiceCallService.HungUp) {
+            dismiss()
         } catch (_: MikaVoiceCall.TimeLimitReached) {
             endedAtLimit = true
             progress = CallProgress.Ended
