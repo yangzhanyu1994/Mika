@@ -19,6 +19,7 @@ import com.wangzan101.mika.core.model.ChatModel
 import com.wangzan101.mika.core.model.ClientHeaders
 import com.wangzan101.mika.core.model.GeminiModel
 import com.wangzan101.mika.core.model.GeminiTtsModel
+import com.wangzan101.mika.core.model.ModelBestSpeechModel
 import com.wangzan101.mika.core.model.OpenAiSpeechModel
 import com.wangzan101.mika.core.model.TtsCapabilities
 import com.wangzan101.mika.core.model.TtsModel
@@ -918,6 +919,9 @@ class ProviderStore(
         val client = modelHttp.newBuilder().readTimeout(120, TimeUnit.SECONDS).build()
         val header = headers(p.sessionHeader, ModelSession.fresh())
         val key = providerKey(p.id)
+        if (ProviderPresets.isModelBest(p.baseUrl)) {
+            return ModelBestSpeechModel(p.baseUrl.trim(), key, choice.model, capabilities.maxChars, client)
+        }
         return when (choice.protocol) {
             TtsProtocol.OpenAiSpeech -> OpenAiSpeechModel(p.baseUrl, key, choice.model, capabilities, client, header)
             TtsProtocol.GeminiTts -> GeminiTtsModel(p.baseUrl, key.orEmpty(), choice.model, capabilities, client, header)

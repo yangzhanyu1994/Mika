@@ -1,6 +1,5 @@
 ### 近期版本更新说明
 
-#### [v0.2.7](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.7) · 2026-11-20
+#### [v0.2.8](https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.8) · 2026-11-20
 
-- 工作任务实际调用 MCP 时，工作卡片和进度胶囊会显示「正在调用 … MCP」，使用连接器里设置的名称。
-- 「查看过程」会保留已调用的 MCP 名称和执行结果，调用失败也能看出是哪个连接器。
+- 「声音模型」新增 ModelBest VoxCPM2。填写 ModelBest API Key 后可试听，并用于回复朗读和生成 WAV 音频。

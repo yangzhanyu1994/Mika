@@ -1,6 +1,7 @@
 package com.wangzan101.mika.settings
 
 import com.wangzan101.mika.core.model.Capabilities
+import com.wangzan101.mika.core.model.ModelBestSpeechModel
 import com.wangzan101.mika.core.model.PromptCaching
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
@@ -44,6 +45,9 @@ object ProviderPresets {
         return all.filter { !it.selfHosted && it.baseUrl.isNotEmpty() && it.baseUrl.toHttpUrlOrNull()?.host == host }
             .maxByOrNull { pathOverlap(it.baseUrl, url) }
     }
+
+    const val MODELBEST_LABEL = "ModelBest"
+    fun isModelBest(baseUrl: String): Boolean = baseUrl.trim().trimEnd('/') == ModelBestSpeechModel.BASE_URL
 
     val all: List<ProviderPreset> = listOf(
         // V4 起两个模型(deepseek-flash / deepseek-v4-pro)上下文都是 1M:窗口还按旧默认 64k 时,
