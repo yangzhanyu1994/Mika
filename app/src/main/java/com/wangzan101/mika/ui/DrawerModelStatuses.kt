@@ -110,9 +110,13 @@ internal fun rememberDrawerConfiguration(open: Boolean, accessibilityEnabled: Bo
         }
     }
     val selectedProvider = providerList.firstOrNull { it.id == voice.choice?.providerId }
-    val readoutName = if (voice.useDoubao) stringResource(R.string.speech_doubao_provider)
+    val readoutName = if (voice.useDoubao) stringResource(R.string.assistant_readout_doubao)
     else selectedProvider?.let { provider ->
-        VoiceProviderPreset.entries.firstOrNull { it.matches(provider) }?.label ?: ModelsCopy.providerName(provider)
+        when (val preset = VoiceProviderPreset.entries.firstOrNull { it.matches(provider) }) {
+            VoiceProviderPreset.Doubao -> stringResource(R.string.voice_doubao_tts)
+            null -> ModelsCopy.providerName(provider)
+            else -> preset.label
+        }
     }
     val readout = when {
         !voice.enabled -> DrawerBadge.NotEnabled

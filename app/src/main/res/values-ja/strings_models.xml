@@ -237,4 +237,17 @@
     <string name="tool_audio_save">Save audio</string>
     <string name="tool_share_audio">Share audio to app</string>
     <string name="tool_audio_transcribe">Transcribe audio</string>
+    <string name="voice_doubao_tts">Doubao speech synthesis</string>
+    <string name="voice_doubao_tts_setup">Enable Speech Synthesis 2.0 in the Doubao Voice console. Use an API Key from that project.</string>
+    <string name="voice_test_timeout">No audio within 20 seconds. Check the connection and try again.</string>
+    <string name="voice_test_network">Could not reach the speech service. Check the network or proxy.</string>
+    <string name="voice_test_quota">Check the service quota or try again later.</string>
+    <string name="voice_doubao_tts_error">Doubao error %1$s. Check the API Key and whether Speech Synthesis 2.0 is enabled for its project.</string>
+    <string name="voice_custom_provider">Custom speech provider</string>
+    <string name="voice_custom_provider_detail">Set the model, voice and API for an already connected provider.</string>
+    <string name="voice_task_audio">Task audio and saving</string>
+    <string name="voice_speak_tool_detail">Let a running task speak when it needs to report something.</string>
+    <string name="voice_char_limit_detail">Limits the amount of text sent for each read-aloud request.</string>
+    <string name="mika_voice_call_allow_mic">Allow microphone</string>
+    <string name="mika_voice_call_mic_settings">Open Settings, tap Permissions, then Microphone, and allow it while using Mika.</string>
 </resources>

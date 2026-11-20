@@ -35,28 +35,33 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val dismiss by rememberUpdatedState(onDismiss)
+    val permission = Manifest.permission.RECORD_AUDIO
+    fun hasMicrophone() = context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    var micGranted by remember { mutableStateOf(hasMicrophone()) }
+    var micDenied by remember { mutableStateOf(false) }
     val config by runtime.settings.state.collectAsState()
     var calling by remember { mutableStateOf(false) }
     var connected by remember { mutableStateOf(false) }
     var finished by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<Int?>(null) }
+    val activeCall by rememberUpdatedState(calling)
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) calling = true
-        else if (!granted) failure = R.string.mika_voice_call_microphone
+        micGranted = granted
+        micDenied = !granted
     }
     DisposableEffect(lifecycle) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) dismiss() }
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> micGranted = hasMicrophone()
+                Lifecycle.Event.ON_STOP -> if (activeCall) dismiss()
+                else -> Unit
+            }
+        }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(config.credentialsConfigured) {
-        if (!config.credentialsConfigured) {
-            calling = false
-        } else if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            calling = true
-        } else {
-            microphone.launch(Manifest.permission.RECORD_AUDIO)
-        }
+    LaunchedEffect(config.credentialsConfigured, micGranted) {
+        calling = config.credentialsConfigured && micGranted
     }
     LaunchedEffect(calling) {
         if (!calling) return@LaunchedEffect
@@ -76,18 +81,21 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
             calling = false
         }
     }
+    val needsConfig = !config.credentialsConfigured || failure == R.string.calls_setup_credentials
+    val needsMic = config.credentialsConfigured && !micGranted
     val message = when {
-        !config.credentialsConfigured -> R.string.calls_setup_credentials
+        needsConfig -> R.string.calls_setup_credentials
+        needsMic && micDenied -> R.string.mika_voice_call_mic_settings
+        needsMic -> R.string.mika_voice_call_microphone
         failure != null -> failure ?: R.string.calls_action_failed
         connected -> R.string.calls_connected
-        calling -> R.string.calls_connecting
         finished -> R.string.mika_voice_call_ended
-        else -> R.string.mika_voice_call_microphone
+        else -> R.string.calls_connecting
     }
-    val needsConfig = message == R.string.calls_setup_credentials
-    val micDenied = failure == R.string.mika_voice_call_microphone
     val buttonLabel = when {
-        needsConfig || micDenied -> R.string.voice_permission_open
+        needsConfig -> R.string.voice_permission_open
+        needsMic && micDenied -> R.string.voice_permission_open
+        needsMic -> R.string.mika_voice_call_allow_mic
         calling -> R.string.calls_hangup
         else -> R.string.done
     }
@@ -99,18 +107,18 @@ internal fun MikaVoiceCallDialog(runtime: CallRuntime, onConfigure: () -> Unit, 
             TextButton(onClick = {
                 when {
                     needsConfig -> onConfigure()
-                    micDenied -> {
+                    needsMic && micDenied -> {
                         val appUri = Uri.fromParts("package", context.packageName, null)
                         context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri))
-                        onDismiss()
                     }
+                    needsMic -> microphone.launch(permission)
                     else -> onDismiss()
                 }
             }) {
                 Text(stringResource(buttonLabel))
             }
         },
-        dismissButton = if (needsConfig || micDenied) {
+        dismissButton = if (needsConfig || needsMic) {
             { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         } else null,
     )
