@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -32,7 +33,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 enum class OrbMotion {
-    Idle, Listening, Connecting, Thinking, Searching, Observing, Working, Writing, Waiting, Complete,
+    Idle, Listening, Connecting, Thinking, Searching, Observing, Working, Writing, Waiting, Complete, Speaking,
 }
 
 internal fun toolOrbMotion(tool: String?): OrbMotion? = when (tool) {
@@ -78,8 +79,8 @@ internal fun ResearchThinkingOrb(
     diameter: Dp = 24.dp,
     animated: Boolean = true,
     level: () -> Float = { 0f },
+    color: Color = MikaTheme.colors.accent,
 ) {
-    val color = MikaTheme.colors.accent
     val moving = animated && !MikaTheme.reduceMotion && phase != OrbMotion.Idle && phase != OrbMotion.Complete
     val turn = (2 * PI).toFloat()
     val motion = if (moving) rememberInfiniteTransition(label = "assistant orb").animateFloat(
@@ -102,7 +103,7 @@ internal fun ResearchThinkingOrb(
                     point(spread * cos(a), spread * sin(a), 0.55f + 0.24f * sin(a - t))
                 }
             }
-            OrbMotion.Listening, OrbMotion.Writing -> {
+            OrbMotion.Listening, OrbMotion.Writing, OrbMotion.Speaking -> {
                 val listening = phase == OrbMotion.Listening
                 val amplitude = if (listening && moving) 0.24f + level().coerceIn(0f, 1f) * 0.50f else 0.31f
                 for (row in -1..1) for (i in 0..8) {

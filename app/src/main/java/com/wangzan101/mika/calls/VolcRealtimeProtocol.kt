@@ -5,12 +5,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 data class VolcRealtimeConfig(
     val systemPrompt: String = "",
     val speaker: String = DEFAULT_SPEAKER,
+    val mikaActions: Boolean = false,
 ) {
     init {
         require(systemPrompt.length <= MAX_PROMPT_CHARS) { "Realtime system prompt is too long" }
@@ -50,11 +53,31 @@ internal object VolcRealtimeProtocol {
     const val AUDIO_DONE = "response.output_audio.done"
     const val CANCELED = "response.canceled"
     const val ERROR = "error"
+    const val RESPONSE_DONE = "response.done"
+    const val FUNCTIONS_DONE = "response.function_call_arguments.done"
+    const val MIKA_REQUEST = "mika_request"
 
     fun create(eventId: String, config: VolcRealtimeConfig): String = message("session.create", eventId) {
         putJsonObject("session") {
             put("model", VolcRealtimeConfig.MODEL)
             if (config.systemPrompt.isNotBlank()) put("instructions", config.systemPrompt)
+            if (config.mikaActions) putJsonArray("tools") {
+                addJsonObject {
+                    put("type", "function")
+                    put("name", MIKA_REQUEST)
+                    put("description", "Pass the user's current spoken words verbatim to Mika for live research or an actual action.")
+                    putJsonObject("parameters") {
+                        put("type", "object")
+                        putJsonObject("properties") {
+                            putJsonObject("utterance") {
+                                put("type", "string")
+                                put("description", "Exact words the user just said, in the original language.")
+                            }
+                        }
+                        putJsonArray("required") { add(JsonPrimitive("utterance")) }
+                    }
+                }
+            }
             putJsonObject("audio") {
                 putJsonObject("input") {
                     putJsonObject("format") {
@@ -83,6 +106,22 @@ internal object VolcRealtimeProtocol {
 
     fun mute(eventId: String, muted: Boolean): String =
         message(if (muted) "input_audio_mute.commit" else "input_audio_unmute.commit", eventId)
+
+    fun functionResult(eventId: String, callId: String, result: String): String =
+        message("conversation.item.create", eventId) {
+            putJsonArray("items") {
+                addJsonObject {
+                    put("call_id", callId)
+                    put("role", "tool")
+                    putJsonArray("content") {
+                        addJsonObject {
+                            put("type", "input_text")
+                            put("text", result)
+                        }
+                    }
+                }
+            }
+        }
 
     fun close(eventId: String): String = message("session.close", eventId)
 

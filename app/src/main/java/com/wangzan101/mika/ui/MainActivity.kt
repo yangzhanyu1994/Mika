@@ -43,6 +43,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
@@ -510,7 +512,9 @@ private fun MikaRoot(
         nav.push(Route.Models)
     }
     LaunchedEffect(nav.current) { if (nav.current != Route.Models) requestedModelRole = null }
-    suspend fun sendByIntent(question: String, inPersonal: Boolean, fromVoice: Boolean = false): Boolean {
+    suspend fun sendByIntent(
+        question: String, inPersonal: Boolean, fromVoice: Boolean = false, call: VoiceCallRoute? = null,
+    ): Boolean {
         val before = app.chat.ui.value
         val screen = nav.current
         val personalMode = personalChat
@@ -527,9 +531,10 @@ private fun MikaRoot(
 
         fun sendToWork(): Boolean {
             if (store.configFor(ModelRole.Main) == null) {
-                openModeModels(ModelRole.Main)
+                if (call == null) openModeModels(ModelRole.Main)
                 return false
             }
+            if (call != null && !call.active) return false
             if (inPersonal) showPersonalWork()
             val work = app.chat.ui.value
             if (work.composer != ComposerMode.Idle || work.attachments.isNotEmpty() ||
@@ -539,9 +544,13 @@ private fun MikaRoot(
                 if (!inPersonal) selectedChat = false
                 return false
             }
-            if (work.input.isBlank()) app.chat.input(question)
+            if (call == null && work.input.isBlank()) app.chat.input(question)
             val accepted = app.chat.send(question, check)
             if (!inPersonal) selectedChat = false
+            if (accepted && call != null) {
+                val after = app.chat.ui.value
+                call.startedWork(checkNotNull(after.conversationId), after.exchanges.lastIndex)
+            }
             return accepted
         }
 
@@ -561,13 +570,17 @@ private fun MikaRoot(
                         app.chat.ui.value.conversationId == id
                 sameChat && sendToWork()
             }
-            return if (inPersonal) app.researchChat.send(
-                id, question, app.personal::researchHistory, app.personal::recordResearch, onWork = handoff,
-            ) else app.researchChat.send(id, question, onWork = handoff)
+            val finished = call?.let { route -> { turn: Turn -> route.finishedResearch(turn) } }
+            val accepted = if (inPersonal) app.researchChat.send(
+                id, question, app.personal::researchHistory, app.personal::recordResearch,
+                onWork = handoff, onFinished = finished,
+            ) else app.researchChat.send(id, question, onWork = handoff, onFinished = finished)
+            if (accepted) call?.startedResearch(id)
+            return accepted
         }
 
         val knownRoute = if (skillMatch) ModelRole.Main else routeLiveWeather(question, app.researchChat.canSearch())
-        val target = knownRoute ?: if (app.researchChat.canDelegate()) ModelRole.Chat else run {
+        val target = knownRoute ?: if (call == null && app.researchChat.canDelegate()) ModelRole.Chat else run {
             val lastWork = withContext(Dispatchers.IO) {
                 val id = if (inPersonal) personalWorkId else before.conversationId
                 id?.let(app.conversations::turns)?.lastOrNull { !it.research && it.status in setOf("succeeded", "unverified") }
@@ -576,14 +589,14 @@ private fun MikaRoot(
         }
         val current = app.chat.ui.value
         if (!onOriginalScreen(before.conversationId) ||
-            (fromVoice && (current.input != before.input || current.composer != before.composer ||
+            ((fromVoice || call != null) && (current.input != before.input || current.composer != before.composer ||
                 current.attachments != before.attachments || current.quote != before.quote ||
                 current.sharedDraft != before.sharedDraft || current.importing))
         ) return false
 
         if (target == ModelRole.Main) return sendToWork()
         if (store.configFor(target) == null) {
-            openModeModels(target)
+            if (call == null) openModeModels(target)
             return false
         }
 
@@ -839,7 +852,9 @@ private fun MikaRoot(
             ) { openDrawer ->
                 Box(Modifier.fillMaxSize()) {
                     var saveMikaCall by remember { mutableStateOf<((List<Turn>) -> Unit)?>(null) }
+                    var mikaCallPersonal by remember { mutableStateOf(false) }
                     fun openMikaCall(research: Boolean, personal: Boolean = false) {
+                        mikaCallPersonal = personal
                         if (personal) {
                             saveMikaCall = app.personal::recordConversationTurns
                         } else {
@@ -851,7 +866,13 @@ private fun MikaRoot(
                         MikaVoiceCallDialog(app.calls, onConfigure = {
                             saveMikaCall = null
                             nav.push(Route.CallModel)
-                        }, onDismiss = { saveMikaCall = null }, saveTranscript = { turns ->
+                        }, onDismiss = { saveMikaCall = null }, delegate = { words, progress ->
+                            coroutineScope {
+                                val route = VoiceCallRoute(app, this, progress)
+                                if (sendByIntent(words, mikaCallPersonal, call = route)) route.awaitResult(words)
+                                else context.getString(R.string.mika_voice_call_request_failed)
+                            }
+                        }, saveTranscript = { turns ->
                             try {
                                 save(turns)
                             } catch (_: Exception) {

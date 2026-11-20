@@ -23,6 +23,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -285,6 +286,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs a user-requested phone task on the app's own virtual display and shows its progress; afterwards keeps the one web page the user asked to keep open running, for at most two hours" />
         </service>
+
+        <service
+            android:name=".calls.MikaVoiceCallService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <service android:name=".calls.tasks.ScheduledDialService" android:exported="false"
             android:foregroundServiceType="specialUse">

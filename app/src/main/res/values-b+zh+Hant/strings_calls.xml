@@ -159,4 +159,10 @@
     <string name="mika_voice_call_transcript_failed">通話文字未能儲存，請檢查手機儲存空間。</string>
     <string name="mika_voice_call_connected">已接通</string>
     <string name="mika_voice_call_mika_speaking">Mika 正在說</string>
+    <string name="mika_voice_call_time_limit">通話已達 10 分鐘上限。</string>
+    <string name="mika_voice_call_observing">正在觀察</string>
+    <string name="mika_voice_call_writing">正在組織回覆</string>
+    <string name="mika_voice_call_open_task">結束通話並查看任務</string>
+    <string name="mika_voice_call_request_failed">Mika 無法開始這項請求，請檢查聊天和工作模型的設定後重試。</string>
+    <string name="mika_voice_call_task_waiting">這項任務需要你在工作畫面處理。</string>
 </resources>

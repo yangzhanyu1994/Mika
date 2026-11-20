@@ -28,8 +28,10 @@ import androidx.lifecycle.withResumed
 import com.wangzan101.mika.R
 import com.wangzan101.mika.calls.CallRuntime
 import com.wangzan101.mika.calls.MikaVoiceCall
+import com.wangzan101.mika.calls.MikaVoiceCallService
 import com.wangzan101.mika.calls.VolcRealtimeException
 import com.wangzan101.mika.calls.VoiceCallLevels
+import com.wangzan101.mika.calls.VoiceSpeechPhase
 import com.wangzan101.mika.core.agent.Turn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -44,11 +46,26 @@ internal fun MikaVoiceCallDialog(
     onConfigure: () -> Unit,
     onDismiss: () -> Unit,
     saveTranscript: suspend (List<Turn>) -> Unit,
+    delegate: suspend (String, (VoiceCallProgress) -> Unit) -> String,
 ) {
     val context = LocalContext.current
     val config by runtime.settings.state.collectAsState()
-    MikaVoiceCallDialog(config.credentialsConfigured, onConfigure, onDismiss) { onConnected ->
-        MikaVoiceCall(context, runtime).run(onConnected, saveTranscript)
+    var work by remember { mutableStateOf<VoiceCallProgress?>(null) }
+    val handle by rememberUpdatedState(delegate)
+    LaunchedEffect(work) {
+        if (work?.motion == OrbMotion.Complete || work?.motion == OrbMotion.Idle) {
+            delay(1_200)
+            work = null
+        }
+    }
+    MikaVoiceCallDialog(config.credentialsConfigured, onConfigure, onDismiss, work, keepInBackground = true) { onConnected ->
+        work = null
+        MikaVoiceCallService.withMicrophone(context.applicationContext) {
+            MikaVoiceCall(context, runtime).run(onConnected, saveTranscript) { words ->
+                work = VoiceCallProgress(OrbMotion.Thinking)
+                handle(words) { work = it }
+            }
+        }
     }
 }
 
@@ -59,6 +76,8 @@ internal fun MikaVoiceCallDialog(
     credentialsConfigured: Boolean,
     onConfigure: () -> Unit,
     onDismiss: () -> Unit,
+    work: VoiceCallProgress? = null,
+    keepInBackground: Boolean = false,
     runCall: suspend ((VoiceCallLevels) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
@@ -72,6 +91,7 @@ internal fun MikaVoiceCallDialog(
     var attempt by remember { mutableIntStateOf(0) }
     var progress by remember(canStart, attempt, lifecycle) { mutableStateOf(CallProgress.Connecting) }
     var failure by remember(canStart, attempt, lifecycle) { mutableStateOf<Int?>(null) }
+    var endedAtLimit by remember(canStart, attempt, lifecycle) { mutableStateOf(false) }
     var levels by remember(attempt, canStart) { mutableStateOf<VoiceCallLevels?>(null) }
     var connectedAt by remember(attempt, canStart) { mutableStateOf<Long?>(null) }
     var seconds by remember(attempt, canStart) { mutableLongStateOf(0L) }
@@ -81,6 +101,7 @@ internal fun MikaVoiceCallDialog(
     val connected = active && progress == CallProgress.Connected
     val activeCall by rememberUpdatedState(active)
     val input = levels?.microphone?.collectAsState()
+    val speech = levels?.speech?.collectAsState()?.value ?: VoiceSpeechPhase.Idle
     LaunchedEffect(connected, connectedAt) {
         val start = connectedAt ?: return@LaunchedEffect
         while (connected) {
@@ -109,11 +130,11 @@ internal fun MikaVoiceCallDialog(
         micGranted = granted
         micDenied = !granted
     }
-    DisposableEffect(lifecycle) {
+    DisposableEffect(lifecycle, keepInBackground) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> micGranted = hasMicrophone()
-                Lifecycle.Event.ON_STOP -> if (activeCall) dismiss()
+                Lifecycle.Event.ON_STOP -> if (activeCall && !keepInBackground) dismiss()
                 else -> Unit
             }
         }
@@ -140,6 +161,9 @@ internal fun MikaVoiceCallDialog(
             // within the call transport still needs to leave a usable retry action.
             currentCoroutineContext().ensureActive()
             failure = R.string.mika_voice_call_connection_lost
+        } catch (_: MikaVoiceCall.TimeLimitReached) {
+            endedAtLimit = true
+            progress = CallProgress.Ended
         } catch (e: MikaVoiceCall.Failure) {
             failure = e.messageId
         } catch (e: VolcRealtimeException) {
@@ -157,13 +181,22 @@ internal fun MikaVoiceCallDialog(
     val needsConfig = !credentialsConfigured || failure == R.string.calls_setup_credentials ||
         failure == R.string.mika_voice_call_realtime_key
     val needsMic = credentialsConfigured && !micGranted
+    val motion = when {
+        !connected -> OrbMotion.Connecting
+        speaking -> OrbMotion.Speaking
+        speech == VoiceSpeechPhase.Listening -> OrbMotion.Listening
+        work != null -> work.motion
+        speech == VoiceSpeechPhase.Thinking -> OrbMotion.Thinking
+        speech == VoiceSpeechPhase.Writing -> OrbMotion.Writing
+        else -> OrbMotion.Idle
+    }
     val message = when {
         needsConfig -> R.string.mika_voice_call_realtime_key
         needsMic && micDenied -> R.string.mika_voice_call_mic_settings
         needsMic -> R.string.mika_voice_call_microphone
         failure != null -> failure ?: R.string.calls_action_failed
-        connected && speaking -> R.string.mika_voice_call_mika_speaking
-        connected -> R.string.mika_voice_call_speak
+        connected -> motion.callLabel
+        endedAtLimit -> R.string.mika_voice_call_time_limit
         progress == CallProgress.Ended -> R.string.mika_voice_call_ended
         else -> R.string.calls_connecting
     }
@@ -180,7 +213,9 @@ internal fun MikaVoiceCallDialog(
         active = active,
         connected = connected,
         seconds = seconds,
-        speaking = speaking,
+        motion = motion,
+        connector = work?.connector?.takeIf { connected && work.motion == motion },
+        needsTaskView = connected && work?.needsTaskView == true,
         input = input?.value ?: 0f,
         output = output,
         message = message,

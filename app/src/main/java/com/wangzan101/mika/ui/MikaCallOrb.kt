@@ -41,12 +41,16 @@ private val callParticles = buildList {
 @Composable
 internal fun MikaCallOrb(
     diameter: Dp,
-    speaking: Boolean,
+    motion: OrbMotion,
     input: Float,
     output: Float,
 ) {
+    if (motion != OrbMotion.Idle && motion != OrbMotion.Listening && motion != OrbMotion.Speaking) {
+        ResearchThinkingOrb(motion, diameter, color = Color(0xFF59C8FF))
+        return
+    }
+    val speaking = motion == OrbMotion.Speaking
     val moving = !MikaTheme.reduceMotion
-    val dark = MikaTheme.colors.isDark
     val phase = if (moving) rememberInfiniteTransition(label = "call orb").animateFloat(
         initialValue = 0f, targetValue = TURN,
         animationSpec = infiniteRepeatable(tween(4_800, easing = LinearEasing)),
@@ -65,8 +69,8 @@ internal fun MikaCallOrb(
         val blend = speakingBlend
         val radius = size.minDimension * 0.415f * (1f + 0.025f * sin(t * 2f) + voice * (-0.07f + blend * 0.17f))
         val color = lerp(
-            if (dark) Color(0xFF36CFFF) else Color(0xFF007BBA),
-            if (dark) Color(0xFFB293FF) else Color(0xFF7951D9),
+            Color(0xFF36CFFF),
+            Color(0xFFB293FF),
             blend,
         )
         val heading = cos(t)
