@@ -371,7 +371,15 @@ class AgentLoop(
         job?.cancel()
     }
 
-    private suspend fun loop(raw: String, rawPrior: List<Turn>, inbox: RunInbox?): TaskState {
+    private data class LoopOpening(
+        val task: String,
+        val priorTurns: List<Turn>,
+        val screen: UserScreenTurns.Rendered?,
+        val context: Message?,
+        val memoryMessage: String?,
+    )
+
+    private suspend fun prepareOpening(raw: String, rawPrior: List<Turn>): LoopOpening {
         // 用户发来的屏幕:这一句给全(那句话、截图、详情),之前几轮里的收成一行;下面都用换好的这句
         val shots = UserScreenTurns(userScreens, zone, tools.seesImages, canAskVision = !tools.seesImages && tools.vision != null && tools.definitions().any { it.name == VIEW_USER_SCREEN },
             image = { tools.modelImage(it, null) }, seen = tools::noteUserScreen).also { screens = it }
@@ -383,7 +391,6 @@ class AgentLoop(
         val priorTurns = shots.collapse(rawPrior)
         // 通知提醒那一轮没有用户的话,不算进「之前几轮用户说的话」
         earlierGoals = priorTurns.filterNot(NoticeTurn::isNotice).map { it.userText }
-        // 之前的轮次只作参考,放在本次任务之前
         val context = Conversation.context(priorTurns)
         // 仅「上一轮用户明确确认 + 再上一轮助手建议/提问」可供 memory_save 跨轮引用;更早轮次与助手原文不收。
         val confirmation = rawPrior.lastOrNull()
@@ -409,28 +416,74 @@ class AgentLoop(
             memory?.markUsed(block.usedIds)
             emit(RunEvent.MemoryUsed(now(), block.usedIds))
         }
-        // 开局预先展开:上一轮用过的组,和这次的话一定用得上的(见 ToolDispatcher.preload)
-        tools.preload(task, priorTurns.lastOrNull()?.groups.orEmpty()).forEach { emit(RunEvent.State(now(), "tools_preloaded", it)) }
-        var openGroups = tools.expanded
-        val batchSpec = BatchRunner.spec(tools.batchable()).takeIf { flags.batchSteps }
-        fun keep(s: ToolSpec): Boolean {
-            val verb = tools.verb(s.name)
+        return LoopOpening(task, priorTurns, opening, context, block?.message)
+    }
+
+    private data class LoopHistory(val messages: MutableList<Message>, val labels: Map<String, String>)
+
+    private suspend fun prepareHistory(opening: LoopOpening): LoopHistory {
+        val installed = try { installedApps() } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
+        val labels = installed.toMap()
+        val matched = knowledge?.matchTask(opening.task, Int.MAX_VALUE, installed).orEmpty()
+        val index = if (skills != null && recommendSkills) GuideRecommender.index(skills, opening.task) else null
+        val start = ctx.start(
+            opening.task, priorTurns = opening.context?.let { (it.parts.single() as Part.Text).text }?.let { prior ->
+                // 之前几轮读到的东西查得到时说一句(只在有记过运行的轮次、提供了 history_read 时)
+                if (tools.definitions().any { it.name == HISTORY_READ }) Feedback.format("history_hint", "turns" to prior) else prior
+            },
+            memory = listOfNotNull(ProfileContext.render(profileSnapshot), opening.memoryMessage).takeIf { it.isNotEmpty() }?.joinToString("\n\n"),
+            observed = observed,
+            channel = if (knowledge != null) channelLine(matched) else null,
+            knowledge = matched, knowledgeNote = toolsNote(tools.scriptsOffered()), withLinks = flags.deepLinks,
+            skillsIndex = index,
+            taskImages = opening.screen?.images.orEmpty(), screens = opening.screen?.details.orEmpty(),
+        )
+        val history = start.messages.toMutableList()
+        // 带了「从通知里得来的」那一段:记一笔(只记长度)。给了就算,不看最后放没放得下
+        observed?.let { emit(RunEvent.State(now(), ObservedContext.RUN_STATE, it.length.toString())) }
+        start.knowledge.filter { it.trial }.forEach { emit(RunEvent.State(now(), "knowledge_trial_used", it.name)) }
+        // 链接只在 open_link 可用时给,且只放行真的给了模型的那几份
+        if (flags.deepLinks) start.knowledge.forEach { if (it.links.isNotEmpty()) tools.allowLinks(it.links) }
+        return LoopHistory(history, labels)
+    }
+
+    /** Keep the current tool offer and its prompt in sync as groups are expanded. */
+    private inner class ToolOffer {
+        private var openGroups = tools.expanded
+        private val extra = listOfNotNull(BatchRunner.spec(tools.batchable()).takeIf { flags.batchSteps })
+        var current = emptyList<ToolSpec>()
+            private set
+
+        private fun keep(spec: ToolSpec): Boolean {
+            val verb = tools.verb(spec.name)
             return (confirmations != null || verb != Verb.RequestConfirmation) && (memory != null || verb !in MEMORY_VERBS)
         }
-        // 提示词版本按每组都展开的样子算:同一版提示词不因这次展开了哪几组而不同
-        val everything = tools.offeredNow(listOfNotNull(batchSpec), all = true).filter(::keep)
-        emit(RunEvent.PromptVersion(now(), PromptVersion.of(SystemPrompt.assemble(basePrompt, tools.promptSections(everything, all = true)), everything)))
-        var specs = emptyList<ToolSpec>()
-        // 每次问模型之前:展开了新的组时,工具和系统提示词跟着换;没展开就一字不变
-        fun refreshOffer() {
-            val offer = tools.offeredNow(listOfNotNull(batchSpec)).filter(::keep)
-            if (offer == specs) return
-            specs = offer
-            caller.systemPrompt = SystemPrompt.assemble(basePrompt, tools.promptSections(specs))
+
+        fun recordPromptVersion(): List<String> {
+            // 提示词版本按每组都展开的样子算:同一版提示词不因这次展开了哪几组而不同
+            val everything = tools.offeredNow(extra, all = true).filter(::keep)
+            emit(RunEvent.PromptVersion(now(), PromptVersion.of(SystemPrompt.assemble(basePrompt, tools.promptSections(everything, all = true)), everything)))
+            return everything.map { it.name }
+        }
+
+        fun refresh() {
+            val offer = tools.offeredNow(extra).filter(::keep)
+            if (offer == current) return
+            current = offer
+            caller.systemPrompt = SystemPrompt.assemble(basePrompt, tools.promptSections(current))
             (tools.expanded - openGroups).forEach { emit(RunEvent.State(now(), "tools_opened", it)) }
             openGroups = tools.expanded
         }
-        refreshOffer()
+    }
+
+    private suspend fun loop(raw: String, rawPrior: List<Turn>, inbox: RunInbox?): TaskState {
+        val opening = prepareOpening(raw, rawPrior)
+        val task = opening.task
+        // 开局预先展开:上一轮用过的组,和这次的话一定用得上的(见 ToolDispatcher.preload)
+        tools.preload(task, opening.priorTurns.lastOrNull()?.groups.orEmpty()).forEach { emit(RunEvent.State(now(), "tools_preloaded", it)) }
+        val offer = ToolOffer()
+        val allToolNames = offer.recordPromptVersion()
+        offer.refresh()
         val guards = OperationGuards(maxSteps)
         val recorder = ActionRecorder(sink, clock, saveScreen = { id, png -> sink.media(id, png) })
         val executor = ActionExecutor(tools, guards, confirmations, gate = ::awaitGate, recorder = recorder, offScreen = tools.offScreenGuard(), approvals = approvals,
@@ -454,28 +507,7 @@ class AgentLoop(
         var note = ""
         // 除用户原话以外的上下文都经它生成:统一外壳、统一预算
         ctx = ContextBuilder(zone = zone)
-        val installed = try { installedApps() } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
-        val labels = installed.toMap()
-        val matched = knowledge?.matchTask(task, Int.MAX_VALUE, installed).orEmpty()
-        val index = if (skills != null && recommendSkills) GuideRecommender.index(skills, task) else null
-        val start = ctx.start(
-            task, priorTurns = context?.let { (it.parts.single() as Part.Text).text }?.let { prior ->
-                // 之前几轮读到的东西查得到时说一句(只在有记过运行的轮次、提供了 history_read 时)
-                if (tools.definitions().any { it.name == HISTORY_READ }) Feedback.format("history_hint", "turns" to prior) else prior
-            },
-            memory = listOfNotNull(ProfileContext.render(profileSnapshot), block?.message).takeIf { it.isNotEmpty() }?.joinToString("\n\n"),
-            observed = observed,
-            channel = if (knowledge != null) channelLine(matched) else null,
-            knowledge = matched, knowledgeNote = toolsNote(tools.scriptsOffered()), withLinks = flags.deepLinks,
-            skillsIndex = index,
-            taskImages = opening?.images.orEmpty(), screens = opening?.details.orEmpty(),
-        )
-        val history = start.messages.toMutableList()
-        // 带了「从通知里得来的」那一段:记一笔(只记长度)。给了就算,不看最后放没放得下
-        observed?.let { emit(RunEvent.State(now(), ObservedContext.RUN_STATE, it.length.toString())) }
-        start.knowledge.filter { it.trial }.forEach { emit(RunEvent.State(now(), "knowledge_trial_used", it.name)) }
-        // 链接只在 open_link 可用时给,且只放行真的给了模型的那几份
-        if (flags.deepLinks) start.knowledge.forEach { if (it.links.isNotEmpty()) tools.allowLinks(it.links) }
+        val (history, labels) = prepareHistory(opening)
         // 网页上每个站点只在第一次进入时按域名找一次知识
         val visitedSites = mutableSetOf<String>()
 
@@ -517,7 +549,7 @@ class AgentLoop(
         suspend fun assessIntent(): IntentGate.Intent? {
             intentAssessed = true
             // 只发来屏幕、没说话:没有话可判,按屏幕猜意图的规矩交给主模型
-            val result = if (opening != null && opening.words.isEmpty()) null else intentGate?.assess(task, priorTurns)
+            val result = if (opening.screen?.words?.isEmpty() == true) null else intentGate?.assess(task, opening.priorTurns)
             emit(RunEvent.State(now(), "intent_gate", result?.name ?: "unavailable"))
             return result
         }
@@ -537,10 +569,10 @@ class AgentLoop(
             appendRuntimeState(history, place, labels, step)
             completion.pending()?.let { history += ctx.notice("task_progress", it) }
             _state.value = TaskState.Running(step, note, progress = progressState())
-            refreshOffer()
+            offer.refresh()
             var asked = now()
             val routed = try {
-                routedOrRedirect(inbox, history, specs, track, step, { asked = it }, previewFor(step))
+                routedOrRedirect(inbox, history, offer.current, track, step, { asked = it }, previewFor(step))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -615,7 +647,7 @@ class AgentLoop(
                 emptyNudged = false
                 // 工具调用原样漏成了文字(服务端没解析成调用):不是回答。退回一次,经工具接口重新调用;
                 // 紧接着又漏就结束,不把原样的标记交给用户
-                val leaked = LeakedToolCall.find(text, everything.map { it.name })
+                val leaked = LeakedToolCall.find(text, allToolNames)
                 if (leaked != null) {
                     if (leakNudged) return StopRules.toolCallAsText()
                     leakNudged = true
@@ -682,7 +714,7 @@ class AgentLoop(
                 continue
             }
             if (flags.batchSteps && first.name == DO_STEPS_TOOL) {
-                val end = batch(first, skipped, history, specs, guards, executor, track, step, note, tool, reason, narration, recordReply = ::recordReply,
+                val end = batch(first, skipped, history, offer.current, guards, executor, track, step, note, tool, reason, narration, recordReply = ::recordReply,
                     app = { place = it }, steerWaiting = { inbox?.hasSteers() == true },
                     noteVerdicts = { s, sub, v ->
                         // 和单步一样计卡住提醒与同一段字的重复输入
@@ -690,7 +722,7 @@ class AgentLoop(
                         stuckAdvice(v, typed)
                     })
                 if (end != null) return end
-                if (completion.complete) return finalTurn(task, history, specs, step + 1, labels, place, recorder, facts(), inbox, Closeout.Completed, completion)
+                if (completion.complete) return finalTurn(task, history, offer.current, step + 1, labels, place, recorder, facts(), inbox, Closeout.Completed, completion)
                 continue
             }
 
@@ -799,12 +831,12 @@ class AgentLoop(
                 // 同一份知识不会重复注入
                 is KnowledgeLookup.Site -> if (visitedSites.add(lookup.host)) knowledge?.byDomain(lookup.host).let { injectKnowledge(history, it) }
             }
-            if (completion.complete) return finalTurn(task, history, specs, step + 1, labels, place, recorder, facts(), inbox, Closeout.Completed, completion)
-            if (noNewData) return finalTurn(task, history, specs, step + 1, labels, place, recorder, facts(), inbox, Closeout.NoNewData, completion)
+            if (completion.complete) return finalTurn(task, history, offer.current, step + 1, labels, place, recorder, facts(), inbox, Closeout.Completed, completion)
+            if (noNewData) return finalTurn(task, history, offer.current, step + 1, labels, place, recorder, facts(), inbox, Closeout.NoNewData, completion)
         }
         appendSteers(history, inbox)
-        refreshOffer()
-        return finalTurn(task, history, specs, maxSteps + 1, labels, place, recorder, facts(), inbox)
+        offer.refresh()
+        return finalTurn(task, history, offer.current, maxSteps + 1, labels, place, recorder, facts(), inbox)
     }
 
     /** 运行记录里按结果另记的事:报告的障碍(供评测按 barrier 类归因;参数不对被拒的不算)、看过的个人技能、存下的记忆。 */
