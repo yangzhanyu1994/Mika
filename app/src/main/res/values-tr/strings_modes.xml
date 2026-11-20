@@ -19,7 +19,6 @@
     <string name="drawer_recent_more">Tüm sohbetleri göster</string>
     <string name="drawer_recent_less">Daha az sohbet göster</string>
     <plurals name="drawer_running_count">
-        <item quantity="one">%d görev sürüyor</item>
         <item quantity="other">%d görev sürüyor</item>
     </plurals>
 </resources>

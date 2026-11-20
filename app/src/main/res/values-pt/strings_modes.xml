@@ -59,6 +59,7 @@
     <string name="drawer_recent_less">Mostrar menos conversas</string>
     <plurals name="drawer_running_count">
         <item quantity="one">%d tarefa em andamento</item>
+        <item quantity="many">%d tarefas em andamento</item>
         <item quantity="other">%d tarefas em andamento</item>
     </plurals>
 </resources>

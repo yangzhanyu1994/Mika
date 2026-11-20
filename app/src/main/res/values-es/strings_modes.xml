@@ -59,6 +59,7 @@
     <string name="drawer_recent_less">Ver menos conversaciones</string>
     <plurals name="drawer_running_count">
         <item quantity="one">%d tarea en curso</item>
+        <item quantity="many">%d tareas en curso</item>
         <item quantity="other">%d tareas en curso</item>
     </plurals>
 </resources>
