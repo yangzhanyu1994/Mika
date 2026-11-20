@@ -39,4 +39,25 @@
     <string name="drawer_readout_model">AI 語音合成模型（讀出結果）</string>
     <string name="drawer_speech_model">串流語音辨識模型（語音輸入）</string>
     <string name="drawer_model_website">設定官網</string>
+    <string name="drawer_task_center">任務中心</string>
+    <string name="drawer_key_configuration">關鍵設定</string>
+    <string name="drawer_mcp_connectors">MCP 連接器</string>
+    <string name="drawer_accessibility">無障礙服務</string>
+    <string name="drawer_work_model">工作模型</string>
+    <string name="drawer_stream_model">串流語音模型</string>
+    <string name="drawer_web_search">網頁搜尋</string>
+    <string name="drawer_phone_listener">電話監聽狀態</string>
+    <string name="drawer_automation_listener">自動化監聽狀態</string>
+    <string name="drawer_configured">已設定</string>
+    <string name="drawer_unconfigured">未設定</string>
+    <string name="drawer_enabled">已啟用</string>
+    <string name="drawer_not_enabled">未啟用</string>
+    <string name="drawer_connected">已連線</string>
+    <string name="drawer_disconnected">未連線</string>
+    <string name="drawer_none">暫無</string>
+    <string name="drawer_recent_more">查看所有對話</string>
+    <string name="drawer_recent_less">收起對話</string>
+    <plurals name="drawer_running_count">
+        <item quantity="other">%d 項任務進行中</item>
+    </plurals>
 </resources>

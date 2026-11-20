@@ -39,4 +39,25 @@
     <string name="drawer_readout_model">Model sintesis suara (membacakan hasil)</string>
     <string name="drawer_speech_model">Pengenalan suara streaming (input)</string>
     <string name="drawer_model_website">Situs resmi</string>
+    <string name="drawer_task_center">Pusat tugas</string>
+    <string name="drawer_key_configuration">Konfigurasi utama</string>
+    <string name="drawer_mcp_connectors">Konektor MCP</string>
+    <string name="drawer_accessibility">Layanan aksesibilitas</string>
+    <string name="drawer_work_model">Model kerja</string>
+    <string name="drawer_stream_model">Model suara streaming</string>
+    <string name="drawer_web_search">Penelusuran web</string>
+    <string name="drawer_phone_listener">Pemantauan panggilan</string>
+    <string name="drawer_automation_listener">Pemantauan otomatisasi</string>
+    <string name="drawer_configured">Dikonfigurasi</string>
+    <string name="drawer_unconfigured">Belum dikonfigurasi</string>
+    <string name="drawer_enabled">Aktif</string>
+    <string name="drawer_not_enabled">Tidak aktif</string>
+    <string name="drawer_connected">Terhubung</string>
+    <string name="drawer_disconnected">Tidak terhubung</string>
+    <string name="drawer_none">Tidak ada</string>
+    <string name="drawer_recent_more">Lihat semua percakapan</string>
+    <string name="drawer_recent_less">Tampilkan lebih sedikit</string>
+    <plurals name="drawer_running_count">
+        <item quantity="other">%d tugas sedang berjalan</item>
+    </plurals>
 </resources>

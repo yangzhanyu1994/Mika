@@ -9,7 +9,7 @@
     <string name="about_offline">Tidak bisa terhubung ke GitHub</string>
     <string name="about_offline_toast">Saat ini tidak bisa terhubung ke GitHub. Coba lagi nanti.</string>
     <string name="about_changelog">Catatan rilis</string>
-    <string name="about_changelog_sub">Apa yang berubah di setiap versi</string>
+    <string name="about_changelog_sub">Perubahan di rilis terbaru</string>
     <string name="about_changelog_empty">Belum ada catatan rilis. Online dulu, lalu ketuk “Periksa pembaruan”.</string>
     <string name="about_changelog_all">Lihat semua di GitHub</string>
     <string name="about_feedback">Kirim masukan</string>

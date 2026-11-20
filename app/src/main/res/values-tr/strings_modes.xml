@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drawer_task_center">Görev merkezi</string>
+    <string name="drawer_key_configuration">Temel ayarlar</string>
+    <string name="drawer_mcp_connectors">MCP bağlayıcıları</string>
+    <string name="drawer_accessibility">Erişilebilirlik hizmeti</string>
+    <string name="drawer_work_model">İş modeli</string>
+    <string name="drawer_stream_model">Akışlı ses modeli</string>
+    <string name="drawer_web_search">Web araması</string>
+    <string name="drawer_phone_listener">Arama izleme durumu</string>
+    <string name="drawer_automation_listener">Otomasyon izleme durumu</string>
+    <string name="drawer_configured">Yapılandırıldı</string>
+    <string name="drawer_unconfigured">Yapılandırılmadı</string>
+    <string name="drawer_enabled">Etkin</string>
+    <string name="drawer_not_enabled">Etkin değil</string>
+    <string name="drawer_connected">Bağlı</string>
+    <string name="drawer_disconnected">Bağlı değil</string>
+    <string name="drawer_none">Yok</string>
+    <string name="drawer_recent_more">Tüm sohbetleri göster</string>
+    <string name="drawer_recent_less">Daha az sohbet göster</string>
+    <plurals name="drawer_running_count">
+        <item quantity="one">%d görev sürüyor</item>
+        <item quantity="other">%d görev sürüyor</item>
+    </plurals>
+</resources>

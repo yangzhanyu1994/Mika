@@ -39,4 +39,28 @@
     <string name="drawer_readout_model">Модель синтеза речи (озвучивание)</string>
     <string name="drawer_speech_model">Потоковое распознавание речи (ввод)</string>
     <string name="drawer_model_website">Сайт</string>
+    <string name="drawer_task_center">Центр задач</string>
+    <string name="drawer_key_configuration">Основные настройки</string>
+    <string name="drawer_mcp_connectors">Коннекторы MCP</string>
+    <string name="drawer_accessibility">Служба специальных возможностей</string>
+    <string name="drawer_work_model">Рабочая модель</string>
+    <string name="drawer_stream_model">Потоковая голосовая модель</string>
+    <string name="drawer_web_search">Поиск в интернете</string>
+    <string name="drawer_phone_listener">Отслеживание звонков</string>
+    <string name="drawer_automation_listener">Отслеживание автоматизаций</string>
+    <string name="drawer_configured">Настроено</string>
+    <string name="drawer_unconfigured">Не настроено</string>
+    <string name="drawer_enabled">Включено</string>
+    <string name="drawer_not_enabled">Не включено</string>
+    <string name="drawer_connected">Подключено</string>
+    <string name="drawer_disconnected">Не подключено</string>
+    <string name="drawer_none">Нет</string>
+    <string name="drawer_recent_more">Показать все беседы</string>
+    <string name="drawer_recent_less">Свернуть список бесед</string>
+    <plurals name="drawer_running_count">
+        <item quantity="one">В процессе %d задача</item>
+        <item quantity="few">В процессе %d задачи</item>
+        <item quantity="many">В процессе %d задач</item>
+        <item quantity="other">В процессе %d задачи</item>
+    </plurals>
 </resources>

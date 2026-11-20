@@ -9,7 +9,7 @@
     <string name="about_offline">اتصال به GitHub ممکن نیست</string>
     <string name="about_offline_toast">اکنون اتصال به GitHub ممکن نیست. بعداً دوباره تلاش کنید.</string>
     <string name="about_changelog">یادداشت‌های انتشار</string>
-    <string name="about_changelog_sub">تغییرات هر نسخه</string>
+    <string name="about_changelog_sub">تغییرات آخرین نسخه</string>
     <string name="about_changelog_empty">هنوز یادداشت انتشاری وجود ندارد. به اینترنت متصل شوید و روی «بررسی به‌روزرسانی‌ها» بزنید.</string>
     <string name="about_changelog_all">مشاهدهٔ همه در GitHub</string>
     <string name="about_feedback">ارسال بازخورد</string>

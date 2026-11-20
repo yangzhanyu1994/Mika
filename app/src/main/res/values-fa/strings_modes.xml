@@ -39,4 +39,26 @@
     <string name="drawer_readout_model">مدل تبدیل متن به گفتار (خواندن پاسخ)</string>
     <string name="drawer_speech_model">تشخیص گفتار جریانی (ورودی)</string>
     <string name="drawer_model_website">وب‌سایت رسمی</string>
+    <string name="drawer_task_center">مرکز کارها</string>
+    <string name="drawer_key_configuration">تنظیمات کلیدی</string>
+    <string name="drawer_mcp_connectors">اتصال‌دهنده‌های MCP</string>
+    <string name="drawer_accessibility">سرویس دسترس‌پذیری</string>
+    <string name="drawer_work_model">مدل کار</string>
+    <string name="drawer_stream_model">مدل صوتی جریانی</string>
+    <string name="drawer_web_search">جست‌وجوی وب</string>
+    <string name="drawer_phone_listener">وضعیت پایش تماس</string>
+    <string name="drawer_automation_listener">وضعیت پایش خودکارسازی</string>
+    <string name="drawer_configured">پیکربندی شده</string>
+    <string name="drawer_unconfigured">پیکربندی نشده</string>
+    <string name="drawer_enabled">فعال</string>
+    <string name="drawer_not_enabled">غیرفعال</string>
+    <string name="drawer_connected">متصل</string>
+    <string name="drawer_disconnected">قطع</string>
+    <string name="drawer_none">هیچ‌کدام</string>
+    <string name="drawer_recent_more">نمایش همه گفتگوها</string>
+    <string name="drawer_recent_less">نمایش گفتگوهای کمتر</string>
+    <plurals name="drawer_running_count">
+        <item quantity="one">%d کار در حال انجام</item>
+        <item quantity="other">%d کار در حال انجام</item>
+    </plurals>
 </resources>
