@@ -4,8 +4,16 @@ import com.wangzan101.mika.core.action.ActionRisk
 import com.wangzan101.mika.core.action.ConfirmDecision
 import com.wangzan101.mika.core.action.Decision
 import com.wangzan101.mika.core.action.Origin
+import com.wangzan101.mika.core.agent.AgentLoop
+import com.wangzan101.mika.core.agent.FakeModel
+import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.assembly.toolDispatcher
+import com.wangzan101.mika.core.model.ModelReply
 import com.wangzan101.mika.core.model.Part
+import com.wangzan101.mika.core.model.StopReason
+import com.wangzan101.mika.core.record.RunEvent
+import com.wangzan101.mika.core.record.RunSink
+import com.wangzan101.mika.core.testing.answerReply
 import com.wangzan101.mika.core.observation.Trust
 import com.wangzan101.mika.core.run.Attendance
 import com.wangzan101.mika.core.run.RunId
@@ -16,7 +24,10 @@ import com.wangzan101.mika.core.tool.ActionPass
 import com.wangzan101.mika.core.tool.Args
 import com.wangzan101.mika.core.tool.FakeScreen
 import com.wangzan101.mika.core.tool.ToolDispatcher
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -52,6 +63,42 @@ class McpClientTest {
         override suspend fun readResource(uri: String) = McpResult("resource:$uri")
         override suspend fun getPrompt(name: String, arguments: JsonObject) =
             McpResult("prompt:$name\n$arguments")
+    }
+
+    @Test fun showsConfiguredConnectorWhileTheRemoteCallRunsAndRecordsItsResult() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val endpoint = object : McpEndpoint {
+            override val serverId = "internal-id"
+            override fun tools() = FakeEndpoint().tools()
+            override suspend fun call(name: String, arguments: JsonObject): McpResult {
+                started.complete(Unit)
+                release.await()
+                throw IllegalStateException("remote request failed")
+            }
+        }
+        val tools = toolDispatcher(FakeScreen(), mcpServers = listOf(
+            McpConnection(endpoint, trust = McpTrust.TrustAnnotations, displayName = "Team notes"),
+        ))
+        val name = tools.definitions().single { it.name.startsWith("mcp_") }.name
+        val reply = ModelReply(listOf(Part.ToolCall("search", name, "{}")), StopReason.ToolUse, null)
+        val loop = AgentLoop(FakeModel(reply, answerReply("Search failed.")), tools, "BASE", reviewFinalAnswer = false)
+        val events = mutableListOf<RunEvent>()
+        loop.events.subscribe(object : RunSink {
+            override fun event(e: RunEvent) { events += e }
+        })
+        val job = async { loop.run("Search project notes.") }
+
+        started.await()
+        assertEquals("Team notes", (loop.state.value as TaskState.Running).mcpConnector)
+        assertTrue(events.filterIsInstance<RunEvent.Activity>().isEmpty())
+        release.complete(Unit)
+        job.await()
+
+        val activity = events.filterIsInstance<RunEvent.Activity>().single { it.label == name }
+        assertEquals("Team notes", activity.mcpConnector)
+        assertTrue(activity.failed)
+        assertFalse(loop.state.value is TaskState.Running)
     }
 
     private fun endpointWithSchema(schema: String) = FakeEndpoint().apply {

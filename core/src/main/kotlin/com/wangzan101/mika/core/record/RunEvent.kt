@@ -181,6 +181,7 @@ sealed interface RunEvent {
         val failed: Boolean = false,
         /** 不可逆判定认出这是一次对外动作(发送、提交);停止后交代做了什么时按它数发出了几次。 */
         val outward: Boolean = false,
+        val mcpConnector: String? = null,
     ) : RunEvent
 
     @Serializable @SerialName("state")

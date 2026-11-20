@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">按以往的做法快速执行中(第 %1$d/%2$d 步)</string>
     <string name="progress_waiting_app">等另一个任务用完%1$s</string>
+    <string name="progress_calling_mcp">正在调用 %1$s MCP…</string>
+    <string name="progress_called_mcp">已调用 %1$s MCP</string>
     <plurals name="progress_batch">
         <item quantity="other">一次执行 %1$d 步</item>
     </plurals>

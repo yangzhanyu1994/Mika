@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">Replaying a known route (step %1$d/%2$d)</string>
     <string name="progress_waiting_app">Waiting for another task to finish with %1$s</string>
+    <string name="progress_calling_mcp">Calling %1$s via MCP…</string>
+    <string name="progress_called_mcp">Called %1$s via MCP</string>
     <plurals name="progress_batch">
         <item quantity="one">Running %1$d step at once</item>
         <item quantity="other">Running %1$d steps at once</item>

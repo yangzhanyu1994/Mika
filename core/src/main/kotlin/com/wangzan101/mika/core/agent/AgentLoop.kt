@@ -219,6 +219,18 @@ class AgentLoop(
     private val _state = MutableStateFlow<TaskState>(TaskState.Idle)
     val state: StateFlow<TaskState> = _state.asStateFlow()
 
+    init {
+        tools.observeMcpCalls(::showMcpCall)
+    }
+
+    private fun showMcpCall(connector: String): () -> Unit {
+        val before = _state.value
+        if (before !is TaskState.Running) return {}
+        val calling = before.copy(mcpConnector = connector)
+        _state.compareAndSet(before, calling)
+        return { _state.compareAndSet(calling, before) }
+    }
+
     @Volatile private var usedMemory: List<String> = emptyList()
     /** 本次任务记忆块里列出的条目编号;任务结束后读取。 */
     val usedMemoryIds: List<String> get() = usedMemory

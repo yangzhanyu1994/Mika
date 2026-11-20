@@ -3,6 +3,7 @@ package com.wangzan101.mika.capsule
 import com.wangzan101.mika.R
 import com.wangzan101.mika.cap.web.KeptPage
 import com.wangzan101.mika.i18n.tr
+import com.wangzan101.mika.ui.StatusCopy
 import com.wangzan101.mika.i18n.trPlural
 import com.wangzan101.mika.confirm.ConfirmationCopy
 import com.wangzan101.mika.core.agent.RunProgress
@@ -399,6 +400,7 @@ class CapsuleModel(private val reasonLabel: (String) -> String? = { null }) {
 
         /** 此刻在做什么:回放、批量执行写进度;否则先用模型随调用写的话,再用调用里的用意,都没有用固定说法。 */
         fun runningText(s: TaskState.Running): String {
+            s.mcpConnector?.let { return StatusCopy.callingMcp(it) }
             s.progress?.let { return progressText(it) }
             val said = listOfNotNull(s.narration, s.reason).map(::oneLine).firstOrNull { it.isNotEmpty() }
             return said ?: if (s.step == 0) PREPARING else THINKING

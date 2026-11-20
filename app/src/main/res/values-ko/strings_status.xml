@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">익숙한 경로를 재생하는 중 (%1$d/%2$d단계)</string>
     <string name="progress_waiting_app">다른 작업이 %1$s 사용을 마치기를 기다리는 중</string>
+    <string name="progress_calling_mcp">MCP로 %1$s 호출 중…</string>
+    <string name="progress_called_mcp">MCP로 %1$s 호출함</string>
     <plurals name="progress_batch">
         <item quantity="other">%1$d단계를 한 번에 실행 중</item>
     </plurals>
