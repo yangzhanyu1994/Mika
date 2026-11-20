@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">既知の手順をたどっています(ステップ %1$d/%2$d)</string>
     <string name="progress_waiting_app">ほかのタスクが %1$s を使い終わるのを待っています</string>
+    <string name="progress_calling_mcp">MCP で %1$s を呼び出し中…</string>
+    <string name="progress_called_mcp">MCP で %1$s を呼び出しました</string>
     <plurals name="progress_batch">
         <item quantity="other">%1$d ステップを一度に実行中</item>
     </plurals>

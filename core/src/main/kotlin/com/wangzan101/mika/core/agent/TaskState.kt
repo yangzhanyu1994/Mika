@@ -41,6 +41,7 @@ sealed interface TaskState {
         val step: Int, val note: String, val tool: String? = null, val progress: RunProgress? = null, val reason: String? = null,
         val narration: String? = null,
         val preview: String? = null,
+        val mcpConnector: String? = null,
     ) : TaskState
     /** 一个能力的前置条件此刻不满足,停在这里等(见 [GateReason]);条件满足或用户点了继续后恢复 Running。 */
     data class Held(val reason: GateReason) : TaskState

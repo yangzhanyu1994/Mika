@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">إعادة تشغيل مسار معروف (الخطوة %1$d/%2$d)</string>
     <string name="progress_waiting_app">بانتظار انتهاء مهمة أخرى باستخدام %1$s</string>
+    <string name="progress_calling_mcp">جارٍ استدعاء %1$s عبر MCP…</string>
+    <string name="progress_called_mcp">تم استدعاء %1$s عبر MCP</string>
     <plurals name="progress_batch">
         <item quantity="zero">تنفيذ %1$d خطوة في الوقت نفسه</item>
         <item quantity="one">تنفيذ %1$d خطوة في الوقت نفسه</item>

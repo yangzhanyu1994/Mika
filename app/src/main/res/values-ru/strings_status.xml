@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">Повторяем известный маршрут (шаг %1$d/%2$d)</string>
     <string name="progress_waiting_app">Ждём, пока другая задача закончит работу с приложением «%1$s»</string>
+    <string name="progress_calling_mcp">Вызов %1$s через MCP…</string>
+    <string name="progress_called_mcp">%1$s вызван через MCP</string>
     <plurals name="progress_batch">
         <item quantity="one">Выполняется %1$d шаг сразу</item>
         <item quantity="few">Выполняются %1$d шага сразу</item>

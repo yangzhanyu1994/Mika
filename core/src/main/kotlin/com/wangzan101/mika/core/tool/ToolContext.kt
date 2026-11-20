@@ -87,6 +87,9 @@ internal class ToolContext(
     var appOpened = false
     /** 本次调用的编号;页面脚本里的动作按它编号。 */
     var callId = ""
+    /** Set only when dispatch reaches an external MCP operation. */
+    var mcpConnector: String? = null
+    var onMcpCallStarted: ((String) -> (() -> Unit))? = null
     /** 自己不动界面的工具(页面脚本)里的动作经它回到执行入口;只读调用、测试里不给时里面的动作一律不做。 */
     var sub: SubActions? = null
     /** 自身工具的当次同意;由 AgentLoop 把等用户回答的那条路接进来,测试里换成假实现。 */

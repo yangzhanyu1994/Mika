@@ -221,7 +221,8 @@ private fun TimelineRow(s: TimelineStep, first: Boolean, last: Boolean, vm: RunT
             Row(verticalAlignment = Alignment.Top) {
                 Text(stringResource(R.string.step_number, s.step), style = MikaType.Label, color = c.ink3)
                 Text(
-                    if (s.activities.isEmpty()) listOfNotNull(s.tool, s.detail).joinToString(" · ") else "",
+                    if (s.activities.isEmpty()) listOfNotNull(s.tool, s.detail).joinToString(" · ")
+                    else s.activities.filter { it.kind == "mcp" }.map { it.label }.distinct().joinToString(" · "),
                     Modifier.weight(1f).padding(start = 8.dp),
                     style = MikaType.Body, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )

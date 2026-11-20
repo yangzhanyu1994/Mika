@@ -177,9 +177,10 @@ class RunTimelineViewModel(
                 is RunEvent.Media -> at(e.step).let { rows[e.step] = it.copy(screenshotId = it.screenshotId ?: e.mediaId) }
                 is RunEvent.Activity -> {
                     val row = at(e.step)
-                    val next = TimelineActivity(e.kind, toolLabel(e.label), e.target, e.effect, obsIds = e.obsIds)
+                    val mcp = e.mcpConnector?.let(StatusCopy::calledMcp)
+                    val next = TimelineActivity(if (mcp != null) "mcp" else e.kind, mcp ?: toolLabel(e.label), e.target, e.effect, obsIds = e.obsIds)
                     val last = row.activities.lastOrNull()
-                    val activities = if (e.kind == "observe" && last?.kind == "observe" && last.target == e.target) {
+                    val activities = if (next.kind == "observe" && last?.kind == "observe" && last.target == e.target) {
                         row.activities.dropLast(1) + last.copy(count = last.count + 1, obsIds = (last.obsIds + e.obsIds).distinct())
                     } else row.activities + next
                     rows[e.step] = row.copy(activities = activities)

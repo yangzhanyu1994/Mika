@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">Memutar ulang rute yang dikenal (langkah %1$d/%2$d)</string>
     <string name="progress_waiting_app">Menunggu tugas lain selesai memakai %1$s</string>
+    <string name="progress_calling_mcp">Memanggil %1$s via MCP…</string>
+    <string name="progress_called_mcp">Memanggil %1$s via MCP</string>
     <plurals name="progress_batch">
         <item quantity="other">Menjalankan %1$d langkah sekaligus</item>
     </plurals>

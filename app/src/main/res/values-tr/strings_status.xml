@@ -2,6 +2,8 @@
 <resources>
     <string name="progress_replay">Bilinen bir rota tekrarlanıyor (adım %1$d/%2$d)</string>
     <string name="progress_waiting_app">Başka bir görevin %1$s ile bitmesi bekleniyor</string>
+    <string name="progress_calling_mcp">%1$s MCP üzerinden çağrılıyor…</string>
+    <string name="progress_called_mcp">%1$s MCP üzerinden çağrıldı</string>
     <plurals name="progress_batch">
         <item quantity="other">Aynı anda %1$d adım çalışıyor</item>
     </plurals>

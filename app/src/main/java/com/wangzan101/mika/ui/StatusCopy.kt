@@ -41,6 +41,10 @@ data class Explanation(
 )
 
 object StatusCopy {
+    fun callingMcp(connector: String): String = tr(R.string.progress_calling_mcp, connector)
+
+    fun calledMcp(connector: String): String = tr(R.string.progress_called_mcp, connector)
+
     /** 不经模型连做几步时卡片和通知上的说法。 */
     fun progress(p: RunProgress): String = when (p) {
         is RunProgress.Replay -> tr(R.string.progress_replay, p.step, p.total)

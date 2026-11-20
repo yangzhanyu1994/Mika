@@ -94,6 +94,7 @@ data class McpConnection(
     val trust: McpTrust = McpTrust.Restricted,
     /** 只暴露这些工具;null 表示全部,空集表示一个都不给。 */
     val allowedTools: Set<String>? = null,
+    val displayName: String = endpoint.serverId,
 ) {
     init { require(previewChars > 0 && (maxCostUnits == null || maxCostUnits >= 0)) }
 }
@@ -122,7 +123,7 @@ internal class McpCapability(connection: McpConnection, override val id: String)
         descriptors.forEachIndexed { index, descriptor ->
             val name = toolNames[index]
             val assembled = assembleMcpTool(id, endpoint, descriptor, name) {
-                McpClientTool(id, endpoint, descriptor, name, budget, connection.resultStore, connection.previewChars, connection.trust)
+                McpClientTool(id, endpoint, descriptor, name, budget, connection.resultStore, connection.previewChars, connection.trust, connection.displayName)
             }
             add(assembled.tool)
             assembled.failure?.let(assemblyFailures::add)
@@ -172,6 +173,7 @@ internal class McpCapability(connection: McpConnection, override val id: String)
             resultStore = connection.resultStore,
             previewChars = connection.previewChars,
             storeName = "resource_read",
+            displayName = connection.displayName,
             call = { args -> endpoint.readResource(args["uri"]?.jsonPrimitive?.contentOrNull.orEmpty()) },
         )
     }
@@ -203,6 +205,7 @@ internal class McpCapability(connection: McpConnection, override val id: String)
             resultStore = connection.resultStore,
             previewChars = connection.previewChars,
             storeName = "prompt_get",
+            displayName = connection.displayName,
             call = { args ->
                 val name = args["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
                 endpoint.getPrompt(name, args["arguments"] as? JsonObject ?: JsonObject(emptyMap()))
@@ -332,6 +335,7 @@ private class McpClientTool(
     private val resultStore: McpResultStore?,
     private val previewChars: Int,
     trust: McpTrust,
+    private val displayName: String,
 ) : AgentTool {
     private val schema = descriptor.inputSchema
     private val approval = mcpApprovalRisk(descriptor.annotations, trust)
@@ -360,6 +364,8 @@ private class McpClientTool(
 
     override suspend fun execute(a: Args, ctx: ToolContext): ToolExecution = mcpExecution(
         capability = capability,
+        context = ctx,
+        displayName = displayName,
         serverId = endpoint.serverId,
         storeName = descriptor.name,
         budget = budget,
@@ -383,6 +389,7 @@ private class McpSyntheticTool(
     private val resultStore: McpResultStore?,
     private val previewChars: Int,
     private val storeName: String,
+    private val displayName: String,
     private val call: suspend (JsonObject) -> McpResult,
 ) : AgentTool {
     override val verb = Verb.Interact
@@ -393,6 +400,8 @@ private class McpSyntheticTool(
 
     override suspend fun execute(a: Args, ctx: ToolContext): ToolExecution = mcpExecution(
         capability = capability,
+        context = ctx,
+        displayName = displayName,
         serverId = serverId,
         storeName = storeName,
         budget = budget,
@@ -405,6 +414,8 @@ private class McpSyntheticTool(
 
 private suspend fun mcpExecution(
     capability: String,
+    context: ToolContext,
+    displayName: String,
     serverId: String,
     storeName: String,
     budget: McpBudget,
@@ -416,7 +427,13 @@ private suspend fun mcpExecution(
     if (!budget.charge(costUnits)) return ToolExecution(buildJsonObject {
         put("ok", false); put("error", "mcp_cost_limit")
     })
-    val result = call()
+    context.mcpConnector = displayName
+    val finish = context.onMcpCallStarted?.invoke(displayName)
+    val result = try {
+        call()
+    } finally {
+        finish?.invoke()
+    }
     val long = result.text.length > previewChars
     val ref = if (long) resultStore?.save(serverId, storeName, result.text) else null
     if (long && ref == null) return ToolExecution(buildJsonObject {
