@@ -503,18 +503,26 @@ class ChatViewModel(
     private val mutableReadAloudText = MutableStateFlow<String?>(null)
     val readAloudText = mutableReadAloudText.asStateFlow()
 
+    private var speakJob: Job? = null
+
     fun speak(text: String) {
+        stopSpeaking()
         mutableReadAloudText.value = text
-        scope.launch { speakText(text) }
+        speakJob = scope.launch { speakText(text) }
     }
 
-    fun stopSpeaking() = stopVoice()
+    fun stopSpeaking() {
+        speakJob?.cancel()
+        speakJob = null
+        stopVoice()
+    }
 
     /** 播放这一轮生成的一段音频;没有对话编号时不做。 */
     fun playAudio(path: String) {
         val id = _ui.value.conversationId ?: return
+        stopSpeaking()
         mutableReadAloudText.value = null
-        scope.launch { playAudio(id, path) }
+        speakJob = scope.launch { playAudio(id, path) }
     }
 
     /** 已经自动朗读过的那条回答;同一条不重复读。 */
