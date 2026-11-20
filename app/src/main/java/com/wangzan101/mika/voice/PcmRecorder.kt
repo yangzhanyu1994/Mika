@@ -40,6 +40,9 @@ class PcmRecorder(
     private val lock = Any()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var record: AudioRecord? = null
+    val isSilenced: Boolean
+        get() = synchronized(lock) { record?.activeRecordingConfiguration?.isClientSilenced == true }
+
     private var job: Job? = null
     private var pcm = ShortArray(0)
     private var size = 0

@@ -146,4 +146,12 @@
     <string name="calls_notification_connecting_audio">正在連接通話音訊</string>
     <string name="calls_notification_connected_waiting">AI 已接通，正在等待對方說話，可隨時接管</string>
     <string name="calls_notification_connected">AI 已接通，可隨時手動接管</string>
+    <string name="mika_voice_call_audio_focus">Android 暫未把音訊焦點交給 Mika。請保持 Mika 在前景，結束其他通話或音訊播放後重試。</string>
+    <string name="mika_voice_call_audio_output">Mika 無法播放通話聲音。請檢查目前的音訊輸出裝置，再重試。</string>
+    <string name="mika_voice_call_mic_unavailable">Mika 已有麥克風權限，但沒有可用的錄音輸入。請檢查快速設定中的「麥克風存取」開關，並結束其他應用程式的錄音。</string>
+    <string name="mika_voice_call_connection_lost">豆包即時語音連線中斷。請檢查網路後重試。</string>
+    <string name="mika_voice_call_connection_timeout">豆包即時語音 10 秒內未接通。請檢查網路後重試。</string>
+    <string name="mika_voice_call_realtime_key">請到通話模型設定，填寫已開通「豆包即時語音 3.0（Seeduplex）」專案的 API Key。</string>
+    <string name="mika_voice_call_provider_error">豆包未能啟動即時語音。請核對專案的服務啟用狀態和音色設定，再重試。</string>
+    <string name="mika_voice_call_speak">已接通，可以開始說話。</string>
 </resources>
