@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">Свернуть</string>
     <string name="mika_voice_call_speaker_on">Динамик</string>
     <string name="mika_voice_call_speaker_off">Динамик уха</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">Сводки по расписанию</string>
     <string name="brief_note">Утренняя, дневная и суточная сводки включаются отдельно. У каждой своё время и диапазон. Если конец не позже начала, диапазон начинается накануне. Текст остаётся на этом телефоне, не уходит в модель и не выполняется. Принудительная остановка или жёсткое ограничение батареи может пропустить напоминание.</string>
     <string name="brief_morning">Утренняя сводка</string>

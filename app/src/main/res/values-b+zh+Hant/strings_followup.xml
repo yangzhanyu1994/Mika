@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">收起</string>
     <string name="mika_voice_call_speaker_on">揚聲器</string>
     <string name="mika_voice_call_speaker_off">聽筒</string>
+    <string name="mika_voice_call_status_calendar">正在查詢日程</string>
+    <string name="mika_voice_call_status_weather">正在查詢天氣</string>
+    <string name="mika_voice_call_status_time">正在查詢時間</string>
+    <string name="mika_voice_call_status_working">正在處理</string>
+    <string name="mika_voice_call_status_tool">正在呼叫 %1$s</string>
+    <string name="mika_voice_call_status_confirm">等待確認</string>
+    <string name="mika_voice_call_status_waiting">等待</string>
+    <string name="mika_voice_call_status_done">執行完成</string>
+    <string name="mika_voice_call_status_failed">執行失敗</string>
+    <string name="mika_voice_call_status_cancelled">已取消</string>
+    <string name="mika_voice_call_type_hint">輸入後傳送</string>
     <string name="brief_title">定時彙總</string>
     <string name="brief_note">上午、下午、全天各自開關。提醒時間和彙總範圍都可以改。結束時間不晚於開始時間時，範圍從前一天開始。內容只留在本機，不發給模型，也不會拿來代你操作。強制停止或過嚴的省電可能讓這次提醒不到。</string>
     <string name="brief_morning">上午總結</string>

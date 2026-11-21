@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">しまう</string>
     <string name="mika_voice_call_speaker_on">スピーカー</string>
     <string name="mika_voice_call_speaker_off">受話口</string>
+    <string name="mika_voice_call_status_calendar">予定を確認しています</string>
+    <string name="mika_voice_call_status_weather">天気を確認しています</string>
+    <string name="mika_voice_call_status_time">時刻を確認しています</string>
+    <string name="mika_voice_call_status_working">処理しています</string>
+    <string name="mika_voice_call_status_tool">%1$s を呼び出しています</string>
+    <string name="mika_voice_call_status_confirm">確認を待っています</string>
+    <string name="mika_voice_call_status_waiting">待機しています</string>
+    <string name="mika_voice_call_status_done">完了</string>
+    <string name="mika_voice_call_status_failed">失敗</string>
+    <string name="mika_voice_call_status_cancelled">キャンセルしました</string>
+    <string name="mika_voice_call_type_hint">入力して送信</string>
     <string name="brief_title">定時まとめ</string>
     <string name="brief_note">午前・午後・一日のまとめは別々のスイッチです。それぞれに通知時刻と範囲があります。終了が開始より後でないときは、範囲は前日に始まります。本文はこの端末に残り、モデルへは送らず、操作もしません。強制停止や厳しい電池制限で通知が届かないことがあります。</string>
     <string name="brief_morning">午前のまとめ</string>

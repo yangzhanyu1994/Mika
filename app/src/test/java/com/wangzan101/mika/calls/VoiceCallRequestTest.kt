@@ -47,6 +47,16 @@ class VoiceCallRequestTest {
         assertNull(request.take(function("灯已经打开了")))
     }
 
+    @Test fun theGreetingIsNotAWorkRequestWhileItIsPlaying() {
+        val request = VoiceCallRequest()
+        request.noteAssistant("你好呀，我是Mika，需要我做什么？")
+        request.acceptFinal(
+            VolcRealtimeEvent.UserTranscript("你好呀，我是Mika，需要我做什么", isFinal = true),
+            assistantPlaying = true,
+        )
+        assertNull(request.take(VolcRealtimeEvent.FunctionCall("id", VolcRealtimeProtocol.MIKA_REQUEST, "{}")))
+    }
+
     @Test fun phoneCallsDoNotAdvertiseMikaTools() {
         val tools = Json.parseToJsonElement(VolcRealtimeProtocol.create("1", VolcRealtimeConfig())).jsonObject
             .getValue("session").jsonObject["tools"]

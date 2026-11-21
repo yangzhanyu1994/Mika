@@ -1222,6 +1222,10 @@ class TaskService : Service() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .apply { if (threadId != null) setIdentifier(threadId).putExtra(MainActivity.EXTRA_OPEN_CONVERSATION, threadId) }
 
+        /** 打开应用内语音通话。冷启动和已经在前台都走这个 extra，不另开一个空会话。 */
+        internal fun openVoiceCallIntent(context: Context): Intent =
+            openAppIntent(context).putExtra(MainActivity.EXTRA_OPEN_VOICE_CALL, true)
+
         /** 并行时结果通知的下一个编号(循环使用)。 */
         internal fun nextResultId() = ID_RESULT_FIRST + resultCount.getAndIncrement() % RESULT_IDS
 

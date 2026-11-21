@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var monitor: SystemStatusMonitor
     private var requestedConversation by mutableStateOf<String?>(null)
     private var requestedAssistant by mutableStateOf(false)
+    private var requestedVoiceCall by mutableStateOf(false)
     private var requestedCalls by mutableStateOf(false)
     private var requestedCallHistoryId by mutableStateOf<String?>(null)
     private var briefBody by mutableStateOf<String?>(null)
@@ -128,6 +129,7 @@ class MainActivity : ComponentActivity() {
         }
         requestedConversation = intent.getStringExtra(EXTRA_OPEN_CONVERSATION)
         requestedAssistant = savedInstanceState == null && intent.action == Intent.ACTION_ASSIST
+        requestedVoiceCall = intent.getBooleanExtra(EXTRA_OPEN_VOICE_CALL, false)
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
         briefBody = intent.getStringExtra(EXTRA_OPEN_BRIEF)
@@ -150,6 +152,7 @@ class MainActivity : ComponentActivity() {
                     MikaRoot(
                         store, monitor, ::perform, requestedConversation, { requestedConversation = null },
                         requestedAssistant, { requestedAssistant = false },
+                        requestedVoiceCall, { requestedVoiceCall = false; intent.removeExtra(EXTRA_OPEN_VOICE_CALL) },
                         requestedCalls, requestedCallHistoryId, { requestedCalls = false; requestedCallHistoryId = null },
                         requestedSharedDraft,
                         onSharedDraftOpened = { accepted, draft ->
@@ -187,6 +190,7 @@ class MainActivity : ComponentActivity() {
         shareJob?.cancel()
         requestedConversation = intent.getStringExtra(EXTRA_OPEN_CONVERSATION)
         requestedAssistant = intent.action == Intent.ACTION_ASSIST
+        if (intent.getBooleanExtra(EXTRA_OPEN_VOICE_CALL, false)) requestedVoiceCall = true
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
         briefBody = intent.getStringExtra(EXTRA_OPEN_BRIEF)
@@ -402,6 +406,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_OPEN_CONVERSATION = "open_conversation"
+        const val EXTRA_OPEN_VOICE_CALL = "open_voice_call"
         const val EXTRA_OPEN_CALLS = "open_calls"
         const val EXTRA_CALL_HISTORY_ID = "call_history_id"
         const val EXTRA_OPEN_TEACH = "open_teach"
@@ -443,6 +448,8 @@ private fun MikaRoot(
     onConversationOpened: () -> Unit,
     requestedAssistant: Boolean,
     onAssistantOpened: () -> Unit,
+    requestedVoiceCall: Boolean,
+    onVoiceCallOpened: () -> Unit,
     requestedCalls: Boolean,
     requestedCallHistoryId: String?,
     onCallsOpened: () -> Unit,
@@ -599,6 +606,7 @@ private fun MikaRoot(
             return accepted
         }
 
+        if (call != null) return sendToWork()
         val knownRoute = if (skillMatch) ModelRole.Main else routeLiveWeather(question, app.researchChat.canSearch())
         val target = knownRoute ?: if (call == null && app.researchChat.canDelegate()) ModelRole.Chat else run {
             val lastWork = withContext(Dispatchers.IO) {
@@ -874,23 +882,33 @@ private fun MikaRoot(
                 Box(Modifier.fillMaxSize()) {
                     var saveMikaCall by remember { mutableStateOf<((List<Turn>) -> Unit)?>(null) }
                     var mikaCallPersonal by remember { mutableStateOf(false) }
+                    var voiceGreeted by rememberSaveable { mutableStateOf(false) }
                     fun openMikaCall(research: Boolean, personal: Boolean = false) {
+                        if (saveMikaCall != null) return
                         mikaCallPersonal = personal
                         if (personal) {
                             saveMikaCall = app.personal::recordConversationTurns
                         } else {
-                            val id = app.chat.ui.value.conversationId ?: app.conversations.newConversation().also(app.chat::openConversation)
-                            saveMikaCall = { turns -> app.conversations.appendVoiceCall(id, turns, research) }
+                            val id = app.chat.ui.value.conversationId ?: app.conversations.newConversation()
+                            saveMikaCall = { turns -> app.conversations.appendVoiceCall(id, turns, false) }
                         }
+                    }
+                    fun closeMikaCall() {
+                        saveMikaCall = null
+                        voiceGreeted = false
+                        onVoiceCallOpened()
+                    }
+                    LaunchedEffect(requestedVoiceCall) {
+                        if (requestedVoiceCall) openMikaCall(research = false)
                     }
                     LaunchedEffect(Unit) {
                         app.openVoiceCall.collect { openMikaCall(research = false) }
                     }
                     saveMikaCall?.let { save ->
                         MikaVoiceCallDialog(app.calls, onConfigure = {
-                            saveMikaCall = null
+                            closeMikaCall()
                             nav.push(Route.CallModel)
-                        }, onDismiss = { saveMikaCall = null                         }, delegate = { words, progress ->
+                        }, onDismiss = { closeMikaCall() }, greet = !voiceGreeted, onGreeted = { voiceGreeted = true }, delegate = { words, progress ->
                             coroutineScope {
                                 val route = VoiceCallRoute(app, this, progress)
                                 try {

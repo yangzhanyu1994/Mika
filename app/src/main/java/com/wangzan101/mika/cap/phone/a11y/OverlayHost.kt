@@ -230,6 +230,18 @@ class OverlayWindow internal constructor(
     val width: Int get() = frame.width
     val height: Int get() = frame.height
 
+    /**
+     * 固定窗口的像素大小。菜单按钮用它，避免内容第一次排版时窗口从 0 长开、位置跟着跳。
+     * 只在打开时设一次，动画过程中不再改。
+     */
+    fun resize(width: Int, height: Int) {
+        if (!isOpen || width <= 0 || height <= 0) return
+        if (params.width == width && params.height == height) return
+        params.width = width
+        params.height = height
+        update()
+    }
+
     /** 换位置。 */
     fun place(placement: OverlayPlacement) {
         if (!isOpen || params.gravity == placement.gravity && params.x == placement.x && params.y == placement.y) return

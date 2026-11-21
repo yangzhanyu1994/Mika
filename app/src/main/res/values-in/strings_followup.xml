@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">Ciutkan</string>
     <string name="mika_voice_call_speaker_on">Pengeras suara</string>
     <string name="mika_voice_call_speaker_off">Earpiece</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">Ringkasan terjadwal</string>
     <string name="brief_note">Ringkasan pagi, sore, dan seharian punya sakelar sendiri. Masing-masing punya waktu pengingat dan rentang. Jika akhir tidak setelah awal, rentang mulai dari hari sebelumnya. Teks tetap di ponsel ini, tidak dikirim ke model, dan tidak dijalankan. Paksa berhenti atau pembatasan baterai yang ketat bisa melewatkan pengingat.</string>
     <string name="brief_morning">Ringkasan pagi</string>
