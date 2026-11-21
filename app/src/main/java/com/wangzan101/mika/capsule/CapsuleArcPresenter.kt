@@ -20,11 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +38,9 @@ import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 data class ArcAnchor(
     val x: Float,
@@ -60,6 +59,16 @@ data class ArcAnchor(
  * then once more at the chip itself when the move finishes. The move is a graphics
  * transform, so the window is not laid out again on every frame. After it settles,
  * only the chip receives touches.
+ *
+ * The four chips share one flight clock ([flight]): each chip used to own its own
+ * Animatable in its own window, so the windows started at different times and the
+ * bottom two chips were still flying while the top two had already landed — and
+ * because a straight flight from the anchor squeezes neighbouring chips together,
+ * they visibly overlapped on every open. Now all four read the same progress, the
+ * flight only covers the last quarter of the trip, and the chips grow from 70%
+ * while fading in, so they never overlap at any point of the flight.
+ * Frames are measured once per opening and reused for the settle/close steps;
+ * only [relayout] (capsule moved or configuration changed) measures again.
  */
 class CapsuleArcPresenter(
     private val context: Context,
@@ -73,8 +82,15 @@ class CapsuleArcPresenter(
     private val frames = arrayOfNulls<ArcFrame>(CapsuleArc.order.size)
     private val closing = mutableStateOf(false)
     private val settled = mutableStateOf(false)
-    private val hidden = mutableIntStateOf(0)
+    private val flight = Animatable(0f)
+    private var flightJob: Job? = null
     private var open = false
+
+    companion object {
+        /** 飞出只走最后这段路程:从锚点整段飞过来时,相邻芯片在途中会被挤到一起。 */
+        internal const val FLIGHT_FRACTION = 0.25f
+        private const val FLIGHT_MS = 240
+    }
 
     fun showing(): Boolean = open && !closing.value
 
@@ -89,20 +105,29 @@ class CapsuleArcPresenter(
         settled.value = false
         place(path = true)
         closing.value = true
+        flightJob?.cancel()
+        flightJob = scope.launch {
+            if (reduceMotion()) flight.snapTo(0f)
+            else flight.animateTo(0f, tween(FLIGHT_MS, easing = FastOutSlowInEasing))
+            release()
+        }
     }
 
     fun relayout() {
         if (!open || closing.value) return
+        val laid = measure() ?: return
+        laid.forEachIndexed { index, frame -> frames[index] = frame }
         place(path = !settled.value)
     }
 
     fun release() {
+        flightJob?.cancel()
+        flightJob = null
         windows.forEach { it?.close() }
         windows.fill(null)
         frames.fill(null)
         closing.value = false
         settled.value = false
-        hidden.intValue = 0
         open = false
     }
 
@@ -111,28 +136,35 @@ class CapsuleArcPresenter(
         val laid = measure() ?: return
         closing.value = false
         settled.value = reduceMotion()
-        hidden.intValue = 0
         laid.forEachIndexed { index, frame ->
             frames[index] = frame
             windows[index]?.close()
             val window = overlays.open(placement(frame, path = true)) {
                 ArcChip(
                     frame = { frames[index] ?: frame },
+                    flight = flight,
                     closing = closing,
                     settled = settled,
-                    reduceMotion = reduceMotion(),
                     onClick = {
                         onAction(frame.action)
                         close()
                     },
-                    onArrived = { onArrived() },
-                    onHidden = { onHidden() },
                 )
             }
             window?.resize(frame.windowWidth, frame.windowHeight)
             windows[index] = window
         }
         open = windows.any { it != null }
+        flightJob?.cancel()
+        flightJob = scope.launch {
+            if (reduceMotion()) flight.snapTo(1f)
+            else {
+                flight.snapTo(0f)
+                flight.animateTo(1f, tween(FLIGHT_MS, easing = FastOutSlowInEasing))
+            }
+            onArrived()
+        }
+        // 减动效时芯片首帧就该落在位子上:窗口直接摆到芯片大小,不等动画跑完。
         if (settled.value) place(path = false)
     }
 
@@ -142,20 +174,15 @@ class CapsuleArcPresenter(
         place(path = false)
     }
 
-    private fun onHidden() {
-        hidden.intValue += 1
-        if (hidden.intValue >= windows.count { it != null }) release()
-    }
-
+    /** 落位/收起只用开菜单时量好的那一版位置,不再重算:两次量出来的位置一旦不一致,芯片就会跳一下。 */
     private fun place(path: Boolean) {
-        val laid = measure() ?: return
-        laid.forEachIndexed { index, frame ->
-            frames[index] = frame
-            windows[index]?.place(placement(frame, path))
+        frames.forEachIndexed { index, frame ->
+            val f = frame ?: return@forEachIndexed
+            windows[index]?.place(placement(f, path))
             // 落位后窗口也缩到芯片大小:只挪位置不缩尺寸,四个飞行大框还会互相盖着,点按会被最上面那个吃掉。
             windows[index]?.resize(
-                if (path) frame.windowWidth else frame.chipWidth,
-                if (path) frame.windowHeight else frame.chipHeight,
+                if (path) f.windowWidth else f.chipWidth,
+                if (path) f.windowHeight else f.chipHeight,
             )
         }
     }
@@ -193,19 +220,11 @@ class CapsuleArcPresenter(
 @Composable
 private fun ArcChip(
     frame: () -> ArcFrame,
+    flight: State<Float>,
     closing: State<Boolean>,
     settled: State<Boolean>,
-    reduceMotion: Boolean,
     onClick: () -> Unit,
-    onArrived: () -> Unit,
-    onHidden: () -> Unit,
 ) {
-    val travel = remember { Animatable(if (reduceMotion) 1f else 0f) }
-    LaunchedEffect(closing.value, reduceMotion) {
-        val dest = if (closing.value) 0f else 1f
-        if (reduceMotion) travel.snapTo(dest) else travel.animateTo(dest, tween(240, easing = FastOutSlowInEasing))
-        if (closing.value) onHidden() else onArrived()
-    }
     val current = frame()
     val density = LocalDensity.current
     val path = !settled.value
@@ -213,14 +232,18 @@ private fun ArcChip(
     val height = if (path) current.windowHeight else current.chipHeight
     val rowX = if (path) current.chipLeft - current.windowLeft else 0
     val rowY = if (path) current.chipTop - current.windowTop else 0
-    val progress = if (settled.value && !closing.value) 1f else travel.value
+    // 四个芯片共用一个飞行进度:各自计时会在不同窗口里错开,落位有先有后。
+    // 只飞最后 1/4 路程并同时由小变大、由透明变不透明:全程相邻芯片都不重叠。
+    val progress = if (settled.value && !closing.value) 1f else flight.value
     Box(Modifier.requiredSize(with(density) { width.toDp() }, with(density) { height.toDp() })) {
         ArcChipRow(
             current,
             onClick,
             Modifier.offset(with(density) { rowX.toDp() }, with(density) { rowY.toDp() }).graphicsLayer {
-                translationX = (1f - progress) * current.fromAnchorX
-                translationY = (1f - progress) * current.fromAnchorY
+                translationX = (1f - progress) * current.fromAnchorX * CapsuleArcPresenter.FLIGHT_FRACTION
+                translationY = (1f - progress) * current.fromAnchorY * CapsuleArcPresenter.FLIGHT_FRACTION
+                scaleX = 0.7f + 0.3f * progress
+                scaleY = 0.7f + 0.3f * progress
                 alpha = progress.coerceIn(0f, 1f)
             },
         )
