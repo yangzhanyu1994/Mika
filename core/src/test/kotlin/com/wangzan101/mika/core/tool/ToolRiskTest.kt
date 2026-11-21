@@ -70,7 +70,7 @@ class ToolRiskTest {
             setOf("phone_find", "phone_collect", "phone_dialog", "phone_run", "phone_system_command", "phone_calendar_bulk_insert", "schedule_task", "spawn_agent", "settings_set", "root_run_command", "web_search", "web_fetch",
                 "mika_open_screen", "mika_open_file", "mika_notify", "mika_copy",
                 "mika_open_in_browser", "mika_search_in_browser", "mika_login_site", "mika_confirm_login", "mika_favorites",
-                "phone_call_state", "phone_call_resolve_contact", "phone_call_schedule_dial", "phone_call_dial", "phone_call_answer", "phone_call_hangup", "phone_call_takeover", "phone_call_incoming_task", "phone_call_manage_tasks", "wechat_send_owner", "device_location", "audio_generate", "audio_save", "audio_transcribe", "speak", "list_device_files", "copy_device_file", "search_device_files", "list_device_directory_hints", "update_device_directory_description")
+                "phone_call_state", "phone_call_resolve_contact", "phone_call_schedule_dial", "phone_call_dial", "phone_call_answer", "phone_call_hangup", "phone_call_takeover", "phone_call_incoming_task", "phone_call_manage_tasks", "wechat_send_owner", "device_location", "read_local_time", "read_calendar_today", "read_weather", "audio_generate", "audio_save", "audio_transcribe", "speak", "list_device_files", "copy_device_file", "search_device_files", "list_device_directory_hints", "update_device_directory_description")
         assertEquals(refused, allTools().filter { !it.readOnly }.map { it.name }.toSet())
         // root 命令、通话工具都只在给了端口时登记:各给一个,所有工具都在
         val d = toolDispatcher(FakeScreen(), audio = NoAudioPort, audioSaveEnabled = true, audioSpeakTool = true, transcribe = NoTranscribePort, root = object : com.wangzan101.mika.core.cap.root.RootPort {
@@ -79,6 +79,10 @@ class ToolRiskTest {
             override suspend fun search(query: com.wangzan101.mika.core.cap.devicefiles.DeviceFileSearchQuery): com.wangzan101.mika.core.cap.devicefiles.DeviceFileSearchResult = error("read call reached device files")
             override suspend fun list(path: String?, cursor: String?, limit: Int): com.wangzan101.mika.core.cap.devicefiles.DeviceFilePage = error("read call reached device files")
             override suspend fun importFile(path: String, workspace: String): com.wangzan101.mika.core.cap.devicefiles.DeviceFileImport = error("read call reached device files")
+        }, clock = true, calendar = object : com.wangzan101.mika.core.calendar.CalendarReadPort {
+            override fun read(nowMs: Long, zone: java.time.ZoneId) = error("read call reached calendar")
+        }, weather = object : com.wangzan101.mika.core.weather.WeatherPort {
+            override suspend fun read(city: String?) = error("read call reached weather")
         }, deviceLocation = object : com.wangzan101.mika.core.location.DeviceLocationPort {
             override suspend fun read(
                 origin: com.wangzan101.mika.core.run.RunOrigin,

@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">常用网站</string>
     <string name="tool_wechat_owner">发送到我的微信</string>
     <string name="tool_device_location">当前位置</string>
+    <string name="tool_read_local_time">当前时间</string>
+    <string name="tool_read_calendar_today">今日日程</string>
+    <string name="tool_read_weather">天气</string>
 </resources>

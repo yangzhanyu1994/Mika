@@ -186,16 +186,13 @@ internal fun MikaVoiceCallDialog(
         }
     }
     var speakerOn by remember { mutableStateOf(true) }
-    DisposableEffect(context) {
-        val audio = context.getSystemService(AudioManager::class.java)
-        val previousMode = audio?.mode
-        val previousSpeaker = audio?.isSpeakerphoneOn
-        audio?.mode = AudioManager.MODE_IN_COMMUNICATION
-        audio?.isSpeakerphoneOn = true
-        onDispose {
-            if (previousSpeaker != null) audio?.isSpeakerphoneOn = previousSpeaker
-            if (previousMode != null) audio?.mode = previousMode
-        }
+    val audioSession = remember(context) {
+        context.getSystemService(AudioManager::class.java)?.let { com.wangzan101.mika.calls.CallAudioSession(it) }
+    }
+    DisposableEffect(audioSession) {
+        audioSession?.setListener { speakerOn = it.speaker }
+        speakerOn = audioSession?.start(preferSpeaker = true)?.speaker ?: true
+        onDispose { audioSession?.restore() }
     }
     val needsConfig = !credentialsConfigured || failure == R.string.calls_setup_credentials ||
         failure == R.string.mika_voice_call_realtime_key
@@ -242,9 +239,7 @@ internal fun MikaVoiceCallDialog(
         showCancel = needsConfig || needsMic || failure != null,
         speakerOn = speakerOn,
         onSpeaker = {
-            val audio = context.getSystemService(AudioManager::class.java)
-            speakerOn = !speakerOn
-            audio?.isSpeakerphoneOn = speakerOn
+            speakerOn = audioSession?.toggle()?.speaker ?: !speakerOn
         },
         onAction = {
             when {

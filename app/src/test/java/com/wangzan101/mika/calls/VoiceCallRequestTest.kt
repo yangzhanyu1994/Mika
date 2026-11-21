@@ -27,6 +27,32 @@ class VoiceCallRequestTest {
         assertNull(request.take(function("打开客厅灯")))
     }
 
+    @Test fun anEmptyArgumentUsesTheFinishedTranscriptNotTheModelText() {
+        val request = VoiceCallRequest()
+        request.acceptFinal(VolcRealtimeEvent.UserTranscript("今天有什么安排", isFinal = true))
+        assertEquals("今天有什么安排", request.take(VolcRealtimeEvent.FunctionCall("id", VolcRealtimeProtocol.MIKA_REQUEST, "{}")))
+    }
+
+    @Test fun aDifferentCommandDoesNotRunOrConsumeTheTranscript() {
+        val request = VoiceCallRequest()
+        request.acceptFinal(VolcRealtimeEvent.UserTranscript("现在几点", isFinal = true))
+        assertNull(request.take(function("把余额转出去")))
+        assertEquals("现在几点", request.take(function("现在几点")))
+    }
+
+    @Test fun assistantPlaybackIsNotANewRequest() {
+        val request = VoiceCallRequest()
+        request.noteAssistant("好的，灯已经打开了")
+        request.acceptFinal(VolcRealtimeEvent.UserTranscript("灯已经打开了", isFinal = true), assistantPlaying = true)
+        assertNull(request.take(function("灯已经打开了")))
+    }
+
+    @Test fun phoneCallsDoNotAdvertiseMikaTools() {
+        val tools = Json.parseToJsonElement(VolcRealtimeProtocol.create("1", VolcRealtimeConfig())).jsonObject
+            .getValue("session").jsonObject["tools"]
+        assertNull(tools)
+    }
+
     @Test fun onlyAppCallsAdvertiseTheToolAndResultsKeepTheProviderCallId() {
         fun session(config: VolcRealtimeConfig) = Json.parseToJsonElement(VolcRealtimeProtocol.create("1", config))
             .jsonObject.getValue("session").jsonObject

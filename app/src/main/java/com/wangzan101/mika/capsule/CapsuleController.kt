@@ -1518,7 +1518,10 @@ class CapsuleController(
         val area = windowOn?.overlays()?.area() ?: return null
         val w = window ?: return null
         val centerX = if (dock.side == DockSide.Right) area.width - w.width / 2f else w.width / 2f
-        return ArcAnchor(centerX, placedY + w.height / 2f, dock.side == DockSide.Right, area.width.toFloat(), area.height.toFloat())
+        return ArcAnchor(
+            centerX, placedY + w.height / 2f, dock.side == DockSide.Right, area.width.toFloat(), area.height.toFloat(),
+            area.insetLeft.toFloat(), area.insetTop.toFloat(), area.insetRight.toFloat(), area.insetBottom.toFloat(),
+        )
     }
 
     private fun arcAction(action: CapsuleArcAction) {

@@ -47,6 +47,20 @@ internal class VoiceCallRoute(
         destination.complete(Destination.Work(conversation, exchange.startedAt))
     }
 
+    /**
+     * Stops work that this call already started. Cancellation does not undo a side effect that already happened.
+     * Research that never reached a tool is left as-is because it has no device effect.
+     */
+    fun cancelStartedWork(words: String) {
+        val run = app.taskState.runs.value.firstOrNull { candidate ->
+            candidate.goal == words && candidate.state.value.let { state ->
+                state !is TaskState.Succeeded && state !is TaskState.Failed &&
+                    state != TaskState.Cancelled && state != TaskState.Idle
+            }
+        } ?: return
+        run.cancel()
+    }
+
     suspend fun awaitResult(words: String): String = coroutineScope {
         val research = researchId?.let { id ->
             launch {

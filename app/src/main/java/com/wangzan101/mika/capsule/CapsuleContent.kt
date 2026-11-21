@@ -203,7 +203,7 @@ private fun Capsule(view: CapsuleView.Shown, end: Boolean, onTap: () -> Unit, ta
                 .morphLayout(morph, end),
         ) {
             if (view.pill) PillRow(view, end, need)
-            else Box(Modifier.size(CapsuleHeight), contentAlignment = Alignment.Center) { CapsuleLogo() }
+            else Box(Modifier.size(CapsuleHeight), contentAlignment = Alignment.Center) { CapsuleMark(view, 28.dp) }
             if (glow.value > 0f) Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Color.White.copy(alpha = glow.value)))
         }
         // 外圈和角标不随底淡下去;缩回时贴着图标那一边,不跟着还没收完的宽度走
@@ -230,13 +230,13 @@ private fun PillRow(view: CapsuleView.Shown, end: Boolean, need: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, if (end) Alignment.End else Alignment.Start),
     ) {
-        if (!end) CapsuleLogo()
+        if (!end) CapsuleMark(view, 28.dp)
         Leading(view.kind)
         Text(
             view.text, Modifier.weight(1f, fill = false), style = CapsuleText,
             color = if (need) c.warn else c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
-        if (end) CapsuleLogo()
+        if (end) CapsuleMark(view, 28.dp)
     }
 }
 
@@ -443,7 +443,14 @@ private fun TakeoverBar(view: CapsuleView.Shown, onStop: () -> Unit, onHandBack:
     }
 }
 
-/** 胶囊上的 Mika 图标(圆形)。 */
+/** 胶囊上的 Mika 图标(圆形)。思考、执行、等待时换成对应的粒子表情,闲时回到黑白标志。 */
+@Composable
+private fun CapsuleMark(view: CapsuleView.Shown, orb: androidx.compose.ui.unit.Dp) {
+    val motion = view.motion
+    if (motion == null) CapsuleLogo()
+    else CapsuleOrb(motion, orb, animated = true, color = MikaTheme.colors.ink)
+}
+
 @Composable
 private fun CapsuleLogo() {
     MikaLogo(LogoSize, corner = LogoSize / 2)

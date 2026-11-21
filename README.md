@@ -35,36 +35,39 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 项目状态（2026-11-21 09:52 UTC+8）
+### 项目状态（2026-11-21 10:43 UTC+8）
 
 **项目目标**
 
-给用户一个可安装的正式签名版本，让他在三星 W25 / SM-W9025 / Android 16 上自己验证。这版包含已经写进分支的七项行为和能直接套上的上游提交，不是上游 56 个提交的全量整合。
+在已发布的 v0.2.16 之上，把应用内语音通话里的办事请求交给 Mika 执行，并补上只读的时间、今日日程和天气；修好悬浮菜单的展开、标签和图标；让悬浮标志在真实任务状态下换成 thinking-orbs；给应用内通话加上可切换的免提。本轮只实现并开 PR，等用户验收。不合并、不打 tag、不发版。
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-21 09:52
-- 更新者：Cursor Agent（接续 PR 95）
-- 代码：七项在 e2b55a77。CI 修复和 12 个能直接套上的上游提交在 f9db0ae0。屏图类型、认屏、重建、渲染、导航、落盘和自检已在库里，还没接到任务循环。密钥池、do_each、只读控制台、动态语言、图片存相册、共享沙箱、备份逐条暂存、网页最终 URL 仍未接入。对照见 docs/dev/upstream-v0.1.49-to-v0.1.50.md。
-- 版本：v0.2.16 已发布，versionCode 2016，高于 v0.2.15 的 2015。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.16 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.16/Mika-v0.2.16.apk ，SHA-256 f04c717229688662a29c01e59456b51e17734abc85c5fd50bf88ce5d918d8d15。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.16/Mika-v0.2.16-arm64.apk ，SHA-256 0c51e64d9239bd08432552d86700272d60cfdd0006bda68623e9b338e7e3de9f。两包与 v0.2.15 的签名证书 SHA-256 都是 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，证书主体是 O=yangzhanyu1994, CN=mika-fork。
-- CI：https://github.com/yangzhanyu1994/Mika/actions/runs/44848906909 通过。签名发布重试 https://github.com/yangzhanyu1994/Mika/actions/runs/44851452601 成功。第一次 https://github.com/yangzhanyu1994/Mika/actions/runs/44849800865 因通话设备测试等不到 Compose 空闲而失败，没有发出安装包；修正后只再推了一次 release/v0.2.16。
-- 本地代码测试（2026-11-21 09:08 UTC+8，本机，不是 CI）：`./gradlew :core:test --stacktrace` 退出码 0（3901 tests，0 failures，2 ignored）。`./gradlew :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 退出码 0（2716 tests，0 failures；debug APK 与 androidTest 编译成功）。`python3 tools/i18n/translations.py check` 退出码 0。
-- 模拟器：发布 workflow 在 Android 16 模拟器上跑过任务启动和通话设备测试，通话测试关闭了动效。通话 2 cm、球体效果映射、MCP 刷新、通知调度、弧线菜单和定位权限没有在模拟器里逐项看过。本机没有安装 emulator。
-- 真机：未验证。
+- 日期（UTC+8）：2026-11-21 10:43
+- 更新者：Cursor Agent（本轮实现，接在 v0.2.16 / main `9b244a39` 之后）
+- 代码：应用内通话仍用豆包实时语音。语音里的 mika_request 只执行当轮完整用户转写，丢掉半句、上一轮残留、和正在播放的助手声音重合的转写，以及模型写出的另一句命令。同一个 call id 只执行一次。聊天模式在能力不够时用原话交接给工作模式一次；没有权限、用户取消、安全拒绝不会再试。打断会停播放，并按已执行阶段取消未结束的任务，不声称撤回已经发生的操作。普通手机电话仍不注册 Mika 工具。新增 `read_local_time`、`read_calendar_today`、`read_weather`。菜单按四分之一圆弧展开，标签有底色，图标用墨色。悬浮标志在连接、思考、搜索、观察、执行、书写、等待时用对应粒子效果，空闲和结束后回到黑白标志。应用内通话用现有扬声器按钮，在 Android 12 及以上读取实际通信设备。
+- 已发布版本保持不动：v0.2.16 仍是 versionCode 2016，tag 与 release/v0.2.16 都在 `b7550f4c`。本轮没有新的安装包。
+- 本地代码测试（2026-11-21 10:43 UTC+8，本机，不是 CI）：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --offline --stacktrace` 退出码 0。core 3911 tests，0 failures，2 skipped。app 2729 tests，0 failures。debug APK 与 androidTest 编译成功。`python3 tools/i18n/translations.py check` 退出码 0（3800 resources，12 languages）。
+- CI：本段写入时 PR 还没推送，不能写成 CI 通过。
+- 模拟器：本机没有 emulator 程序，也没有系统镜像。`/dev/kvm` 在，但没有菜单展开、深浅壁纸、状态或动效的模拟器截图。不能把这写成模拟器通过。
+- 真机：未验证。三星 W25 上的菜单、回声和音频路由仍要用户自己看。
 
 **重要决定和限制**
 
-- 用户 2026-11-21 09:11（UTC+8）说「发布一版。我来验证」。这版按实际已完成的范围发布，不把未接入的上游提交算进完成。
-- 不更换签名，不读取或打印密钥，不操作手机，不发送真实微信或通知。
-- 参考图在本环境不存在。保持现有空心点阵和弧线菜单。
-- 主动通知的设计时间不是已启用时间。MCP 不缓存假连通。微信已连接不等于已送达。定位不编地址、不上传、后台默认关闭。
+- 用户 2026-11-21 10:20 与 10:21（UTC+8）要求实现语音办事、菜单和免提。这是实现授权，不是合并或发布许可。v0.2.16 的发布已经结束。
+- 不整合上游剩下的 37 个冲突提交，不写 wangzan101/Mika，不碰 DOVE、Tailscale、Aqara、真实账号或真实外发消息，不读、不打印密钥。
+- 发消息、改设置、付款仍走原来的确认。权限拒绝、用户取消和安全拒绝不是可以绕过去的失败。通话不另开无限授权。
+- 时间是只读采样，含时区。日程读取需要 READ_CALENDAR；拒绝、撤回和空结果分开。天气只报告 Open-Meteo 返回的观测时间和时区；没有网络、位置或数据时直接说明，不编造。
+- 菜单触摸窗口按按钮和移动路径裁，不铺满屏幕。粒子效果只在标志可见且没有打开「减少动效」时画，离开画面就停，不把 Compose 状态每帧写一遍。
+- 免提的选中状态来自系统实际路由。没有听筒时留在扬声器。扬声器回声和真机插拔不在本环境验收。
 
 **下一步与问题**
 
-安装包已经可下载。用户在自己的三星 W25 上安装通用包或 ARM64 包，覆盖 v0.2.15。冲突的上游提交留到下一轮。物理 2 cm、省电和后台定位仍待用户真机。
+请用户看 PR 的代码和测试。通过后再决定是否合并、发下一版。不要把本轮当成已经发布。
 
-- 测试结果：代码完成。PR CI 通过。签名发布 CI 通过，含 Android 16 模拟器上的任务启动和关闭动效后的通话设备测试。七项界面没有逐项模拟器验收。真机未验证。
-- 来源：用户 2026-11-21 09:11（UTC+8）「发布一版。我来验证」。版本空闲情况来自 origin 的 tags 与 release/v0.2.* 分支。
+- 测试结果：代码完成。本地单元测试、debug 构建和 androidTest 编译通过。CI 尚未出结果。模拟器未跑。真机未验证。
+- 来源：用户 2026-11-21 10:20（UTC+8）的实现要求，以及 10:21（UTC+8）追加的免提。v0.2.16 的 tag 仍是 `b7550f4c`。菜单问题来自用户提供的 v0.2.16 三星真机截图。
+- 真机还要看：四分之一圆弧是否完全展开、标签在深浅壁纸上是否清楚、图标是否黑白、思考时标志是否换成对应粒子并在空闲时恢复、免提和听筒或耳机的实际路由、扬声器是否把助手声音又当成用户指令、打断后已做完的操作是否被说成撤回。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更
 

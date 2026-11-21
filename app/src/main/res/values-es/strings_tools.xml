@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">Sitios frecuentes</string>
     <string name="tool_wechat_owner">Enviar a mi WeChat</string>
     <string name="tool_device_location">Ubicación actual</string>
+    <string name="tool_read_local_time">Hora actual</string>
+    <string name="tool_read_calendar_today">Agenda de hoy</string>
+    <string name="tool_read_weather">Tiempo</string>
 </resources>

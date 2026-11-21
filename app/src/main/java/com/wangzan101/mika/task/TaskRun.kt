@@ -1004,6 +1004,9 @@ class TaskRun(
                 create = { childSpec ->
                     val childTools = toolDispatcher(privatePhone, model.capabilities.vision,
                         deviceLocation = com.wangzan101.mika.location.AndroidDeviceLocation(service),
+                        clock = true,
+                        calendar = com.wangzan101.mika.calendar.AndroidCalendarToday(service),
+                        weather = com.wangzan101.mika.weather.AndroidWeather(com.wangzan101.mika.location.AndroidDeviceLocation(service)),
                         web = web, webPacing = { PagePacing.human() }, webPlacePace = { PlacePace.of(catalog.sitePace(it)) },
                         webIdleScroll = { IdleScroll(Random.Default) },
                         appPacing = { pace.appPacing() }, appPace = { PlacePace.of(catalog.appPace(it)) }, appIdleScroll = { IdleScroll(Random.Default) },
@@ -1033,6 +1036,11 @@ class TaskRun(
                     !conditionCheck && (service.application as MikaApp).calls.settings.state.value.enabled
                 },
                 deviceLocation = com.wangzan101.mika.location.AndroidDeviceLocation(service),
+                clock = provenance.origin == RunOrigin.Ui,
+                calendar = if (provenance.origin == RunOrigin.Ui && !conditionCheck)
+                    com.wangzan101.mika.calendar.AndroidCalendarToday(service) else null,
+                weather = if (provenance.origin == RunOrigin.Ui && !conditionCheck)
+                    com.wangzan101.mika.weather.AndroidWeather(com.wangzan101.mika.location.AndroidDeviceLocation(service)) else null,
                 // 设置里允许 Mika 改自己时,才把 settings_list、settings_set 发给模型
                 selfConfig = if (FeatureFlags.get(service).selfConfig()) {
                     com.wangzan101.mika.settings.SelfConfigImpl(FeatureFlags.get(service))

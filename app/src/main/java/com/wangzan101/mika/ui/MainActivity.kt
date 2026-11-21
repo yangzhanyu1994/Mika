@@ -578,12 +578,17 @@ private fun MikaRoot(
             val id = if (inPersonal) "personal-main" else conversationId
                 ?: app.conversations.newConversation().also(app.chat::openConversation)
             if (!inPersonal && app.chat.ui.value.conversationId != id) return false
+            var handedOff = false
             val handoff = {
-                val sameChat = if (inPersonal) onOriginalScreen(conversationId) else
-                    nav.current == screen && personalChat == personalMode &&
-                        selectedChat == true &&
-                        app.chat.ui.value.conversationId == id
-                sameChat && sendToWork()
+                if (handedOff) false
+                else {
+                    handedOff = true
+                    val sameChat = if (inPersonal) onOriginalScreen(conversationId) else
+                        nav.current == screen && personalChat == personalMode &&
+                            selectedChat == true &&
+                            app.chat.ui.value.conversationId == id
+                    sameChat && sendToWork()
+                }
             }
             val finished = call?.let { route -> { turn: Turn -> route.finishedResearch(turn) } }
             val accepted = if (inPersonal) app.researchChat.send(
@@ -885,11 +890,15 @@ private fun MikaRoot(
                         MikaVoiceCallDialog(app.calls, onConfigure = {
                             saveMikaCall = null
                             nav.push(Route.CallModel)
-                        }, onDismiss = { saveMikaCall = null }, delegate = { words, progress ->
+                        }, onDismiss = { saveMikaCall = null                         }, delegate = { words, progress ->
                             coroutineScope {
                                 val route = VoiceCallRoute(app, this, progress)
-                                if (sendByIntent(words, mikaCallPersonal, call = route)) route.awaitResult(words)
-                                else context.getString(R.string.mika_voice_call_request_failed)
+                                try {
+                                    if (sendByIntent(words, mikaCallPersonal, call = route)) route.awaitResult(words)
+                                    else context.getString(R.string.mika_voice_call_request_failed)
+                                } finally {
+                                    if (!isActive) route.cancelStartedWork(words)
+                                }
                             }
                         }, saveTranscript = { turns ->
                             try {

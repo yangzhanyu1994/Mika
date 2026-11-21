@@ -77,4 +77,7 @@
     <string name="tool_mika_confirm_login">Oturumu onayla</string>
     <string name="tool_mika_favorites">Sık kullanılan siteler</string>
     <string name="tool_device_location">Geçerli konum</string>
+    <string name="tool_read_local_time">Geçerli saat</string>
+    <string name="tool_read_calendar_today">Bugünün ajandası</string>
+    <string name="tool_read_weather">Hava</string>
 </resources>

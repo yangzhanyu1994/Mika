@@ -4,6 +4,7 @@ import com.wangzan101.mika.R
 import com.wangzan101.mika.cap.web.KeptPage
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.ui.StatusCopy
+import com.wangzan101.mika.ui.orbMotion
 import com.wangzan101.mika.i18n.trPlural
 import com.wangzan101.mika.confirm.ConfirmationCopy
 import com.wangzan101.mika.core.agent.RunProgress
@@ -138,7 +139,16 @@ sealed interface CapsuleView {
         val conversationId: String? = null,
         val pill: Boolean = false,
         val widthEpoch: Int = 0,
+        /** Real task motion while this mark is showing. Null keeps the black-and-white logo. */
+        val motion: com.wangzan101.mika.ui.OrbMotion? = null,
     ) : CapsuleView
+}
+
+/** Idle, notice, and finished marks keep the logo. Active work uses that task's own motion. */
+internal fun floatingOrb(kind: CapsuleKind, state: com.wangzan101.mika.core.agent.TaskState): com.wangzan101.mika.ui.OrbMotion? {
+    val active = kind == CapsuleKind.Running || kind == CapsuleKind.Held || kind.needsYou || kind == CapsuleKind.HandedOver
+    if (!active) return null
+    return state.orbMotion.takeUnless { it == com.wangzan101.mika.ui.OrbMotion.Idle || it == com.wangzan101.mika.ui.OrbMotion.Complete }
 }
 
 /**
@@ -260,7 +270,10 @@ class CapsuleModel(private val reasonLabel: (String) -> String? = { null }) {
         }
         // 有还没在卡片里看过的要你处理:展开成胶囊,一直停着
         val pill = line.kind.needsYou && described.any { (r, l) -> l.kind.needsYou && r.mark() !in seen }
-        return CapsuleView.Shown(line.kind, text, detail, count, needCount, top.key, top.conversationId, pill = pill)
+        return CapsuleView.Shown(
+            line.kind, text, detail, count, needCount, top.key, top.conversationId,
+            pill = pill, motion = floatingOrb(line.kind, top.state),
+        )
     }
 
     /** 最近结束的那件:先展开成胶囊,再缩回一颗带着结果角标;在卡片里看过的直接是一颗;卡片展开着时停表。 */

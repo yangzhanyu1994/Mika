@@ -136,7 +136,7 @@ internal fun MikaVoiceCallOverlay(
                             )
                             IconButton(onClick = onSpeaker, modifier = Modifier.testTag("mika-call-speaker")) {
                                 Icon(
-                                    if (speakerOn) MikaIcons.Sound else MikaIcons.Mute,
+                                    if (speakerOn) MikaIcons.Sound else MikaIcons.Phone,
                                     stringResource(if (speakerOn) R.string.mika_voice_call_speaker_on else R.string.mika_voice_call_speaker_off),
                                     tint = CallInk,
                                 )
