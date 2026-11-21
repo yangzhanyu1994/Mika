@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">المواقع المتكررة</string>
     <string name="tool_wechat_owner">إرسال إلى حسابي على WeChat</string>
     <string name="tool_device_location">الموقع الحالي</string>
+    <string name="tool_read_local_time">الوقت الحالي</string>
+    <string name="tool_read_calendar_today">جدول اليوم</string>
+    <string name="tool_read_weather">الطقس</string>
 </resources>

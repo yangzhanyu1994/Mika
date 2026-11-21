@@ -71,15 +71,12 @@ class ApprovedFollowUpTest {
 
     @Test fun arcOpensLeftFromARightCapsuleAndReturnsOnTheSamePath() {
         assertEquals(CapsuleTapAction.QuickMenu, CapsuleTapAction.parse(null))
-        val open = CapsuleArc.layout(900f, 400f, dockRight = true, 1000f, 800f, progress = 1f)
-        val mid = CapsuleArc.layout(900f, 400f, dockRight = true, 1000f, 800f, progress = 0.5f)
-        val shut = CapsuleArc.layout(900f, 400f, dockRight = true, 1000f, 800f, progress = 0f)
+        val open = CapsuleArc.layout(900f, 400f, dockRight = true, 1000f, 800f, density = 1f, labelWidths = List(4) { 80f })
         assertEquals(CapsuleArcAction.entries.toList(), open.map { it.action })
-        assertTrue(open.all { it.labelOnLeft && it.x < 900f })
-        assertTrue(open.zip(mid).all { (a, b) -> b.x in a.x..900f || abs(b.x - 900f) < abs(a.x - 900f) })
-        assertTrue(shut.all { abs(it.x - 900f) < 1f && abs(it.y - 400f) < 1f })
-        val left = CapsuleArc.layout(40f, 400f, dockRight = false, 1000f, 800f, 1f, margin = 8f)
-        assertTrue(left.all { !it.labelOnLeft && it.x >= 8f })
+        assertTrue(open.all { it.labelOnLeft && it.centerX < 900f })
+        assertTrue(open.all { abs(it.centerX + it.fromAnchorX - 900f) < 1f && abs(it.centerY + it.fromAnchorY - 400f) < 1f })
+        val left = CapsuleArc.layout(40f, 400f, dockRight = false, 1000f, 800f, density = 1f, insetLeft = 8f, labelWidths = List(4) { 40f })
+        assertTrue(left.all { !it.labelOnLeft && it.centerX >= 8f && it.labelLeft >= 8f })
     }
 
     @Test fun briefWindowStatesSameDayAndCrossesMidnightWithoutLoggingCodes() {

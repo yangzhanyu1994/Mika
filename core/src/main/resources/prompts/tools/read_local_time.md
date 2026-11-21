@@ -1,0 +1,1 @@
+Read the device clock once. The result has the IANA zone, the UTC offset, the local ISO time, and sampledAt (the instant that was read). Do not change the clock and do not invent a time if this tool is unavailable.

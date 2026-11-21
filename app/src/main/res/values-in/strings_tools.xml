@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">Situs sering dipakai</string>
     <string name="tool_wechat_owner">Kirim ke WeChat saya</string>
     <string name="tool_device_location">Lokasi saat ini</string>
+    <string name="tool_read_local_time">Waktu saat ini</string>
+    <string name="tool_read_calendar_today">Agenda hari ini</string>
+    <string name="tool_read_weather">Cuaca</string>
 </resources>

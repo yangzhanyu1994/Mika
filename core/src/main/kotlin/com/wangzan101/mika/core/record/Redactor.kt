@@ -3,6 +3,7 @@ package com.wangzan101.mika.core.record
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -93,11 +94,24 @@ object Redactor {
             } ?: top
         }
         Verb.HandToUser -> if ("userNote" in content) JsonObject(content + ("userNote" to JsonPrimitive(MASK))) else content
-        Verb.DeviceLocation -> JsonObject(content.mapValues { (k, v) ->
+        Verb.DeviceLocation, Verb.ReadWeather -> JsonObject(content.mapValues { (k, v) ->
             if (k == "latitude" || k == "longitude" || k == "place") JsonPrimitive(MASK) else v
+        })
+        Verb.ReadCalendar -> JsonObject(content.mapValues { (k, v) ->
+            if (k == "events") maskCalendarEvents(v) else v
         })
         Verb.PhoneCommand -> if ("output" in content) JsonObject(content + ("output" to JsonPrimitive(MASK))) else content
         else -> content
+    }
+
+    private fun maskCalendarEvents(v: JsonElement): JsonElement {
+        val items = v as? JsonArray ?: return JsonPrimitive(MASK)
+        return JsonArray(items.map { item ->
+            val event = item as? JsonObject ?: return@map JsonPrimitive(MASK)
+            JsonObject(event.mapValues { (field, value) ->
+                if (field == "title" || field == "location") JsonPrimitive(MASK) else value
+            })
+        })
     }
 
     private fun noticeOutcomeMasked(o: JsonObject): JsonObject =

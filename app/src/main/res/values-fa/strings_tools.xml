@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">سایت‌های پرکاربرد</string>
     <string name="tool_wechat_owner">ارسال به وی‌چت من</string>
     <string name="tool_device_location">موقعیت فعلی</string>
+    <string name="tool_read_local_time">زمان فعلی</string>
+    <string name="tool_read_calendar_today">برنامه امروز</string>
+    <string name="tool_read_weather">آب‌وهوا</string>
 </resources>

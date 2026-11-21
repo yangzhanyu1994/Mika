@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">よく使うサイト</string>
     <string name="tool_wechat_owner">自分の WeChat に送信</string>
     <string name="tool_device_location">現在地</string>
+    <string name="tool_read_local_time">現在時刻</string>
+    <string name="tool_read_calendar_today">今日の予定</string>
+    <string name="tool_read_weather">天気</string>
 </resources>

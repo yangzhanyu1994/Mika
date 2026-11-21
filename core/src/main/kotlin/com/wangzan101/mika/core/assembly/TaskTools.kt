@@ -145,6 +145,12 @@ fun toolDispatcher(
     selfOperate: com.wangzan101.mika.core.self.SelfPort? = null,
     phoneCalls: com.wangzan101.mika.core.calls.PhoneCallPort? = null,
     deviceLocation: com.wangzan101.mika.core.location.DeviceLocationPort? = null,
+    /** 读设备时钟。只在手机上的任务打开。 */
+    clock: Boolean = false,
+    /** 读今天的日程。为空时不提供 read_calendar_today。 */
+    calendar: com.wangzan101.mika.core.calendar.CalendarReadPort? = null,
+    /** 读天气。为空时不提供 read_weather。 */
+    weather: com.wangzan101.mika.core.weather.WeatherPort? = null,
     smsLogin: com.wangzan101.mika.core.cap.phone.sms.SmsLoginPort? = null,
     /** 跨会话任务摘要;给了才提供 task_memory_search / task_memory_timeline / task_memory_step。 */
     taskMemory: com.wangzan101.mika.core.memory.TaskMemoryStore? = null,
@@ -214,6 +220,21 @@ fun toolDispatcher(
             override val id = "location"
             override fun open(spec: RunSpec) = com.wangzan101.mika.core.location.DeviceLocationCapability(port)
         }
+    }, if (clock) {
+        object : CapabilityProvider {
+            override val id = "clock"
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.clock.ClockCapability()
+        }
+    } else null, calendar?.let { port ->
+        object : CapabilityProvider {
+            override val id = "calendar"
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.calendar.CalendarCapability(port)
+        }
+    }, weather?.let { port ->
+        object : CapabilityProvider {
+            override val id = "weather"
+            override fun open(spec: RunSpec) = com.wangzan101.mika.core.weather.WeatherCapability(port)
+        }
     }, pluginScriptRunner?.takeIf { pluginTools.isNotEmpty() }?.let { runner ->
         object : CapabilityProvider {
             override val id = "plugin"
@@ -272,7 +293,7 @@ fun recordedTools(): ToolIndex = legacyNames().let { legacy -> ToolIndex(allTool
 
 /** Mika 所有可能提供的工具,按发给模型的顺序。 */
 internal fun allTools(): List<AgentTool> =
-    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + com.wangzan101.mika.core.cap.audio.AudioGroup.tools + com.wangzan101.mika.core.cap.transcribe.TranscribeGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools + com.wangzan101.mika.core.wechat.wechatOwnerTools + com.wangzan101.mika.core.location.locationTools + com.wangzan101.mika.core.cap.devicefiles.DeviceFilesGroup.tools
+    GeneralGroup.tools + PhoneCapability.tools() + WebGroup.tools + SandboxGroup.tools + com.wangzan101.mika.core.cap.audio.AudioGroup.tools + com.wangzan101.mika.core.cap.transcribe.TranscribeGroup.tools + RootGroup.tools + com.wangzan101.mika.core.calls.callAgentTools + com.wangzan101.mika.core.wechat.wechatOwnerTools + com.wangzan101.mika.core.location.locationTools + com.wangzan101.mika.core.clock.clockTools + com.wangzan101.mika.core.calendar.calendarTools + com.wangzan101.mika.core.weather.weatherTools + com.wangzan101.mika.core.cap.devicefiles.DeviceFilesGroup.tools
 
 /** Mika 所有可能提供的工具的声明。 */
 fun knownTools(): ToolIndex = ToolIndex(allTools())

@@ -36,7 +36,9 @@ internal class DeviceLocationCapability(val port: DeviceLocationPort) : Capabili
         "When the user asks where they are, call device_location and answer from that result. " +
             "Report coordinates, accuracy, collection time, and whether the fix is cached. " +
             "Use place only when geocoder is system. If geocoder is none or unavailable, give the coordinates and do not invent a street or city. " +
-            "A failure is the answer: do not guess a location, and do not send the coordinates anywhere except this reply.",
+            "A failure is the answer: do not guess a location, and do not send these coordinates yourself. " +
+            "read_weather is the only tool that sends coordinates, and only to Open-Meteo for that weather request. " +
+            "Without a location grant, do not read the phone; a city the user named does not need the phone location.",
     )
     override fun onTaskStart(ctx: ToolContext) { ctx[KEY] = this }
     companion object { val KEY = CapabilityKey<DeviceLocationCapability>("location") }

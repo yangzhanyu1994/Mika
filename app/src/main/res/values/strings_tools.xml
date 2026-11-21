@@ -78,4 +78,7 @@
     <string name="tool_mika_favorites">Frequently used sites</string>
     <string name="tool_wechat_owner">Send to my WeChat</string>
     <string name="tool_device_location">Current location</string>
+    <string name="tool_read_local_time">Current time</string>
+    <string name="tool_read_calendar_today">Today\'s events</string>
+    <string name="tool_read_weather">Weather</string>
 </resources>

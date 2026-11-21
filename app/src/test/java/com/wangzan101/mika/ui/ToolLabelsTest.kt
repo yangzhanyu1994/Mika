@@ -29,5 +29,8 @@ class ToolLabelsTest {
         assertEquals("Browse device files", labels.label("list_device_files"))
         assertEquals("Copy device file", labels.label("copy_device_file"))
         assertEquals("Current location", labels.label("device_location"))
+        assertEquals("Current time", labels.label("read_local_time"))
+        assertEquals("Today's events", labels.label("read_calendar_today"))
+        assertEquals("Weather", labels.label("read_weather"))
     }
 }
