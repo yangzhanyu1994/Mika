@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 4419b1303d3e -->
+<!-- translated-from: README.md @ a107ecced22f -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -39,6 +39,15 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 ## Imprescindible
 
 Consulta los cambios de las versiones recientes en el [historial de actualizaciones (en chino)](../../README.md#近期版本更新说明).
+
+
+### 2026-11-21 09:02
+
+- **Fecha**：2026-11-21 09:02 (UTC+8)
+- **Autor**：Cursor Agent
+- **Resultado de las pruebas**：el código ya cambió. La ejecución de CI 44840865653 falló; el arreglo aún no está enviado, así que no cuenta como CI en verde. Sin emulador. Sin teléfono real.
+- **Origen**：el usuario confirmó el 2026-11-21 08:53 (UTC+8) continuar desde el PR 95. El estado en cuatro partes está al inicio del README.
+- **Estado**：sin fusión y sin publicación. El mapa de pantallas solo incluye los commits que encajaban; todavía no entra en el bucle de la tarea.
 
 ### 2026-11-13
 

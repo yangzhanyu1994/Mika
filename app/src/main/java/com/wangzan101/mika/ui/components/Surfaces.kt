@@ -203,7 +203,7 @@ private val GlassBlur = BlurEffect(30f, 30f, TileMode.Clamp)
 fun GlassBar(
     modifier: Modifier = Modifier,
     backdrop: GlassBackdrop? = null,
-    shape: Shape = MikaShapes.Pill,
+    shape: Shape = MikaShapes.Composer,
     content: @Composable RowScope.() -> Unit,
 ) {
     val c = MikaTheme.colors

@@ -77,4 +77,5 @@
     <string name="tool_mika_confirm_login">Confirmar login</string>
     <string name="tool_mika_favorites">Sites frequentes</string>
     <string name="tool_wechat_owner">Enviar para meu WeChat</string>
+    <string name="tool_device_location">Localização atual</string>
 </resources>
