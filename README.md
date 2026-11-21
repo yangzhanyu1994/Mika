@@ -35,38 +35,38 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 项目状态（2026-11-21 11:05 UTC+8）
+### 项目状态（2026-11-21 12:01 UTC+8）
 
 **项目目标**
 
-发布 v0.2.17，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.16。这一版只包含 PR 96：应用内语音把办事交给 Mika、只读时间/今日日程/天气、悬浮菜单和状态粒子、通话免提。不是上游剩余冲突的整合，也不是真机已经通过。
+发布 v0.2.18，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.17。这一版只包含 PR 97：菜单按下时窗口不再因测量闪动而挪位；菜单里的语音聊天直接打开应用内通话；系统数字助理仍留在原来的助手页里接通语音；通话和助手页的有效输入都交给工作任务。没有用户视频，不能把按下跳动写成真机已修好。
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-21 11:05
-- 更新者：Cursor Agent（按用户 10:47 的发布授权）
-- 代码：合并提交 `840e5698`，树与 PR head `1bd6f93b` 相同。v0.2.16 的 tag 仍是 `b7550f4c`，没有被改写。
-- 版本：v0.2.17 已发布，versionCode 2017，高于 v0.2.16 的 2016。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.17 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.17/Mika-v0.2.17.apk ，SHA-256 2552e536dccc5980c5e667f53cd57f935d385e9f0a838508314a25c18fbfd914，架构 arm64-v8a、armeabi-v7a、x86、x86_64。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.17/Mika-v0.2.17-arm64.apk ，SHA-256 058f93819622dc2e317d7104104fb565826984037ba4ac6cc2383fd2c8a61a3d，只有 arm64-v8a。两包与下载到的 v0.2.16 通用包证书 SHA-256 都是 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，证书主体是 O=yangzhanyu1994, CN=mika-fork。下载后的哈希与 GitHub 发布摘要一致。
-- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/44857924272 在 `1bd6f93b` 上四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/44858552166 成功，只推了一次 release/v0.2.17。更早的 https://github.com/yangzhanyu1994/Mika/actions/runs/44857604035 跑的是上一提交，被这次披露修正取消，不算本版通过记录。
-- 本地代码测试（2026-11-21 10:43 UTC+8，本机，不是 CI）：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --offline --stacktrace` 退出码 0。core 3911 tests，0 failures，2 skipped。app 2729 tests，0 failures。披露修正后的提示词金样和 `python3 tools/i18n/translations.py check` 退出码 0。
-- 模拟器：发布 workflow 在 Android 16 模拟器上跑过已有的任务启动和通话设备测试。通话设备测试只在测试代码里关闭动效，正式界面没有全局关闭动效。本机没有 emulator，没有菜单展开、深浅壁纸、状态或动效截图。
-- 真机：未验证。
+- 日期（UTC+8）：2026-11-21 12:01
+- 更新者：Cursor Agent（按用户 11:21、11:22、11:31 的修复和发布要求，以及父协调者 12:00 的发布核对）
+- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/97 已合并。合并提交 `4cc4cb14e1791ea6bfd952a0e6dac2c9b3133468`，与 PR head `627c0efa8063d84f460d2939920ac570e5e88f93` 的文件树相同。v0.2.17 的 tag 仍是 `840e5698`，没有被改写。
+- 版本：v0.2.18 已发布，versionCode 2018，高于 v0.2.17 的 2017。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.18 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.18/Mika-v0.2.18.apk ，本机下载后 SHA-256 e021452c56f97030ed4adb450c9ac55871fe2ab1d6f3f2e04c1090355c9d2b81，架构 arm64-v8a、armeabi-v7a、x86、x86_64。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.18/Mika-v0.2.18-arm64.apk ，本机下载后 SHA-256 bb2fa3e20f92d92f5aa2d78a9368f87d618b0daacee7050e9455a75e650f0722，只有 arm64-v8a。两个下载哈希与 GitHub 发布摘要一致。两包与同时下载的 v0.2.17 通用包证书 SHA-256 都是 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，证书主体是 O=yangzhanyu1994, CN=mika-fork。
+- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/44862151419 在 `627c0efa` 上四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/44862604719 成功，完成时间 2026-11-21 11:54:56 UTC+8，只推了一次 release/v0.2.18。这次 README 只推 main，不再触发发布。
+- 本地代码测试（2026-11-21 11:33 UTC+8 前后，本机，不是 CI）：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --offline` 退出码 0。core 3911 tests，0 failures，2 skipped。app 2733 tests，0 failures。`python3 tools/i18n/translations.py check` 退出码 0。
+- 模拟器：发布 workflow 在 Android 16 模拟器上只跑了既有的任务启动和通话设备测试。通话设备测试只在测试代码里关闭动效。本机没有 emulator。没有本轮助手页、菜单按下或状态文字的模拟器截图。不能把旧通话测试写成这些界面已验收。
+- 真机：未验证。用户没有附上按下跳动的视频，本记录不声称看过或复现该视频。
 
 **重要决定和限制**
 
-- 用户 2026-11-21 10:47（UTC+8）说「发布」，授权合并 PR 96 并按现有签名流程发布。此前不合并不发布的等待到此结束。
-- 不整合上游剩下的 37 个冲突提交，不写 wangzan101/Mika，不碰 DOVE、Tailscale、Aqara、真实账号或真实外发消息，不读、不打印密钥。
-- 发消息、改设置、付款仍走原来的确认。权限拒绝、用户取消和安全拒绝不是可以绕过去的失败。普通手机电话仍没有 Mika 工具。
-- 没有定位授权就不读取手机位置。用户说出城市时，天气不读取手机位置。问天气且没有指定城市时，这一次把坐标只发给 Open-Meteo，不发给别的服务。坐标和日程标题不写入运行记录。不能再说授予定位就不会外发位置。
-- 正式界面的菜单和粒子动画保持开启。减少动效只在系统设置或通话设备测试里生效。
+- 用户 2026-11-21 11:21（UTC+8）要求修复并发布。11:22 更正：唤醒是系统数字助理，三星长按侧键，不是长按浮窗。11:31 再明确：就在现有数字助手页里接通语音，不打开完整通话主界面。浮窗长按、拖动和单击保持原样。
+- 菜单「语音聊天」打开的是应用内通话页。系统侧键打开的是原来的数字助手页：页内问候一次「你好呀，我是Mika，需要我做什么？」，可说话也可手打，挂断会停掉音频、麦克风和会话。这两个入口不是同一个界面。
+- 应用内通话和数字助手页的有效输入都进入工作任务。发消息、改设置、付款仍走原来的确认。普通手机电话仍没有 Mika 工具。
+- 没有定位授权就不读取手机位置。指定城市的天气不取定位。当前位置天气按这一次把坐标只发给 Open-Meteo。坐标和日程标题不写入运行记录。
+- 不整合上游剩余冲突，不写 wangzan101/Mika，不碰 DOVE、Tailscale、Aqara、真实账号或真实外发消息，不读、不打印密钥。
 
 **下一步与问题**
 
-安装包已经可下载，可覆盖 v0.2.16。三星真机上的菜单、粒子状态、免提路由和扬声器回声仍要用户自己看。
+安装包已经可下载，可覆盖 v0.2.17。三星真机仍由用户看。
 
-- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 模拟器上的既有冒烟测试。菜单和免提没有模拟器截图。真机未验证。
-- 来源：用户 2026-11-21 10:20 与 10:21（UTC+8）的实现要求，以及 10:47（UTC+8）的「发布」。版本空闲情况来自 origin 的 tags 与 release/v0.2.* 分支，当时最新是 v0.2.16，所以这一版是 v0.2.17。
-- 真机还要看：通话里问时间、今天的日程和天气，结果是否来自工具而不是空口；发消息、改设置、付款是否仍要确认；普通来电不能指挥手机；菜单是否完全展开、标签在深浅壁纸上清楚、图标黑白、动画不卡成逐帧挪窗口；思考时标志换成对应粒子，闲时回到黑白标志；免提、听筒、蓝牙和有线耳机的实际路由，以及扬声器回声和打断。
+- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 上的既有冒烟测试。本轮助手页、菜单按下和状态文字没有模拟器界面证据。真机未验证。
+- 来源：用户 2026-11-21 11:21、11:22、11:31（UTC+8），以及父协调者 12:00 对发布 workflow 的核对。当时未被占用的下一版本是 v0.2.18。
+- 真机还要看：菜单按下后浮窗是否还跳；菜单语音是否直接进入通话而不是新建会话或悬浮设置；长按侧键是否留在原来的助手页、只问候一次、能说能打字、挂断是否真的停下；通话和助手页里的时间、日程、天气是否来自工具；发消息、改设置、付款是否仍要确认；普通来电不能指挥手机。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更
 
