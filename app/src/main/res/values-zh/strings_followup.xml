@@ -44,7 +44,7 @@
     <string name="location_services_sub">打开系统的 GPS 和网络定位开关</string>
     <string name="location_auto">自动定位</string>
     <string name="location_auto_sub">默认关闭。打开后，后台任务只有在系统已授予始终允许时才能读取一次位置。不会新建地理围栏，也不会全天监听。</string>
-    <string name="location_note">Mika 用 Android 系统定位，不另接地图厂商。只有系统地理编码返回了地点才显示地名，否则只给坐标。坐标不写入运行记录。授予定位不等于可以把位置外发。省电限制可能让后台读不到。三星真机未验证。</string>
+    <string name="location_note">Mika 用 Android 系统定位，不另接地图厂商。只有系统地理编码返回了地点才显示地名，否则只给坐标。坐标和日程标题不写入运行记录。没有授权就不读取位置。问天气且没有指定城市时，这一次会把坐标发给 Open-Meteo，不发给别的服务。你说出城市时不读取手机位置。省电限制可能让后台读不到。三星真机未验证。</string>
     <string name="location_status_fine">精确</string>
     <string name="location_status_coarse">大致</string>
     <string name="location_status_none">未授权</string>

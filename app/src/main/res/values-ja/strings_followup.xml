@@ -44,7 +44,7 @@
     <string name="location_services_sub">GPS とネットワーク測位のシステムスイッチを開きます</string>
     <string name="location_auto">自動測位</string>
     <string name="location_auto_sub">既定はオフ。オンにすると、常に許可があるときだけバックグラウンドのタスクが一度位置を読めます。ジオフェンスは増えず、終日の監視もしません。</string>
-    <string name="location_note">Mika は Android の位置情報を使い、別の地図事業者には繋ぎません。地名はシステムのジオコーダが返したときだけ出します。座標は実行記録に書きません。位置情報の許可は、位置を他のサービスへ送る許可ではありません。電池制限でバックグラウンドの読み取りが止まることがあります。Samsung 実機では未確認です。</string>
+    <string name="location_note">Mika は Android の位置情報を使い、別の地図事業者には繋ぎません。地名はシステムのジオコーダが返したときだけ出します。座標と予定の題名は実行記録に書きません。許可がなければ位置は読みません。都市名のない天気の依頼では、その一回だけ座標を Open-Meteo に送り、他のサービスには送りません。都市名を指定したときは端末の位置を読みません。電池制限でバックグラウンドの読み取りが止まることがあります。Samsung 実機では未確認です。</string>
     <string name="location_status_fine">正確</string>
     <string name="location_status_coarse">おおよそ</string>
     <string name="location_status_none">未許可</string>

@@ -44,7 +44,7 @@
     <string name="location_services_sub">Abre el interruptor del sistema para GPS y red</string>
     <string name="location_auto">Ubicación automática</string>
     <string name="location_auto_sub">Desactivada por defecto. Si está activa, una tarea en segundo plano puede leer una posición solo cuando el permiso permanente está concedido. No crea una geocerca ni escucha todo el día.</string>
-    <string name="location_note">Mika usa el servicio de ubicación de Android, no un proveedor de mapas aparte. El nombre del lugar aparece solo si el geocodificador del sistema lo devuelve. Las coordenadas no se escriben en el registro de ejecución. Conceder la ubicación no permite enviar la posición a otro servicio. Los límites de batería pueden impedir una lectura en segundo plano. No verificado en un Samsung.</string>
+    <string name="location_note">Mika usa el servicio de ubicación de Android, no un proveedor de mapas aparte. El nombre del lugar aparece solo si el geocodificador del sistema lo devuelve. Las coordenadas y los títulos del calendario no se escriben en el registro de ejecución. Sin permiso no lee la ubicación. Si pides el tiempo sin nombrar una ciudad, esa petición envía las coordenadas solo a Open-Meteo. Si nombras una ciudad, no lee la ubicación del teléfono. Los límites de batería pueden impedir una lectura en segundo plano. No verificado en un Samsung.</string>
     <string name="location_status_fine">Precisa</string>
     <string name="location_status_coarse">Aproximada</string>
     <string name="location_status_none">No permitida</string>

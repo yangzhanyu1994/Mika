@@ -44,7 +44,7 @@
     <string name="location_services_sub">GPS와 네트워크 위치의 시스템 스위치를 엽니다</string>
     <string name="location_auto">자동 위치</string>
     <string name="location_auto_sub">기본값은 꺼짐입니다. 켜면 항상 허용이 있을 때만 백그라운드 작업이 위치를 한 번 읽습니다. 지오펜스를 만들지 않고 하루 종일 듣지 않습니다.</string>
-    <string name="location_note">Mika는 Android 위치 서비스를 쓰며 별도 지도 업체에 연결하지 않습니다. 장소 이름은 시스템 지오코더가 반환할 때만 나옵니다. 좌표는 실행 기록에 쓰지 않습니다. 위치 권한이 위치를 다른 서비스로 보내는 권한은 아닙니다. 배터리 제한으로 백그라운드 읽기가 막힐 수 있습니다. 삼성 실기기에서는 확인하지 않았습니다.</string>
+    <string name="location_note">Mika는 Android 위치 서비스를 쓰며 별도 지도 업체에 연결하지 않습니다. 장소 이름은 시스템 지오코더가 반환할 때만 나옵니다. 좌표와 일정 제목은 실행 기록에 쓰지 않습니다. 권한이 없으면 위치를 읽지 않습니다. 도시 없이 날씨를 물으면 그 한 번의 요청만 좌표를 Open-Meteo에 보내고 다른 서비스에는 보내지 않습니다. 도시를 말하면 휴대폰 위치는 읽지 않습니다. 배터리 제한으로 백그라운드 읽기가 막힐 수 있습니다. 삼성 실기기에서는 확인하지 않았습니다.</string>
     <string name="location_status_fine">정확</string>
     <string name="location_status_coarse">대략</string>
     <string name="location_status_none">허용 안 됨</string>
