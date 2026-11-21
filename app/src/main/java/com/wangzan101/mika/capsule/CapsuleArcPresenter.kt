@@ -3,6 +3,7 @@ package com.wangzan101.mika.capsule
 import android.content.Context
 import android.view.Gravity
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -220,7 +221,8 @@ class CapsuleArcPresenter(
 @Composable
 private fun ArcChip(
     frame: () -> ArcFrame,
-    flight: State<Float>,
+    // 直接拿 Animatable 本身:把它当 State<Float> 传,编译报类型不匹配。
+    flight: Animatable<Float, AnimationVector1D>,
     closing: State<Boolean>,
     settled: State<Boolean>,
     onClick: () -> Unit,
