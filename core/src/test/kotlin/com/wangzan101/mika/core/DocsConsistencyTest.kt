@@ -61,7 +61,11 @@ class DocsConsistencyTest {
     private val pathExtensions = setOf("kt", "kts", "java", "md", "json", "xml", "txt", "yml", "yaml", "gradle", "toml", "properties", "py", "sh", "js", "html", "pro", "aidl", "cpp", "h")
     private val tool = Regex("""[a-z][a-z0-9]*(_[a-z0-9]+)+""")
     // 状态码不是模型工具名,即使其前缀与工具相同。
-    private val nonToolNames = setOf("copy_not_found", "copy_not_opened")
+    // device_location 让 device 成为工具前缀后,下面这些仍是 CLI/API 状态码,不是发给模型的工具。
+    private val nonToolNames = setOf(
+        "copy_not_found", "copy_not_opened",
+        "device_selection", "device_state", "device_offline", "device_unavailable",
+    )
     private val classLike = Regex("""[A-Z][A-Za-z0-9]*""")
 
     private val toolNames: Set<String> by lazy { knownToolNames() }

@@ -162,6 +162,9 @@ internal enum class DrawerBadge(@StringRes val label: Int, val positive: Boolean
     Monitoring(R.string.drawer_enabled, true),
     Connected(R.string.drawer_connected, true),
     Disconnected(R.string.drawer_disconnected, false),
+    Checking(R.string.drawer_checking, false),
+    NeedsAuth(R.string.drawer_needs_auth, false),
+    Failed(R.string.drawer_failed, false),
     Disabled(R.string.plugins_disabled, false),
     Enabled(R.string.plugins_enabled, true),
     Running(R.string.task_running, true),
@@ -176,7 +179,10 @@ private fun taskBadge(enabled: Boolean, running: Boolean) = when {
 @Composable
 internal fun DrawerStatusBadge(badge: DrawerBadge) {
     val colors = MikaTheme.colors
-    val tone = if (badge.positive) colors.ok else colors.bad
+    val tone = when (badge) {
+        DrawerBadge.Checking -> colors.ink3
+        else -> if (badge.positive) colors.ok else colors.bad
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Box(Modifier.size(7.dp).background(tone, CircleShape))
         Text(stringResource(badge.label), style = MikaType.Hint, color = tone, maxLines = 2)

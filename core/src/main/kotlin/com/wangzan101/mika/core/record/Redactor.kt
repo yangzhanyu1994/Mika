@@ -93,6 +93,9 @@ object Redactor {
             } ?: top
         }
         Verb.HandToUser -> if ("userNote" in content) JsonObject(content + ("userNote" to JsonPrimitive(MASK))) else content
+        Verb.DeviceLocation -> JsonObject(content.mapValues { (k, v) ->
+            if (k == "latitude" || k == "longitude" || k == "place") JsonPrimitive(MASK) else v
+        })
         Verb.PhoneCommand -> if ("output" in content) JsonObject(content + ("output" to JsonPrimitive(MASK))) else content
         else -> content
     }

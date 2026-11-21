@@ -2479,6 +2479,7 @@ class ToolLabels(private val tools: ToolIndex, private val legacy: LegacyNames =
             "打开文件" to R.string.tool_mika_open_file,
             "发通知" to R.string.tool_mika_notify,
             "发送到我的微信" to R.string.tool_wechat_owner,
+            "当前位置" to R.string.tool_device_location,
             "复制文字" to R.string.tool_mika_copy,
             "在浏览器里打开" to R.string.tool_mika_open_in_browser,
             "在浏览器里搜索" to R.string.tool_mika_search_in_browser,

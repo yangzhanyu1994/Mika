@@ -76,7 +76,7 @@ import kotlinx.coroutines.withContext
 private const val SHIZUKU_SETUP_GUIDE_URL = "https://shizuku.rikka.app/guide/setup/"
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, SmsLogin, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
+private enum class SettingsPage { Home, Advanced, AppAccess, SmsLogin, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Location, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -107,6 +107,8 @@ fun SettingsScreen(
     onOpenFiles: (() -> Unit)? = null,
     openPhoneOps: Boolean = false,
     onPhoneOpsOpened: () -> Unit = {},
+    openWechat: Boolean = false,
+    onWechatOpened: () -> Unit = {},
     openWebSearch: Boolean = false,
     onWebSearchOpened: () -> Unit = {},
 ) {
@@ -116,7 +118,11 @@ fun SettingsScreen(
     val roles by store.roles.collectAsState()
     // 开发者选项里的「看图定位已验证」跟着看图模型(看图用主模型时是主模型那条配置)
     val visionConfig = remember(configs, roles) { store.configFor(ModelRole.Vision) }
-    var page by rememberSaveable { mutableStateOf(if (openPhoneOps) SettingsPage.PhoneOps else SettingsPage.Home) }
+    var page by rememberSaveable { mutableStateOf(when {
+        openPhoneOps -> SettingsPage.PhoneOps
+        openWechat -> SettingsPage.Wechat
+        else -> SettingsPage.Home
+    }) }
     var explaining by remember { mutableStateOf<Problem?>(null) }
     // 「完全退出」先问一句:任务、胶囊和通知都会停
     var confirmingQuit by remember { mutableStateOf(false) }
@@ -125,6 +131,12 @@ fun SettingsScreen(
         if (openPhoneOps) {
             page = SettingsPage.PhoneOps
             onPhoneOpsOpened()
+        }
+    }
+    LaunchedEffect(openWechat) {
+        if (openWechat) {
+            page = SettingsPage.Wechat
+            onWechatOpened()
         }
     }
 
@@ -165,6 +177,7 @@ fun SettingsScreen(
     var capsuleMode by remember { mutableStateOf(flags.capsuleMode()) }
     var capsuleIdleOpacity by remember { mutableStateOf(flags.capsuleIdleOpacity()) }
     var capsuleCardScale by remember { mutableStateOf(flags.capsuleCardScale()) }
+    var capsuleTap by remember { mutableStateOf(flags.capsuleTapAction()) }
     // 换语言时界面会重建,这里每次进来读一次即可
     val language = remember { AppLanguage.current(context) }
     val runtimeLimit by (context.applicationContext as com.wangzan101.mika.MikaApp).taskState.parallelLimit.collectAsState()
@@ -243,6 +256,7 @@ fun SettingsScreen(
             onOpenDuringWork = { page = SettingsPage.DuringWork },
             capsuleMode = capsuleMode, onOpenCapsule = { page = SettingsPage.Capsule },
             onOpenNotifications = { page = SettingsPage.Notifications },
+            onOpenLocation = { page = SettingsPage.Location },
             language = language, onOpenLanguage = { page = SettingsPage.Language },
             onOpenAssistantAppearance = { page = SettingsPage.AssistantAppearance },
             scrollState = settingsScroll,
@@ -293,6 +307,7 @@ fun SettingsScreen(
             CallSettingsScreen(app.calls, onBack = toHome, voice = app.voice, onPickSpeech = onOpenSpeech)
         }
         SettingsPage.Notifications -> NotificationsScreen(status, onFix = ::fix, onBack = back)
+        SettingsPage.Location -> com.wangzan101.mika.ui.LocationSettingsScreen(onBack = back)
         SettingsPage.DuringWork -> DuringWorkScreen(
             keepScreenOn, onKeepScreenOn = { flags.setKeepScreenOn(it); keepScreenOn = it },
             muteTarget, onMuteTarget = { flags.setMuteTarget(it); muteTarget = it },
@@ -327,6 +342,8 @@ fun SettingsScreen(
             onIdleOpacity = { flags.setCapsuleIdleOpacity(it); capsuleIdleOpacity = it },
             cardScale = capsuleCardScale,
             onCardScale = { flags.setCapsuleCardScale(it); capsuleCardScale = it },
+            tapAction = capsuleTap,
+            onTapAction = { flags.setCapsuleTapAction(it); capsuleTap = it },
         )
         SettingsPage.Plugins -> PluginsScreen(pluginRegistry, onBack = toHome)
         SettingsPage.EnvVars -> EnvVarSettingsScreen(remember { com.wangzan101.mika.settings.EnvVarStore.get(context) }, onBack = toAdvanced)
@@ -454,6 +471,7 @@ fun SettingsContent(
     capsuleMode: CapsuleMode = CapsuleMode.DEFAULT,
     onOpenCapsule: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
+    onOpenLocation: () -> Unit = {},
     /** 此刻选的界面语言,写在「语言与外观」一行的右边。 */
     language: AppLanguage = AppLanguage.System,
     onOpenLanguage: () -> Unit = {},
@@ -505,6 +523,7 @@ fun SettingsContent(
                 ListRow(MikaIcons.Paperclip, stringResource(R.string.file_library_title), onClick = open) { RowChevron() }
             }
             val (notifText, notifTone) = StatusCopy.notificationSummary(status.notificationOverview().summary)
+            ListRow(MikaIcons.Globe, stringResource(R.string.location_title), stringResource(R.string.location_row_sub), onClick = onOpenLocation) { RowChevron() }
             ListRow(MikaIcons.Bell, StatusCopy.NOTIFICATIONS, stringResource(R.string.settings_notif_sub), onClick = onOpenNotifications) {
                 RowValue(notifText, notifTone)
                 RowChevron()

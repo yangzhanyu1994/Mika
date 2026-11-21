@@ -174,11 +174,7 @@ internal fun DrawerConnectors(store: McpServerStore, onEdit: (McpServerConfig) -
                 style = MikaType.Hint, color = c.ink3)
         }
         servers.forEach { server ->
-            val badge = when {
-                !server.enabled -> DrawerBadge.NotEnabled
-                health[server.id]?.ok == true -> DrawerBadge.Connected
-                else -> DrawerBadge.Disconnected
-            }
+            val badge = mcpConnectionBadge(server.enabled, health[server.id])
             DrawerStatusEntry(MikaIcons.Link, server.name, badge) { onEdit(server) }
         }
         HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = c.hair)

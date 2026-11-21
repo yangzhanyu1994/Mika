@@ -451,6 +451,7 @@
             </intent-filter>
         </receiver>
         <receiver android:name=".task.TriggerAlarmReceiver" android:exported="false" />
+        <receiver android:name=".proactive.NoticeBriefAlarmReceiver" android:exported="false" />
         <receiver android:name=".calls.tasks.ScheduledDialReceiver" android:exported="false" />
 
         <!-- 外部脚本建任务的广播入口:对外开放(无权限),由「允许外部脚本建任务」开关 + 每分钟限流 + 来源标记把关 -->

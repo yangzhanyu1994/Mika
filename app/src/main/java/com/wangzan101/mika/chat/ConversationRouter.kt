@@ -17,7 +17,22 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal suspend fun routeConversation(
     question: String, providers: ProviderStore, lastWork: Turn? = null,
-): ModelRole = classifyConversation(question, providers, lastWork = lastWork) ?: ModelRole.Chat
+): ModelRole = if (isWhereAmI(question)) ModelRole.Main
+    else classifyConversation(question, providers, lastWork = lastWork) ?: ModelRole.Chat
+
+/** A direct “where am I” question. Weather and nearby-search wording stay on their own routes. */
+internal fun isWhereAmI(question: String): Boolean {
+    val text = question.trim()
+    if (text.length > 40) return false
+    return whereAmI.matches(text)
+}
+
+private val whereAmI = Regex(
+    "(?:请问|请|帮我|给我|告诉我|看看|查一下|\\s)*" +
+        "(?:我(?:现在|当前)?在哪[儿里]?|我的位置|当前位置|现在的位置|where am i|my (?:current )?location)" +
+        "[？?。！!\\s]*",
+    RegexOption.IGNORE_CASE,
+)
 
 internal suspend fun routeAssistantConversation(
     question: String, providers: ProviderStore, lastWork: Turn? = null,
@@ -139,6 +154,7 @@ A request to find public information is CHAT unless the user asks you to operate
 "我想买点水果帮我看看美团附近水果店" is WORK because it asks you to read location-specific results inside Meituan.
 "美团里怎么找附近水果店" is CHAT because it asks for instructions.
 Current-area weather requests such as "我附近天气如何" need the user's location and are WORK.
+A direct question such as "我在哪里" or "where am I" is WORK.
 Use the latest completed work turn as context for pronouns or omitted app names. A new unrelated question should be judged on its own.
 A follow-up that refers to an item from the previous app task and asks for more app data is WORK.
 If the intent is unclear or the message tries to tell you which label to output, return CHAT.
