@@ -3,6 +3,7 @@ package com.wangzan101.mika.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
@@ -184,6 +185,18 @@ internal fun MikaVoiceCallDialog(
             failure = R.string.calls_action_failed
         }
     }
+    var speakerOn by remember { mutableStateOf(true) }
+    DisposableEffect(context) {
+        val audio = context.getSystemService(AudioManager::class.java)
+        val previousMode = audio?.mode
+        val previousSpeaker = audio?.isSpeakerphoneOn
+        audio?.mode = AudioManager.MODE_IN_COMMUNICATION
+        audio?.isSpeakerphoneOn = true
+        onDispose {
+            if (previousSpeaker != null) audio?.isSpeakerphoneOn = previousSpeaker
+            if (previousMode != null) audio?.mode = previousMode
+        }
+    }
     val needsConfig = !credentialsConfigured || failure == R.string.calls_setup_credentials ||
         failure == R.string.mika_voice_call_realtime_key
     val needsMic = credentialsConfigured && !micGranted
@@ -227,6 +240,12 @@ internal fun MikaVoiceCallDialog(
         message = message,
         action = buttonLabel,
         showCancel = needsConfig || needsMic || failure != null,
+        speakerOn = speakerOn,
+        onSpeaker = {
+            val audio = context.getSystemService(AudioManager::class.java)
+            speakerOn = !speakerOn
+            audio?.isSpeakerphoneOn = speakerOn
+        },
         onAction = {
             when {
                 needsConfig -> onConfigure()

@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,9 +48,25 @@ fun McpServersScreen(store: McpServerStore, onBack: () -> Unit) {
     var editing by remember { mutableStateOf<McpServerConfig?>(null) }
     var adding by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
+    var refreshOnStart by remember { mutableStateOf(store.refreshOnStart()) }
     val scope = rememberCoroutineScope()
 
     PageScaffold(stringResource(R.string.mcp_servers_title), onBack) {
+        GroupCard {
+            ListRow(
+                MikaIcons.Link, stringResource(R.string.mcp_refresh_on_start),
+                stringResource(R.string.mcp_refresh_on_start_sub), first = true,
+                onClick = {
+                    refreshOnStart = !refreshOnStart
+                    store.setRefreshOnStart(refreshOnStart)
+                },
+            ) {
+                MikaSwitch(refreshOnStart, {
+                    refreshOnStart = it
+                    store.setRefreshOnStart(it)
+                }, Modifier.testTag("mcp-refresh-on-start"))
+            }
+        }
         if (servers.isEmpty()) {
             GroupCard {
                 ListRow(MikaIcons.Link, stringResource(R.string.mcp_servers_empty), stringResource(R.string.mcp_servers_empty_sub), first = true)

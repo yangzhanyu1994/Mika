@@ -116,6 +116,13 @@ class CapsuleController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val model = CapsuleModel(::reasonLabel)
     private val flags = FeatureFlags.get(context)
+    private val arc = CapsuleArcPresenter(
+        context, scope,
+        host = { windowOn?.overlays() },
+        anchor = { arcAnchor() },
+        onAction = ::arcAction,
+        reduceMotion = { animationsOff(context) },
+    )
     /** 任务结束后留在后台运行的那一页(没有任务时胶囊说它,卡片里能看画面、关掉)。 */
     private val keeper get() = (context.applicationContext as MikaApp).pageKeeper
     private val toolLabels by lazy { ToolLabels(knownTools()) }
@@ -464,6 +471,7 @@ class CapsuleController(
     }
 
     private fun hide() {
+        arc.release()
         resetTaps()
         snap?.cancel()
         fadeJob?.cancel()
@@ -932,6 +940,7 @@ class CapsuleController(
         placedY = CapsuleDocking.fitY(natural, a, h)
         val side = if (d.side == DockSide.Left) Gravity.LEFT else Gravity.RIGHT
         w.place(OverlayPlacement(Gravity.TOP or side, CapsuleDocking.edgeOffset(d.side, a), placedY))
+        arc.relayout()
     }
 
     /**
@@ -1011,6 +1020,7 @@ class CapsuleController(
             val a = area() ?: return
             resetTaps()
             snap?.cancel()
+            arc.close()
             wake()
             dragging = true
             dragStartX = CapsuleDocking.dockedX(dock.side, a, w.width)
@@ -1213,6 +1223,10 @@ class CapsuleController(
             if (n.opensMika) open(null)
             return
         }
+        if (flags.capsuleTapAction() == CapsuleTapAction.QuickMenu && capsuleTouch == null) {
+            arc.toggle()
+            return
+        }
         val touch = capsuleTouch
         capsuleTouch = null
         val age = touch?.let { SystemClock.uptimeMillis() - it.at }
@@ -1230,6 +1244,12 @@ class CapsuleController(
     /** 真实触摸点一颗或胶囊:两下要在系统时限内、同一位置附近且来源相同;单击仍等双击时限过去再展开。 */
     private fun tap(touch: Touch) {
         if (capturing) return
+        if (flags.capsuleTapAction() == CapsuleTapAction.QuickMenu) {
+            tapJob?.cancel()
+            resetTaps()
+            arc.toggle()
+            return
+        }
         when (taps.tap(touch.at, touch.x, touch.y, touch.source)) {
             DoubleTap.Tap.Double -> {
                 tapJob?.cancel()
@@ -1493,6 +1513,29 @@ class CapsuleController(
     }?.let(context::getString)
 
     private fun dp(v: Int) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), context.resources.displayMetrics).toInt()
+
+    private fun arcAnchor(): ArcAnchor? {
+        val area = windowOn?.overlays()?.area() ?: return null
+        val w = window ?: return null
+        val centerX = if (dock.side == DockSide.Right) area.width - w.width / 2f else w.width / 2f
+        return ArcAnchor(centerX, placedY + w.height / 2f, dock.side == DockSide.Right, area.width.toFloat(), area.height.toFloat())
+    }
+
+    private fun arcAction(action: CapsuleArcAction) {
+        when (action) {
+            CapsuleArcAction.NewChat -> {
+                val id = ConversationStore.shared(context).newConversation()
+                (context.applicationContext as MikaApp).chat.openConversation(id)
+                open(id)
+            }
+            CapsuleArcAction.VoiceCall -> {
+                (context.applicationContext as MikaApp).openVoiceCall.tryEmit(Unit)
+                open(null)
+            }
+            CapsuleArcAction.ScreenshotAsk -> previewScreen()
+            CapsuleArcAction.HideAssistant -> actions.hideCapsule()
+        }
+    }
 
     private companion object {
         const val TAG = "MikaCapsule"

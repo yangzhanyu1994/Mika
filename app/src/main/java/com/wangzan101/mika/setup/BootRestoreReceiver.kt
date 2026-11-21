@@ -16,6 +16,7 @@ class BootRestoreReceiver : BootRestoreHandler() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_TIME_CHANGED ||
             intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
             com.wangzan101.mika.calls.tasks.ScheduledDial.rearm(context)
+            com.wangzan101.mika.proactive.NoticeBriefRuntime.rearm(context)
         }
         // 换了时区:跟随设备时区的当地时间计划立刻按新时区重算(内部会重新布置闹钟),显式钉了其他时区的不动
         if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) TriggerRuntime.syncTimeZone(context)

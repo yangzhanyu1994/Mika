@@ -259,6 +259,7 @@ fun ProactiveScreen(onBack: () -> Unit) {
                 },
             )
         }
+        NoticeBriefSection()
         // 不是最保守的一档时,把「带进任务是什么意思、发给谁」那句常驻在这里(弹窗里也有)
         if (level != LearnLevel.Conservative) DetailNote(
             stringResource(R.string.proactive_learn_level_summary),

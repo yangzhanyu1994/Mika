@@ -67,7 +67,15 @@ data class McpServerConfig(
     val headers: Map<String, String> = emptyMap(),
 )
 
-data class McpHealth(val ok: Boolean, val message: String?, val tools: List<String>, val atMs: Long)
+enum class McpProbe { Unknown, Checking, Connected, Failed, NeedsAuth }
+
+data class McpHealth(
+    val ok: Boolean,
+    val message: String?,
+    val tools: List<String>,
+    val atMs: Long,
+    val probe: McpProbe = if (ok) McpProbe.Connected else McpProbe.Failed,
+)
 
 data class McpConnections(
     val connections: List<McpConnection>,
@@ -92,6 +100,7 @@ class McpServerStore(
 ) {
     private val file = File(dir, "mcp-servers.json")
     private val secretsFile = File(dir, "mcp-server-secrets.bin")
+    private val refreshFile = File(dir, "mcp-refresh-on-start")
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val _servers = MutableStateFlow(loadServers())
     val servers: StateFlow<List<McpServerConfig>> = _servers.asStateFlow()
@@ -203,6 +212,36 @@ class McpServerStore(
     /** 刷新所有启用 server 的状态(并行)。 */
     suspend fun testAll() = coroutineScope {
         _servers.value.filter { it.enabled }.map { config -> async { test(config) } }.awaitAll()
+    }
+
+    /** 启动时自动探测。缺文件时默认开。探测结果只来自这次连接，不读旧健康缓存。 */
+    fun refreshOnStart(): Boolean = refreshFile.takeIf { it.isFile }?.readText()?.trim() != "0"
+
+    fun setRefreshOnStart(on: Boolean) {
+        dir.mkdirs()
+        refreshFile.writeText(if (on) "1" else "0")
+    }
+
+    /**
+     * 并行探测已启用的 server。先标成检查中，成功才是已连接，OAuth 失败是需授权，超时是失败。
+     * 不阻塞调用方的启动路径；由 [McpStartupRefresh] 放到后台。
+     */
+    suspend fun probeEnabled(budgetMs: Long = 12_000) {
+        val enabled = _servers.value.filter { it.enabled }
+        val now = System.currentTimeMillis()
+        enabled.forEach { cfg ->
+            _health.update { it + (cfg.id to McpHealth(false, null, emptyList(), now, McpProbe.Checking)) }
+        }
+        withTimeoutOrNull(budgetMs) {
+            coroutineScope { enabled.map { config -> async { test(config) } }.awaitAll() }
+        }
+        enabled.forEach { cfg ->
+            if (_health.value[cfg.id]?.probe == McpProbe.Checking) {
+                _health.update {
+                    it + (cfg.id to McpHealth(false, "timeout", emptyList(), System.currentTimeMillis(), McpProbe.Failed))
+                }
+            }
+        }
     }
 
     /**
@@ -399,8 +438,11 @@ class McpServerStore(
         }
     }
 
-    private fun healthFailure(e: Throwable): McpHealth =
-        McpHealth(false, e.message ?: e.javaClass.simpleName, emptyList(), System.currentTimeMillis())
+    private fun healthFailure(e: Throwable): McpHealth {
+        val message = e.message ?: e.javaClass.simpleName
+        val probe = if (e is McpOAuthException || message.contains("oauth", ignoreCase = true)) McpProbe.NeedsAuth else McpProbe.Failed
+        return McpHealth(false, message, emptyList(), System.currentTimeMillis(), probe)
+    }
 
     private fun oauthPage(ok: Boolean): String = if (ok) {
         "<html><body><h3>Mika: 登录成功</h3><p>Sign-in complete. You can return to Mika.</p></body></html>"

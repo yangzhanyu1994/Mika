@@ -8,6 +8,7 @@ import com.wangzan101.mika.capsule.CapsuleDock
 import com.wangzan101.mika.capsule.CardDocking
 import com.wangzan101.mika.capsule.CapsuleIdleOpacity
 import com.wangzan101.mika.capsule.CapsuleMode
+import com.wangzan101.mika.capsule.CapsuleTapAction
 import com.wangzan101.mika.capsule.DockSide
 import com.wangzan101.mika.core.agent.SpeedFlags
 import com.wangzan101.mika.core.cap.phone.OperatingPace
@@ -273,6 +274,18 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         prefs.edit().putString(CAPSULE_MODE, mode.name).commit()
     }
 
+    fun autoLocate(): Boolean = prefs.getBoolean(AUTO_LOCATE, false)
+
+    fun setAutoLocate(on: Boolean) {
+        prefs.edit().putBoolean(AUTO_LOCATE, on).commit()
+    }
+
+    fun capsuleTapAction(): CapsuleTapAction = CapsuleTapAction.parse(prefs.getString(CAPSULE_TAP, null))
+
+    fun setCapsuleTapAction(action: CapsuleTapAction) {
+        prefs.edit().putString(CAPSULE_TAP, action.name).commit()
+    }
+
     /** 胶囊开关的当前值,之后每次改动再发一次。 */
     fun capsuleModeChanges(): Flow<CapsuleMode> = callbackFlow {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -400,6 +413,8 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         private const val SKIN_HUE = "skin_hue"
         private val SKIN_KEYS = setOf(SKIN_VERSION, SKIN_SCRIM, SKIN_BLUR, SKIN_FOCUS, SKIN_ACCENT_FOLLOW, SKIN_HUE)
         private const val CAPSULE_MODE = "capsule_mode"
+        private const val CAPSULE_TAP = "capsule_tap"
+        private const val AUTO_LOCATE = "auto_locate"
         private const val CAPSULE_IDLE_OPACITY = "capsule_idle_opacity"
         private const val CAPSULE_CARD_SCALE = "capsule_card_scale"
         private const val QUIT_REQUESTED = "quit_requested"

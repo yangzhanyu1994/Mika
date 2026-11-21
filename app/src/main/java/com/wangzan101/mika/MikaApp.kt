@@ -347,6 +347,7 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
 
     /** 浮在别的 App 上的悬浮胶囊。 */
     val capsule: CapsuleController by lazy { CapsuleController(this, taskState, foreground, resources.takeoverQueue) }
+    val openVoiceCall = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     /** Mika 自己的朗读播放器:全进程一个,聊天里的「朗读」和设置页的测试共用。 */
     val voicePlayer by lazy { com.wangzan101.mika.voice.VoicePlayer(this) }
@@ -551,7 +552,9 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         if (!quit) runRecovery.recover().let { if (it.isNotEmpty()) Log.w("MikaTask", "${it.size} runs interrupted by process restart") }
         // 用户已绑定并打开微信渠道时恢复监听；完全退出期间由各运行入口统一拒绝补起
         wechat.ensureRunning()
-        if (flags.proactive()) proactive.start(paused = quit)
+        if (flags.proactive() || com.wangzan101.mika.proactive.NoticeBriefRuntime.anyEnabled(this)) proactive.start(paused = quit)
+        if (!quit) com.wangzan101.mika.proactive.NoticeBriefRuntime.rearm(this)
+        com.wangzan101.mika.settings.McpStartupRefresh(mcpServers).launch(scope)
         // 先对一下设备时区;退出期间不排闹钟,重新打开时再补排
         if (!quit) scope.launch(Dispatchers.IO) { runCatching { TriggerRuntime.syncTimeZone(this@MikaApp); TriggerRuntime.rearm(this@MikaApp) } }
         // 给电脑跑的「经 USB 连接」脚本;顺带清掉上次开机留下的 USB 连接信息
@@ -581,7 +584,9 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         RuntimePreparer.ensure(this)
         mcp.ensureRunning()
         wechat.ensureRunning()
-        if (FeatureFlags.get(this).proactive()) proactive.start(paused = false)
+        if (FeatureFlags.get(this).proactive() || com.wangzan101.mika.proactive.NoticeBriefRuntime.anyEnabled(this)) proactive.start(paused = false)
+        com.wangzan101.mika.proactive.NoticeBriefRuntime.rearm(this)
+        com.wangzan101.mika.settings.McpStartupRefresh(mcpServers).launch(scope)
         scope.launch(Dispatchers.IO) {
             runCatching {
                 TriggerRuntime.syncTimeZone(this@MikaApp)

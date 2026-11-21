@@ -34,6 +34,7 @@ enum class Verb {
     ListDeviceFiles, CopyDeviceFile, SearchDeviceFiles, ListDeviceDirectoryHints, UpdateDeviceDirectoryDescription,
     RootCommand,
     WechatSendOwner,
+    DeviceLocation,
     CallState, CallDial, CallResolveContact, CallScheduleDial, CallAnswer, CallHangup, CallTakeover, CallIncomingTask, CallManageTasks,
     Wait, AskUser, RequestConfirmation, HandToUser, HandleObstacle, EndNotDone,
     KnowledgeSearch, KnowledgeRead, SkillSearch, SkillRead, SkillSave, MemorySearch, MemorySave, MemoryEdit, ProfileEdit, HistoryRead, NoticesRead, WebSearch,

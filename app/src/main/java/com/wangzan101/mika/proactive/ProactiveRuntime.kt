@@ -187,8 +187,17 @@ class ProactiveRuntime(
     fun start(paused: Boolean) {
         val on = wanted()
         _enabled.value = on
-        if (on) enableComponent()
-        if (on && !paused) scope.launch { begin() }
+        val watch = on || NoticeBriefRuntime.anyEnabled(app)
+        if (watch) enableComponent()
+        if (watch && !paused) scope.launch { begin() }
+    }
+
+    /** 汇总开关变化时：需要采集就盯着，三项都关且总开关也关就停。不改任务闹钟。 */
+    fun syncWatch() {
+        val quit = flags.quitRequested()
+        val watch = !quit && (wanted() || NoticeBriefRuntime.anyEnabled(app))
+        if (!watch) scope.launch { end(); unbind() }
+        else if (watching == null) start(paused = false)
     }
 
     /**
@@ -221,13 +230,13 @@ class ProactiveRuntime(
                 // 关掉只请系统解绑,不把组件停用:真机上(Android 16)组件一停用,系统就把通知使用权收回,
                 // 再打开得让用户重新授权。解绑后系统不再送通知;进程重启被系统重新绑上时,[onConnected] 里再解绑。
                 end()
-                unbind()
                 inbox.clear()
                 triage.clear()
                 learn.clear()
                 dedup.clear()
                 live.clear()
                 prefs.clearDedup()
+                if (NoticeBriefRuntime.anyEnabled(app)) begin() else unbind()
             }
         }
     }
@@ -487,9 +496,11 @@ class ProactiveRuntime(
             // 在「应用访问」里禁用了的 App,它已收的记录、待判定、待归纳的一并去掉,在发的请求取消。
             // 那份设置读不出来时什么都不删(不知道禁用了哪些),只让判定和归纳重新看一遍:它们会停下在发的请求、停着等
             launch { accessChanges.collect { gate -> BlockedApps.accessChanged(gate, inbox, triage, learn) } }
-            // 判定只在看守期间跑;锁屏状态和看守用的是同一份
-            launch { triage.watch(lock.locked) { readLocked() } }
-            launch { learn.watch(lock.locked) { readLocked() } }
+            // 判定和归纳只在总开关开着时跑。汇总开关单独开时只采集，不把通知发给模型。
+            if (wanted()) {
+                launch { triage.watch(lock.locked) { readLocked() } }
+                launch { learn.watch(lock.locked) { readLocked() } }
+            }
         }
     }
 
@@ -585,10 +596,13 @@ class ProactiveRuntime(
             }
         }
         val admitted = dedup.admit(r) ?: return
-        prefs.dedup = dedup.encode()
-        inbox.add(r)
-        // 归纳拿这回才见到的那几条消息(会话样式的通知),不只是通知的正文
-        learn.capture(r, admitted.newMessages)
+        if (wanted()) {
+            prefs.dedup = dedup.encode()
+            inbox.add(r)
+            // 归纳拿这回才见到的那几条消息(会话样式的通知),不只是通知的正文
+            learn.capture(r, admitted.newMessages)
+        }
+        NoticeBriefRuntime.capture(app, r)
     }
 
     /**

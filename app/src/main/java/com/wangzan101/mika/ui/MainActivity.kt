@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
     private var requestedAssistant by mutableStateOf(false)
     private var requestedCalls by mutableStateOf(false)
     private var requestedCallHistoryId by mutableStateOf<String?>(null)
+    private var briefBody by mutableStateOf<String?>(null)
     private var openTeach by mutableStateOf(false)
     private var requestedSharedDraft by mutableStateOf<SharedDraftRequest?>(null)
     private var shareJob: Job? = null
@@ -129,6 +130,7 @@ class MainActivity : ComponentActivity() {
         requestedAssistant = savedInstanceState == null && intent.action == Intent.ACTION_ASSIST
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
+        briefBody = intent.getStringExtra(EXTRA_OPEN_BRIEF)
         takeTeach(intent)
         shareInCurrent = savedInstanceState?.getBoolean(STATE_SHARE_IN_CURRENT, false) ?: false
         shareHandled = savedInstanceState?.getBoolean(STATE_SHARE_HANDLED, false) ?: false
@@ -164,6 +166,16 @@ class MainActivity : ComponentActivity() {
                         onTeachOpened = { openTeach = false },
                     )
                 }
+                briefBody?.let { body ->
+                    MikaDialog(
+                        onDismissRequest = { briefBody = null },
+                        title = { Text(getString(R.string.brief_view_title)) },
+                        text = { Text(body) },
+                        confirmButton = {
+                            TextButton(onClick = { briefBody = null }) { Text(getString(R.string.done)) }
+                        },
+                    )
+                }
             }
         }
     }
@@ -177,6 +189,7 @@ class MainActivity : ComponentActivity() {
         requestedAssistant = intent.action == Intent.ACTION_ASSIST
         requestedCalls = intent.getBooleanExtra(EXTRA_OPEN_CALLS, false)
         requestedCallHistoryId = intent.getStringExtra(EXTRA_CALL_HISTORY_ID)
+        briefBody = intent.getStringExtra(EXTRA_OPEN_BRIEF)
         if (requestedConversation != null || intent.getBooleanExtra(EXTRA_OPEN_TEACH, false)) {
             app.chat.cancelPendingSharedDraft()
         }
@@ -392,6 +405,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_CALLS = "open_calls"
         const val EXTRA_CALL_HISTORY_ID = "call_history_id"
         const val EXTRA_OPEN_TEACH = "open_teach"
+        const val EXTRA_OPEN_BRIEF = "open_brief"
         const val EXTRA_TEACH_GOAL = "teach_goal"
         private const val STATE_SHARE_IN_CURRENT = "share_in_current"
         private const val STATE_SHARE_HANDLED = "share_handled"
@@ -450,6 +464,7 @@ private fun MikaRoot(
     // 首次上手正在走哪一步;为空时不在上手流程里。配置模型页从哪儿来就回哪儿去
     var onboarding by rememberSaveable { mutableStateOf<OnboardingStep?>(null) }
     var openPhoneOps by rememberSaveable { mutableStateOf(false) }
+    var openWechat by rememberSaveable { mutableStateOf(false) }
     var openWebSearch by rememberSaveable { mutableStateOf(false) }
     val onFix: (Fix) -> Unit = { fix ->
         when (fix) {
@@ -812,6 +827,7 @@ private fun MikaRoot(
                 onModels = { nav.pushFromDrawer(Route.Models) },
                 accessibilityEnabled = status.accessibility == com.wangzan101.mika.settings.AccessibilityState.On,
                 onPhoneSetup = { openPhoneOps = true; nav.pushFromDrawer(Route.Settings) },
+                onWechat = { openWechat = true; nav.pushFromDrawer(Route.Settings) },
                 onWebSearch = { openWebSearch = true; nav.pushFromDrawer(Route.Settings) },
                 onSpeechModel = { nav.pushFromDrawer(Route.SpeechModel) },
                 onReadoutModel = { nav.pushFromDrawer(Route.VoiceModel) },
@@ -861,6 +877,9 @@ private fun MikaRoot(
                             val id = app.chat.ui.value.conversationId ?: app.conversations.newConversation().also(app.chat::openConversation)
                             saveMikaCall = { turns -> app.conversations.appendVoiceCall(id, turns, research) }
                         }
+                    }
+                    LaunchedEffect(Unit) {
+                        app.openVoiceCall.collect { openMikaCall(research = false) }
                     }
                     saveMikaCall?.let { save ->
                         MikaVoiceCallDialog(app.calls, onConfigure = {
@@ -1022,6 +1041,7 @@ private fun MikaRoot(
                     nav.push(Route.Files)
                 },
                 openPhoneOps = openPhoneOps, onPhoneOpsOpened = { openPhoneOps = false },
+                openWechat = openWechat, onWechatOpened = { openWechat = false },
                 openWebSearch = openWebSearch, onWebSearchOpened = { openWebSearch = false })
         }
         Route.Persona -> if (personasOn) PersonaScreen(app.personas, onBack = back) else LaunchedEffect(Unit) { nav.back() }

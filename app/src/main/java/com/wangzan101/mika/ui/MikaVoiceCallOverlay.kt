@@ -7,15 +7,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -75,6 +82,8 @@ internal fun MikaVoiceCallOverlay(
     showCancel: Boolean,
     onAction: () -> Unit,
     onDismiss: () -> Unit,
+    speakerOn: Boolean = true,
+    onSpeaker: () -> Unit = {},
 ) {
     val readable = MikaType.Body.copy(textAlign = TextAlign.Center)
     Dialog(
@@ -95,18 +104,44 @@ internal fun MikaVoiceCallOverlay(
                 }
             }
         }
+        val fontScale = LocalDensity.current.fontScale
+        val status = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val navigation = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         Box(
-            Modifier.fillMaxSize().background(CallBackground).safeDrawingPadding(),
+            Modifier.fillMaxSize().background(CallBackground),
             contentAlignment = Alignment.Center,
         ) {
             if (active) {
                 BoxWithConstraints(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
-                    val diameter = minOf(maxWidth * 0.70f, maxHeight * 0.44f, 320.dp)
+                    val headerDp = status.value + CallLayout.headerDropDp(fontScale) + 56f + if (connected) 78f else 0f
+                    val buttonDp = 96f
+                    val lift = CallLayout.hangupLiftDp(maxHeight.value, navigation.value, headerDp, buttonDp)
+                    val used = (headerDp + buttonDp + navigation.value + lift).dp
+                    val diameter = minOf(maxWidth * 0.72f, (maxHeight - used).coerceAtLeast(96.dp), 320.dp)
                     Column(
-                        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
+                        Modifier.fillMaxSize().padding(horizontal = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(stringResource(R.string.app_name), color = CallInk, style = MikaType.Title)
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = status + CallLayout.headerDropDp(fontScale).dp).heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(onClick = onDismiss, modifier = Modifier.testTag("mika-call-collapse")) {
+                                Icon(MikaIcons.Chevron, stringResource(R.string.mika_voice_call_collapse), Modifier.rotate(90f), tint = CallInk)
+                            }
+                            Text(
+                                stringResource(R.string.app_name),
+                                Modifier.weight(1f),
+                                color = CallInk, style = MikaType.Title, textAlign = TextAlign.Center, maxLines = 1,
+                            )
+                            IconButton(onClick = onSpeaker, modifier = Modifier.testTag("mika-call-speaker")) {
+                                Icon(
+                                    if (speakerOn) MikaIcons.Sound else MikaIcons.Mute,
+                                    stringResource(if (speakerOn) R.string.mika_voice_call_speaker_on else R.string.mika_voice_call_speaker_off),
+                                    tint = CallInk,
+                                )
+                            }
+                        }
                         if (connected) {
                             Row(
                                 Modifier.padding(top = 12.dp),
@@ -142,8 +177,10 @@ internal fun MikaVoiceCallOverlay(
                             }
                         }
                         Column(
-                            Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onAction)
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            Modifier.padding(bottom = navigation + lift.dp)
+                                .clip(CircleShape).clickable(role = Role.Button, onClick = onAction)
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .testTag("mika-call-hangup"),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(Modifier.size(58.dp).background(Color(0xFFFF655F), CircleShape), contentAlignment = Alignment.Center) {
@@ -155,7 +192,8 @@ internal fun MikaVoiceCallOverlay(
                 }
             } else {
                 Column(
-                    Modifier.widthIn(max = 430.dp).verticalScroll(rememberScrollState()).padding(24.dp),
+                    Modifier.widthIn(max = 430.dp).verticalScroll(rememberScrollState())
+                        .padding(start = 24.dp, end = 24.dp, top = status + 24.dp, bottom = navigation + 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(stringResource(R.string.mika_voice_call), color = CallInk, style = MikaType.Title)

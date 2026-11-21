@@ -292,6 +292,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
+## thinking-orbs
+
+- Project: https://github.com/Jakubantalik/thinking-orbs
+- License: MIT
+- Copyright (c) 2026 Jakub Antalik
+- Usage: the nine dotted orb modes are ported in
+  `app/src/main/java/com/wangzan101/mika/ui/ThinkingOrbEngine.kt`.
+  Mika maps each mode to an existing assistant state and paints the call sphere
+  in cyan. The geometry and motion follow the upstream engine.
+
 ## Shizuku API
 
 - Project: https://github.com/RikkaApps/Shizuku-API

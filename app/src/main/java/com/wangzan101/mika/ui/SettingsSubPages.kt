@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import com.wangzan101.mika.capsule.CapsuleCardScale
 import com.wangzan101.mika.capsule.CapsuleIdleOpacity
 import com.wangzan101.mika.capsule.CapsuleMode
+import com.wangzan101.mika.capsule.CapsuleTapAction
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.settings.ChannelRow
 import com.wangzan101.mika.settings.Prerequisites
@@ -683,6 +684,8 @@ fun CapsuleScreen(
     onIdleOpacity: (CapsuleIdleOpacity) -> Unit = {},
     cardScale: CapsuleCardScale = CapsuleCardScale.DEFAULT,
     onCardScale: (CapsuleCardScale) -> Unit = {},
+    tapAction: CapsuleTapAction = CapsuleTapAction.QuickMenu,
+    onTapAction: (CapsuleTapAction) -> Unit = {},
 ) {
     PageScaffold(CapsuleSettingsCopy.TITLE, onBack) {
         GroupCard {
@@ -692,6 +695,19 @@ fun CapsuleScreen(
                     subtitle = CapsuleSettingsCopy.detail(m), first = i == 0,
                 )
             }
+        }
+        GroupLabel(stringResource(R.string.capsule_tap_title))
+        GroupCard {
+            RadioRow(
+                stringResource(R.string.capsule_tap_menu), selected = tapAction == CapsuleTapAction.QuickMenu,
+                onClick = { onTapAction(CapsuleTapAction.QuickMenu) },
+                subtitle = stringResource(R.string.capsule_tap_menu_sub), first = true,
+            )
+            RadioRow(
+                stringResource(R.string.capsule_tap_window), selected = tapAction == CapsuleTapAction.QuickWindow,
+                onClick = { onTapAction(CapsuleTapAction.QuickWindow) },
+                subtitle = stringResource(R.string.capsule_tap_window_sub),
+            )
         }
         GroupLabel(CapsuleSettingsCopy.IDLE_OPACITY)
         GroupCard {

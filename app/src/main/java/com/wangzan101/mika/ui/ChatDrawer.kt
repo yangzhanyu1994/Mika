@@ -264,6 +264,7 @@ internal fun ChatDrawer(
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
+    onWechat: () -> Unit = {},
     onOpen: (DrawerConversation) -> Unit,
     /** 有新版本:「应用设置」带小红点,关于页在设置里。 */
     aboutDot: Boolean = false,
@@ -489,6 +490,14 @@ internal fun ChatDrawer(
                             DrawerStatusEntry(MikaIcons.Globe, stringResource(R.string.drawer_web_search), configuration?.search, onWebSearch)
                             DrawerStatusEntry(MikaIcons.Handset, stringResource(R.string.drawer_phone_listener), enabledBadge(callsListening), onCalls)
                             DrawerStatusEntry(MikaIcons.Bolt, stringResource(R.string.drawer_automation_listener), configuration?.automation, onScenes)
+                            val wechat = (LocalContext.current.applicationContext as? com.wangzan101.mika.MikaApp)?.wechat
+                            if (wechat != null) {
+                                val wechatState by wechat.state.collectAsState()
+                                val kind = wechatDrawerKind(wechat.store.account() != null, wechat.store.enabled(), wechatState)
+                                DrawerStatusEntry(
+                                    MikaIcons.Chats, stringResource(R.string.drawer_wechat), wechatDrawerBadge(kind), onWechat,
+                                )
+                            }
                         }
                     }
                     if (mcpStore != null) {
@@ -852,6 +861,7 @@ fun ChatWithDrawer(
     onCalls: () -> Unit = {},
     onScreens: () -> Unit = {},
     onSettings: () -> Unit,
+    onWechat: () -> Unit = {},
     /** 有新版本:侧栏「应用设置」带小红点。关于页在设置里。 */
     updateAvailable: Boolean = false,
     unhandledCalls: Int = 0,
@@ -1061,6 +1071,7 @@ fun ChatWithDrawer(
                     onSpeechModel = { leave(onSpeechModel) },
                     onReadoutModel = { leave(onReadoutModel) },
                     onSettings = { leave(onSettings) },
+                    onWechat = { leave(onWechat) },
                     onCalls = { leave(onCalls) },
                     onScreens = { leave(onScreens) },
                     aboutDot = updateAvailable,
