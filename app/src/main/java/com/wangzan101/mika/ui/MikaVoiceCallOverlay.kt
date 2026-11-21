@@ -1,6 +1,10 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +29,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +40,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -80,6 +90,8 @@ internal fun MikaVoiceCallOverlay(
     message: Int,
     action: Int,
     showCancel: Boolean,
+    lines: List<String> = emptyList(),
+    onType: (String) -> Unit = {},
     onAction: () -> Unit,
     onDismiss: () -> Unit,
     speakerOn: Boolean = true,
@@ -175,6 +187,10 @@ internal fun MikaVoiceCallOverlay(
                                     Text(stringResource(R.string.mika_voice_call_open_task), color = CallAccent)
                                 }
                             }
+                            lines.forEach { line ->
+                                Text(line, Modifier.padding(top = 6.dp).testTag("mika-call-work"), color = CallInk, style = readable)
+                            }
+                            if (connected) CallComposer(onType)
                         }
                         Column(
                             Modifier.padding(bottom = navigation + lift.dp)
@@ -206,4 +222,32 @@ internal fun MikaVoiceCallOverlay(
             }
         }
     }
+}
+
+@Composable
+private fun CallComposer(onType: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val focus = LocalFocusManager.current
+    fun send() {
+        val words = text.trim()
+        if (words.isEmpty()) return
+        text = ""
+        focus.clearFocus()
+        onType(words)
+    }
+    BasicTextField(
+        value = text,
+        onValueChange = { text = it },
+        modifier = Modifier.fillMaxWidth().imePadding().padding(top = 12.dp).testTag("mika-call-input"),
+        textStyle = MikaType.Body.copy(color = CallInk),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+        keyboardActions = KeyboardActions(onSend = { send() }),
+        singleLine = true,
+        decorationBox = { inner ->
+            Box(Modifier.clip(CircleShape).background(Color(0xFF1C1C22)).padding(horizontal = 16.dp, vertical = 10.dp)) {
+                if (text.isEmpty()) Text(stringResource(R.string.mika_voice_call_type_hint), color = CallInk.copy(alpha = 0.55f), style = MikaType.Body)
+                inner()
+            }
+        },
+    )
 }

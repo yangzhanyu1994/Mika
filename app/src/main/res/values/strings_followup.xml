@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">Collapse</string>
     <string name="mika_voice_call_speaker_on">Speaker</string>
     <string name="mika_voice_call_speaker_off">Earpiece</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">Scheduled summaries</string>
     <string name="brief_note">Morning, afternoon, and all-day summaries are separate. Each has its own reminder time and window. A window that ends at or before its start crosses midnight. Mika keeps the text on this phone, does not send it to a model, and does not act on it. A force-stop or a strict battery limit can skip a reminder.</string>
     <string name="brief_morning">Morning summary</string>

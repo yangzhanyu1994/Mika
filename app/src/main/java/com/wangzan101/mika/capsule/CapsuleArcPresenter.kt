@@ -92,8 +92,8 @@ class CapsuleArcPresenter(
     }
 
     fun relayout() {
-        if (!open) return
-        place(path = !settled.value)
+        if (!open || closing.value) return
+        place(path = true)
     }
 
     fun release() {
@@ -115,7 +115,7 @@ class CapsuleArcPresenter(
         laid.forEachIndexed { index, frame ->
             frames[index] = frame
             windows[index]?.close()
-            windows[index] = overlays.open(placement(frame, path = !settled.value)) {
+            val window = overlays.open(placement(frame, path = true)) {
                 ArcChip(
                     frame = { frames[index] ?: frame },
                     closing = closing,
@@ -125,20 +125,17 @@ class CapsuleArcPresenter(
                         onAction(frame.action)
                         close()
                     },
-                    onArrived = { onArrived() },
+                    onArrived = { settled.value = true },
                     onHidden = { onHidden() },
                 )
             }
+            window?.resize(frame.windowWidth, frame.windowHeight)
+            windows[index] = window
         }
         open = windows.any { it != null }
-        if (settled.value) place(path = false)
     }
 
-    private fun onArrived() {
-        if (closing.value || settled.value) return
-        settled.value = true
-        place(path = false)
-    }
+    private fun onArrived() = Unit
 
     private fun onHidden() {
         hidden.intValue += 1

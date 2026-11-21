@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">Daralt</string>
     <string name="mika_voice_call_speaker_on">Hoparlör</string>
     <string name="mika_voice_call_speaker_off">Ahize</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">Zamanlanmış özetler</string>
     <string name="brief_note">Sabah, öğleden sonra ve tüm gün özetleri ayrı anahtarlardır. Her birinin saati ve aralığı vardır. Bitiş başlangıçtan sonra değilse aralık önceki günden başlar. Metin bu telefonda kalır, modele gitmez ve işlem yapılmaz. Zorla kapatma veya sıkı pil sınırı bir anımsatmayı atlayabilir.</string>
     <string name="brief_morning">Sabah özeti</string>

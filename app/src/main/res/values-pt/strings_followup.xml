@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">Recolher</string>
     <string name="mika_voice_call_speaker_on">Alto-falante</string>
     <string name="mika_voice_call_speaker_off">Auricular</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">Resumos agendados</string>
     <string name="brief_note">Os resumos da manhã, da tarde e do dia inteiro são interruptores separados. Cada um tem horário e intervalo. Se o fim não for depois do início, o intervalo começa no dia anterior. O texto fica neste telefone, não vai para um modelo e não é executado. Um encerramento forçado ou um limite rígido de bateria pode pular um aviso.</string>
     <string name="brief_morning">Resumo da manhã</string>

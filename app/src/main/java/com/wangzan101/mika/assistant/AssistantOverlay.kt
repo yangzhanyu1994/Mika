@@ -118,6 +118,7 @@ internal fun AssistantOverlay(
     onClear: () -> Unit,
     onSend: () -> Unit,
     onClose: () -> Unit,
+    onHangup: (() -> Unit)? = null,
     reply: AssistantReply? = null,
     onReadResult: (() -> Unit)? = null,
     onOpenConversation: () -> Unit = {},
@@ -219,8 +220,15 @@ internal fun AssistantOverlay(
                                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
-                        IconButton(onClick = onClose, enabled = !sending, modifier = Modifier.align(Alignment.TopEnd)) {
-                            Icon(MikaIcons.Close, stringResource(R.string.cancel), tint = c.ink2)
+                        Row(Modifier.align(Alignment.TopEnd), verticalAlignment = Alignment.CenterVertically) {
+                            if (onHangup != null) {
+                                TextButton(onClick = onHangup, enabled = !sending) {
+                                    Text(stringResource(R.string.calls_hangup), color = c.accent)
+                                }
+                            }
+                            IconButton(onClick = onClose, enabled = !sending) {
+                                Icon(MikaIcons.Close, stringResource(R.string.cancel), tint = c.ink2)
+                            }
                         }
                     }
                     if (screenshot != null || photo != null) {

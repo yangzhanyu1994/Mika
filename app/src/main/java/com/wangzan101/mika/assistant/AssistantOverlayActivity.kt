@@ -30,7 +30,10 @@ import com.wangzan101.mika.chat.routeAssistantConversation
 import com.wangzan101.mika.chat.routeLiveWeather
 import com.wangzan101.mika.chat.invokesSavedSkill
 import com.wangzan101.mika.memory.MemoryRuntime
+import com.wangzan101.mika.calls.CALL_GREETING
+import com.wangzan101.mika.calls.MikaVoiceCall
 import com.wangzan101.mika.ui.OrbMotion
+import com.wangzan101.mika.ui.callWorkStatus
 import com.wangzan101.mika.ui.orbMotion
 import com.wangzan101.mika.ui.toolOrbMotion
 import com.wangzan101.mika.core.model.ModelRole
@@ -114,6 +117,10 @@ class AssistantOverlayActivity : ComponentActivity() {
     private var afterSpeech: (() -> Unit)? = null
     private var autoListen = true
     private var permissionPending = false
+    private var callJob: Job? = null
+    private var callOpen by mutableStateOf(false)
+    private var greeted = false
+    private var voiceGoal: String? = null
     private var resumed = false
 
     private val audioPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -220,14 +227,20 @@ class AssistantOverlayActivity : ComponentActivity() {
                     onOpenConversation = ::openConversation,
                     onText = { noteInteraction(); text = it },
                     onEdit = { stopSpeech(keepText = true) },
-                    onVoice = { if (listening) finishSpeech = true else if (!converting) requestSpeech() },
+                    onVoice = {
+                        if (callJob?.isActive != true) {
+                            greeted = false
+                            startEmbeddedCall()
+                        }
+                    },
                     onScreenshot = ::attachScreenshot,
                     onPhoto = { finishThen(::requestCamera) },
                     onRemoveScreenshot = ::removeScreenshot,
                     onRemovePhoto = ::removePhoto,
                     onClear = ::clear,
                     onSend = { noteInteraction(); finishThen(::send) },
-                    onClose = { finish() },
+                    onClose = { hangup(); finish() },
+                    onHangup = if (callOpen) ::hangup else null,
                 )
             }
         }
@@ -253,8 +266,8 @@ class AssistantOverlayActivity : ComponentActivity() {
             finish()
         } else if (autoListen) {
             autoListen = false
-            requestSpeech()
-        } else sendQueuedFollowUp()
+            startEmbeddedCall()
+        } else if (callJob?.isActive != true) sendQueuedFollowUp()
     }
 
     override fun onUserInteraction() {
@@ -271,6 +284,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     override fun onPause() {
         resumed = false
         noteInteraction()
+        if (!permissionPending) hangup()
         stopPlayback()
         stopSpeech(keepText = true)
         super.onPause()
@@ -282,6 +296,7 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        hangup()
         if (isFinishing) {
             pendingPhoto?.let { AttachFiles.discardCamera(this, it) }
             removePhoto()
@@ -294,6 +309,111 @@ class AssistantOverlayActivity : ComponentActivity() {
     }
 
     private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+
+    private fun startEmbeddedCall() {
+        if (callJob?.isActive == true || !resumed || isFinishing || locked()) return
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            permissionPending = true
+            audioPermission.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        callOpen = true
+        listening = true
+        callJob = lifecycleScope.launch {
+            try {
+                MikaVoiceCall(this@AssistantOverlayActivity, app.calls).run(
+                    onConnected = { listening = true },
+                    saveTranscript = { turns ->
+                        val id = conversationId ?: return@run
+                        app.conversations.appendVoiceCall(id, turns, false)
+                    },
+                    greet = !greeted,
+                    onGreeted = { greeted = true },
+                ) { words ->
+                    runSpokenWork(words)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: MikaVoiceCall.Failure) {
+                status = getString(e.messageId)
+            } catch (_: Exception) {
+                status = getString(R.string.mika_voice_call_connection_lost)
+            } finally {
+                callOpen = false
+                listening = false
+            }
+        }
+    }
+
+    private fun hangup() {
+        val job = callJob
+        callJob = null
+        job?.cancel()
+        callOpen = false
+        listening = false
+        val goal = voiceGoal
+        voiceGoal = null
+        if (goal != null) {
+            app.taskState.runs.value.firstOrNull { it.conversationId == conversationId && it.goal == goal && !it.state.value.let { s ->
+                s is TaskState.Succeeded || s is TaskState.Failed || s == TaskState.Cancelled || s == TaskState.Idle
+            } }?.cancel()
+        }
+    }
+
+    private suspend fun runSpokenWork(words: String): String {
+        if (locked() || isFinishing) return getString(R.string.assistant_send_failed)
+        if (pendingQuestion != null) return getString(R.string.mika_voice_call_status_working)
+        voiceGoal = words
+        text = ""
+        pendingQuestion = words
+        status = getString(R.string.mika_voice_call_status_working)
+        val id = conversationId ?: app.conversations.newConversation().also { conversationId = it }
+        if (app.providers.configFor(ModelRole.Main) == null) return getString(R.string.assistant_model_required)
+        if (app.teach.blocksTasks()) return getString(R.string.teach_blocked_task)
+        val existing = app.taskState.runs.value.firstOrNull { it.conversationId == id && it.goal != words }
+        try {
+            if (existing == null) TaskService.start(this, words, id)
+            else if (!TaskService.enqueueFollowUp(this, id, UUID.randomUUID().toString(), words)) {
+                return getString(R.string.assistant_send_failed)
+            }
+        } catch (_: Exception) {
+            return getString(R.string.assistant_send_failed)
+        }
+        val run = kotlinx.coroutines.withTimeoutOrNull(20_000) {
+            app.taskState.runs.first { runs -> runs.any { it.conversationId == id && it.goal == words } }
+                .first { it.conversationId == id && it.goal == words }
+        } ?: return getString(R.string.assistant_status_unavailable)
+        val end = run.state.first { state ->
+            val line = spokenStatus(state)
+            if (line != null) status = line
+            reply = liveReply(state)?.copy(progress = line)
+            state is TaskState.Succeeded || state is TaskState.Failed || state == TaskState.Cancelled
+        }
+        pendingQuestion = null
+        voiceGoal = null
+        return when (end) {
+            is TaskState.Succeeded -> end.answer.ifBlank { getString(R.string.mika_voice_call_status_done) }
+            is TaskState.Failed -> end.reason.ifBlank { getString(R.string.mika_voice_call_status_failed) }
+            else -> getString(R.string.mika_voice_call_status_cancelled)
+        }
+    }
+
+    private fun spokenStatus(state: TaskState): String? = when (callWorkStatus(state) { it }) {
+        "calendar" -> getString(R.string.mika_voice_call_status_calendar)
+        "weather" -> getString(R.string.mika_voice_call_status_weather)
+        "time" -> getString(R.string.mika_voice_call_status_time)
+        "working" -> getString(R.string.mika_voice_call_status_working)
+        "confirm" -> getString(R.string.mika_voice_call_status_confirm)
+        "waiting" -> getString(R.string.mika_voice_call_status_waiting)
+        "done" -> getString(R.string.mika_voice_call_status_done)
+        "failed" -> getString(R.string.mika_voice_call_status_failed)
+        "cancelled" -> getString(R.string.mika_voice_call_status_cancelled)
+        null -> null
+        else -> {
+            val code = callWorkStatus(state) { it }.orEmpty()
+            if (code.startsWith("tool:")) getString(R.string.mika_voice_call_status_tool, code.removePrefix("tool:")) else null
+        }
+    }
 
     private fun requestSpeech() {
         if (!resumed || isFinishing || sending) return
@@ -539,61 +659,21 @@ class AssistantOverlayActivity : ComponentActivity() {
                 val priorTurns = if (existing == null) emptyList() else withContext(Dispatchers.IO) { app.conversations.turns(id) }
                 val baseline = priorTurns.size
                 val oldRun = app.taskState.run(id)?.key
-                val automatic = mode == AssistantMode.Auto && screen == null && cameraFile == null
-                val knownRoute = if (automatic) {
-                    val skillMatch = withContext(Dispatchers.IO) {
-                        invokesSavedSkill(words, MemoryRuntime.of(this@AssistantOverlayActivity).skills().list())
-                    }
-                    if (skillMatch) ModelRole.Main else routeLiveWeather(words, app.researchChat.canSearch())
-                } else null
-                val adaptive = automatic && knownRoute != ModelRole.Main && app.researchChat.canDelegate()
-                val target = when {
-                    screen != null || cameraFile != null || mode == AssistantMode.Work -> ModelRole.Main
-                    mode == AssistantMode.Chat || adaptive -> ModelRole.Chat
-                    knownRoute != null -> knownRoute
-                    else -> {
-                        status = getString(R.string.assistant_routing)
-                        val latestWork = priorTurns.lastOrNull()?.takeIf {
-                            !it.research && it.status in setOf("succeeded", "unverified")
-                        }
-                        routeAssistantConversation(words, app.providers, latestWork)
-                    }
-                }
+                // 这个助手页上的语音和手打都交给工作，不再先走聊天。
                 status = null
                 if (!resumed || locked() || isFinishing) return@launch
-                if (target == null) {
-                    status = getString(R.string.assistant_routing_unavailable)
-                    return@launch
-                }
-                if (app.providers.configFor(target) == null) {
+                if (app.providers.configFor(ModelRole.Main) == null) {
                     status = getString(R.string.assistant_model_required)
                     return@launch
                 }
-                if (target == ModelRole.Chat) {
-                    // The previous reply can reach disk just before ResearchChat releases its draft.
-                    val previousDraft = app.researchChat.pending.value[id]
-                    if (previousDraft != null && priorTurns.any { it.research && it.atMs == previousDraft.startedAt }) {
-                        withTimeoutOrNull(2_000) { app.researchChat.pending.first { it[id] == null } }
-                    }
-                    if (!resumed || locked() || isFinishing) return@launch
-                    val handoff: (() -> Boolean)? = if (automatic) {
-                        { handOffToWork(id, words, ::dispatch) }
-                    } else null
-                    if (!app.researchChat.send(id, words, onWork = handoff)) throw IOException("Chat submission failed")
-                } else {
-                    if (app.teach.blocksTasks()) {
-                        status = getString(R.string.teach_blocked_task)
-                        return@launch
-                    }
-                    if (screen == null && cameraFile == null) withContext(Dispatchers.IO) { dispatch(words) }
-                    else submitImages(id, words, screen, cameraFile, ::dispatch)
+                if (app.teach.blocksTasks()) {
+                    status = getString(R.string.teach_blocked_task)
+                    return@launch
                 }
-                pendingChat = target == ModelRole.Chat
-                resolvedMode = when {
-                    adaptive -> null
-                    pendingChat -> AssistantMode.Chat
-                    else -> AssistantMode.Work
-                }
+                if (screen == null && cameraFile == null) withContext(Dispatchers.IO) { dispatch(words) }
+                else submitImages(id, words, screen, cameraFile, ::dispatch)
+                pendingChat = false
+                resolvedMode = AssistantMode.Work
                 removeScreenshot()
                 removePhoto()
                 text = ""
@@ -706,7 +786,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                     previousRun = null
                     reply = (finished ?: turns.lastOrNull())?.let(::savedReply)
                     if (sendAfterReply) sendQueuedFollowUp()
-                    else if (finished != null && finished.status in setOf("succeeded", "unverified")) {
+                    else if (finished != null && finished.status in setOf("succeeded", "unverified") && callJob?.isActive != true) {
                         playCompletedResult(finished)
                     }
                 }
@@ -729,7 +809,7 @@ class AssistantOverlayActivity : ComponentActivity() {
                     getString(label), body = WorkReply.from(state.preview.orEmpty(), streaming = true).summary,
                     running = true, waiting = true,
                     motion = state.orbMotion,
-                    progress = state.narration?.takeIf(String::isNotBlank) ?: state.reason?.takeIf(String::isNotBlank),
+                    progress = spokenStatus(state),
                 )
             }
             is TaskState.Held -> AssistantReply(title, body, waiting = state.reason.queued, motion = OrbMotion.Waiting)

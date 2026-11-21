@@ -932,12 +932,14 @@ class CapsuleController(
             w.place(OverlayPlacement(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, placedY))
             return
         }
-        // 卡片展开着时这个窗口是空的,照样停在边上:收起时一颗就在原处出来
+        // 卡片展开着时这个窗口是空的,照样停在边上:收起时一颗就在原处出来。
+        // 一颗的高度按记下比例时用的那一个高度摆。按下时内容量出来的高度闪一下，不再把整颗挪走。
         val d = dock
         // 输入法盖到原来的位置:胶囊和卡片都挪到它上面,收起后回原处
         val base = area(ime = false) ?: a
-        val natural = CapsuleDocking.fitY(CapsuleDocking.y(d.fraction, base, dp(PILL_DP)), base, h)
-        placedY = CapsuleDocking.fitY(natural, a, h)
+        val dockH = dp(PILL_DP)
+        val natural = CapsuleDocking.fitY(CapsuleDocking.y(d.fraction, base, dockH), base, dockH)
+        placedY = CapsuleDocking.fitY(natural, a, dockH)
         val side = if (d.side == DockSide.Left) Gravity.LEFT else Gravity.RIGHT
         w.place(OverlayPlacement(Gravity.TOP or side, CapsuleDocking.edgeOffset(d.side, a), placedY))
         arc.relayout()
@@ -1532,8 +1534,8 @@ class CapsuleController(
                 open(id)
             }
             CapsuleArcAction.VoiceCall -> {
-                (context.applicationContext as MikaApp).openVoiceCall.tryEmit(Unit)
-                open(null)
+                runCatching { context.startActivity(TaskService.openVoiceCallIntent(context)) }
+                    .onFailure { Log.w(TAG, "could not open the voice call from the capsule", it) }
             }
             CapsuleArcAction.ScreenshotAsk -> previewScreen()
             CapsuleArcAction.HideAssistant -> actions.hideCapsule()

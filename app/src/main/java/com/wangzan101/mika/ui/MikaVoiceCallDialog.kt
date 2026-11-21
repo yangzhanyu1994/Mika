@@ -34,9 +34,11 @@ import com.wangzan101.mika.calls.VolcRealtimeException
 import com.wangzan101.mika.calls.VoiceCallLevels
 import com.wangzan101.mika.calls.VoiceSpeechPhase
 import com.wangzan101.mika.core.agent.Turn
+import com.wangzan101.mika.calls.CALL_GREETING
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
@@ -47,25 +49,31 @@ internal fun MikaVoiceCallDialog(
     onConfigure: () -> Unit,
     onDismiss: () -> Unit,
     saveTranscript: suspend (List<Turn>) -> Unit,
+    greet: Boolean = true,
+    onGreeted: () -> Unit = {},
     delegate: suspend (String, (VoiceCallProgress) -> Unit) -> String,
 ) {
     val context = LocalContext.current
     val config by runtime.settings.state.collectAsState()
     var work by remember { mutableStateOf<VoiceCallProgress?>(null) }
+    var lines by remember { mutableStateOf<List<String>>(emptyList()) }
+    val typed = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
     val handle by rememberUpdatedState(delegate)
-    LaunchedEffect(work) {
-        if (work?.motion == OrbMotion.Complete || work?.motion == OrbMotion.Idle) {
-            delay(1_200)
-            work = null
-        }
+    fun show(progress: VoiceCallProgress) {
+        work = progress
+        val line = progress.status ?: return
+        if (lines.lastOrNull() != line) lines = (lines + line).takeLast(12)
     }
-    MikaVoiceCallDialog(config.credentialsConfigured, onConfigure, onDismiss, work, keepInBackground = true) { onConnected ->
+    MikaVoiceCallDialog(
+        config.credentialsConfigured, onConfigure, onDismiss, work, lines, keepInBackground = true,
+        onType = { text -> typed.tryEmit(text) },
+    ) { onConnected ->
         work = null
         MikaVoiceCallService.withMicrophone(context.applicationContext) {
-            MikaVoiceCall(context, runtime).run(onConnected, saveTranscript) { words ->
-                work = VoiceCallProgress(OrbMotion.Thinking)
+            MikaVoiceCall(context, runtime).run(onConnected, saveTranscript, greet = greet, onGreeted = onGreeted, typed = typed) { words ->
+                show(VoiceCallProgress(OrbMotion.Thinking, status = context.getString(R.string.mika_voice_call_status_working)))
                 try {
-                    handle(words) { work = it }
+                    handle(words) { show(it) }
                 } finally {
                     if (work?.motion != OrbMotion.Complete && work?.needsTaskView != true) work = null
                 }
@@ -82,7 +90,9 @@ internal fun MikaVoiceCallDialog(
     onConfigure: () -> Unit,
     onDismiss: () -> Unit,
     work: VoiceCallProgress? = null,
+    lines: List<String> = emptyList(),
     keepInBackground: Boolean = false,
+    onType: (String) -> Unit = {},
     runCall: suspend ((VoiceCallLevels) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
@@ -237,6 +247,8 @@ internal fun MikaVoiceCallDialog(
         message = message,
         action = buttonLabel,
         showCancel = needsConfig || needsMic || failure != null,
+        lines = lines,
+        onType = onType,
         speakerOn = speakerOn,
         onSpeaker = {
             speakerOn = audioSession?.toggle()?.speaker ?: !speakerOn

@@ -78,6 +78,7 @@ private class MikaAssistantSession(private val host: Context) : VoiceInteraction
         super.onShow(args, showFlags)
         val invocation = capture ?: run { hide(); return }
         try {
+            // 留在现有数字助手页里接通语音，不打开应用内通话主界面。
             startAssistantActivity(Intent(host, AssistantOverlayActivity::class.java)
                 .putExtra(AssistantCapture.EXTRA_CAPTURE, invocation.id))
         } catch (e: RuntimeException) {

@@ -35,6 +35,14 @@ class CapsuleDockTest {
         assertEquals(1780, CapsuleDocking.dockedX(DockSide.Right, landscape, 200))
     }
 
+    @Test fun theSameDockHeightDoesNotMoveWhenMeasuredHeightFlickers() {
+        val pill = 100
+        val y = CapsuleDocking.y(0.4f, area, pill)
+        val docked = CapsuleDocking.fitY(y, area, pill)
+        val again = CapsuleDocking.fitY(CapsuleDocking.y(CapsuleDocking.fraction(docked, area, pill), area, pill), area, pill)
+        assertEquals(docked, again)
+    }
+
     @Test fun tallerWindowMovesUpToFit() {
         // 卡片 600 高,从胶囊的高度往下放不下
         assertEquals(1950 - 600, CapsuleDocking.fitY(CapsuleDocking.y(1f, area, 100), area, 600))

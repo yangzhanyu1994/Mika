@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">접기</string>
     <string name="mika_voice_call_speaker_on">스피커</string>
     <string name="mika_voice_call_speaker_off">수화기</string>
+    <string name="mika_voice_call_status_calendar">일정을 확인하는 중</string>
+    <string name="mika_voice_call_status_weather">날씨를 확인하는 중</string>
+    <string name="mika_voice_call_status_time">시간을 확인하는 중</string>
+    <string name="mika_voice_call_status_working">처리하는 중</string>
+    <string name="mika_voice_call_status_tool">%1$s 호출 중</string>
+    <string name="mika_voice_call_status_confirm">확인을 기다리는 중</string>
+    <string name="mika_voice_call_status_waiting">대기 중</string>
+    <string name="mika_voice_call_status_done">완료</string>
+    <string name="mika_voice_call_status_failed">실패</string>
+    <string name="mika_voice_call_status_cancelled">취소됨</string>
+    <string name="mika_voice_call_type_hint">입력 후 보내기</string>
     <string name="brief_title">예약 요약</string>
     <string name="brief_note">오전, 오후, 하루 요약은 각각 스위치입니다. 알림 시각과 범위를 따로 정합니다. 끝이 시작보다 뒤가 아니면 범위는 전날부터입니다. 내용은 이 기기에만 남고 모델로 보내지 않으며 대신 실행하지 않습니다. 강제 종료나 엄격한 배터리 제한으로 알림이 빠질 수 있습니다.</string>
     <string name="brief_morning">오전 요약</string>

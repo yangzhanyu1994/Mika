@@ -18,6 +18,17 @@
     <string name="mika_voice_call_collapse">جمع کردن</string>
     <string name="mika_voice_call_speaker_on">بلندگو</string>
     <string name="mika_voice_call_speaker_off">گوشی</string>
+    <string name="mika_voice_call_status_calendar">Checking the calendar</string>
+    <string name="mika_voice_call_status_weather">Checking the weather</string>
+    <string name="mika_voice_call_status_time">Checking the time</string>
+    <string name="mika_voice_call_status_working">Working</string>
+    <string name="mika_voice_call_status_tool">Calling %1$s</string>
+    <string name="mika_voice_call_status_confirm">Waiting for confirmation</string>
+    <string name="mika_voice_call_status_waiting">Waiting</string>
+    <string name="mika_voice_call_status_done">Finished</string>
+    <string name="mika_voice_call_status_failed">Failed</string>
+    <string name="mika_voice_call_status_cancelled">Cancelled</string>
+    <string name="mika_voice_call_type_hint">Type, then send</string>
     <string name="brief_title">خلاصه‌های زمان‌بندی‌شده</string>
     <string name="brief_note">خلاصهٔ صبح، بعدازظهر و تمام روز کلیدهای جدا هستند. هرکدام زمان یادآوری و بازهٔ خودش را دارد. اگر پایان بعد از شروع نباشد، بازه از روز قبل آغاز می‌شود. متن روی همین گوشی می‌ماند، به مدل فرستاده نمی‌شود و اجرا نمی‌شود. توقف اجباری یا محدودیت شدید باتری ممکن است یک یادآوری را رد کند.</string>
     <string name="brief_morning">خلاصهٔ صبح</string>
