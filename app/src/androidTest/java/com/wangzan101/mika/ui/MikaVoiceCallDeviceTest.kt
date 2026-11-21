@@ -42,7 +42,7 @@ class MikaVoiceCallDeviceTest {
         compose.activityRule.scenario.onActivity { host ->
             host.setContentView(ComposeView(host).apply {
                 setContent {
-                    MikaTheme {
+                    MikaTheme(reduceMotion = true) {
                         if (visible.value) {
                             MikaVoiceCallDialog(
                                 credentialsConfigured = true,
@@ -106,7 +106,7 @@ class MikaVoiceCallDeviceTest {
         compose.activityRule.scenario.onActivity { host ->
             host.setContentView(ComposeView(host).apply {
                 setContent {
-                    MikaTheme {
+                    MikaTheme(reduceMotion = true) {
                         if (visible.value) {
                             MikaVoiceCallDialog(
                                 credentialsConfigured = true,

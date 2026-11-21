@@ -47,7 +47,8 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 - 更新者：Cursor Agent（接续 PR 95）
 - 代码：七项在 e2b55a77。CI 修复和 12 个能直接套上的上游提交在 f9db0ae0。屏图类型、认屏、重建、渲染、导航、落盘和自检已在库里，还没接到任务循环。密钥池、do_each、只读控制台、动态语言、图片存相册、共享沙箱、备份逐条暂存、网页最终 URL 仍未接入。对照见 docs/dev/upstream-v0.1.49-to-v0.1.50.md。
 - 版本：已发布最高版是 v0.2.15（versionCode 2015）。标签 v0.2.16 和分支 release/v0.2.16 都不存在。下一空闲版本定为 0.2.16，versionCode 2016。发布 workflow 只在推送 release/v* 时跑一次，不额外手动触发。
-- CI：08:06 的 https://github.com/yangzhanyu1994/Mika/actions/runs/44840865653 失败。f9db0ae0 的 https://github.com/yangzhanyu1994/Mika/actions/runs/44848542965 在写入本节时仍在跑。本节提交之后还要等新的 CI。CI 未绿之前不合并、不推 release 分支。
+- CI：https://github.com/yangzhanyu1994/Mika/actions/runs/44848906909 对 cf4b8a7d 通过（core、app、cli、relay 都成功）。PR 95 已合并，合并提交 2ddb0477，树与 cf4b8a7d 相同。
+- 签名发布：第一次只推送了 release/v0.2.16，https://github.com/yangzhanyu1994/Mika/actions/runs/44849800865 在 Android 16 模拟器任务冒烟失败。通话球体用真实帧循环改 Compose 状态，设备测试等不到空闲。没有创建 v0.2.16 Release。设备测试改为关闭动效后再发一次。用户界面仍播放球体动画。
 - 本地代码测试（2026-11-21 09:08 UTC+8，本机，不是 CI）：`./gradlew :core:test --stacktrace` 退出码 0（3901 tests，0 failures，2 ignored）。`./gradlew :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 退出码 0（2716 tests，0 failures；debug APK 与 androidTest 编译成功）。`python3 tools/i18n/translations.py check` 退出码 0。
 - 模拟器：本机没有 emulator 和系统镜像，七项界面未验证。签名发布 workflow 自己会在 Android 16 模拟器上跑任务冒烟，那是发布流程的结果，不能提前写成已通过。
 - 真机：未验证。
@@ -61,9 +62,9 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **下一步与问题**
 
-等本提交的 CI 通过后，合并 PR 95，并只推送一次 release/v0.2.16。若 CI 失败或签名发布失败，不重复推送该分支。冲突的上游提交留到下一轮。物理 2 cm、省电和后台定位仍待用户真机。
+签名包已编过并经过 apksigner 校验，但模拟器冒烟未过，所以还没有安装链接。修正设备测试后只再推一次 release/v0.2.16。冲突的上游提交留到下一轮。物理 2 cm、省电和后台定位仍待用户真机。
 
-- 测试结果：本地单测和调试包编译通过。CI 与签名发布尚未完成。模拟器未验证。真机未验证。
+- 测试结果：PR CI 通过。签名构建和 apksigner 通过。Android 16 模拟器冒烟失败，已改测试，尚未重跑。真机未验证。
 - 来源：用户 2026-11-21 09:11（UTC+8）「发布一版。我来验证」。版本空闲情况来自 origin 的 tags 与 release/v0.2.* 分支。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更
