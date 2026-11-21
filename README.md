@@ -35,39 +35,40 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 项目状态（2026-11-21 19:15 UTC+8）
+### 项目状态（2026-11-21 19:47 UTC+8）
 
 **项目目标**
 
-发布 v0.2.20，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.19。这一版只包含 PR 99：四个芯片共用一个飞行时钟、同步飞出，飞出只走最后 1/4 路程并由小变大、淡入，全程不重叠；落位/收起复用开菜单时量好的位置。用户 17:16 的视频里落位后弧线是对的，只有点开前半秒下面两个芯片会叠在一起。没有新一轮用户视频，不能把真机已修好写成已验证。
+发布 v0.2.21，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.20。这一版只包含 PR 100 回滚：把 `CapsuleArcPresenter.kt` 恢复到 v0.2.19 的状态，快捷菜单恢复 v0.2.19 的行为——能打开；飞出前半秒底部两颗芯片短暂重叠的问题会回来，那是外观上的短暂重叠，等拿到真机崩溃日志、弄清 v0.2.20 的共用飞行时钟为什么会让菜单打不开，再重新修。
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-21 19:15
-- 更新者：小美（按用户 17:17 的修复和发布要求；18:13 用户亲口说这个项目不用逐项问授权，全部允许，直接推进）
-- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/99 已合并。合并提交 `8cdb25c192b8411e40727035e448f6f144fd7e23`，PR head `021c61c820f36f6c7de133fe94ca92fe2487f6e2`。改了 `app/src/main/java/com/wangzan101/mika/capsule/CapsuleArcPresenter.kt` 一个文件和五份 README 译文的标记（见下）。
-- 版本：v0.2.20 已发布，versionCode 2020，高于 v0.2.19 的 2019。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.20 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.20/Mika-v0.2.20.apk ，本机下载后 SHA-256 ea5ef6df8825433992c53eac066cbf54639a4886ef3de31bba19e8e76dafab18。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.20/Mika-v0.2.20-arm64.apk ，本机下载后 SHA-256 d2ebf061097c13143b69c4db7bd542229c97ddadb6ea767a751aa9c5792cb135。两包的包名、versionName 0.2.20、versionCode 2020、证书 SHA-256 都是本机用 androguard 实查的：证书 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，与 v0.2.19 相同，证书主体是 O=yangzhanyu1994, CN=mika-fork，可覆盖安装。
-- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/44895874363 四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/44896919473 成功，完成时间 2026-11-21 19:08:37 UTC+8，只推了一次 release/v0.2.20。这次 README 只推 main，不再触发发布。
+- 日期（UTC+8）：2026-11-21 19:47
+- 更新者：小美（这个项目不用逐项问授权，全部允许，直接推进——用户 2026-11-21 18:13 亲口说的）
+- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/100 已合并。合并提交 `03993a693f8c3b646c578544a6720937803b7938`，PR head `7437d022391b00713a316973b4c55d809ed007c0`。只改了 `app/src/main/java/com/wangzan101/mika/capsule/CapsuleArcPresenter.kt` 一个文件：恢复到 v0.2.19（PR #98 合并时）的状态，每颗芯片自己的 `remember { Animatable }` + `LaunchedEffect` 驱动飞出/收起、`hidden` 计数、`State<Float>` 参数；其它文件不动，README 指纹不受这次代码改动影响。
+- 版本：v0.2.21 已发布，versionCode 2021，高于 v0.2.20 的 2020。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.21 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.21/Mika-v0.2.21.apk ，132,883,052 字节，本机下载后 SHA-256 6f1effa97dbf2b07a54ed5e58f84a49b37ab348c1a69e4899493c1f27e792eb6。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.21/Mika-v0.2.21-arm64.apk ，120,286,909 字节，本机下载后 SHA-256 686518beb0943c3067259ec8d3ebabae0c26bf348e1ae9fd9d24e838393816ff。两包的包名、versionName 0.2.21、versionCode 2021、minSdk 30、targetSdk 35、证书 SHA-256 都是本机用 androguard 4.1.4 实查的：证书 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，与 v0.2.18/v0.2.19/v0.2.20 相同，证书主体是 O=yangzhanyu1994, CN=mika-fork，可覆盖安装。
+- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/44899144016 四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/44899877763 成功，完成时间 2026-11-21 19:44:54 UTC+8，只推了一次 release/v0.2.21。这次 README 只推 main，不再触发发布。
 - 本地代码测试：本机没有 Android SDK，本轮没有跑 gradle 测试；以 PR 检查和签名发布 workflow 的结果为准。
-- 模拟器：发布 workflow 在 Android 16 模拟器上只跑了既有的任务启动和通话设备测试。本机没有 emulator。没有本轮弧形菜单的模拟器截图。不能把飞出重叠写成模拟器已验收。
-- 真机：未验证。用户 17:16 附的视频是 v0.2.19 的表现，本记录不声称已在真机上复现或确认修复。
-- 另外两处 CI 失败与修法：第一轮 PR 检查里 app 编译失败（`Animatable` 在本工程的 Compose 版本里不能直接当 `State<Float>` 传，`CapsuleArcPresenter.kt:145`），已改成参数直接写 `Animatable`；core 的 README 翻译测试失败，是 v0.2.19 那次 README 更新（84ceb00）改了正文、没同步五份译文的 `translated-from` 标记，main 从那时起就是红的——本轮已把五份标记对到新指纹，并在中文译文里补了 v0.2.19 的记录；以后每次 README 正文更新都要同步改标记。
+- 模拟器：发布 workflow 在 Android 16 模拟器上只跑了既有的任务启动和通话设备测试。本机没有 emulator。没有本轮弧形菜单的模拟器截图。不能把菜单能打开写成模拟器已验收。
+- 真机：未验证。用户 19:24 附的视频是 v0.2.20 的表现（点胶囊球菜单打不开），本记录不声称已在真机上复现或确认修复。
+- 本轮 README 正文更新同步改了五份译文的 `translated-from` 标记和中文译文的 v0.2.21 记录；以后每次 README 正文更新都要同步改标记。
 
 **重要决定和限制**
 
-- 用户 2026-11-21 17:16（UTC+8）附 21 秒录屏：v0.2.19 落位后弧线是对的，只有点开前半秒下面两个芯片会叠在一起；17:17 要求找到问题、修好、提新 PR、发布；18:13 亲口说这个项目不用逐项问授权，全部允许，直接推进。
-- 根因：四个芯片各在自己的窗口里跑一个 `Animatable`，启动有先后，上面两个先落位、下面两个还在飞；从锚点直线飞出来时相邻间距按进度缩放，落位间距只有 127px、按钮直径 115px，进度 < 0.91 时外侧两对必然重叠。本版让四个芯片共用 presenter 持有的一个飞行时钟、同步飞、一起落位；飞出只走最后 1/4 路程，同时由 70% 放大到 100%、由透明变不透明，按实测的 127/147px 落位间距算，全程至少留 11.5px 空隙；开菜单时量一次位置，落位/收起复用这一版，只有胶囊挪动或配置变化才重算。
+- v0.2.20 真机问题：用户 2026-11-21 19:17（UTC+8）说点不开浮窗，19:15、19:22 两次闪退（系统问题历史记录均为“未知”），重启后点胶囊仍无任何反应；设置里点按动作确认是“展开快捷菜单”，排除设置问题；19:24 附视频。v0.2.19 同一台手机实测菜单能正常打开（仅飞出前 0.5 秒底部两颗芯片短暂重叠），所以问题出在 v0.2.20 这一版改的共用飞行时钟上——四个芯片共用 presenter 持有的一个 `Animatable`、由 presenter 的协程驱动，替代了原来每颗芯片自己的 `Animatable` + `LaunchedEffect`。静态检查没找到确切的崩溃点（OverlayHost.open 本身有兜底、加不上窗口只返回 null），先回滚到已验证能用的行为，再拿真机日志慢慢定位。
+- 回滚的代价：飞出前半秒底部两颗芯片短暂重叠的问题会回来，那是 v0.2.20 想修的毛病——但只是外观上的短暂重叠，菜单本身能用。
 - 弧形菜单的布局（`CapsuleArc.layout`）没有改：四个按钮仍按四分之一弧线排，按钮 44dp、间距 12dp。
 - 没有定位授权就不读取手机位置。指定城市的天气不取定位。当前位置天气按这一次把坐标只发给 Open-Meteo。坐标和日程标题不写入运行记录。
 - 不整合上游剩余冲突，不写 wangzan101/Mika，不碰 DOVE、Tailscale、Aqara、真实账号或真实外发消息，不读、不打印密钥。
 
 **下一步与问题**
 
-安装包已经可下载，可覆盖 v0.2.19。三星真机仍由用户看。
+安装包已经可下载，可覆盖 v0.2.20。三星真机仍由用户看。
 
-- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 上的既有冒烟测试。本轮弧形菜单飞出没有模拟器界面证据。真机未验证。
-- 来源：用户 2026-11-21 17:16、17:17、18:13（UTC+8）。当时未被占用的下一版本是 v0.2.20。
-- 真机还要看：点开菜单时四个芯片是否同步弹出、全程不叠；落位后位置是否和 v0.2.19 一致；收起是否沿同一路径回去；覆盖安装后旧版本数据是否还在。
+- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 上的既有冒烟测试。本轮弧形菜单没有模拟器界面证据。真机未验证。
+- 来源：用户 2026-11-21 19:17、19:24（UTC+8）。当时未被占用的下一版本是 v0.2.21。
+- 真机还要看：点胶囊球菜单能不能打开；四个芯片落位后位置是否和 v0.2.19 一致；收起是否沿同一路径回去；覆盖安装后旧版本数据是否还在。
+- 还要拿真机崩溃日志，定位 v0.2.20 共用飞行时钟为什么会让菜单打不开，再重新修飞出重叠。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更
 
