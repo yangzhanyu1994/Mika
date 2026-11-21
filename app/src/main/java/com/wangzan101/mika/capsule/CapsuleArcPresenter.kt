@@ -93,7 +93,7 @@ class CapsuleArcPresenter(
 
     fun relayout() {
         if (!open || closing.value) return
-        place(path = true)
+        place(path = !settled.value)
     }
 
     fun release() {
@@ -125,7 +125,7 @@ class CapsuleArcPresenter(
                         onAction(frame.action)
                         close()
                     },
-                    onArrived = { settled.value = true },
+                    onArrived = { onArrived() },
                     onHidden = { onHidden() },
                 )
             }
@@ -133,9 +133,14 @@ class CapsuleArcPresenter(
             windows[index] = window
         }
         open = windows.any { it != null }
+        if (settled.value) place(path = false)
     }
 
-    private fun onArrived() = Unit
+    private fun onArrived() {
+        if (closing.value || settled.value) return
+        settled.value = true
+        place(path = false)
+    }
 
     private fun onHidden() {
         hidden.intValue += 1
@@ -147,6 +152,11 @@ class CapsuleArcPresenter(
         laid.forEachIndexed { index, frame ->
             frames[index] = frame
             windows[index]?.place(placement(frame, path))
+            // 落位后窗口也缩到芯片大小:只挪位置不缩尺寸,四个飞行大框还会互相盖着,点按会被最上面那个吃掉。
+            windows[index]?.resize(
+                if (path) frame.windowWidth else frame.chipWidth,
+                if (path) frame.windowHeight else frame.chipHeight,
+            )
         }
     }
 
