@@ -35,7 +35,7 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 项目状态（2026-11-21 09:13 UTC+8）
+### 项目状态（2026-11-21 09:52 UTC+8）
 
 **项目目标**
 
@@ -43,14 +43,13 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-21 09:13
+- 日期（UTC+8）：2026-11-21 09:52
 - 更新者：Cursor Agent（接续 PR 95）
 - 代码：七项在 e2b55a77。CI 修复和 12 个能直接套上的上游提交在 f9db0ae0。屏图类型、认屏、重建、渲染、导航、落盘和自检已在库里，还没接到任务循环。密钥池、do_each、只读控制台、动态语言、图片存相册、共享沙箱、备份逐条暂存、网页最终 URL 仍未接入。对照见 docs/dev/upstream-v0.1.49-to-v0.1.50.md。
-- 版本：已发布最高版是 v0.2.15（versionCode 2015）。标签 v0.2.16 和分支 release/v0.2.16 都不存在。下一空闲版本定为 0.2.16，versionCode 2016。发布 workflow 只在推送 release/v* 时跑一次，不额外手动触发。
-- CI：https://github.com/yangzhanyu1994/Mika/actions/runs/44848906909 对 cf4b8a7d 通过（core、app、cli、relay 都成功）。PR 95 已合并，合并提交 2ddb0477，树与 cf4b8a7d 相同。
-- 签名发布：第一次只推送了 release/v0.2.16，https://github.com/yangzhanyu1994/Mika/actions/runs/44849800865 在 Android 16 模拟器任务冒烟失败。通话球体用真实帧循环改 Compose 状态，设备测试等不到空闲。没有创建 v0.2.16 Release。设备测试改为关闭动效后再发一次。用户界面仍播放球体动画。
+- 版本：v0.2.16 已发布，versionCode 2016，高于 v0.2.15 的 2015。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.16 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.16/Mika-v0.2.16.apk ，SHA-256 f04c717229688662a29c01e59456b51e17734abc85c5fd50bf88ce5d918d8d15。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.16/Mika-v0.2.16-arm64.apk ，SHA-256 0c51e64d9239bd08432552d86700272d60cfdd0006bda68623e9b338e7e3de9f。两包与 v0.2.15 的签名证书 SHA-256 都是 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，证书主体是 O=yangzhanyu1994, CN=mika-fork。
+- CI：https://github.com/yangzhanyu1994/Mika/actions/runs/44848906909 通过。签名发布重试 https://github.com/yangzhanyu1994/Mika/actions/runs/44851452601 成功。第一次 https://github.com/yangzhanyu1994/Mika/actions/runs/44849800865 因通话设备测试等不到 Compose 空闲而失败，没有发出安装包；修正后只再推了一次 release/v0.2.16。
 - 本地代码测试（2026-11-21 09:08 UTC+8，本机，不是 CI）：`./gradlew :core:test --stacktrace` 退出码 0（3901 tests，0 failures，2 ignored）。`./gradlew :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --stacktrace` 退出码 0（2716 tests，0 failures；debug APK 与 androidTest 编译成功）。`python3 tools/i18n/translations.py check` 退出码 0。
-- 模拟器：本机没有 emulator 和系统镜像，七项界面未验证。签名发布 workflow 自己会在 Android 16 模拟器上跑任务冒烟，那是发布流程的结果，不能提前写成已通过。
+- 模拟器：发布 workflow 在 Android 16 模拟器上跑过任务启动和通话设备测试，通话测试关闭了动效。通话 2 cm、球体效果映射、MCP 刷新、通知调度、弧线菜单和定位权限没有在模拟器里逐项看过。本机没有安装 emulator。
 - 真机：未验证。
 
 **重要决定和限制**
@@ -62,9 +61,9 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **下一步与问题**
 
-签名包已编过并经过 apksigner 校验，但模拟器冒烟未过，所以还没有安装链接。修正设备测试后只再推一次 release/v0.2.16。冲突的上游提交留到下一轮。物理 2 cm、省电和后台定位仍待用户真机。
+安装包已经可下载。用户在自己的三星 W25 上安装通用包或 ARM64 包，覆盖 v0.2.15。冲突的上游提交留到下一轮。物理 2 cm、省电和后台定位仍待用户真机。
 
-- 测试结果：PR CI 通过。签名构建和 apksigner 通过。Android 16 模拟器冒烟失败，已改测试，尚未重跑。真机未验证。
+- 测试结果：代码完成。PR CI 通过。签名发布 CI 通过，含 Android 16 模拟器上的任务启动和关闭动效后的通话设备测试。七项界面没有逐项模拟器验收。真机未验证。
 - 来源：用户 2026-11-21 09:11（UTC+8）「发布一版。我来验证」。版本空闲情况来自 origin 的 tags 与 release/v0.2.* 分支。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更
