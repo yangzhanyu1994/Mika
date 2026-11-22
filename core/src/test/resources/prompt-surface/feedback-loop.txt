@@ -77,7 +77,7 @@ The user says they finished it themselves. Only observe to read the app's curren
 ### loop result 1.o1
 {"ok":true,"currentApp":"com.x","snapshotId":"snap1","screenshotId":1,"screenChangedDuringRead":false,"viewport":{"width":1080,"height":2400},"elements":[{"ref":"@e1","role":"button","name":"搜索","center":{"x":500,"y":50},"bounds":[0,0,999,100],"resourceId":"a:id/s"}],"truncated":false,"moreTools":"From your next call on you also have the full phone tools (phone_observe, phone_list_elements, phone_tap, phone_scroll and the rest), with their descriptions and how to use them."}
 ### loop result 1.o2
-{"ok":false,"error":"parallel_tool_call_skipped","message":"Phone actions run one at a time. Observe the result of the first action, then try again."}
+{"ok":false,"error":"parallel_tool_call_skipped","message":"Phone actions run one at a time: only the first call was run and the rest were skipped. Do not send several phone calls in one reply. When the next few steps are already known, put them in a single do_steps call instead, then observe the result."}
 ### loop result 1.c
 {"ok":false,"error":"invalid_arguments","message":"amount: required","recoverable":true}
 ### loop result 2.c
