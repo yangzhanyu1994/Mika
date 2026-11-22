@@ -35,23 +35,23 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 ## 必读
 
-### 项目状态（2026-11-21 19:47 UTC+8）
+### 项目状态（2026-11-22 23:21 UTC+8）
 
 **项目目标**
 
-发布 v0.2.21，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.20。这一版只包含 PR 100 回滚：把 `CapsuleArcPresenter.kt` 恢复到 v0.2.19 的状态，快捷菜单恢复 v0.2.19 的行为——能打开；飞出前半秒底部两颗芯片短暂重叠的问题会回来，那是外观上的短暂重叠，等拿到真机崩溃日志、弄清 v0.2.20 的共用飞行时钟为什么会让菜单打不开，再重新修。
+发布 v0.2.22，让用户在三星 W25 / SM-W9025 / Android 16 上覆盖安装 v0.2.21。这一版只包含 PR 101：教模型把已知的连续手机步骤放进一次 do_steps 调用。改的是 parallel_call_skipped 那条反馈——原来它只教模型“一次只做一步、看完结果再试”，模型想并行就被推回单步；现在它明确说只有第一步被执行、不要一次发多个手机调用、已知的几步放进一次 do_steps 再看结果。执行器没动、没有 Kotlin 改动。batch.md 的教导和上游一字不差，不用改。开关不用改：v2 默认升级（FeatureFlags.kt:385）早在 2026-11-18 进 fork，每次任务开始都会应用，batchSteps 默认就是开的，除非用户在开发者选项里手动关过——这一点代码里看不出来，真机上以开发者选项“Do several steps when sure”开关为准。真机还没验：固定流程“点搜索框 → 输入 → 点搜索”跑 5 次，对比单步版总耗时与成功率。
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-21 19:47
-- 更新者：小美（这个项目不用逐项问授权，全部允许，直接推进——用户 2026-11-21 18:13 亲口说的）
-- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/100 已合并。合并提交 `03993a693f8c3b646c578544a6720937803b7938`，PR head `7437d022391b00713a316973b4c55d809ed007c0`。只改了 `app/src/main/java/com/wangzan101/mika/capsule/CapsuleArcPresenter.kt` 一个文件：恢复到 v0.2.19（PR #98 合并时）的状态，每颗芯片自己的 `remember { Animatable }` + `LaunchedEffect` 驱动飞出/收起、`hidden` 计数、`State<Float>` 参数；其它文件不动，README 指纹不受这次代码改动影响。
-- 版本：v0.2.21 已发布，versionCode 2021，高于 v0.2.20 的 2020。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.21 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.21/Mika-v0.2.21.apk ，132,883,052 字节，本机下载后 SHA-256 6f1effa97dbf2b07a54ed5e58f84a49b37ab348c1a69e4899493c1f27e792eb6。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.21/Mika-v0.2.21-arm64.apk ，120,286,909 字节，本机下载后 SHA-256 686518beb0943c3067259ec8d3ebabae0c26bf348e1ae9fd9d24e838393816ff。两包的包名、versionName 0.2.21、versionCode 2021、minSdk 30、targetSdk 35、证书 SHA-256 都是本机用 androguard 4.1.4 实查的：证书 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，与 v0.2.18/v0.2.19/v0.2.20 相同，证书主体是 O=yangzhanyu1994, CN=mika-fork，可覆盖安装。
-- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/44899144016 四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/44899877763 成功，完成时间 2026-11-21 19:44:54 UTC+8，只推了一次 release/v0.2.21。这次 README 只推 main，不再触发发布。
+- 日期（UTC+8）：2026-11-22 23:21
+- 更新者：小美（这个项目不用逐项问授权，全部允许，直接推进——用户 2026-11-21 18:13 亲口说的；2026-11-22 晚用户定提速顺序：先做 1 再做 2，不并行）
+- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/101 已合并。合并提交 `e2059406f2664bccc2c74d59e6267063222e6af3`，PR head `147c443ae79f98a4629d88f2f8bc5ca53a0352a4`。只改了 `core/src/main/resources/prompts/feedback/loop.md` 里 parallel_call_skipped 一条反馈（+157 字节），并同步了两份提示词金样 `core/src/test/resources/prompt-surface/feedback-loop.txt`、`sizes.txt`；没有 Kotlin 改动、不动执行器。do_each + screenmap（优化 2）这轮没动，按用户定的顺序下一轮再做。
+- 版本：v0.2.22 已发布，versionCode 2022，高于 v0.2.21 的 2021。包名仍是 com.wangzan101.mika.fork。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.22 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.22/Mika-v0.2.22.apk ，132,883,112 字节，本机下载后 SHA-256 966178abb3f3f7400d2d7d1b339d136e45a5565f22a72004f6b87a77f0b762a7。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.22/Mika-v0.2.22-arm64.apk ，120,286,969 字节，本机下载后 SHA-256 4510f6415ef0d4eb0e272c5c856778f8d90cf57892de22df5f220af8b451a6c8。两包的包名、versionName 0.2.22、versionCode 2022、minSdk 30、targetSdk 35、证书 SHA-256 都是本机用 androguard 4.1.4 实查的：证书 5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6，与 v0.2.18/v0.2.19/v0.2.20/v0.2.21 相同，证书主体是 O=yangzhanyu1994, CN=mika-fork，可覆盖安装。（注：ARM64 包第一次下载时 /tmp 写满被截断在 11,833,344 字节，已改到 workspace 重下完整包再验；通用包不受影响。）
+- CI：PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/45034555059 四个作业都成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/45036023672 成功，完成时间 2026-11-22 23:11:25 UTC+8，只推了一次 release/v0.2.22。这次 README 只推 main，不再触发发布。
 - 本地代码测试：本机没有 Android SDK，本轮没有跑 gradle 测试；以 PR 检查和签名发布 workflow 的结果为准。
-- 模拟器：发布 workflow 在 Android 16 模拟器上只跑了既有的任务启动和通话设备测试。本机没有 emulator。没有本轮弧形菜单的模拟器截图。不能把菜单能打开写成模拟器已验收。
-- 真机：未验证。用户 19:24 附的视频是 v0.2.20 的表现（点胶囊球菜单打不开），本记录不声称已在真机上复现或确认修复。
-- 本轮 README 正文更新同步改了五份译文的 `translated-from` 标记和中文译文的 v0.2.21 记录；以后每次 README 正文更新都要同步改标记。
+- 模拟器：发布 workflow 在 Android 16 模拟器上只跑了既有的任务启动和通话设备测试。本机没有 emulator。没有本轮 do_steps 教导的模拟器截图。不能把批量调用写成模拟器已验收。
+- 真机：未验证。等用户装 v0.2.22 后跑固定流程“点搜索框 → 输入 → 点搜索”5 次，对比单步版总耗时与成功率，确认模型对已知连续步骤发一次 do_steps。本记录不声称已在真机上确认批量调用。
+- 本轮 README 正文更新同步改了五份译文的 `translated-from` 标记和中文译文的 v0.2.22 记录；以后每次 README 正文更新都要同步改标记。
 
 **重要决定和限制**
 
@@ -63,11 +63,11 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **下一步与问题**
 
-安装包已经可下载，可覆盖 v0.2.20。三星真机仍由用户看。
+安装包已经可下载，可覆盖 v0.2.21。三星真机仍由用户看。
 
-- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 上的既有冒烟测试。本轮弧形菜单没有模拟器界面证据。真机未验证。
-- 来源：用户 2026-11-21 19:17、19:24（UTC+8）。当时未被占用的下一版本是 v0.2.21。
-- 真机还要看：点胶囊球菜单能不能打开；四个芯片落位后位置是否和 v0.2.19 一致；收起是否沿同一路径回去；覆盖安装后旧版本数据是否还在。
+- 测试结果：代码已合并。PR CI 通过。签名发布 CI 通过，含 Android 16 上的既有冒烟测试。本轮 do_steps 教导没有模拟器界面证据。真机未验证。
+- 来源：用户 2026-11-22 晚定提速顺序先做 1 再做 2。当时未被占用的下一版本是 v0.2.22。
+- 真机还要看：固定流程“点搜索框 → 输入 → 点搜索”跑 5 次，模型是不是一次发 do_steps、总耗时和成功率对比单步版；点胶囊球菜单能不能打开；四个芯片落位后位置是否和 v0.2.19 一致；收起是否沿同一路径回去；覆盖安装后旧版本数据是否还在。
 - 还要拿真机崩溃日志，定位 v0.2.20 共用飞行时钟为什么会让菜单打不开，再重新修飞出重叠。
 
 ### 2026-11-21 07:37（UTC+8）六项批准变更

@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 8bcd9867ef7f -->
+<!-- translated-from: README.md @ e12cdf844496 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -38,6 +38,14 @@
 
 近期各版本的中文更新说明见[仓库首页更新记录](../../README.md#近期版本更新说明)。
 
+
+### 2026-11-22 23:21
+
+- **日期**：2026-11-22 23:21（UTC+8）
+- **更新人**：小美
+- **测试结果**：PR #101 已合并，v0.2.22 已发布，versionCode 2022。本机已下载两个安装包，哈希与 GitHub 摘要一致，证书与 v0.2.21 相同，可覆盖安装。本机没有 Android SDK，本轮没有跑 gradle 测试；以 PR 检查和签名发布 workflow 的结果为准。发布 workflow 的 Android 16 模拟器只跑了既有冒烟测试。没有本轮 do_steps 教导的模拟器截图。真机未验证。固定流程“点搜索框 → 输入 → 点搜索”跑 5 次待用户验，不写成真机已确认批量调用。
+- **来源**：用户 2026-11-22 晚定提速顺序先做 1 再做 2；这个项目不用逐项问授权，全部允许，直接推进。
+- **状态**：v0.2.22 已发布。parallel_call_skipped 反馈改成教模型把已知的连续手机步骤放进一次 do_steps；执行器没动。do_each + screenmap（优化 2）下一轮再做。
 
 ### 2026-11-21 19:47
 
