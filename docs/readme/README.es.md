@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ afb6d631d071 -->
+<!-- translated-from: README.md @ c8c66c9ecc30 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -38,7 +38,7 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 
 ## Imprescindible
 
-2026-11-25 18:55 (UTC+8): esta ronda acelera las acciones seguidas que ya estan claras en la misma pantalla. Se detiene si cambia la pagina, falla, se cancela o hace falta confirmacion. Si la interfaz no se lee, sigue usando la vista. El historial de versiones esta en chino. Aun no esta publicada y no hay resultado en un Samsung real.
+2026-11-25 19:19 (UTC+8): v0.2.25 ya esta publicada y puede instalarse sobre v0.2.24. Las acciones seguidas en la misma pantalla avanzan en orden y se detienen si cambia la pagina, falla, se cancela o hace falta confirmacion. El historial esta en chino. No hay resultado en un Samsung real.
 
 2026-11-25 16:26 (UTC+8): v0.2.24 ya esta publicada y puede instalarse sobre v0.2.23. Si el destino ya esta decidido, se abre en local y se lee la pantalla nueva antes de actuar. El PR 103 esta fusionado y la publicacion firmada termino bien. Los dos APK se comprobaron aqui: resumen, version y certificado. No hay resultado en un Samsung real.
 

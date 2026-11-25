@@ -37,18 +37,19 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **项目目标**
 
-在已发布的 v0.2.24 上加快通用应用操作：同一屏上已经看清的连续动作按顺序做完，页面变化、失败、取消和确认会停住。看不清的界面仍用看图。这一轮做完后发布下一空闲版本。
+发布 v0.2.25，覆盖 v0.2.24。同一屏上已经看清的连续动作按顺序做完；页面变化、失败、取消和确认会停住。看不清的界面仍用看图。
 
 **当前进度**
 
-- 日期（UTC+8）：2026-11-25 18:55
+- 日期（UTC+8）：2026-11-25 19:19
 - 更新者：Grok
-- 基线：已发布 v0.2.24，合并提交 `028a048b`，versionCode 2024。本轮从最新 main 新开分支，没有堆在 PR 103 或 PR 95 上。
-- 代码：模型在同一次回复里明确列出的点按、输入、滚动、滑动和单指笔画会按顺序执行。页面或前台变了、控件不见或有歧义、界面树不可靠、失败、取消、需要确认，就停。没有写出的动作不会补做。看图查找仍在，而且不会被放进这批动作里。
-- 更新记录：关于应用 → 更新记录读取 `app/src/main/assets/fork-release-history.md`；有更新的 GitHub 发布时显示该发布说明。准备中的 v0.2.25 中文说明已写入这份文件和 README 的「近期版本更新说明」，旧记录保留。
-- 代码测试：本机 `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin --offline` 退出码 0。核心 3932 项、0 失败、2 跳过；应用单测 2733 项、0 失败。`python3 tools/i18n/translations.py check` 退出码 0，3819 条、12 种语言。
-- 模拟器：本机没有用来验收这条操作流水线的界面记录。
+- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/104 已合并。合并提交 `32eb7873`，PR 头 `085a209d`。点按、输入、滚动、滑动和单指笔画可以在同一次回复里按顺序执行。页面或前台变了、控件不见或有歧义、界面树不可靠、失败、取消、需要确认，就停。
+- 版本：v0.2.25 已发布，versionCode 2025，高于 v0.2.24 的 2024。包名 `com.wangzan101.mika.fork`。安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.25 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.25/Mika-v0.2.25.apk ，132,978,372 字节，本机下载后 SHA-256 `c2521e79c7f749ee891a778f7f734cd7a9dd6611c03ff3dd15720611a377f097`，与 GitHub 资产摘要一致，含四个 ABI。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.25/Mika-v0.2.25-arm64.apk ，120,382,229 字节，本机下载后 SHA-256 `f76f2b404eccb14dc55921f5d4f69f40a99b96aedc5b9c4cb2f9c5889e9586ea`，与 GitHub 资产摘要一致，只有 arm64-v8a。两包证书 SHA-256 `5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6`，与本机下载的 v0.2.24 通用包相同，主体 O=yangzhanyu1994, CN=mika-fork。标签 v0.2.25 指向 `32eb7873`。
+- CI：PR 检查在 `085a209d` 上四个作业成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/45601579809 成功，完成时间 2026-11-25 19:19（UTC+8），只推了一次 `release/v0.2.25`。这次记录只推 main。
+- 代码测试：合并前本机核心 3932 项、0 失败、2 跳过；应用单测 2733 项、0 失败；i18n 通过。
+- 模拟器：发布 workflow 含 Android 16 上的既有签名包检查。本机没有这条操作流水线的界面记录。
 - 真机：没有三星 W25。不能写成已经变快，也没有省下的秒数。
+- 更新记录：关于应用 → 更新记录离线读取 `app/src/main/assets/fork-release-history.md`，v0.2.25 中文说明在最前，v0.2.14 仍在。GitHub 发布正文与这段中文一致。联网查到更新的版本时，关于页显示该发布正文。
 
 **重要决定和限制**
 
@@ -64,7 +65,7 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **下一步与问题**
 
-先完成本地测试和 PR 检查，再合并并发布。三星 W25 仍由用户看：连续点按和输入是否少问几次、换页后是否停住、按钮看不清时是否仍会看图、付款和发送是否仍要确认。不能事先写省了多少秒。
+安装包已经可下载，可覆盖 v0.2.24。三星 W25 仍由用户看：连续点按和输入是否少问几次、换页后是否停住、按钮看不清时是否仍会看图、付款和发送是否仍要确认，以及关于页能否看到这段中文说明。不能写成已经省了多少秒。
 
 ### 2026-11-25 14:19（UTC+8）公开设置页直达
 
