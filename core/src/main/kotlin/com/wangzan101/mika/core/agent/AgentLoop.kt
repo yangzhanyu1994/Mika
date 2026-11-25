@@ -594,9 +594,31 @@ class AgentLoop(
         }
 
         private suspend fun replayOpening() {
-            // 第一次模型调用之前:有合适的路线就先照着做,不调模型;做完或对不上都交还模型
+            // 第一次模型调用之前:公开设置页先跳一次。跳成并且前台是设置时,不再回放点按路线(那些编号已经过期)。
+            // 没跳成只试一次,然后仍可回放或交给模型。点名用网页的任务不跳。
+            var jumpedToSettings = false
+            if (flags.deepLinks && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX)) {
+                DirectEntry.match(task)?.let { jump ->
+                    val attempt = DirectEntry.attempt(tools, jump) { call ->
+                        when (val outcome = executor.run(call, com.wangzan101.mika.core.action.Origin.Replay)) {
+                            is com.wangzan101.mika.core.action.ActionOutcome.Ran -> com.wangzan101.mika.core.tool.ToolExecution(outcome.content)
+                            is com.wangzan101.mika.core.action.ActionOutcome.Refused -> com.wangzan101.mika.core.tool.ToolExecution(outcome.content)
+                            is com.wangzan101.mika.core.action.ActionOutcome.Cancelled -> com.wangzan101.mika.core.tool.ToolExecution(
+                                kotlinx.serialization.json.buildJsonObject {
+                                    put("ok", false)
+                                    put("error", "cancelled")
+                                },
+                            )
+                        }
+                    }
+                    history += ctx.notice("direct_entry", DirectEntry.note(attempt))
+                    jumpedToSettings = attempt.verified
+                    if (jumpedToSettings) acted = true
+                }
+            }
+            // 有合适的路线就先照着做,不调模型;做完或对不上都交还模型
             // 路线只记、只放手机上的做法:点名用网页的任务不回放
-            if (flags.replay && replay != null && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX)) {
+            if (!jumpedToSettings && flags.replay && replay != null && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX)) {
                 val reviewRoute = provenance.origin == RunOrigin.Ui && intentGate != null && routeMatcher?.candidates(task)?.isNotEmpty() == true
                 if (reviewRoute) intent = assessIntent()
                 if (!reviewRoute || intent == IntentGate.Intent.Read || intent == IntentGate.Intent.Act) {

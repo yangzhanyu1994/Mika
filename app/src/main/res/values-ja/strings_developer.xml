@@ -7,7 +7,7 @@
     <string name="dev_batch">確実なときは複数ステップをまとめて実行</string>
     <string name="dev_batch_sub">確実なステップは、モデルに確認せず一気に実行します</string>
     <string name="dev_deep_links">目的のページを直接開く</string>
-    <string name="dev_deep_links_sub">タップで順にたどらず、リンクでアプリ内のページへ直接移動します</string>
+    <string name="dev_deep_links_sub">初期状態でオン。モデルに聞く前に、公開のシステム設定画面へ一度だけ移動します。オフにするとタップ操作に戻ります。画面が違うときは一度だけ読み直します。</string>
     <string name="dev_light">簡単なステップは軽量モデルに任せる</string>
     <string name="dev_light_sub">簡単なステップは高速な軽量モデルが担当し、難しいステップはメインモデルが担当します</string>
     <string name="dev_replay">前回うまくいった手順を再利用</string>

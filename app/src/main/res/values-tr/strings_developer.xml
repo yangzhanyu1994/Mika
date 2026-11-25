@@ -7,7 +7,7 @@
     <string name="dev_batch">Emin olunca birkaç adım yap</string>
     <string name="dev_batch_sub">Modeli sormadan belirli adımları tek seferde yapar</string>
     <string name="dev_deep_links">Hedef sayfayı doğrudan aç</string>
-    <string name="dev_deep_links_sub">Tıklamak yerine uygulama içindeki sayfalara atlamak için bağlantıları kullanır</string>
+    <string name="dev_deep_links_sub">Varsayılan olarak açık. Modele sormadan önce herkese açık bir sistem ayarları sayfasını bir kez açar. Kapatınca yeniden dokunarak gidilir. Sayfa uyuşmazsa ekran bir kez okunur.</string>
     <string name="dev_light">Kolay adımlar hafif modele gider</string>
     <string name="dev_light_sub">Daha hızlı hafif model kolay adımları yapar; ana model zor olanları korur</string>
     <string name="dev_replay">Geçen sefer işe yarayanı tekrarla</string>

@@ -7,7 +7,7 @@
     <string name="dev_batch">Kerjakan beberapa langkah jika yakin</string>
     <string name="dev_batch_sub">Mengerjakan langkah yang pasti sekaligus tanpa berhenti bertanya ke model</string>
     <string name="dev_deep_links">Buka halaman tujuan secara langsung</string>
-    <string name="dev_deep_links_sub">Memakai tautan untuk langsung ke halaman di dalam aplikasi, bukan mengetuk satu per satu</string>
+    <string name="dev_deep_links_sub">Nyala secara bawaan. Membuka halaman pengaturan sistem yang publik sebelum panggilan model pertama. Matikan untuk kembali mengetuk. Jika halamannya tidak cocok, layar dibaca sekali.</string>
     <string name="dev_light">Langkah mudah diserahkan ke model ringan</string>
     <string name="dev_light_sub">Model ringan yang lebih cepat mengerjakan langkah mudah; model utama menangani yang sulit</string>
     <string name="dev_replay">Ulangi yang berhasil sebelumnya</string>

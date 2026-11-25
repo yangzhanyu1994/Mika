@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ e12cdf844496 -->
+<!-- translated-from: README.md @ 44295a120468 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -40,6 +40,8 @@
 
 近期各版本的中文更新說明見[版本更新記錄](../../README.md#近期版本更新说明)。
 
+
+2026-11-25 的公開系統設定頁直達寫在首頁必讀。JVM 單測通過不等於三星真機已驗收。開發者選項可關掉「直接打開要去的頁面」。
 
 ### 2026-11-21 09:02
 

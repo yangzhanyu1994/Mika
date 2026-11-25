@@ -7,7 +7,7 @@
     <string name="dev_batch">有把握時連做幾步</string>
     <string name="dev_batch_sub">確定的幾步一次做完,中途不再停下來問模型</string>
     <string name="dev_deep_links">直接開啟要去的頁面</string>
-    <string name="dev_deep_links_sub">能用連結直達 App 裡的頁面,就不一層層點進去</string>
+    <string name="dev_deep_links_sub">預設開啟。問模型之前，先用公開的系統設定頁跳一次。關掉就回到逐層點按。頁面對不上只重新讀一次螢幕。</string>
     <string name="dev_light">簡單步驟交給輕量模型</string>
     <string name="dev_light_sub">容易的步驟讓更快的輕量模型來做,難的仍由主模型做</string>
     <string name="dev_replay">照著上次的做法做</string>
