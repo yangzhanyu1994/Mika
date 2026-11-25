@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ e12cdf844496 -->
+<!-- translated-from: README.md @ 44295a120468 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -40,6 +40,8 @@
 
 最近の各バージョンの変更点は[更新履歴（中国語）](../../README.md#近期版本更新说明)をご覧ください。
 
+
+2026-11-25 の公開システム設定への直接移動は、先頭の必読に記録しています。JVM の通過は Samsung 実機の確認ではありません。開発者オプションで「目的のページを直接開く」を切ると元に戻ります。
 
 ### 2026-11-21 09:02
 

@@ -7,7 +7,7 @@
     <string name="dev_batch">Do several steps when sure</string>
     <string name="dev_batch_sub">Does certain steps in one go without stopping to ask the model</string>
     <string name="dev_deep_links">Open the target page directly</string>
-    <string name="dev_deep_links_sub">Uses links to jump straight to pages inside apps instead of tapping through</string>
+    <string name="dev_deep_links_sub">On by default. Opens a public Android settings page before the first model call. Turn this off to go back to tapping. A page that does not match is read again once.</string>
     <string name="dev_light">Easy steps go to the light model</string>
     <string name="dev_light_sub">The faster light model does easy steps; the main model keeps the hard ones</string>
     <string name="dev_replay">Repeat what worked last time</string>

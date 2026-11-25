@@ -7,7 +7,7 @@
     <string name="dev_batch">تنفيذ عدة خطوات عند التأكد</string>
     <string name="dev_batch_sub">ينفذ بعض الخطوات دفعة واحدة من دون التوقف لسؤال النموذج</string>
     <string name="dev_deep_links">فتح الصفحة المطلوبة مباشرة</string>
-    <string name="dev_deep_links_sub">يستخدم الروابط للانتقال مباشرة إلى صفحات داخل التطبيقات بدلاً من التنقل بالنقر</string>
+    <string name="dev_deep_links_sub">يعمل افتراضيًا. يفتح صفحة إعدادات نظام عامة قبل أول نداء للنموذج. أوقفْه للعودة إلى النقر. إذا لم تطابق الصفحة، تُقرأ الشاشة مرة واحدة.</string>
     <string name="dev_light">تنفيذ الخطوات السهلة بالنموذج الخفيف</string>
     <string name="dev_light_sub">ينفذ النموذج الخفيف الأسرع الخطوات السهلة، ويتولى النموذج الرئيسي المهام الصعبة</string>
     <string name="dev_replay">تكرار ما نجح في المرة السابقة</string>

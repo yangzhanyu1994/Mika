@@ -7,7 +7,7 @@
     <string name="dev_batch">Fazer vários passos quando tiver certeza</string>
     <string name="dev_batch_sub">Faz passos certos de uma vez, sem parar para consultar o modelo</string>
     <string name="dev_deep_links">Abrir direto a página de destino</string>
-    <string name="dev_deep_links_sub">Usa links para ir direto às páginas dentro dos apps, em vez de tocar passo a passo</string>
+    <string name="dev_deep_links_sub">Ligado por padrão. Abre uma página pública de Configurações antes da primeira chamada ao modelo. Desligue para voltar a tocar. Se a página não bater, ela é lida só uma vez.</string>
     <string name="dev_light">Passos fáceis vão para o modelo leve</string>
     <string name="dev_light_sub">O modelo leve, mais rápido, faz os passos fáceis; o modelo principal fica com os difíceis</string>
     <string name="dev_replay">Repetir o que deu certo da última vez</string>

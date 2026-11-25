@@ -7,7 +7,7 @@
     <string name="dev_batch">확실할 때 여러 단계 한 번에 실행</string>
     <string name="dev_batch_sub">확실한 단계는 모델에 묻지 않고 한 번에 처리해요</string>
     <string name="dev_deep_links">목표 페이지 바로 열기</string>
-    <string name="dev_deep_links_sub">앱 안의 페이지를 일일이 누르지 않고 링크로 바로 이동해요</string>
+    <string name="dev_deep_links_sub">기본으로 켜져 있습니다. 모델에 묻기 전에 공개된 시스템 설정 화면으로 한 번 이동합니다. 끄면 다시 눌러서 이동합니다. 화면이 다르면 한 번만 다시 읽습니다.</string>
     <string name="dev_light">쉬운 단계는 경량 모델이 처리</string>
     <string name="dev_light_sub">더 빠른 경량 모델이 쉬운 단계를 처리하고, 어려운 단계는 메인 모델이 맡아요</string>
     <string name="dev_replay">지난번에 통했던 방법 반복</string>
