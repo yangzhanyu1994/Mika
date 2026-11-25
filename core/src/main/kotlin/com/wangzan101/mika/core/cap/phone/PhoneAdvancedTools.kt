@@ -274,6 +274,7 @@ internal object PhoneDialog : PhoneTool {
 /** 单指路径或双指缩放，所有坐标均为 0-999。 */
 internal object PhoneGesture : PhoneTool {
     override val verb = Verb.PhoneGesture
+    override val batchable = true
     override val risk = Risk.Write
     override val label = "多点手势"
     override val showsScreenAfter = true

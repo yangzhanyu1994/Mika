@@ -35,8 +35,11 @@ private const val MIN_STEPS = 1
 /** 只限制单次调用的资源消耗,不把连续操作的合理长度写成任务规则。 */
 private const val MAX_STEPS = 20
 private const val EXPECT_MAX = 200
-/** 第二步起,判定和执行前等界面稳定的上限(与动作自带屏幕相同)。 */
-private const val SETTLE_MS = 1500L
+/**
+ * 第二步起,等上一步的界面事件安静下来再做下一步。安静了就立刻继续,到上限也继续;
+ * 导航和新页面仍由这一步自己的效果判断拦住,不靠把等待拉长。
+ */
+private const val SETTLE_MS = 800L
 /** 一步的等待条件(都可不给);expect 是旧写法,意思从「做完看一眼」变成「等到出现」。 */
 private const val EXPECT = "expect"
 private const val EXPECT_GONE = "expect_gone"
@@ -133,17 +136,7 @@ class BatchRunner(
             last = exec
             val c = exec.content
             val screen = c["screen"] as? JsonObject
-            val failed = c["ok"] != JsonPrimitive(true)
-            val hard = when {
-                failed -> (c["error"] as? JsonPrimitive)?.contentOrNull ?: "failed"
-                c["verification"] == JsonPrimitive("mismatch") -> "action_not_applied"
-                c["app_switched"] != null -> "app_switched"
-                // 开到了用户的主屏上(挪回来了也是换了地方):后面的步骤是按原来那一屏排的
-                c["opened"] != null -> "opened_elsewhere"
-                // 网站、App 说到上限了:后面的步骤不再做
-                c["limitReached"] != null -> "limit_reached"
-                else -> null
-            }
+            val hard = batchBoundary(c)
             val review = i < steps.lastIndex && screen != null &&
                 (screen["imageReason"] != null || screen["protected"] == JsonPrimitive(true) ||
                     screen["captureError"] != null || screen["readable"] == JsonPrimitive(false) || screen["note"] != null)
@@ -390,3 +383,25 @@ class BatchRunner(
 /** 结果里 effect 的种类;动作没报效果为 null。 */
 /** 动作报回的实际效果的种类(能力写在结果的 effect 里);没报为 null。 */
 private fun effectKind(c: JsonObject): String? = ((c["effect"] as? JsonObject)?.get("kind") as? JsonPrimitive)?.contentOrNull
+
+/**
+ * 这一步之后不能再做同一批里后面的动作。页面或前台变了、树不可靠、目标没对上、失败、被取消、要确认,都停。
+ * 同一屏上的小变化不停:那些步是模型这次明确提出的,而且仍在原来的地方。
+ */
+internal fun batchBoundary(c: JsonObject): String? {
+    val effect = c["effect"] as? JsonObject
+    val kind = (effect?.get("kind") as? JsonPrimitive)?.contentOrNull
+    val blind = (effect?.get("treeBlind") as? JsonPrimitive)?.booleanOrNull == true
+    val failed = c["ok"] != JsonPrimitive(true)
+    return when {
+        failed -> (c["error"] as? JsonPrimitive)?.contentOrNull ?: "failed"
+        c["verification"] == JsonPrimitive("mismatch") -> "action_not_applied"
+        c["app_switched"] != null -> "app_switched"
+        c["opened"] != null -> "opened_elsewhere"
+        c["limitReached"] != null -> "limit_reached"
+        kind == "place_changed" -> "place_changed"
+        // 树看不清时不能把「画面没变」当成还能继续点。停下来,让模型改用视觉兜底。
+        blind -> "screen_needs_review"
+        else -> null
+    }
+}
