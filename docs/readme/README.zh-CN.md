@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ ad3ba0b5ad46 -->
+<!-- translated-from: README.md @ 585afe6aaf4b -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -35,6 +35,8 @@
 </div>
 
 ## 必读
+
+2026-11-25 16:08（UTC+8）：这一轮在 v0.2.23 上加快任务开头的应用选择。目标已经确定时先在本地打开，再读新屏幕。只开 PR，不合并、不发布。本机核心测试 3927 项 0 失败，应用单测 2733 项 0 失败。PR 检查四个作业成功。没有模拟器，也没有三星真机结果。
 
 近期各版本的中文更新说明见[仓库首页更新记录](../../README.md#近期版本更新说明)。
 

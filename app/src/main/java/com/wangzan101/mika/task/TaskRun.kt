@@ -1170,6 +1170,16 @@ class TaskRun(
                 // 同一网站、App 里连着联系别人、提交:两次之间隔一段随机的时间
                 outwardPacing = OutwardPacing.human(),
                 personaLabel = personaLabel,
+                launchApps = {
+                    withContext(Dispatchers.IO) {
+                        val copies = runCatching { phone?.screen?.appCopies().orEmpty() }.getOrDefault(emptyList())
+                        com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
+                            apps,
+                            copies.map { Triple(it.packageName, it.userId, it.userName) },
+                        )
+                    }
+                },
+                launchPrefs = com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir),
             )
             loop = agent
             liveFeed = agent.events.subscribe(liveEvents)

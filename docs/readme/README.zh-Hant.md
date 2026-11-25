@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ ad3ba0b5ad46 -->
+<!-- translated-from: README.md @ 585afe6aaf4b -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -37,6 +37,8 @@
 </div>
 
 ## 必讀
+
+2026-11-25 16:08（UTC+8）：這一輪在 v0.2.23 上加快任務開頭的應用選擇。目標已經確定時先在本地打開，再讀新畫面。只開 PR，不合併、不發布。本機核心測試 3927 項 0 失敗，應用單測 2733 項 0 失敗。PR 檢查四個作業成功。沒有模擬器，也沒有三星真機結果。
 
 近期各版本的中文更新說明見[版本更新記錄](../../README.md#近期版本更新说明)。
 

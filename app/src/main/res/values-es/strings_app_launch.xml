@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launch_title">Preferencias de apps</string>
+    <string name="app_launch_sub">Qué app abrir para un tipo de tarea</string>
+    <string name="app_launch_empty">Aún no hay. Di “usa esta app a partir de ahora para …” para recordarla.</string>
+    <string name="app_launch_confirmed">Recordada</string>
+    <string name="app_launch_used">Usada una vez, no es la predeterminada</string>
+    <string name="app_launch_clear">Borrar todo</string>
+    <string name="app_launch_remove">Quitar</string>
+    <string name="app_launch_note">Solo una preferencia confirmada se abre la próxima vez. Un uso correcto queda como candidato hasta que lo quites.</string>
+</resources>

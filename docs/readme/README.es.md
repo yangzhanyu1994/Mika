@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ ad3ba0b5ad46 -->
+<!-- translated-from: README.md @ 585afe6aaf4b -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -37,6 +37,8 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 </div>
 
 ## Imprescindible
+
+2026-11-25 16:08 (UTC+8): esta ronda acelera la eleccion de la app al empezar una tarea sobre v0.2.23. Si el destino ya esta decidido, se abre en local y se lee la pantalla nueva antes de actuar. Solo se abre un PR; no se fusiona ni se publica. Pruebas de core: 3927, 0 fallos. Pruebas de la app: 2733, 0 fallos. Las cuatro comprobaciones del PR pasaron. No hay emulador ni resultado en un Samsung real.
 
 Consulta los cambios de las versiones recientes en el [historial de actualizaciones (en chino)](../../README.md#近期版本更新说明).
 

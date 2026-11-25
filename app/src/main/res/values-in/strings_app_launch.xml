@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launch_title">App preferences</string>
+    <string name="app_launch_sub">Which app to open for a kind of task</string>
+    <string name="app_launch_empty">None yet. Say “use this app from now on for …” to remember one.</string>
+    <string name="app_launch_confirmed">Remembered</string>
+    <string name="app_launch_used">Used once, not the default</string>
+    <string name="app_launch_clear">Clear all</string>
+    <string name="app_launch_remove">Remove</string>
+    <string name="app_launch_note">Only a preference you confirm is opened next time. One successful use is kept as a candidate until you remove it.</string>
+</resources>
