@@ -41,7 +41,8 @@ private class BatchScreen(vararg val screens: List<Pair<String, List<Int>>>) : S
     /** 设了就一直显示这一屏(模拟等关卡期间屏幕换了)。 */
     var replaced: List<Pair<String, List<Int>>>? = null
     var settles = 0
-    override suspend fun waitStable(timeoutMs: Long): Boolean { settles++; return true }
+    var settleCap = 0L
+    override suspend fun waitStable(timeoutMs: Long): Boolean { settles++; settleCap = timeoutMs; return true }
     private fun build(i: Int) = ScreenSnapshot("p${i + 1}", "com.x", (replaced ?: screens[minOf(i, screens.size - 1)]).mapIndexed { n, (name, b) ->
         UiElement("@e${n + 1}", "button", name, ((b[0] + b[2]) / 2) * 1079 / 999, ((b[1] + b[3]) / 2) * 2399 / 999, b, null, true, name.startsWith("输入"), false)
     }, 1080, 2400)
@@ -71,12 +72,50 @@ class BatchRunnerTest {
     private fun st(tool: String, args: String = "{}", expect: String? = null) = Triple(tool, args, expect)
     private fun JsonObject.s(k: String) = this[k]!!.jsonPrimitive.content
 
+    @Test fun foregroundChangeAndUnreadableTreeStopLaterSteps() {
+        fun obj(vararg pairs: Pair<String, kotlinx.serialization.json.JsonElement>) = JsonObject(mapOf(*pairs))
+        fun s(v: String) = kotlinx.serialization.json.JsonPrimitive(v)
+        fun b(v: Boolean) = kotlinx.serialization.json.JsonPrimitive(v)
+        val switched = obj("ok" to b(true), "app_switched" to s("com.other"))
+        val moved = obj("ok" to b(true), "effect" to obj("kind" to s("place_changed")))
+        val blind = obj("ok" to b(true), "effect" to obj("kind" to s("no_effect"), "treeBlind" to b(true)))
+        val missing = obj("ok" to b(false), "error" to s("ref_expired"))
+        val ambiguous = obj("ok" to b(false), "error" to s("element_ambiguous"))
+        val cancelled = obj("ok" to b(false), "error" to s("cancelled"))
+        val small = obj("ok" to b(true), "effect" to obj("kind" to s("small_change")))
+        assertEquals("app_switched", batchBoundary(switched))
+        assertEquals("place_changed", batchBoundary(moved))
+        assertEquals("screen_needs_review", batchBoundary(blind))
+        assertEquals("ref_expired", batchBoundary(missing))
+        assertEquals("element_ambiguous", batchBoundary(ambiguous))
+        assertEquals("cancelled", batchBoundary(cancelled))
+        assertNull(batchBoundary(small))
+    }
+
+    @Test fun gestureIsBatchableAndVisionLookupIsNot() {
+        val names = toolDispatcher(FakeScreen()).batchable()
+        assertTrue("phone_gesture" in names)
+        assertTrue("phone_tap" in names && "phone_type_text" in names && "phone_scroll" in names && "phone_swipe" in names)
+        assertTrue("phone_find_visually" !in names && "phone_observe" !in names && "phone_screenshot" !in names)
+    }
+
+    @Test fun switchingAppsRunsOnlyTheStepThatLeft() = runTest {
+        val s = BatchScreen(home)
+        s.results.add(ActionResult.Ok(appSwitched = "com.other"))
+        val d = toolDispatcher(s).also { it.execute(com.wangzan101.mika.core.model.Part.ToolCall("o", "phone_observe", "{}")) }
+        val r = runner(d).run(steps(st("phone_back"), st("phone_back")), "c1").content
+        assertEquals("batch_stopped", r.s("error"))
+        assertEquals("app_switched", r.s("reason"))
+        assertEquals(listOf("back"), s.calls)
+    }
+
     @Test fun allStepsPassReturnsOk() = runTest {
         val s = BatchScreen(home)
         val d = toolDispatcher(s).also { it.execute(com.wangzan101.mika.core.model.Part.ToolCall("o", "phone_observe", "{}")) }
         val r = runner(d).run(steps(st("phone_tap", """{"ref":"@e1","snapshotId":"p1"}"""), st("phone_type_text", """{"text":"咖啡"}"""), st("phone_back")), "c1", 3).content
         assertEquals("true", r.s("ok")); assertEquals(3, r["completed"]!!.jsonPrimitive.int); assertEquals(3, r["total"]!!.jsonPrimitive.int)
         assertEquals(listOf("tapRef @e1 p1", "type 咖啡", "back"), s.calls)
+        assertEquals(800L, s.settleCap)
         assertEquals(3, gates)
         val results = events.filterIsInstance<RunEvent.ToolResult>()
         assertEquals(listOf("batch", "batch", "batch"), results.map { it.source })

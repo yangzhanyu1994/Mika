@@ -298,27 +298,32 @@ internal fun UpdateSheet(r: ReleaseInfo, current: String, beta: Boolean, onOpenU
 private fun ChangelogSheet(latest: ReleaseInfo?, onOpenAll: () -> Unit, onDismiss: () -> Unit) {
     val c = MikaTheme.colors
     val context = LocalContext.current
-    var bundled by remember { mutableStateOf<ForkReleaseHistory.Entry?>(null) }
+    var bundled by remember { mutableStateOf<List<ForkReleaseHistory.Entry>>(emptyList()) }
     LaunchedEffect(context) {
         bundled = withContext(Dispatchers.IO) {
             runCatching {
                 context.assets.open("fork-release-history.md").bufferedReader().use {
-                    ForkReleaseHistory.parse(it.readText()).firstOrNull()
+                    ForkReleaseHistory.parse(it.readText())
                 }
-            }.getOrNull()
+            }.getOrDefault(emptyList())
         }
     }
     AboutSheetFrame(AboutCopy.CHANGELOG, null, "changelog-sheet", onDismiss) {
         val installed = bundled
-        if (latest != null && (installed == null || AppVersion.compare(latest.version, installed.version) > 0)) {
+        val newest = installed.firstOrNull()
+        val remoteNewer = latest != null && (newest == null || AppVersion.compare(latest.version, newest.version) > 0)
+        if (remoteNewer && latest != null) {
             Text(latest.version + (latest.date?.let { " · $it" } ?: ""),
                 Modifier.padding(top = 10.dp), style = MikaType.Label, color = c.ink)
             if (latest.notes.isNotBlank()) NotesBox(latest.notes)
-        } else if (installed != null) {
-            Text("v${installed.version} · ${installed.date}", Modifier.padding(top = 10.dp), style = MikaType.Label, color = c.ink)
-            MarkdownText(installed.notes, MikaType.Caption.copy(color = c.ink2))
-        } else {
+        }
+        val shown = if (remoteNewer && latest != null) installed.filter { it.version != latest.version } else installed
+        if (!remoteNewer && shown.isEmpty()) {
             Text(AboutCopy.CHANGELOG_EMPTY, Modifier.padding(top = 10.dp), style = MikaType.Caption, color = c.ink3)
+        }
+        shown.forEach { entry ->
+            Text("v${entry.version} · ${entry.date}", Modifier.padding(top = 14.dp), style = MikaType.Label, color = c.ink)
+            MarkdownText(entry.notes, MikaType.Caption.copy(color = c.ink2))
         }
         MikaButton(AboutCopy.CHANGELOG_ALL, onOpenAll, Modifier.fillMaxWidth().padding(top = 14.dp), kind = ButtonKind.Tonal)
     }

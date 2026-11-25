@@ -120,4 +120,9 @@ jobs:
           TEST_APK="$(find app/build/outputs/apk/androidTest/forkRelease -type f -name '*.apk' -print -quit)"
           bash tools/release/verify-task-run.sh "release-assets/Mika-v$MIKA_VERSION.apk" "release-assets/Mika-v$MIKA_VERSION-arm64.apk" "$TEST_APK"
       - name: Publish GitHub Release
-        run: gh release create "$MIKA_RELEASE_TAG" release-assets/*.apk --repo "$GITHUB_REPOSITORY" --title "Mika Fork $MIKA_RELEASE_TAG" --generate-notes --target "$GITHUB_SHA"
+        run: |
+          set -euo pipefail
+          NOTES="$(python3 tools/release/release_notes.py "$MIKA_VERSION")"
+          test -n "$NOTES"
+          gh release create "$MIKA_RELEASE_TAG" release-assets/*.apk --repo "$GITHUB_REPOSITORY" \
+            --title "Mika Fork $MIKA_RELEASE_TAG" --notes "$NOTES" --target "$GITHUB_SHA"

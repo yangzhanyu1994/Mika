@@ -883,6 +883,24 @@ class AgentLoop(
                 track.after(tools.verb(first.name), ok = false, guard = false, changed = null, recovery = false, app = null)
                 return null
             }
+            val proposed = explicitBatch(calls)
+            if (proposed != null) {
+                val siblings = calls.actions.drop(1).map { call ->
+                    Part.ToolResult(call.id, buildJsonObject {
+                        put("ok", true)
+                        put("included_in_batch", true)
+                        put("message", "This action was part of the ordered batch in the same reply. Read the first result to see which steps ran and why it stopped. Do not repeat a step that already ran.")
+                    }.toString(), isError = false)
+                }
+                val end = batch(proposed, siblings, history, offer.current, guards, executor, track, step, note, DO_STEPS_TOOL, reason, narration, recordReply = recordReply,
+                    app = { place = it }, steerWaiting = { inbox?.hasSteers() == true },
+                    noteVerdicts = { s, sub, v ->
+                        val typed = StuckAdvice.typedText(tools.verb(s.tool), parseArgs(s.argsJson), sub?.content)
+                        stuckAdvice(v, typed)
+                    })
+                if (end != null) return end
+                return null
+            }
             if (flags.batchSteps && first.name == DO_STEPS_TOOL) {
                 val end = batch(first, skipped, history, offer.current, guards, executor, track, step, note, tool, reason, narration, recordReply = recordReply,
                     app = { place = it }, steerWaiting = { inbox?.hasSteers() == true },
@@ -1162,9 +1180,20 @@ class AgentLoop(
         val isError = exec.content["ok"] != JsonPrimitive(true)
         history += Message(Role.Tool, listOf(Part.ToolResult(first.id, ScreenElementTable.text(exec.content, flags.tablesAtBirth && !isError), isError, exec.observations.map { it.tag })) + skipped, Author.Mika)
         // 批做完(或停下)后再给模型一份当前元素表；只有元素信息不足才附画面。
+        // 最后一步已经截过的画面直接交给模型，不再读一遍。没有画面时才补一次。
         if (steps != null && ranAnyStep(exec.content)) {
-            tools.lookNow()?.let { v ->
-                history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(ScreenElementTable.text(v.content, flags.tablesAtBirth))), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
+            val picture = exec.image ?: exec.frame
+            if (picture != null) {
+                val screen = exec.content["screen"] as? JsonObject
+                val text = screen?.let { ScreenElementTable.text(it, flags.tablesAtBirth) }.orEmpty()
+                history += Message(Role.User, listOfNotNull(
+                    text.takeIf { it.isNotEmpty() }?.let { Part.Text(batchViewNote(it)) },
+                    tools.modelImage(picture, exec.imageIds.firstOrNull { it != null }),
+                ), Author.Mika)
+            } else {
+                tools.lookNow()?.let { v ->
+                    history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(ScreenElementTable.text(v.content, flags.tablesAtBirth))), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
+                }
             }
         }
         recordReply(BatchRunner.redactArgs(first.argsJson))
@@ -1187,6 +1216,25 @@ class AgentLoop(
             emit(RunEvent.Media(now(), shotId, step, RunEvent.placeLabel(currentPlace)))
         }
         return guards.stop?.let(StopRules::guard)
+    }
+
+    /**
+     * 模型在同一次回复里明确列出的连续动作。只在每一步都能放进同一批时才收成一批;
+     * 混进读屏、确认或别的屏时仍只做第一个,不替模型补它没写的下一步。
+     */
+    private fun explicitBatch(calls: ReplyCalls): Part.ToolCall? {
+        if (!flags.batchSteps || confirmations?.hasGrant == true) return null
+        val actions = calls.actions
+        if (actions.size < 2 || actions.any { it.name == DO_STEPS_TOOL }) return null
+        val allowed = tools.batchable().toSet()
+        if (actions.any { it.name !in allowed }) return null
+        val steps = JsonArray(actions.map { call ->
+            buildJsonObject {
+                put("tool", call.name)
+                put("args", parseArgs(call.argsJson))
+            }
+        })
+        return Part.ToolCall(actions.first().id, DO_STEPS_TOOL, buildJsonObject { put("steps", steps) }.toString())
     }
 
     /** do_steps 的结果里至少有一个子步真的执行了(没执行的停止项标着 executed=false)。 */

@@ -392,6 +392,20 @@ class AgentLoopTest {
         assertFalse(results[0].isError)
     }
 
+    @Test fun explicitActionsInOneReplyRunInOrder() = runTest {
+        val s = FakeScreen()
+        val m = FakeModel(tools(call("phone_back"), call("phone_back")), finish())
+        AgentLoop(m, toolDispatcher(s), "BASE", flags = SpeedFlags(batchSteps = true)).run("t")
+        assertEquals(listOf("back", "back"), s.calls)
+    }
+
+    @Test fun aReadMixedIntoTheReplyDoesNotPullLaterActionsForward() = runTest {
+        val s = FakeScreen()
+        val m = FakeModel(tools(call("phone_observe"), call("phone_back")), finish())
+        AgentLoop(m, toolDispatcher(s), "BASE", flags = SpeedFlags(batchSteps = true)).run("t")
+        assertEquals(emptyList<String>(), s.calls.filter { it == "back" })
+    }
+
     @Test fun unknownToolReturnsErrorToModel() = runTest {
         val m = FakeModel(tools(call("fly")), finish())
         com.wangzan101.mika.core.testing.assertAnswered(DONE, loop(m).run("t"))
