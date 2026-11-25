@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 44295a120468 -->
+<!-- translated-from: README.md @ ad3ba0b5ad46 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -41,7 +41,7 @@ Trabaja en una pantalla en segundo plano que no ves, así que puedes seguir usan
 Consulta los cambios de las versiones recientes en el [historial de actualizaciones (en chino)](../../README.md#近期版本更新说明).
 
 
-El salto directo a una página pública de Ajustes del 2026-11-25 está en la sección imprescindible del README. Que pasen las pruebas JVM no significa que un Samsung real ya las haya aceptado. Se apaga en las opciones de desarrollador.
+El salto directo a una página pública de Ajustes del 2026-11-25 está en la sección imprescindible del README. v0.2.23 ya está publicado, con el mismo certificado que v0.2.22, y se puede instalar encima. Que pasen las pruebas JVM no significa que un Samsung real ya las haya aceptado. Se apaga en las opciones de desarrollador.
 
 ### 2026-11-21 09:02
 

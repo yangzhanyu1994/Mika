@@ -39,12 +39,14 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 - **日期（UTC+8）**：2026-11-25
 - **更新人**：Grok Build
-- **测试结果**：本机 `./gradlew :core:test --tests com.wangzan101.mika.core.agent.DirectEntryTest` 退出码 0。`DirectEntryTest` 6 项、0 失败。测到的是：打开无线网络与打开蓝牙不会共用同一次跳转；打开调用不带 snapshotId 或 ref；解析失败只试一次且不再读屏；前台不是系统设置时只重新读一次屏；三星设置包名可认。次数是这条直达路径自己的计数（0 次模型、1 次打开、成功或对不上时 1 次事后读屏），不是真机耗时，也不承诺加速百分比。本机没有 Android SDK，应用模块单测和安装包没在这里编。真机未验证。
+- **测试结果**：本机 `./gradlew :core:test --tests com.wangzan101.mika.core.agent.DirectEntryTest` 退出码 0，6 项、0 失败。测到打开无线网络与打开蓝牙不共用同一次跳转，打开调用不带 snapshotId 或 ref，解析失败只试一次且不再读屏，前台不是系统设置时只重新读一次屏。次数是这条路径自己的计数（0 次模型、1 次打开、成功或对不上时 1 次事后读屏），不是真机耗时，也不承诺加速百分比。`FeatureFlagsSpeedTest` 与 README 译文检查退出码 0。PR 检查 https://github.com/yangzhanyu1994/Mika/actions/runs/45561199971 四个作业成功。签名发布 https://github.com/yangzhanyu1994/Mika/actions/runs/45562083791 成功。本机下载两个安装包后，SHA-256 与 GitHub 摘要一致，证书 SHA-256 `5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6`，与 v0.2.22 相同，包名 `com.wangzan101.mika.fork`，versionName 0.2.23，versionCode 2023，高于 2022，可覆盖安装。真机未验证。
 - **来源**：用户 2026-11-25 14:19（UTC+8）授权，基于当时已发布的 v0.2.22（`955aac05`，版本号 0.2.22）做一版可安装的手机操作提速。不合并上游 v0.1.51，不做教 Mika，不改发送、购买、删除的原确认。
 
 直达只使用已经列在 `LinkPolicy` 里的公开 `android.settings.*` 动作。开发者选项里原有的「直接打开要去的页面」这次默认打开，可以关掉，关掉后不再抢先跳页。话里带发送、付款、购买、删除、密码或验证码，或点了微信这类没有核对过的应用，不会抢先跳。跳完或对不上都不再用跳之前的编号。常用路径仍走原来的路线回放：每步重新读屏，对不上就停。界面地图没有另做一套。
 
 回退：设置 → 开发者选项 → 关掉「直接打开要去的页面」。已经关掉的不会被下一次启动重新打开。
+
+安装页 https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.23 。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.23/Mika-v0.2.23.apk ，132,897,616 字节，SHA-256 `26b7dfe6f3537441ec1a659c260e769874a44a06e5f39358101609678b141605`。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.23/Mika-v0.2.23-arm64.apk ，120,301,473 字节，SHA-256 `96ebc12b10f06752e5e2eecb09184426a8fba4a2ba45b5e45a2317ee4efe5a53`。标签 v0.2.23 指向合并提交 `c42cec38`，这次记录不移动该标签。
 
 ### 项目状态（2026-11-22 23:21 UTC+8）
 
