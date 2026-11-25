@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launch_title">アプリの好み</string>
+    <string name="app_launch_sub">この種類の作業で先に開くアプリ</string>
+    <string name="app_launch_empty">まだありません。「これからこのアプリで…」と言うと覚えます。</string>
+    <string name="app_launch_confirmed">記憶済み</string>
+    <string name="app_launch_used">一度使用、既定ではない</string>
+    <string name="app_launch_clear">すべて消去</string>
+    <string name="app_launch_remove">削除</string>
+    <string name="app_launch_note">確認した好みだけが次回すぐ開きます。一度成功しただけでは既定になりません。</string>
+</resources>

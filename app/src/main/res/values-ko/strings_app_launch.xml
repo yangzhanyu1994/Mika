@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launch_title">앱 선호</string>
+    <string name="app_launch_sub">이런 작업에 먼저 열 앱</string>
+    <string name="app_launch_empty">아직 없습니다. “앞으로는 이 앱으로 …”라고 말하면 기억합니다.</string>
+    <string name="app_launch_confirmed">기억함</string>
+    <string name="app_launch_used">한 번 사용, 기본값 아님</string>
+    <string name="app_launch_clear">모두 지우기</string>
+    <string name="app_launch_remove">제거</string>
+    <string name="app_launch_note">확인한 선호만 다음에 바로 엽니다. 한 번 성공했다고 기본값이 되지는 않습니다.</string>
+</resources>

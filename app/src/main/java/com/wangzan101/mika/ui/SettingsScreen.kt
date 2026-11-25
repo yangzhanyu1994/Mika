@@ -76,7 +76,7 @@ import kotlinx.coroutines.withContext
 private const val SHIZUKU_SETUP_GUIDE_URL = "https://shizuku.rikka.app/guide/setup/"
 
 /** 设置里能进入的子页面;[Home] 是设置首页,[Advanced] 集中放置连接、维护和工程能力。 */
-private enum class SettingsPage { Home, Advanced, AppAccess, SmsLogin, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Location, Recommendations, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
+private enum class SettingsPage { Home, Advanced, AppAccess, SmsLogin, PhoneOps, Calls, Wechat, DuringWork, Capsule, Language, AssistantAppearance, Notifications, Location, Recommendations, AppLaunch, Sandbox, Plugins, EnvVars, Recovery, SelfCheck, ComputerAccess, McpServers, Root, Developer, DeviceDirectories, RunStats, Proactive, Backup }
 
 /**
  * 设置页:总状态卡 + 常用 / 我的数据 / 其他。高级与其他只增加一层,各子页返回来时的页面。
@@ -265,6 +265,7 @@ fun SettingsScreen(
             onOpenMemory = onOpenMemory,
             onOpenBackup = { page = SettingsPage.Backup },
             onOpenRecommendations = { page = SettingsPage.Recommendations },
+            onOpenAppLaunch = { page = SettingsPage.AppLaunch },
             onOpenProactive = { page = SettingsPage.Proactive },
             onOpenPersonas = onOpenPersonas,
             onOpenAdvanced = { page = SettingsPage.Advanced },
@@ -336,6 +337,7 @@ fun SettingsScreen(
         SettingsPage.AssistantAppearance -> AssistantAppearanceScreen(onBack = toHome)
         SettingsPage.Language -> LanguageScreen(language, onLanguage = { AppLanguage.set(context, it) }, onBack = toHome)
         SettingsPage.Recommendations -> RecommendedTasksScreen(recommendedTasks, onBack = toHome)
+        SettingsPage.AppLaunch -> AppLaunchPrefsScreen(onBack = toHome)
         SettingsPage.Capsule -> CapsuleScreen(
             capsuleMode, onMode = { flags.setCapsuleMode(it); capsuleMode = it }, onBack = toHome,
             idleOpacity = capsuleIdleOpacity,
@@ -478,6 +480,7 @@ fun SettingsContent(
     onOpenMemory: (() -> Unit)? = null,
     onOpenBackup: (() -> Unit)? = null,
     onOpenRecommendations: () -> Unit = {},
+    onOpenAppLaunch: () -> Unit = {},
     onOpenProactive: (() -> Unit)? = null,
     onOpenPersonas: (() -> Unit)? = null,
     onOpenBrowser: (() -> Unit)? = null,
@@ -562,6 +565,12 @@ fun SettingsContent(
                 stringResource(R.string.recommendations_title),
                 stringResource(R.string.recommendations_sub),
                 onClick = onOpenRecommendations,
+            ) { RowChevron() }
+            ListRow(
+                MikaIcons.Phone,
+                stringResource(R.string.app_launch_title),
+                stringResource(R.string.app_launch_sub),
+                onClick = onOpenAppLaunch,
             ) { RowChevron() }
             ListRow(MikaIcons.Shield, stringResource(R.string.sms_login_title), stringResource(R.string.sms_login_default_off), onClick = onOpenSmsLogin) { RowChevron() }
         }

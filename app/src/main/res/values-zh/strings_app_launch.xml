@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launch_title">应用偏好</string>
+    <string name="app_launch_sub">哪一类任务先打开哪个应用</string>
+    <string name="app_launch_empty">还没有。说「以后用某个应用做某事」就会记住。</string>
+    <string name="app_launch_confirmed">已记住</string>
+    <string name="app_launch_used">用过一次，不是默认</string>
+    <string name="app_launch_clear">全部清除</string>
+    <string name="app_launch_remove">移除</string>
+    <string name="app_launch_note">只有你明确记住的偏好，下次才会直接打开。成功用过一次只作为候选，可以在这里移除。</string>
+</resources>
