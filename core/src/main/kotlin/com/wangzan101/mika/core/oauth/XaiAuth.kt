@@ -176,6 +176,7 @@ class XaiAuth(
         /** 订阅登录调用的接口根:xAI 自己的 Responses,不转成别的协议。 */
         const val API_BASE = "https://api.x.ai/v1"
         private const val FALLBACK_VERIFY = "https://accounts.x.ai/oauth2/device"
+        private val CLAIMS_JSON = Json { ignoreUnknownKeys = true }
 
         /** ID 令牌中间一段的声明,解不开就空。不验签:只用来显示邮箱。 */
         fun idClaims(idToken: String?): Pair<String, String> {
@@ -184,7 +185,7 @@ class XaiAuth(
                 java.util.Base64.getUrlDecoder().decode(payload.trimEnd('='))
             }.getOrNull() ?: return "" to ""
             val obj = runCatching {
-                Json { ignoreUnknownKeys = true }.parseToJsonElement(String(bytes, Charsets.UTF_8)) as? JsonObject
+                CLAIMS_JSON.parseToJsonElement(String(bytes, Charsets.UTF_8)) as? JsonObject
             }.getOrNull() ?: return "" to ""
             val email = obj.str("email") ?: (obj["https://api.x.ai/profile"] as? JsonObject)?.str("email") ?: ""
             return obj.str("sub").orEmpty() to email

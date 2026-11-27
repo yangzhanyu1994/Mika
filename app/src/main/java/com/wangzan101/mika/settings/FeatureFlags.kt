@@ -54,21 +54,21 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun setSpeed(flags: SpeedFlags) {
         val edit = prefs.edit().putString(SPEED_FLAGS, flags.describe())
         SPEED_UPGRADES.forEach { (key, _) -> edit.putBoolean(key, true) }
-        edit.commit()
+        edit.apply()
     }
 
     /** 并行任务时最多同时跑几个(用户设定,1–3);真正的上限还要看设备,见 ParallelCapability。 */
     fun parallelMax(): Int = prefs.getInt(PARALLEL_MAX, ParallelCapability.DEFAULT_MAX)
 
     fun setParallelMax(max: Int) {
-        prefs.edit().putInt(PARALLEL_MAX, max).commit()
+        prefs.edit().putInt(PARALLEL_MAX, max).apply()
     }
 
     /** 每个任务最多走多少步;null 表示不限制。默认不限制,下次任务起生效。 */
     fun taskStepLimit(): Int? = prefs.getInt(TASK_STEP_LIMIT, 0).takeIf { it in 1..MAX_TASK_STEP_LIMIT }
 
     fun setTaskStepLimit(limit: Int?) {
-        prefs.edit().putInt(TASK_STEP_LIMIT, (limit ?: 0).coerceIn(0, MAX_TASK_STEP_LIMIT)).commit()
+        prefs.edit().putInt(TASK_STEP_LIMIT, (limit ?: 0).coerceIn(0, MAX_TASK_STEP_LIMIT)).apply()
     }
 
     /**
@@ -78,14 +78,14 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun triggerRunMinutes(): Int? = prefs.getInt(TRIGGER_RUN_LIMIT, 0).takeIf { it in TRIGGER_RUN_MINUTES }
 
     fun setTriggerRunMinutes(minutes: Int?) {
-        prefs.edit().putInt(TRIGGER_RUN_LIMIT, minutes?.takeIf { it in TRIGGER_RUN_MINUTES } ?: 0).commit()
+        prefs.edit().putInt(TRIGGER_RUN_LIMIT, minutes?.takeIf { it in TRIGGER_RUN_MINUTES } ?: 0).apply()
     }
 
     /** 每个任务允许已报告的输入加输出 Token 总量;null 表示不限制,下次任务起生效。 */
     fun taskTokenBudget(): Long? = prefs.getLong(TASK_TOKEN_BUDGET, 0L).takeIf(TokenBudgetLimits::valid)
 
     fun setTaskTokenBudget(limit: Long?) {
-        prefs.edit().putLong(TASK_TOKEN_BUDGET, limit?.takeIf(TokenBudgetLimits::valid) ?: 0L).commit()
+        prefs.edit().putLong(TASK_TOKEN_BUDGET, limit?.takeIf(TokenBudgetLimits::valid) ?: 0L).apply()
     }
 
     /** 主动能力每天(本地日历日,各服务商合计)允许已报告的 Token;没设或不合法时按默认值,没有「不限制」。 */
@@ -94,14 +94,14 @@ class FeatureFlags(private val prefs: SharedPreferences) {
 
     /** 不在 [TokenBudgetLimits] 范围内的值(含 null)存成「没设」,读出来就是默认值。 */
     fun setProactiveDailyTokenBudget(limit: Long?) {
-        prefs.edit().putLong(PROACTIVE_DAILY_TOKEN_BUDGET, limit?.takeIf(TokenBudgetLimits::valid) ?: 0L).commit()
+        prefs.edit().putLong(PROACTIVE_DAILY_TOKEN_BUDGET, limit?.takeIf(TokenBudgetLimits::valid) ?: 0L).apply()
     }
 
     /** 干活时屏幕保持常亮;默认开,用户可以关。 */
     fun keepScreenOn(): Boolean = prefs.getBoolean(KEEP_SCREEN_ON, true)
 
     fun setKeepScreenOn(on: Boolean) {
-        prefs.edit().putBoolean(KEEP_SCREEN_ON, on).commit()
+        prefs.edit().putBoolean(KEEP_SCREEN_ON, on).apply()
     }
 
     fun showTaskCost(): Boolean = prefs.getBoolean(SHOW_TASK_COST, false)
@@ -123,14 +123,14 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun muteTarget(): Boolean = prefs.getBoolean(MUTE_TARGET, true)
 
     fun setMuteTarget(on: Boolean) {
-        prefs.edit().putBoolean(MUTE_TARGET, on).commit()
+        prefs.edit().putBoolean(MUTE_TARGET, on).apply()
     }
 
     /** 在 App 里操作的节奏:快、标准(默认)、像人(见 [OperatingPace])。 */
     fun operatingPace(): OperatingPace = OperatingPace.parse(prefs.getString(OPERATING_PACE, null)) ?: OperatingPace.DEFAULT
 
     fun setOperatingPace(pace: OperatingPace) {
-        prefs.edit().putString(OPERATING_PACE, pace.name).commit()
+        prefs.edit().putString(OPERATING_PACE, pace.name).apply()
     }
 
     /** 界面配色:跟随系统、一直浅色、一直深色(见 [ThemeMode])。界面跟着 [themeModeChanges] 当场换,不用重建。 */
@@ -147,7 +147,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     }.distinctUntilChanged()
 
     fun setThemeMode(mode: ThemeMode) {
-        prefs.edit().putString(THEME_MODE, mode.name).commit()
+        prefs.edit().putString(THEME_MODE, mode.name).apply()
     }
 
     /** 强调色(见 [ThemeAccent]),默认蓝色。和外观一样跟着 [themeAccentChanges] 当场换,不用重建。 */
@@ -164,7 +164,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     }.distinctUntilChanged()
 
     fun setThemeAccent(accent: ThemeAccent) {
-        prefs.edit().putString(THEME_ACCENT, accent.name).commit()
+        prefs.edit().putString(THEME_ACCENT, accent.name).apply()
     }
 
     /** 背景图片怎么显示(见 [SkinSpec]);存的值超出范围时拉回范围内。跟着 [skinChanges] 当场换,不用重建。 */
@@ -194,7 +194,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
             .putFloat(SKIN_FOCUS, spec.focus.coerceIn(-1f, 1f))
             .putBoolean(SKIN_ACCENT_FOLLOW, spec.accentFromImage)
             .also { e -> if (spec.hue == null) e.remove(SKIN_HUE) else e.putFloat(SKIN_HUE, spec.hue) }
-            .commit()
+            .apply()
     }
 
     /**
@@ -204,7 +204,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun selfConfig(): Boolean = prefs.getBoolean(SELF_CONFIG, false)
 
     fun setSelfConfig(on: Boolean) {
-        prefs.edit().putBoolean(SELF_CONFIG, on).commit()
+        prefs.edit().putBoolean(SELF_CONFIG, on).apply()
     }
 
     /**
@@ -214,7 +214,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun selfOperate(): Boolean = prefs.getBoolean(SELF_OPERATE, false)
 
     fun setSelfOperate(on: Boolean) {
-        prefs.edit().putBoolean(SELF_OPERATE, on).commit()
+        prefs.edit().putBoolean(SELF_OPERATE, on).apply()
     }
 
     /**
@@ -224,7 +224,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun pipOperate(): Boolean = prefs.getBoolean(PIP_OPERATE, false)
 
     fun setPipOperate(on: Boolean) {
-        prefs.edit().putBoolean(PIP_OPERATE, on).commit()
+        prefs.edit().putBoolean(PIP_OPERATE, on).apply()
     }
 
     /**
@@ -234,21 +234,21 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun externalSchedule(): Boolean = prefs.getBoolean(EXTERNAL_SCHEDULE, false)
 
     fun setExternalSchedule(on: Boolean) {
-        prefs.edit().putBoolean(EXTERNAL_SCHEDULE, on).commit()
+        prefs.edit().putBoolean(EXTERNAL_SCHEDULE, on).apply()
     }
 
     /** 设备文件导入是实验功能,默认关闭,下次任务生效。 */
     fun deviceFiles(): Boolean = prefs.getBoolean(DEVICE_FILES, false)
 
     fun setDeviceFiles(on: Boolean) {
-        prefs.edit().putBoolean(DEVICE_FILES, on).commit()
+        prefs.edit().putBoolean(DEVICE_FILES, on).apply()
     }
 
     /** 主动能力(实验,见 [com.wangzan101.mika.proactive.ProactiveRuntime]):读所选 App 的通知;默认关。 */
     fun proactive(): Boolean = prefs.getBoolean(PROACTIVE, false)
 
     fun setProactive(on: Boolean) {
-        prefs.edit().putBoolean(PROACTIVE, on).commit()
+        prefs.edit().putBoolean(PROACTIVE, on).apply()
     }
 
     /** 主动能力开关的当前值,之后每次改动再发一次(胶囊据此才去取「值得提醒」的条数,关着时不建主动能力)。 */
@@ -265,25 +265,25 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun persona(): Boolean = prefs.getBoolean(PERSONA, BuildConfig.DEBUG)
 
     fun setPersona(on: Boolean) {
-        prefs.edit().putBoolean(PERSONA, on).commit()
+        prefs.edit().putBoolean(PERSONA, on).apply()
     }
     /** 悬浮胶囊:关闭、有任务时显示(默认)、一直显示。 */
     fun capsuleMode(): CapsuleMode = CapsuleMode.parse(prefs.getString(CAPSULE_MODE, null))
 
     fun setCapsuleMode(mode: CapsuleMode) {
-        prefs.edit().putString(CAPSULE_MODE, mode.name).commit()
+        prefs.edit().putString(CAPSULE_MODE, mode.name).apply()
     }
 
     fun autoLocate(): Boolean = prefs.getBoolean(AUTO_LOCATE, false)
 
     fun setAutoLocate(on: Boolean) {
-        prefs.edit().putBoolean(AUTO_LOCATE, on).commit()
+        prefs.edit().putBoolean(AUTO_LOCATE, on).apply()
     }
 
     fun capsuleTapAction(): CapsuleTapAction = CapsuleTapAction.parse(prefs.getString(CAPSULE_TAP, null))
 
     fun setCapsuleTapAction(action: CapsuleTapAction) {
-        prefs.edit().putString(CAPSULE_TAP, action.name).commit()
+        prefs.edit().putString(CAPSULE_TAP, action.name).apply()
     }
 
     /** 胶囊开关的当前值,之后每次改动再发一次。 */
@@ -301,7 +301,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun capsuleIdleOpacity(): CapsuleIdleOpacity = CapsuleIdleOpacity.parse(prefs.getInt(CAPSULE_IDLE_OPACITY, CapsuleIdleOpacity.DEFAULT.percent))
 
     fun setCapsuleIdleOpacity(opacity: CapsuleIdleOpacity) {
-        prefs.edit().putInt(CAPSULE_IDLE_OPACITY, opacity.percent).commit()
+        prefs.edit().putInt(CAPSULE_IDLE_OPACITY, opacity.percent).apply()
     }
 
     fun capsuleIdleOpacityChanges(): Flow<CapsuleIdleOpacity> = callbackFlow {
@@ -317,7 +317,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
     fun capsuleCardScale(): CapsuleCardScale = CapsuleCardScale.parse(prefs.getInt(CAPSULE_CARD_SCALE, CapsuleCardScale.DEFAULT.percent))
 
     fun setCapsuleCardScale(scale: CapsuleCardScale) {
-        prefs.edit().putInt(CAPSULE_CARD_SCALE, scale.percent).commit()
+        prefs.edit().putInt(CAPSULE_CARD_SCALE, scale.percent).apply()
     }
 
     fun capsuleCardScaleChanges(): Flow<CapsuleCardScale> = callbackFlow {

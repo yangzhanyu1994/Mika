@@ -40,4 +40,13 @@ internal class ReplyCalls(parts: List<Part>, accept: (CompletionPlanBlock.Extrac
                 put("message", Feedback["parallel_call_skipped"])
             }.toString(), isError = true)
         }
+
+    fun batchSiblings(first: Part.ToolCall): List<Part.ToolResult> =
+        calls.filter { it != first }.map { call ->
+            reports[call.id] ?: Part.ToolResult(call.id, buildJsonObject {
+                put("ok", true)
+                put("included_in_batch", true)
+                put("message", "This action was part of the ordered batch in the same reply. Read the first result to see which steps ran and why it stopped. Do not repeat a step that already ran.")
+            }.toString(), isError = false)
+        }
 }

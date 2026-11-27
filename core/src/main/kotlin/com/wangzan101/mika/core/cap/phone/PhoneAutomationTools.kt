@@ -128,11 +128,13 @@ internal object PhoneCollect : PhoneTool {
         })
     }
 
+    private val WHITESPACE = Regex("\\s+")
+
     private fun pageLines(content: JsonObject, fromY: Int, toY: Int): List<String> {
         data class Line(val text: String, val top: Int, val bottom: Int, val left: Int)
         val out = mutableListOf<Line>()
         fun add(value: String?, bounds: JsonArray?) {
-            val text = value?.trim()?.replace(Regex("\\s+"), " ").orEmpty()
+            val text = value?.trim()?.replace(WHITESPACE, " ").orEmpty()
             if (text.isEmpty()) return
             val top = (bounds?.getOrNull(1) as? JsonPrimitive)?.intOrNull ?: 0
             val bottom = (bounds?.getOrNull(3) as? JsonPrimitive)?.intOrNull ?: 999

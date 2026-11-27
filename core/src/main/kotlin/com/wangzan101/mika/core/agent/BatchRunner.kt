@@ -33,7 +33,7 @@ import kotlinx.serialization.json.put
 const val DO_STEPS_TOOL = "do_steps"
 private const val MIN_STEPS = 1
 /** 只限制单次调用的资源消耗,不把连续操作的合理长度写成任务规则。 */
-private const val MAX_STEPS = 20
+internal const val MAX_STEPS = 20
 private const val EXPECT_MAX = 200
 /**
  * 第二步起,等上一步的界面事件安静下来再做下一步。安静了就立刻继续,到上限也继续;
@@ -87,6 +87,7 @@ class BatchRunner(
     suspend fun run(steps: List<BatchStep>, callId: String, step: Int = 0): ToolExecution {
         val entries = mutableListOf<JsonElement>()
         var last: ToolExecution? = null
+        var lastWaited = false
         // 各子步读到的观察(已记进账本);整批的结果带着它们,裁剪时按它们的形态缩短
         val seen = mutableListOf<Observation>()
         var stop: Stop? = null
@@ -144,6 +145,7 @@ class BatchRunner(
             val until = s.until?.takeIf { hard == null && (!review || it.appears != null) }
             val waited = until?.let { tools.waitUntil(it, executor.recorder::now, steerWaiting) }
             waited?.let { waitedMs += it.waitedMs }
+            lastWaited = waited != null
             val reason = hard ?: when {
                 waited != null && !waited.met -> when (waited.stopped) {
                     UntilOutcome.TIMEOUT -> "expectation_unmet"
@@ -170,9 +172,15 @@ class BatchRunner(
                 if (all.isNotEmpty()) put("guard", JsonArray(all.map { it.toJson() }))
             }
             if (reason != null) { stop = Stop(i, reason, JsonObject(e + ("executed" to JsonPrimitive(true))), executed = true); break }
-            // 等的时候用户插了话:后面的子步在下一轮开头照常跳过;这已是最后一步时就停在它这里
-            if (waited?.stopped == UntilOutcome.NEW_MESSAGE && i == steps.lastIndex) {
-                stop = Stop(i, NEW_MESSAGE, JsonObject(e + ("executed" to JsonPrimitive(true))), executed = true); break
+            // 等的时候用户插了话:立刻停下,不依赖下一轮开头插话仍在队列中
+            if (waited?.stopped == UntilOutcome.NEW_MESSAGE) {
+                if (i == steps.lastIndex) {
+                    stop = Stop(i, NEW_MESSAGE, JsonObject(e + ("executed" to JsonPrimitive(true))), executed = true)
+                } else {
+                    entries += e
+                    stop = skipFrom(i + 1)
+                }
+                break
             }
             entries += e
             if (guards.stop != null && i < steps.size - 1) {
@@ -180,15 +188,16 @@ class BatchRunner(
                 break
             }
         }
-        return finish(steps, entries, stop, last, callId, step, seen)
+        return finish(steps, entries, stop, last, lastWaited, callId, step, seen)
     }
 
     private fun finish(
-        steps: List<BatchStep>, done: List<JsonElement>, stop: Stop?, last: ToolExecution?, callId: String, step: Int, seen: List<Observation>,
+        steps: List<BatchStep>, done: List<JsonElement>, stop: Stop?, last: ToolExecution?, lastWaited: Boolean, callId: String, step: Int, seen: List<Observation>,
     ): ToolExecution {
         val completed = stop?.index ?: steps.size
         executor.recorder.event(RunEvent.Batch(executor.recorder.now(), completed, steps.size, stop != null, stop?.reason))
-        val screen = last?.content?.get("screen")
+        // 最后一步在动作后又等了 until 条件:last 里的画面是等待前的旧屏,不带出去,由循环补一次等待后的当前读屏
+        val screen = if (lastWaited) null else last?.content?.get("screen")
         val content = buildJsonObject {
             put("ok", stop == null)
             when (stop?.reason) {
@@ -234,9 +243,13 @@ class BatchRunner(
             if (stop != null) put("recoverable", true)
         }
         // 子步的画面已经逐个存过
-        // 最后一个子步发给模型的画面(能看图的主模型才有)留给循环,接在整批结果后面
-        return ToolExecution(content, changed = last?.changed, frame = if (!executor.recorder.savesScreens) last?.frame ?: last?.image else null,
-            screenElements = last?.screenElements, images = last?.images.orEmpty(), imageIds = last?.imageIds.orEmpty(), place = last?.place,
+        // 最后一个子步发给模型的画面(能看图的主模型才有)留给循环,接在整批结果后面;等待过 until 时弃用等待前的旧帧
+        return ToolExecution(content, changed = last?.changed,
+            frame = if (!lastWaited && !executor.recorder.savesScreens) last?.frame ?: last?.image else null,
+            screenElements = if (lastWaited) null else last?.screenElements,
+            images = if (lastWaited) emptyList() else last?.images.orEmpty(),
+            imageIds = if (lastWaited) emptyList() else last?.imageIds.orEmpty(),
+            place = last?.place,
             observations = seen)
     }
 

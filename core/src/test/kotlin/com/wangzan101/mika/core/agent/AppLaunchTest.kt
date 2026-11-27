@@ -172,6 +172,14 @@ class AppLaunchTest {
         assertEquals("10", args["user"]!!.toString())
         assertFalse(args.containsKey("snapshotId"))
     }
+
+    @Test fun rememberPrefixMatchesCaseInsensitively() {
+        val saved = AppLaunch.effect("Always use 美团 for 买菜", listOf(meituan, taobao), emptyList())
+        val pref = saved.save!!
+        assertTrue(pref.confirmed)
+        assertEquals("买菜", pref.phrase)
+        assertEquals(meituan.packageName, pref.app.packageName)
+    }
 }
 
 private class ReadyScreen(

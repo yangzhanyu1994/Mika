@@ -1,10 +1,11 @@
 package com.wangzan101.mika.capsule
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.Context
 import android.view.Gravity
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import android.view.animation.PathInterpolator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,11 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,8 +72,20 @@ class CapsuleArcPresenter(
     private val frames = arrayOfNulls<ArcFrame>(CapsuleArc.order.size)
     private val closing = mutableStateOf(false)
     private val settled = mutableStateOf(false)
-    private val hidden = mutableIntStateOf(0)
+    /**
+     * 四个芯片共用一个由 Android ValueAnimator 驱动的飞行进度（不依赖 Compose MonotonicFrameClock，
+     * 避免在主线程 CoroutineScope 里调用 Animatable.animateTo 抛出缺少 FrameClock 的异常）。
+     */
+    private val flight = mutableFloatStateOf(0f)
+    private var animator: ValueAnimator? = null
     private var open = false
+
+    companion object {
+        /** 飞出只走最后这段路程:从锚点整段飞过来时,相邻芯片在途中会被挤到一起。 */
+        internal const val FLIGHT_FRACTION = 0.25f
+        private const val FLIGHT_MS = 240L
+        private val FAST_OUT_SLOW_IN = PathInterpolator(0.4f, 0f, 0.2f, 1f)
+    }
 
     fun showing(): Boolean = open && !closing.value
 
@@ -86,76 +97,114 @@ class CapsuleArcPresenter(
 
     fun close() {
         if (!open || closing.value) return
+        cancelAnimator()
         settled.value = false
-        place(path = true)
+        place(path = true, remeasure = false)
         closing.value = true
+        if (reduceMotion()) {
+            flight.floatValue = 0f
+            release()
+            return
+        }
+        animateFlight(flight.floatValue, 0f) { release() }
     }
 
     fun relayout() {
         if (!open || closing.value) return
-        place(path = !settled.value)
+        place(path = !settled.value, remeasure = true)
     }
 
     fun release() {
+        cancelAnimator()
         windows.forEach { it?.close() }
         windows.fill(null)
         frames.fill(null)
         closing.value = false
         settled.value = false
-        hidden.intValue = 0
+        flight.floatValue = 0f
         open = false
     }
 
     private fun openMenu() {
         val overlays = host() ?: return
         val laid = measure() ?: return
+        cancelAnimator()
+        val instant = reduceMotion()
         closing.value = false
-        settled.value = reduceMotion()
-        hidden.intValue = 0
+        settled.value = instant
+        flight.floatValue = if (instant) 1f else 0f
         laid.forEachIndexed { index, frame ->
             frames[index] = frame
             windows[index]?.close()
-            val window = overlays.open(placement(frame, path = true)) {
+            val window = overlays.open(placement(frame, path = !instant)) {
                 ArcChip(
                     frame = { frames[index] ?: frame },
+                    flight = flight,
                     closing = closing,
                     settled = settled,
-                    reduceMotion = reduceMotion(),
                     onClick = {
+                        // 截屏提问先立刻撤掉四个浮窗，避免把弧形按钮截进屏幕图里
+                        if (frame.action == CapsuleArcAction.ScreenshotAsk) release() else close()
                         onAction(frame.action)
-                        close()
                     },
-                    onArrived = { onArrived() },
-                    onHidden = { onHidden() },
                 )
             }
-            window?.resize(frame.windowWidth, frame.windowHeight)
+            window?.resize(
+                if (instant) frame.chipWidth else frame.windowWidth,
+                if (instant) frame.chipHeight else frame.windowHeight,
+            )
             windows[index] = window
         }
         open = windows.any { it != null }
-        if (settled.value) place(path = false)
+        if (!open) {
+            release()
+            return
+        }
+        if (!instant) {
+            animateFlight(0f, 1f) {
+                if (open && !closing.value) {
+                    settled.value = true
+                    place(path = false, remeasure = false)
+                }
+            }
+        }
     }
 
-    private fun onArrived() {
-        if (closing.value || settled.value) return
-        settled.value = true
-        place(path = false)
+    private fun animateFlight(from: Float, to: Float, onEnd: () -> Unit) {
+        val anim = ValueAnimator.ofFloat(from, to).apply {
+            duration = FLIGHT_MS
+            interpolator = FAST_OUT_SLOW_IN
+            addUpdateListener { flight.floatValue = it.animatedValue as Float }
+            var cancelled = false
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationCancel(animation: Animator) {
+                    cancelled = true
+                }
+                override fun onAnimationEnd(animation: Animator) {
+                    if (animator === animation) animator = null
+                    if (!cancelled) onEnd()
+                }
+            })
+        }
+        animator = anim
+        anim.start()
     }
 
-    private fun onHidden() {
-        hidden.intValue += 1
-        if (hidden.intValue >= windows.count { it != null }) release()
+    private fun cancelAnimator() {
+        animator?.cancel()
+        animator = null
     }
 
-    private fun place(path: Boolean) {
-        val laid = measure() ?: return
+    private fun place(path: Boolean, remeasure: Boolean) {
+        val laid = if (remeasure) measure() ?: return else frames.toList()
         laid.forEachIndexed { index, frame ->
-            frames[index] = frame
-            windows[index]?.place(placement(frame, path))
+            val f = frame ?: return@forEachIndexed
+            frames[index] = f
+            windows[index]?.place(placement(f, path))
             // 落位后窗口也缩到芯片大小:只挪位置不缩尺寸,四个飞行大框还会互相盖着,点按会被最上面那个吃掉。
             windows[index]?.resize(
-                if (path) frame.windowWidth else frame.chipWidth,
-                if (path) frame.windowHeight else frame.chipHeight,
+                if (path) f.windowWidth else f.chipWidth,
+                if (path) f.windowHeight else f.chipHeight,
             )
         }
     }
@@ -193,19 +242,11 @@ class CapsuleArcPresenter(
 @Composable
 private fun ArcChip(
     frame: () -> ArcFrame,
+    flight: State<Float>,
     closing: State<Boolean>,
     settled: State<Boolean>,
-    reduceMotion: Boolean,
     onClick: () -> Unit,
-    onArrived: () -> Unit,
-    onHidden: () -> Unit,
 ) {
-    val travel = remember { Animatable(if (reduceMotion) 1f else 0f) }
-    LaunchedEffect(closing.value, reduceMotion) {
-        val dest = if (closing.value) 0f else 1f
-        if (reduceMotion) travel.snapTo(dest) else travel.animateTo(dest, tween(240, easing = FastOutSlowInEasing))
-        if (closing.value) onHidden() else onArrived()
-    }
     val current = frame()
     val density = LocalDensity.current
     val path = !settled.value
@@ -213,14 +254,18 @@ private fun ArcChip(
     val height = if (path) current.windowHeight else current.chipHeight
     val rowX = if (path) current.chipLeft - current.windowLeft else 0
     val rowY = if (path) current.chipTop - current.windowTop else 0
-    val progress = if (settled.value && !closing.value) 1f else travel.value
+    val isSettledOpen = settled.value && !closing.value
     Box(Modifier.requiredSize(with(density) { width.toDp() }, with(density) { height.toDp() })) {
         ArcChipRow(
             current,
             onClick,
+            // 在绘制阶段读取 flight.value，避免每帧触发四个 ComposeView 全量重组
             Modifier.offset(with(density) { rowX.toDp() }, with(density) { rowY.toDp() }).graphicsLayer {
-                translationX = (1f - progress) * current.fromAnchorX
-                translationY = (1f - progress) * current.fromAnchorY
+                val progress = if (isSettledOpen) 1f else flight.value
+                translationX = (1f - progress) * current.fromAnchorX * CapsuleArcPresenter.FLIGHT_FRACTION
+                translationY = (1f - progress) * current.fromAnchorY * CapsuleArcPresenter.FLIGHT_FRACTION
+                scaleX = 0.7f + 0.3f * progress
+                scaleY = 0.7f + 0.3f * progress
                 alpha = progress.coerceIn(0f, 1f)
             },
         )

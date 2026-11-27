@@ -676,6 +676,7 @@ class CapsuleController(
      * 再在后台整理屏上的字。前台是 Mika 自己、截不到时为 null。
      */
     private suspend fun captureScreen(): CapturedScreen? {
+        arc.release()
         val service = windowOn ?: return null
         val w = window ?: return null
         val c = cardWindow ?: return null

@@ -81,6 +81,14 @@ class DirectEntryTest {
         assertEquals(1, attempt.freshReads)
         assertTrue(attempt.verified)
         assertTrue(DirectEntry.settingsForeground("com.samsung.android.settings"))
+        assertTrue(attempt.read != null)
+        assertTrue(attempt.readTool != null)
+    }
+
+    @Test fun compoundAndForeignAppGuardsAreCaseInsensitive() {
+        assertNull(DirectEntry.match("Open Bluetooth in WeChat"))
+        assertNull(DirectEntry.match("Open WiFi AND THEN check speed"))
+        assertNull(DirectEntry.match("Check Bluetooth AFTER THAT open AliPay"))
     }
 }
 

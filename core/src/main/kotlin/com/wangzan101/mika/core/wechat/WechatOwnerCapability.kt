@@ -10,19 +10,23 @@ interface WechatOwnerPort {
     suspend fun send(text: String): JsonObject
 }
 
+private val WECHAT_NEGATION = Regex("(不要|别|无需|不需要|禁止|不必|不用).{0,12}(发|推送|发送|通知|同步|回传).{0,12}微信")
+private val WECHAT_TO_OWNER = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,18}(我的微信|我微信|本人微信)")
+private val WECHAT_VIA_OWNER = Regex("微信[^，。；！？\\n]{0,12}(发给我|发送给我|推送给我|发我|通知我|给我发|回传给我)")
+private val WECHAT_OTHER_RECIPIENT = Regex("(给|发给|发送给|通知|转给)(?!我|本人|自己|我的微信|微信)[^，。；！？\\n]{1,12}")
+private val WECHAT_GENERIC = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,8}(到|至|给)微信(?:上|里)?(?=$|[，。；！？\\s])")
+
 /** Require an explicit, affirmative owner-directed WeChat send in the original UI task. */
 fun explicitWechatOwnerRequest(goal: String): Boolean {
     val g = goal.lowercase()
     if ("微信" !in g) return false
-    if (Regex("(不要|别|无需|不需要|禁止|不必|不用).{0,12}(发|推送|发送|通知|同步|回传).{0,12}微信").containsMatchIn(g)) return false
-    val toOwner = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,18}(我的微信|我微信|本人微信)").containsMatchIn(g)
-    val viaWechat = Regex("微信[^，。；！？\\n]{0,12}(发给我|发送给我|推送给我|发我|通知我|给我发|回传给我)").containsMatchIn(g)
+    if (WECHAT_NEGATION.containsMatchIn(g)) return false
+    val toOwner = WECHAT_TO_OWNER.containsMatchIn(g)
+    val viaWechat = WECHAT_VIA_OWNER.containsMatchIn(g)
     // A generic WeChat delivery refers to the bound owner only when no other recipient is named.
     // Ambiguous named-recipient requests must never be redirected to the owner.
-    val otherRecipient = Regex("(给|发给|发送给|通知|转给)(?!我|本人|自己|我的微信|微信)[^，。；！？\\n]{1,12}")
-        .containsMatchIn(g)
-    val genericWechat = Regex("(发送|发|推送|通知|同步|回传)[^，。；！？\\n]{0,8}(到|至|给)微信(?:上|里)?(?=$|[，。；！？\\s])")
-        .containsMatchIn(g)
+    val otherRecipient = WECHAT_OTHER_RECIPIENT.containsMatchIn(g)
+    val genericWechat = WECHAT_GENERIC.containsMatchIn(g)
     return (toOwner || viaWechat || genericWechat) && !otherRecipient
 }
 

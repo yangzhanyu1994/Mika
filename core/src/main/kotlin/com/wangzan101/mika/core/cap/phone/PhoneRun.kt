@@ -59,7 +59,9 @@ internal object PhoneRun : PhoneTool {
         val sub = ctx.sub ?: return failed("actions_unavailable")
         val steps = mutableListOf<JsonObject>()
         var stop: String? = null
+        var stopDetails: JsonObject? = null
         var finalScreen: JsonObject? = null
+        var lastHadFreshScreen = false
         for ((index, raw) in commands.withIndex()) {
             val command = raw as? JsonObject ?: throw ArgError("commands[$index]", "must be an object")
             val op = command.string("op") ?: throw ArgError("commands[$index].op", "required")
@@ -134,21 +136,47 @@ internal object PhoneRun : PhoneTool {
             val ok = content["ok"] == JsonPrimitive(true)
             val error = (content["error"] as? JsonPrimitive)?.contentOrNull
             steps += row(index, op, ok, error, content["executed"] != JsonPrimitive(false))
-            (content["screen"] as? JsonObject)?.let { finalScreen = it }
-            if (op == "observe") finalScreen = content
-            if (!ok) { stop = error ?: "failed"; break }
+            val attachedScreen = content["screen"] as? JsonObject
+            if (attachedScreen != null) {
+                finalScreen = attachedScreen
+                lastHadFreshScreen = true
+            } else if (op == "observe") {
+                finalScreen = content
+                lastHadFreshScreen = true
+            } else {
+                lastHadFreshScreen = false
+            }
+            if (!ok) {
+                stop = error ?: "failed"
+                if (error == "confirmation_required") stopDetails = content
+                break
+            }
             if (content["app_switched"] != null) { stop = "app_switched"; break }
             if (content["opened"] != null) { stop = "opened_elsewhere"; break }
-            val screen = content["screen"] as? JsonObject
-            if (content["captureError"] != null || screen?.get("captureError") != null) { stop = "display_capture_unavailable"; break }
-            if (screen?.get("imageReason") != null) { stop = "screen_needs_review"; break }
+            if (content["captureError"] != null || attachedScreen?.get("captureError") != null) { stop = "display_capture_unavailable"; break }
+            if (attachedScreen?.get("imageReason") != null) { stop = "screen_needs_review"; break }
         }
-        val last = run(sub, ctx, commands.size, "phone_list_elements", JsonObject(emptyMap()))
-        if (last.content["ok"] == JsonPrimitive(true)) finalScreen = last.content
-        else if (stop == null) stop = "final_read_failed"
+        val skipTrailingRead = stop == SKIPPED_FOR_NEW_MESSAGE || stop == "confirmation_required" || (lastHadFreshScreen && finalScreen != null)
+        if (!skipTrailingRead) {
+            val last = run(sub, ctx, commands.size, "phone_list_elements", JsonObject(emptyMap()))
+            if (last.content["ok"] == JsonPrimitive(true)) finalScreen = last.content
+            else if (stop == null) stop = "final_read_failed"
+        }
         return ToolExecution(buildJsonObject {
             put("ok", stop == null)
-            stop?.let { put("error", "phone_run_stopped"); put("reason", it); put("recoverable", true) }
+            stop?.let {
+                if (it == "confirmation_required") {
+                    put("error", "confirmation_required")
+                    stopDetails?.get("action")?.let { a -> put("action", a) }
+                    stopDetails?.get("matched")?.let { m -> put("matched", m) }
+                    stopDetails?.get("message")?.let { msg -> put("message", msg) }
+                    put("counts_as_failure", false)
+                } else {
+                    put("error", "phone_run_stopped")
+                    put("reason", it)
+                    put("recoverable", true)
+                }
+            }
             put("completed", steps.count { it["ok"] == JsonPrimitive(true) })
             put("total", commands.size)
             put("steps", JsonArray(steps))

@@ -100,11 +100,13 @@ internal fun ToolContext.action(r: ActionResult): ToolExecution = when (r) {
     is ActionResult.Failed ->
         if (r.reason == "ref_expired") refExpired(Feedback["ref_expired"], "element_lost")
         else {
-            val code = r.reason.takeIf { Regex("^[a-z][a-z0-9_]*$").matches(it) } ?: "action_failed"
+            val code = r.reason.takeIf { FAILURE_CODE_PATTERN.matches(it) } ?: "action_failed"
             val message = FAILURE_MESSAGES[code] ?: Feedback.format("action_failed", "reason" to r.reason)
             fail(code, r.hint?.let { "$message $it" } ?: message)
         }
 }
+
+private val FAILURE_CODE_PATTERN = Regex("^[a-z][a-z0-9_]*$")
 
 /**
  * 动作让 App 开到了用户主屏上时给模型的那句:挪回来了就说在 Mika 的屏上接着做、别再点一次;系统在用户屏上问打开哪一个的,

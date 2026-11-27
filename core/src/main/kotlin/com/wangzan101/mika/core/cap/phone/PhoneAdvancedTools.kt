@@ -54,9 +54,15 @@ internal object PhoneFind : PhoneTool {
         var scrolled = 0
         var reason = "scroll_limit"
         var result: JsonObject? = null
+        val observations = mutableListOf<com.wangzan101.mika.core.observation.Observation>()
+        var reuseSnapshot = false
         for (i in 0..limit) {
-            val read = ctx.session.observe(withImage = false, recordFrame = false)
-            if (read.content["ok"] != JsonPrimitive(true)) { reason = "read_failed"; break }
+            if (!reuseSnapshot) {
+                val read = ctx.session.observe(withImage = false, recordFrame = false)
+                if (read.content["ok"] != JsonPrimitive(true)) { reason = "read_failed"; break }
+                observations += read.observations
+            }
+            reuseSnapshot = false
             val screen = ctx.session.lastSnapshot
             if (screen == null) { reason = "read_failed"; break }
             val currentApp = screen.packageName ?: screen.unreadableApp
@@ -64,7 +70,8 @@ internal object PhoneFind : PhoneTool {
             if (app == null) app = currentApp else if (app != currentApp) { reason = "app_switched"; break }
             result = PhoneAutomationEngine.find(screen, query, 100)
             if ((result["total"] as? JsonPrimitive)?.intOrNull ?: 0 > 0) { reason = "found"; break }
-            val fingerprint = screen.windows.hashCode().takeIf { screen.windows.isNotEmpty() } ?: screen.elements.hashCode()
+            val contentWindows = screen.windows.filter { it.type != "system" }.ifEmpty { screen.windows }
+            val fingerprint = contentWindows.hashCode().takeIf { contentWindows.isNotEmpty() } ?: screen.elements.hashCode()
             unchanged = if (fingerprint == previous) unchanged + 1 else 0
             if (unchanged >= 2) { reason = "content_unchanged"; break }
             previous = fingerprint
@@ -72,11 +79,19 @@ internal object PhoneFind : PhoneTool {
             val action = sub.run(Part.ToolCall("${ctx.callId}.scroll${i + 1}", "phone_scroll", buildJsonObject {
                 put("direction", direction); put("amount", 3)
             }.toString()))
+            observations += action.observations
             if (action.content["ok"] != JsonPrimitive(true)) {
                 reason = (action.content["error"] as? JsonPrimitive)?.contentOrNull ?: "scroll_failed"
                 break
             }
             scrolled++
+            if (action.content["atEnd"] == JsonPrimitive(true)) {
+                reason = "content_unchanged"
+                break
+            }
+            if (action.content["screen"] is JsonObject && ctx.session.lastSnapshot != null) {
+                reuseSnapshot = true
+            }
         }
         ToolExecution(buildJsonObject {
             put("ok", reason == "found")
@@ -84,7 +99,7 @@ internal object PhoneFind : PhoneTool {
             put("stoppedBecause", reason)
             put("scrolls", scrolled)
             result?.forEach { (key, value) -> put(key, value) }
-        })
+        }, observations = observations)
     }
 }
 
@@ -162,8 +177,10 @@ internal object PhoneExtract : PhoneTool {
     override suspend fun execute(a: Args, ctx: ToolContext): ToolExecution = ctx.session.textOnly {
         val mode = a.str("mode")!!
         val max = a.int("maxItems", 1, 200) ?: 100
-        ctx.session.observe(withImage = false, recordFrame = false)
+        val read = ctx.session.observe(withImage = false, recordFrame = false)
         val screen = ctx.session.lastSnapshot ?: return@textOnly fail("read_failed")
+        if (screen.protected) return@textOnly fail("screen_needs_review")
+        if (screen.captureError != null) return@textOnly fail("display_capture_unavailable")
         val records = mutableListOf<JsonObject>()
         fun text(node: UiTreeNode): List<String> = buildList {
             if (!node.secret) {
@@ -172,25 +189,33 @@ internal object PhoneExtract : PhoneTool {
             }
             node.children.forEach { addAll(text(it)) }
         }
+        fun isExplicitList(node: UiTreeNode): Boolean =
+            node.role.contains("RecyclerView", true) || node.role.contains("ListView", true)
+        fun hasExplicitListDescendant(node: UiTreeNode): Boolean =
+            node.children.any { isExplicitList(it) || hasExplicitListDescendant(it) }
         fun walk(node: UiTreeNode, parents: List<String>) {
             if (records.size >= max) return
             when (mode) {
                 "text" -> if (!node.secret) listOfNotNull(node.text, node.description).distinct().filter(String::isNotBlank).forEach { value ->
-                    if (records.size < max) records += buildJsonObject { put("text", value.take(2_000)); node.ref?.let { put("ref", it) }; put("parents", JsonArray(parents.map(::JsonPrimitive))) }
+                    if (records.size < max) records += buildJsonObject {
+                        put("text", Untrusted.wrapWithin(value, 2_000))
+                        node.ref?.let { put("ref", it) }
+                        put("parents", JsonArray(parents.map { JsonPrimitive(Untrusted.wrapWithin(it, 200)) }))
+                    }
                 }
                 "form" -> if (node.editable) records += buildJsonObject {
                     put("role", node.role); put("secret", node.secret); node.ref?.let { put("ref", it) }
                     node.resourceId?.let { put("resourceId", it) }
-                    node.hintText?.let { put("hint", it) }
-                    if (!node.secret) node.text?.let { put("value", it.take(2_000)) }
-                    put("parents", JsonArray(parents.map(::JsonPrimitive)))
+                    node.hintText?.let { put("hint", Untrusted.wrapWithin(it, 500)) }
+                    if (!node.secret) node.text?.let { put("value", Untrusted.wrapWithin(it, 2_000)) }
+                    put("parents", JsonArray(parents.map { JsonPrimitive(Untrusted.wrapWithin(it, 200)) }))
                 }
-                "list" -> if (node.scrollable || node.role.contains("RecyclerView", true) || node.role.contains("ListView", true)) {
+                "list" -> if (isExplicitList(node) || (node.scrollable && !hasExplicitListDescendant(node))) {
                     node.children.forEach { row ->
                         if (records.size < max) {
                             val values = text(row).distinct().filter(String::isNotBlank)
                             if (values.isNotEmpty()) records += buildJsonObject {
-                                put("texts", JsonArray(values.map { JsonPrimitive(it.take(2_000)) }))
+                                put("texts", JsonArray(values.map { JsonPrimitive(Untrusted.wrapWithin(it, 2_000)) }))
                                 row.ref?.let { put("ref", it) }
                                 put("bounds", JsonArray(row.bounds.map(::JsonPrimitive)))
                             }
@@ -202,12 +227,33 @@ internal object PhoneExtract : PhoneTool {
             val next = (parents + listOfNotNull(node.text, node.description).firstOrNull { it.isNotBlank() }.orEmpty()).filter(String::isNotBlank).takeLast(6)
             node.children.forEach { walk(it, next) }
         }
-        screen.windows.forEach { window -> window.nodes.forEach { walk(it, listOfNotNull(window.title)) } }
+        if (screen.windows.isNotEmpty()) {
+            screen.windows.forEach { window -> window.nodes.forEach { walk(it, listOfNotNull(window.title)) } }
+        } else {
+            screen.elements.take(max).forEach { el ->
+                when (mode) {
+                    "text" -> if (el.name.isNotBlank()) records += buildJsonObject {
+                        put("text", Untrusted.wrapWithin(el.name, 2_000)); put("ref", el.ref); put("parents", JsonArray(emptyList()))
+                    }
+                    "form" -> if (el.editable) records += buildJsonObject {
+                        put("role", el.role); put("secret", false); put("ref", el.ref)
+                        el.resourceId?.let { put("resourceId", it) }
+                        if (el.name.isNotBlank()) put("value", Untrusted.wrapWithin(el.name, 2_000))
+                        put("parents", JsonArray(emptyList()))
+                    }
+                    "list" -> if (el.name.isNotBlank()) records += buildJsonObject {
+                        put("texts", JsonArray(listOf(JsonPrimitive(Untrusted.wrapWithin(el.name, 2_000)))))
+                        put("ref", el.ref)
+                        put("bounds", JsonArray(el.bounds.map(::JsonPrimitive)))
+                    }
+                }
+            }
+        }
         ToolExecution(buildJsonObject {
             put("ok", true); put("mode", mode); put("snapshotId", screen.snapshotId)
             put("currentApp", screen.packageName ?: screen.unreadableApp)
             put("items", JsonArray(records)); put("count", records.size); put("truncated", records.size == max)
-        })
+        }, observations = read.observations)
     }
 }
 
@@ -222,7 +268,7 @@ internal object PhoneDialog : PhoneTool {
     ))
 
     override suspend fun execute(a: Args, ctx: ToolContext): ToolExecution = ctx.session.textOnly {
-        ctx.session.observe(withImage = false, recordFrame = false)
+        val read = ctx.session.observe(withImage = false, recordFrame = false)
         val screen = ctx.session.lastSnapshot ?: return@textOnly fail("read_failed")
         val windows = screen.windows.sortedByDescending { it.layer }
         val dialog = windows.firstOrNull { w ->
@@ -232,10 +278,19 @@ internal object PhoneDialog : PhoneTool {
         }
         val labels = mutableListOf<String>()
         val buttons = mutableListOf<Pair<String, String>>()
+        fun childLabel(node: UiTreeNode): String? {
+            if (node.secret) return null
+            listOfNotNull(node.text, node.description).firstOrNull { it.isNotBlank() }?.let { return it }
+            return node.children.firstNotNullOfOrNull(::childLabel)
+        }
         fun visit(node: UiTreeNode) {
             if (!node.secret) {
                 node.text?.takeIf(String::isNotBlank)?.let { labels += it }
-                if (node.clickable && node.ref != null) listOfNotNull(node.text, node.description).firstOrNull { it.isNotBlank() }?.let { buttons += it to node.ref }
+                if (node.clickable && node.ref != null) {
+                    val label = listOfNotNull(node.text, node.description).firstOrNull { it.isNotBlank() }
+                        ?: node.children.firstNotNullOfOrNull(::childLabel)
+                    label?.let { buttons += it to node.ref }
+                }
             }
             node.children.forEach(::visit)
         }
@@ -243,6 +298,7 @@ internal object PhoneDialog : PhoneTool {
         val wanted = a.str("buttonText", max = 100)
         var clicked: JsonObject? = null
         var error: String? = null
+        val observations = read.observations.toMutableList()
         if (wanted != null) {
             if (dialog == null) error = "dialog_not_found"
             else {
@@ -251,9 +307,13 @@ internal object PhoneDialog : PhoneTool {
                 else {
                     val sub = ctx.sub
                     if (sub == null) error = "actions_unavailable"
-                    else clicked = sub.run(Part.ToolCall("${ctx.callId}.dismiss", "phone_tap", buildJsonObject {
-                        put("ref", matches.single().second); put("snapshotId", screen.snapshotId)
-                    }.toString())).content
+                    else {
+                        val dismiss = sub.run(Part.ToolCall("${ctx.callId}.dismiss", "phone_tap", buildJsonObject {
+                            put("ref", matches.single().second); put("snapshotId", screen.snapshotId)
+                        }.toString()))
+                        observations += dismiss.observations
+                        clicked = dismiss.content
+                    }
                 }
             }
         }
@@ -265,7 +325,7 @@ internal object PhoneDialog : PhoneTool {
             put("buttons", JsonArray(buttons.distinctBy { it.first }.map { (label, ref) -> buildJsonObject { put("text", label); put("ref", ref) } }))
             error?.let { put("error", it) }
             clicked?.let { put("action", it) }
-        })
+        }, observations = observations)
     }
 
     private fun containsDialog(node: UiTreeNode): Boolean = node.role.contains("Dialog", true) || node.children.any(::containsDialog)

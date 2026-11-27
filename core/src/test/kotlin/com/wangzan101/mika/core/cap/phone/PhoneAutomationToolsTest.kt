@@ -267,4 +267,59 @@ class PhoneAutomationToolsTest {
         assertEquals("2", result["count"]!!.jsonPrimitive.content)
         assertTrue(result.toString().contains("第二条"))
     }
+
+    @Test fun extractGuardsProtectedScreenWrapsUntrustedAndKeepsObservations() = runTest {
+        val protectedScreen = object : ScreenPort by FakeScreen() {
+            override suspend fun snapshot(): ScreenSnapshot = tree().copy(protected = true)
+        }
+        val denied = PhoneExtract.execute(
+            Args(PhoneExtract.def, Json.parseToJsonElement("""{"mode":"text"}""").jsonObject),
+            toolDispatcher(protectedScreen).ctx,
+        )
+        assertEquals("false", denied.content["ok"]!!.jsonPrimitive.content)
+        assertEquals("screen_needs_review", denied.content["error"]!!.jsonPrimitive.content)
+
+        val fallbackScreen = object : ScreenPort by FakeScreen() {
+            override suspend fun snapshot(): ScreenSnapshot = ScreenSnapshot(
+                "p2", "com.example.app",
+                listOf(com.wangzan101.mika.core.uistate.UiElement("@e1", "text", "账单 ¥99", 50, 50, listOf(0, 0, 100, 100), null, false, false, false)),
+                1080, 2400, windows = emptyList(),
+            )
+        }
+        val extracted = PhoneExtract.execute(
+            Args(PhoneExtract.def, Json.parseToJsonElement("""{"mode":"text"}""").jsonObject),
+            toolDispatcher(fallbackScreen).ctx,
+        )
+        assertEquals("true", extracted.content["ok"]!!.jsonPrimitive.content)
+        assertEquals(1, extracted.content["count"]!!.jsonPrimitive.content.toInt())
+        assertTrue(extracted.content.toString().contains("账单 ¥99"))
+        assertTrue(extracted.content["items"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content.contains("untrusted"))
+        assertTrue(extracted.observations.isNotEmpty())
+    }
+
+    @Test fun dialogFindsContainerButtonLabelAndKeepsObservations() = runTest {
+        val screen = object : ScreenPort by FakeScreen() {
+            override suspend fun snapshot(): ScreenSnapshot = ScreenSnapshot(
+                "d1", "com.example.app", emptyList(), 1080, 2400,
+                windows = listOf(UiWindowTree(1, "application", 2, "提示", "com.example.app", true, true, listOf(
+                    UiTreeNode("AlertDialog", listOf(50, 400, 950, 800), children = listOf(
+                        UiTreeNode("TextView", listOf(100, 450, 900, 520), text = "是否允许？"),
+                        UiTreeNode("FrameLayout", listOf(500, 650, 850, 740), ref = "@e5", clickable = true, children = listOf(
+                            UiTreeNode("TextView", listOf(550, 670, 800, 720), text = "允许"),
+                        )),
+                    )),
+                ))),
+            )
+        }
+        val res = PhoneDialog.execute(
+            Args(PhoneDialog.def, Json.parseToJsonElement("{}").jsonObject),
+            toolDispatcher(screen).ctx,
+        )
+        assertEquals("true", res.content["found"]!!.jsonPrimitive.content)
+        val buttons = res.content["buttons"]!!.jsonArray
+        assertEquals(1, buttons.size)
+        assertEquals("允许", buttons.single().jsonObject["text"]!!.jsonPrimitive.content)
+        assertEquals("@e5", buttons.single().jsonObject["ref"]!!.jsonPrimitive.content)
+        assertTrue(res.observations.isNotEmpty())
+    }
 }

@@ -102,7 +102,7 @@ task completion
 earlier way of doing this
 
 ## parallel_call_skipped
-Phone actions run one at a time: only the first call was run and the rest were skipped. Do not send several phone calls in one reply. When the next few steps are already known, put them in a single do_steps call instead, then observe the result.
+Only the first call was run and the rest were skipped because these calls cannot run together in one batch. For known same-screen actions, put them in a single do_steps call (or only batchable actions on the same screen) without mixing reads or confirmations, then observe the result.
 
 ## replay.completed
 All steps of the earlier way of doing this were run ({{total}} steps):

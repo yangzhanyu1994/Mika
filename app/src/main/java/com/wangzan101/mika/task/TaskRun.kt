@@ -603,6 +603,17 @@ class TaskRun(
     // Keep this interface conversion outside the large suspend method's register flow.
     private fun recordSink(record: RunHandle?): RunSink = record ?: RunSink.NONE
 
+    private suspend fun loadLaunchAppsCatalog(
+        phoneScreen: LazyPhoneScreen,
+        apps: List<Pair<String, String>>,
+    ): List<com.wangzan101.mika.core.agent.AppLaunch.App> = withContext(Dispatchers.IO) {
+        val copies = runCatching { phoneScreen.appCopies() }.getOrDefault(emptyList())
+        com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
+            apps,
+            copies.map { Triple(it.packageName, it.userId, it.userName) },
+        )
+    }
+
     suspend fun execute(priorTurns: List<Turn>): TaskState {
         noticeTainted = NoticeTurn.tainted(priorTurns)
         // 手机一侧(内置助手、无障碍、虚拟屏)第一次 launch_app 时才接上:只用网页、沙箱的任务不需要它们
@@ -718,7 +729,13 @@ class TaskRun(
                     shellDied = true
                     val running = loop
                     if (running != null) running.cancel() else job?.cancel()
-                }.also { shell.asBinder().linkToDeath(it, 0) }
+                }.also {
+                    try {
+                        shell.asBinder().linkToDeath(it, 0)
+                    } catch (_: RemoteException) {
+                        throw PhoneUnavailable(NO_PHONE_HELPER)
+                    }
+                }
                 shellBinder = shell.asBinder()
                 side.launch { conn.shell.map { it != null }.collect { shellUp.value = it } }
                 val agentDisplay = LazyAgentDisplay(metrics.widthPixels, metrics.heightPixels) {
@@ -1170,16 +1187,8 @@ class TaskRun(
                 // 同一网站、App 里连着联系别人、提交:两次之间隔一段随机的时间
                 outwardPacing = OutwardPacing.human(),
                 personaLabel = personaLabel,
-                launchApps = {
-                    withContext(Dispatchers.IO) {
-                        val copies = runCatching { phone?.screen?.appCopies().orEmpty() }.getOrDefault(emptyList())
-                        com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
-                            apps,
-                            copies.map { Triple(it.packageName, it.userId, it.userName) },
-                        )
-                    }
-                },
-                launchPrefs = com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir),
+                launchApps = if (conditionCheck) null else ({ loadLaunchAppsCatalog(phoneScreen, apps) }),
+                launchPrefs = if (conditionCheck || provenance.origin != RunOrigin.Ui) null else com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir),
             )
             loop = agent
             liveFeed = agent.events.subscribe(liveEvents)
@@ -1303,11 +1312,11 @@ class TaskRun(
             loop = null
             children = null
             // 早点关:后面收尾要等屏和网页;resources 关时还会再关一次(只关一次,不重复)
-            mcpConnections?.close()
+            runCatching { mcpConnections?.close() }.onFailure { Log.w(TAG, "mcpConnections close failed", it) }
             mcpConnections = null
-            mcpEvents?.close()
-            liveFeed?.close()
-            approval?.let { approvalControl.end(it) }
+            runCatching { mcpEvents?.close() }.onFailure { Log.w(TAG, "mcpEvents close failed", it) }
+            runCatching { liveFeed?.close() }.onFailure { Log.w(TAG, "liveFeed close failed", it) }
+            approval?.let { runCatching { approvalControl.end(it) }.onFailure { e -> Log.w(TAG, "approval end failed", e) } }
             gate = null
             takeover = null
             handoverRef = null
@@ -1338,8 +1347,11 @@ class TaskRun(
                     // 恢复抛错也要撤掉「在跑」的登记,否则这份记录永远不归恢复处理
                     try { mute?.restoreAll() } finally { recovery.endRun(key) }
                     watcher?.close()
+                } catch (e: Throwable) {
+                    Log.w(TAG, "task teardown failed", e)
                 } finally {
-                    try { resources.close() } finally { smsLogin?.close() }
+                    runCatching { resources.close() }.onFailure { Log.w(TAG, "resources close failed", it) }
+                    runCatching { smsLogin?.close() }.onFailure { Log.w(TAG, "smsLogin close failed", it) }
                 }
             }
             phone = null
@@ -1347,10 +1359,12 @@ class TaskRun(
             _displayId.value = -1
             _pipInput.value = null
             _appShown.value = false
-            if (connection != null) phoneServices.sharedShell.release()
+            if (connection != null) runCatching { phoneServices.sharedShell.release() }.onFailure { Log.w(TAG, "sharedShell release failed", it) }
             // A normal result publishes its completion light in TaskService before re-locking.
             if (!deferRelockForCompletion) {
-                withContext(Dispatchers.Main + NonCancellable) { service.finishLocalUnlock(this@TaskRun) }
+                withContext(Dispatchers.Main + NonCancellable) {
+                    runCatching { service.finishLocalUnlock(this@TaskRun) }.onFailure { Log.w(TAG, "finishLocalUnlock failed", it) }
+                }
             }
         }
     }

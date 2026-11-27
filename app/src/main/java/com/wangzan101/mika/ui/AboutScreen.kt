@@ -298,7 +298,7 @@ internal fun UpdateSheet(r: ReleaseInfo, current: String, beta: Boolean, onOpenU
 private fun ChangelogSheet(latest: ReleaseInfo?, onOpenAll: () -> Unit, onDismiss: () -> Unit) {
     val c = MikaTheme.colors
     val context = LocalContext.current
-    var bundled by remember { mutableStateOf<List<ForkReleaseHistory.Entry>>(emptyList()) }
+    var bundled by remember { mutableStateOf<List<ForkReleaseHistory.Entry>?>(null) }
     LaunchedEffect(context) {
         bundled = withContext(Dispatchers.IO) {
             runCatching {
@@ -310,20 +310,22 @@ private fun ChangelogSheet(latest: ReleaseInfo?, onOpenAll: () -> Unit, onDismis
     }
     AboutSheetFrame(AboutCopy.CHANGELOG, null, "changelog-sheet", onDismiss) {
         val installed = bundled
-        val newest = installed.firstOrNull()
-        val remoteNewer = latest != null && (newest == null || AppVersion.compare(latest.version, newest.version) > 0)
-        if (remoteNewer && latest != null) {
-            Text(latest.version + (latest.date?.let { " · $it" } ?: ""),
-                Modifier.padding(top = 10.dp), style = MikaType.Label, color = c.ink)
-            if (latest.notes.isNotBlank()) NotesBox(latest.notes)
-        }
-        val shown = if (remoteNewer && latest != null) installed.filter { it.version != latest.version } else installed
-        if (!remoteNewer && shown.isEmpty()) {
-            Text(AboutCopy.CHANGELOG_EMPTY, Modifier.padding(top = 10.dp), style = MikaType.Caption, color = c.ink3)
-        }
-        shown.forEach { entry ->
-            Text("v${entry.version} · ${entry.date}", Modifier.padding(top = 14.dp), style = MikaType.Label, color = c.ink)
-            MarkdownText(entry.notes, MikaType.Caption.copy(color = c.ink2))
+        if (installed != null) {
+            val newest = installed.firstOrNull()
+            val remoteNewer = latest != null && (newest == null || AppVersion.compare(latest.version, newest.version) > 0)
+            if (remoteNewer) {
+                val heading = "v${AppVersion.normalize(latest.version)}" + (latest.date?.let { " · $it" } ?: "")
+                Text(heading, Modifier.padding(top = 10.dp), style = MikaType.Label, color = c.ink)
+                if (latest.notes.isNotBlank()) NotesBox(latest.notes)
+            }
+            val shown = if (remoteNewer) installed.filter { AppVersion.normalize(it.version) != AppVersion.normalize(latest.version) } else installed
+            if (!remoteNewer && shown.isEmpty()) {
+                Text(AboutCopy.CHANGELOG_EMPTY, Modifier.padding(top = 10.dp), style = MikaType.Caption, color = c.ink3)
+            }
+            shown.forEach { entry ->
+                Text("v${entry.version} · ${entry.date}", Modifier.padding(top = 14.dp), style = MikaType.Label, color = c.ink)
+                MarkdownText(entry.notes, MikaType.Caption.copy(color = c.ink2))
+            }
         }
         MikaButton(AboutCopy.CHANGELOG_ALL, onOpenAll, Modifier.fillMaxWidth().padding(top = 14.dp), kind = ButtonKind.Tonal)
     }

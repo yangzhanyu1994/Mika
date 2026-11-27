@@ -56,6 +56,7 @@ internal object ScreenReader {
         val entries = mutableListOf<NodeEntry>()
         val texts = mutableListOf<String>()
         val seen = HashSet<String>()
+        val seenKey = StringBuilder(64)
         var hash = FNV_OFFSET
         var password = false
         var lastLabel: String? = null
@@ -69,8 +70,7 @@ internal object ScreenReader {
             var clippedBounds = listOf(0, 0, 0, 0)
             if (visible) {
                 n.getBoundsInScreen(rect)
-                hash = mix(hash, n.className, n.text, n.contentDescription, rect.flattenToString(),
-                    states(n))
+                hash = mixNode(hash, n, rect)
                 if (n.isPassword) password = true
                 val own = if (n.isPassword) n.hintText?.toString()?.trim()?.ifEmpty { null } else ownLabel(n)
                 own?.let(texts::add)
@@ -82,7 +82,10 @@ internal object ScreenReader {
                 if (usable && (own != null || interactive)) {
                     val label = labelOf(n, own)
                     val role = roleOf(n)
-                    if (seen.add("$role|$label|${rect.flattenToString()}")) {
+                    seenKey.setLength(0)
+                    seenKey.append(role).append('|').append(label).append('|')
+                        .append(rect.left).append(',').append(rect.top).append(',').append(rect.right).append(',').append(rect.bottom)
+                    if (seen.add(seenKey.toString())) {
                         val id = "@e${entries.size + 1}"
                         ref = id
                         val rid = n.viewIdResourceName
@@ -129,8 +132,17 @@ internal object ScreenReader {
             ))
         }
 
+        var hasAppWindow = false
+        var anyAppWindow = false
+        var topPkg: String? = null
         val trees = content.map { w ->
             val root = w.root
+            val pkg = root?.packageName?.toString()
+            if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                anyAppWindow = true
+                if (root != null) hasAppWindow = true
+                if (topPkg == null && pkg != null) topPkg = pkg
+            }
             UiWindowTree(
                 id = w.id,
                 type = when (w.type) {
@@ -138,7 +150,7 @@ internal object ScreenReader {
                     AccessibilityWindowInfo.TYPE_SYSTEM -> "system"
                     else -> "other"
                 },
-                layer = w.layer, title = w.title?.toString(), packageName = root?.packageName?.toString(),
+                layer = w.layer, title = w.title?.toString(), packageName = pkg,
                 active = w.isActive, focused = w.isFocused,
                 nodes = root?.let { visit(it, 0, false) }.orEmpty(),
             )
@@ -148,9 +160,9 @@ internal object ScreenReader {
             hash = hash,
             texts = texts,
             passwordField = password,
-            hasAppWindow = content.any { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.root != null },
-            anyAppWindow = content.any { it.type == AccessibilityWindowInfo.TYPE_APPLICATION },
-            topPackage = topPackage(windows),
+            hasAppWindow = hasAppWindow,
+            anyAppWindow = anyAppWindow,
+            topPackage = topPkg,
             windows = trees,
         )
     }
@@ -221,8 +233,7 @@ internal object ScreenReader {
             if (depth > MAX_DEPTH) return
             if (n.isVisibleToUser) {
                 n.getBoundsInScreen(rect)
-                hash = mix(hash, n.className, n.text, n.contentDescription, rect.flattenToString(),
-                    states(n))
+                hash = mixNode(hash, n, rect)
             }
             for (i in 0 until n.childCount) n.getChild(i)?.let { visit(it, depth + 1) }
         }
@@ -237,11 +248,6 @@ internal object ScreenReader {
         if (n.isSelected) add(UiStates.SELECTED)
         if (!n.isEnabled) add(UiStates.DISABLED)
     }
-
-    // isChecked 在 API 36 起被三态的 checked 取代;minSdk 30 仍需用它
-    @Suppress("DEPRECATION")
-    private fun states(n: AccessibilityNodeInfo) =
-        "${n.isChecked}${n.isSelected}${n.isEnabled}${n.isFocused}${n.textSelectionStart}:${n.textSelectionEnd}"
 
     /** 节点自己的名字:文字(提示语也算,输入框靠它说明用途),没有就用内容描述。 */
     fun ownLabel(n: AccessibilityNodeInfo): String? {
@@ -292,12 +298,21 @@ internal object ScreenReader {
     /** 没名字的可点容器用子节点的文字当名字。 */
     private fun descendantLabel(n: AccessibilityNodeInfo): String {
         val parts = mutableListOf<String>()
+        val seenParts = HashSet<String>()
+        var length = 0
         fun walk(c: AccessibilityNodeInfo, depth: Int) {
-            if (depth > 6 || parts.joinToString(" ").length > AGGREGATE_MAX) return
+            if (depth > 6 || length > AGGREGATE_MAX) return
             for (i in 0 until c.childCount) {
+                if (length > AGGREGATE_MAX) return
                 val child = c.getChild(i) ?: continue
                 if (!child.isVisibleToUser) continue
-                ownLabel(child)?.let { if (it !in parts) parts += it }
+                ownLabel(child)?.let { label ->
+                    if (seenParts.add(label)) {
+                        if (parts.isNotEmpty()) length += 1
+                        length += label.length
+                        parts += label
+                    }
+                }
                 walk(child, depth + 1)
             }
         }
@@ -306,22 +321,46 @@ internal object ScreenReader {
         return if (joined.length > AGGREGATE_MAX) joined.take(AGGREGATE_MAX) + "…" else joined
     }
 
+    private val READABLE_ID_CHARS = Regex("^[A-Za-z0-9_]{4,}$")
+    private val READABLE_ID_LETTERS = Regex("[A-Za-z]{3}")
+
     /** `com.x:id/cart_icon` → `cart_icon`;混淆过的短名认不出用途,不给。 */
     private fun readableResourceId(id: String?): String? {
         val short = id?.substringAfterLast('/') ?: return null
-        return short.takeIf { Regex("^[A-Za-z0-9_]{4,}$").matches(it) && Regex("[A-Za-z]{3}").containsMatchIn(it) }
+        return short.takeIf { READABLE_ID_CHARS.matches(it) && READABLE_ID_LETTERS.containsMatchIn(it) }
     }
 
     private const val FNV_OFFSET = -0x340d631b7bdddcdbL
     private const val FNV_PRIME = 0x100000001b3L
 
-    private fun mix(h0: Long, vararg parts: Any?): Long {
-        var h = h0
-        for (p in parts) {
-            val s = p?.toString() ?: "\u0000"
-            for (c in s) h = (h xor c.code.toLong()) * FNV_PRIME
-            h = (h xor 0x1f) * FNV_PRIME
-        }
+    @Suppress("DEPRECATION")
+    private fun mixNode(h0: Long, n: AccessibilityNodeInfo, rect: Rect): Long {
+        var h = mixChars(h0, n.className)
+        h = mixChars(h, n.text)
+        h = mixChars(h, n.contentDescription)
+        h = mixInt(h, rect.left)
+        h = mixInt(h, rect.top)
+        h = mixInt(h, rect.right)
+        h = mixInt(h, rect.bottom)
+        val flags = (if (n.isChecked) 1 else 0) or
+            (if (n.isSelected) 2 else 0) or
+            (if (n.isEnabled) 4 else 0) or
+            (if (n.isFocused) 8 else 0)
+        h = mixInt(h, flags)
+        h = mixInt(h, n.textSelectionStart)
+        h = mixInt(h, n.textSelectionEnd)
         return h
     }
+
+    private fun mixChars(h0: Long, cs: CharSequence?): Long {
+        var h = h0
+        if (cs == null) {
+            h = (h xor 0L) * FNV_PRIME
+        } else {
+            for (i in 0 until cs.length) h = (h xor cs[i].code.toLong()) * FNV_PRIME
+        }
+        return (h xor 0x1f) * FNV_PRIME
+    }
+
+    private fun mixInt(h0: Long, v: Int): Long = ((h0 xor v.toLong()) * FNV_PRIME xor 0x1f) * FNV_PRIME
 }
