@@ -123,6 +123,11 @@ kotlin {
     jvmToolchain(17)
 }
 
+// 超大 suspend 方法(TaskRun.execute)在部分 CI 上会触发协程 transformer 栈溢出;单线程 backend 更稳
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions.freeCompilerArgs.add("-Xbackend-threads=1")
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(libs.protobuf.lite)

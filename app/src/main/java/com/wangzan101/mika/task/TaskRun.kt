@@ -603,6 +603,17 @@ class TaskRun(
     // Keep this interface conversion outside the large suspend method's register flow.
     private fun recordSink(record: RunHandle?): RunSink = record ?: RunSink.NONE
 
+    private suspend fun loadLaunchAppsCatalog(
+        phoneScreen: LazyPhoneScreen,
+        apps: List<Pair<String, String>>,
+    ): List<com.wangzan101.mika.core.agent.AppLaunch.App> = withContext(Dispatchers.IO) {
+        val copies = runCatching { phoneScreen.appCopies() }.getOrDefault(emptyList())
+        com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
+            apps,
+            copies.map { Triple(it.packageName, it.userId, it.userName) },
+        )
+    }
+
     suspend fun execute(priorTurns: List<Turn>): TaskState {
         noticeTainted = NoticeTurn.tainted(priorTurns)
         // 手机一侧(内置助手、无障碍、虚拟屏)第一次 launch_app 时才接上:只用网页、沙箱的任务不需要它们
@@ -1176,17 +1187,7 @@ class TaskRun(
                 // 同一网站、App 里连着联系别人、提交:两次之间隔一段随机的时间
                 outwardPacing = OutwardPacing.human(),
                 personaLabel = personaLabel,
-                launchApps = if (conditionCheck) null else {
-                    {
-                        withContext(Dispatchers.IO) {
-                            val copies = runCatching { phoneScreen.appCopies() }.getOrDefault(emptyList())
-                            com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
-                                apps,
-                                copies.map { Triple(it.packageName, it.userId, it.userName) },
-                            )
-                        }
-                    }
-                },
+                launchApps = if (conditionCheck) null else ({ loadLaunchAppsCatalog(phoneScreen, apps) }),
                 launchPrefs = if (conditionCheck || provenance.origin != RunOrigin.Ui) null else com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir),
             )
             loop = agent
