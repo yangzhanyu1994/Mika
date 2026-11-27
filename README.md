@@ -37,6 +37,36 @@ English · [简体中文](docs/readme/README.zh-CN.md) · [繁體中文](docs/re
 
 **项目目标**
 
+发布 v0.2.26，覆盖 v0.2.25。在 v0.2.25 同屏连续操作之上，加固 Agent 批处理与交还画面、抢先打开与应用偏好、胶囊弧形菜单崩溃修复，以及手机自动化与读屏边界修复。页面变化、失败、取消和需确认仍会停住；看不清的界面仍用看图。
+
+**当前进度**
+
+- 日期（UTC+8）：2026-11-27 17:35
+- 更新人：grok build
+- 代码：PR https://github.com/yangzhanyu1994/Mika/pull/105 经 PR CI https://github.com/yangzhanyu1994/Mika/actions/runs/45971490737 合并至 `main`，合并提交 `c18dbdfb39736d5e979761765d499117640ab048`。同一轮多个可批处理手机调用合成 `do_steps`；`task_progress` 等进度类工具结果完整进入下一轮；批内等待期间用户插话会立刻停下后续步骤；`until` 等待结束后交还的是等待后的当前读屏。抢先打开与打开后交还解耦；纯咨询类意图不再误拉起应用；应用偏好列表后台加载、副标题省略空白「说法」。胶囊弧形菜单改用 `ValueAnimator`；「截屏提问」先收起浮窗。手机查找/滚动/列表采集与 `ScreenReader` 边界修复见 PR 正文与 `fork-release-history.md`。
+- 版本：v0.2.26 已发布。GitHub Release https://github.com/yangzhanyu1994/Mika/releases/tag/v0.2.26 。ARM64 包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.26/Mika-v0.2.26-arm64.apk ，SHA-256 `5653a963fcc617f0d92d95a1ea3d9fd34ee2b08c4ef1374baffd21ff95ae1cce`。通用包 https://github.com/yangzhanyu1994/Mika/releases/download/v0.2.26/Mika-v0.2.26.apk ，SHA-256 `6a7630c5d812edc042fa12711d4073d9ede7ac7c61f357d5710f997854c97f9a`。验包：`com.wangzan101.mika.fork`、`versionName 0.2.26`、`versionCode 2026`，签名证书 SHA-256 `5229097bf794dfee578cf40cbbf944199f628cf8bc9059fec4f69270c234fbc6`（`O=yangzhanyu1994, CN=mika-fork`）。
+- CI：代码已写完。PR CI 通过。发布流水线 `Mika Fork Release` https://github.com/yangzhanyu1994/Mika/actions/runs/45972677639 （分支 `release/v0.2.26`）通过签名构建与 Android 16 模拟器冒烟测试。本次 README 只推 main，不重复触发发布。
+- 模拟器：Android 16 模拟器冒烟通过（发布 workflow 既有检查）。不能把批处理或胶囊菜单修复写成已在各应用真机逐项验收。
+- 真机：真机未验证。没有三星 W25 实测记录，不能写成已经变快、菜单已修好或已省固定秒数。
+- 状态页：Notion 状态页 https://app.notion.com/p/41bd6c2e5e588173bb8afcb2f5573b81 已于 2026-11-27 17:34（UTC+8）同步本段公开发布状态。
+- 更新记录：关于应用 → 更新记录离线读取 `app/src/main/assets/fork-release-history.md`，v0.2.26 中文说明在最前。GitHub 发布正文与这段中文一致。
+
+**重要决定和限制**
+
+- 继承 v0.2.25：只缓存启动器查得到的应用；分身/工作资料同名不猜；应用偏好仅记住明确「以后用某应用做某事」；购物与多目标不猜；发送、付款、下单、删除和改设置仍须确认；系统设置直达与路线回放规则不变。
+- v0.2.26 新增：纯咨询（Discuss）不抢先打开微信等应用；批内用户插话立即终止后续子步，不把跳过的步骤留到下一轮才处理；打开应用仍不等同于发送/付款放行。
+- 分段耗时仍只记解析、启动、新屏幕就绪和第一次问模型的毫秒数，不记原始指令、日程、坐标、屏幕或密钥。
+- 签名证书没有更换。没有真实外发或购买，没有改上游 `wangzan101/Mika` 仓库。发布只走既有 fork 签名 workflow，且只触发一次。
+- 关于页更新记录仍用同一段中文（离线资产 / 联网 GitHub 发布正文），不是英文提交列表。
+
+**下一步与问题**
+
+安装包已可下载，可覆盖 v0.2.25。三星 W25 仍由用户验证：批处理与 `task_progress` 是否顺畅、抢先打开是否不误拉咨询类问题、应用偏好页是否流畅、胶囊菜单与「截屏提问」是否正常、连续操作与确认规则是否与 v0.2.25 一致。不能写成真机已验证通过。
+
+### 项目状态（2026-11-25 19:19 UTC+8）· v0.2.25 正式发布
+
+**项目目标**
+
 发布 v0.2.25，覆盖 v0.2.24。同一屏上已经看清的连续动作按顺序做完；页面变化、失败、取消和确认会停住。看不清的界面仍用看图。
 
 **当前进度**
