@@ -38,12 +38,12 @@ class ForkReleaseHistoryTest {
         val source = File("src/main/assets/fork-release-history.md").readText()
         val history = ForkReleaseHistory.parse(source)
         assertTrue(history.size >= 2)
-        assertEquals("0.2.25", history.first().version)
+        assertEquals("0.2.26", history.first().version)
         assertTrue(history.any { it.version == "0.2.14" })
         val notes = history.first().notes
-        assertTrue(notes.contains("连续操作"))
-        assertTrue(notes.contains("看图"))
-        assertTrue(notes.contains("确认"))
+        assertTrue(notes.contains("批处理"))
+        assertTrue(notes.contains("应用偏好"))
+        assertTrue(notes.contains("胶囊"))
         assertTrue(notes.contains("真机"))
         assertFalse(notes.contains("do_steps"))
     }
