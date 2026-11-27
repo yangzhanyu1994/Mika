@@ -246,9 +246,11 @@ class ContextBuilder(
         private val TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         private const val EXCERPT_CHARS = 60
 
+        private val EXCERPT_WHITESPACE = Regex("\\s+")
+
         /** 用户原话的开头:空白并成一个空格,超出 [EXCERPT_CHARS] 字截断加省略号;没有字为 null。 */
         internal fun excerpt(words: String): String? {
-            val flat = words.trim().replace(Regex("\\s+"), " ").takeIf { it.isNotEmpty() } ?: return null
+            val flat = words.trim().replace(EXCERPT_WHITESPACE, " ").takeIf { it.isNotEmpty() } ?: return null
             return if (flat.length <= EXCERPT_CHARS) flat else flat.take(EXCERPT_CHARS).trimEnd() + "…"
         }
         private val WEEKDAYS = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")

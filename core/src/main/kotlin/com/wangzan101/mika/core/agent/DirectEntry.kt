@@ -29,6 +29,8 @@ internal object DirectEntry {
         val snapshotId: String?,
         val foreground: String?,
         val error: String?,
+        val read: ToolExecution? = null,
+        val readTool: String? = null,
     )
 
     private data class Page(val action: String, val phrases: List<String>)
@@ -46,9 +48,9 @@ internal object DirectEntry {
 
     /** 这些话里的动作仍走原来的确认，不抢先跳页。 */
     private val sensitive = Regex("发送|付款|支付|购买|下单|删除|卸载|密码|验证码|otp|password|purchase|delete|send money", RegexOption.IGNORE_CASE)
-    private val compound = Regex("然后|并且|接着|之后再|and then|after that")
+    private val compound = Regex("然后|并且|接着|之后再|and then|after that", RegexOption.IGNORE_CASE)
     /** 没有核对过的第三方入口不猜。 */
-    private val foreignApp = Regex("微信|支付宝|淘宝|抖音|wechat|alipay")
+    private val foreignApp = Regex("微信|支付宝|淘宝|抖音|wechat|alipay", RegexOption.IGNORE_CASE)
 
     fun match(goal: String): Jump? {
         val raw = goal.trim()
@@ -72,15 +74,33 @@ internal object DirectEntry {
         val error = (opened.content["error"] as? JsonPrimitive)?.contentOrNull
         val ok = opened.content["ok"] == JsonPrimitive(true)
         if (!ok) return Attempt(jump.action, false, false, 1, 0, null, null, error)
-        val foreground = (opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull
-        val verified = settingsForeground(foreground)
         val dump = tools.index.nameOf(Verb.ListElements, tools.surface)
-            ?: return Attempt(jump.action, true, verified, 1, 0, null, foreground, if (verified) null else "foreground_not_settings")
-        val read = tools.executeRead(Part.ToolCall("direct_entry_read", dump, "{}"))
+            ?: return Attempt(jump.action, true, settingsForeground((opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull), 1, 0, null, (opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull, if (settingsForeground((opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull)) null else "foreground_not_settings")
+        val inlineScreen = (opened.content["screen"] as? JsonObject)?.takeIf { s ->
+            (s["snapshotId"] as? JsonPrimitive)?.contentOrNull?.isNotBlank() == true && s["full"] != JsonPrimitive(false)
+        }
+        val read = if (inlineScreen != null) {
+            ToolExecution(
+                buildJsonObject {
+                    put("ok", true)
+                    inlineScreen.forEach { (k, v) -> if (k != "ok") put(k, v) }
+                },
+                place = opened.place,
+                images = opened.images,
+                imageIds = opened.imageIds,
+                observations = opened.observations,
+            )
+        } else {
+            tools.executeRead(Part.ToolCall("direct_entry_read", dump, "{}"))
+        }
+        val foreground = (read.content["currentApp"] as? JsonPrimitive)?.contentOrNull
+            ?: (opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull
+        val verified = settingsForeground(foreground)
         val snapshotId = (read.content["snapshotId"] as? JsonPrimitive)?.contentOrNull
         return Attempt(
             jump.action, true, verified, 1, 1, snapshotId, foreground,
             if (verified) null else "foreground_not_settings",
+            read = read, readTool = dump,
         )
     }
 

@@ -369,8 +369,10 @@ object ElementFusion {
         return all.filterIndexed { i, _ -> i !in drop }
     }
 
+    private val WHITESPACE = Regex("\\s+")
+
     private fun cut(s: String): String {
-        val c = s.replace(Regex("\\s+"), " ").trim()
+        val c = s.replace(WHITESPACE, " ").trim()
         return if (c.length > NAME_CHARS) c.substring(0, NAME_CHARS) else c
     }
 

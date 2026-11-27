@@ -344,14 +344,14 @@ object IrreversibleDetector {
     private fun contacts(raw: String): Boolean {
         val n = raw.filterNot(Char::isWhitespace).lowercase().trimEnd { !it.isLetterOrDigit() }
         if (n in APPLY_WORDS || CONTACT_WORDS.any { w -> CONTACT_PREFIXES.any { n == it + w } }) return true
-        val e = raw.lowercase().trim().trimEnd { !it.isLetterOrDigit() }.replace(Regex("\\s+"), " ")
+        val e = raw.lowercase().trim().trimEnd { !it.isLetterOrDigit() }.replace(WHITESPACE, " ")
         return e in CONTACT_ENGLISH
     }
 
     /** 短名字整体、或拼起来的名字的每一段里出现强词;先去掉付款方式一类的词。 */
     private fun strong(label: String): IrrevAction? {
         val folded = Hant.fold(label)
-        for (p in listOf(folded) + folded.split(Regex("\\s+"))) {
+        for (p in listOf(folded) + folded.split(WHITESPACE)) {
             var t = p.filterNot(Char::isWhitespace).replace(PAYMENT_ADS, "")
             EXCLUDED.forEach { t = t.replace(it, "") }
             if (t.isEmpty() || t.length > STRONG_MAX_LEN) continue
@@ -428,9 +428,12 @@ object IrreversibleDetector {
 
     internal fun matchResource(id: String): IrrevAction? = resourceWords(id).firstNotNullOfOrNull { RESOURCE_WORDS[it] }
 
+    private val WHITESPACE = Regex("\\s+")
+    private val CAMEL_SPLIT = Regex("([a-z0-9])([A-Z])")
+
     /** 资源 ID 按 _ - . 和驼峰拆成的单词。 */
     private fun resourceWords(id: String): List<String> =
-        id.substringAfterLast('/').replace(Regex("([a-z0-9])([A-Z])"), "$1_$2").lowercase().split('_', '-', '.')
+        id.substringAfterLast('/').replace(CAMEL_SPLIT, "$1_$2").lowercase().split('_', '-', '.')
 
     /**
      * 改输入框里的字本身不会提交任何东西:点输入框(只是聚焦,框里的字是打进去的内容)、点框里没名字的小图标

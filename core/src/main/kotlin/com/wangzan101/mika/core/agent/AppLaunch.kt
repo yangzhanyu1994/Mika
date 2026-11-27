@@ -12,6 +12,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 /**
  * 任务开头在本地决定要不要先打开一个应用。
@@ -64,6 +66,8 @@ object AppLaunch {
         val resolveMs: Long,
         val launchMs: Long,
         val screenReadyMs: Long,
+        val read: ToolExecution? = null,
+        val readTool: String? = null,
     )
 
     interface Prefs {
@@ -169,13 +173,34 @@ object AppLaunch {
         }
         val dump = tools.index.nameOf(Verb.ListElements, tools.surface)
             ?: return Attempt(app.packageName, because, true, false, 1, 0, null, null, "no_screen_read", resolveMs, launchMs, launchMs)
+        val inlineScreen = (opened.content["screen"] as? JsonObject)?.takeIf { s ->
+            (s["snapshotId"] as? JsonPrimitive)?.contentOrNull?.isNotBlank() == true && s["full"] != JsonPrimitive(false)
+        }
         val readStarted = System.nanoTime()
-        val read = tools.executeRead(Part.ToolCall("app_launch_read", dump, "{}"))
+        val read = if (inlineScreen != null) {
+            ToolExecution(
+                buildJsonObject {
+                    put("ok", true)
+                    inlineScreen.forEach { (k, v) -> if (k != "ok") put(k, v) }
+                },
+                place = opened.place,
+                images = opened.images,
+                imageIds = opened.imageIds,
+                observations = opened.observations,
+            )
+        } else {
+            tools.executeRead(Part.ToolCall("app_launch_read", dump, "{}"))
+        }
         val screenMs = launchMs + (System.nanoTime() - readStarted) / 1_000_000
         val foreground = (read.content["currentApp"] as? JsonPrimitive)?.contentOrNull
+            ?: (opened.content["currentApp"] as? JsonPrimitive)?.contentOrNull
         val snapshotId = (read.content["snapshotId"] as? JsonPrimitive)?.contentOrNull
         val verified = foreground == app.packageName && snapshotId?.isNotBlank() == true
-        return Attempt(app.packageName, because, true, verified, 1, 1, snapshotId, foreground, if (verified) null else "foreground_mismatch", resolveMs, launchMs, screenMs)
+        return Attempt(
+            app.packageName, because, true, verified, 1, 1, snapshotId, foreground,
+            if (verified) null else "foreground_mismatch", resolveMs, launchMs, screenMs,
+            read = read, readTool = dump,
+        )
     }
 
     fun openArgs(app: App): JsonObject = buildJsonObject {
@@ -299,7 +324,7 @@ object AppLaunch {
     private fun strip(goal: String, prefixes: List<String>): String? {
         val trimmed = goal.trim()
         return prefixes.firstNotNullOfOrNull { prefix ->
-            if (trimmed.startsWith(prefix)) trimmed.removePrefix(prefix).trim() else null
+            if (trimmed.startsWith(prefix, ignoreCase = true)) trimmed.drop(prefix.length).trim() else null
         }
     }
 
@@ -318,41 +343,45 @@ class AppLaunchFiles(private val directory: File) : AppLaunch.Prefs {
     private val prefs = File(directory, "app-launch-prefs.txt")
     private val catalog = File(directory, "app-launch-catalog.txt")
 
-    override fun current(): List<AppLaunch.Preference> = synchronized(lock) { read() }
+    override fun current(): List<AppLaunch.Preference> = synchronized(LOCK) { read() }
 
-    override fun save(preference: AppLaunch.Preference) = synchronized(lock) {
+    override fun save(preference: AppLaunch.Preference) = synchronized(LOCK) {
         val next = read().filterNot { it.confirmed && it.phrase == preference.phrase } + preference
         write(next)
     }
 
-    override fun removePhrase(phrase: String) = synchronized(lock) {
+    override fun removePhrase(phrase: String) = synchronized(LOCK) {
         write(read().filterNot { it.phrase == phrase && phrase.isNotEmpty() })
     }
 
-    fun remove(preference: AppLaunch.Preference) = synchronized(lock) {
+    fun remove(preference: AppLaunch.Preference) = synchronized(LOCK) {
         write(read().filterNot {
             it.phrase == preference.phrase && it.confirmed == preference.confirmed &&
                 it.app.packageName == preference.app.packageName && it.app.userId == preference.app.userId
         })
     }
 
-    override fun noteUsed(app: AppLaunch.App) = synchronized(lock) {
+    override fun noteUsed(app: AppLaunch.App) = synchronized(LOCK) {
         val existing = read()
         if (existing.any { !it.confirmed && it.phrase.isEmpty() && it.app.packageName == app.packageName && it.app.userId == app.userId }) return
         write(existing + AppLaunch.Preference("", app, confirmed = false))
     }
 
-    override fun clear() = synchronized(lock) { write(emptyList()) }
+    override fun clear() = synchronized(LOCK) { write(emptyList()) }
 
     fun load(main: List<Pair<String, String>>, copies: List<Triple<String, Int, String>>): List<AppLaunch.App> {
         val labels = main.toMap()
         val live = main.map { (pkg, label) -> AppLaunch.App(pkg, label) } + copies.mapNotNull { (pkg, user, userName) ->
             labels[pkg]?.let { AppLaunch.App(pkg, it, user, userName) }
         }
-        val previous = synchronized(lock) { readCatalog() }
-        val accepted = AppLaunch.accept(previous, live)
-        if (!accepted.reused) synchronized(lock) { writeCatalog(accepted) }
-        return accepted.apps
+        val key = runCatching { directory.canonicalPath }.getOrDefault(directory.absolutePath)
+        return synchronized(LOCK) {
+            val previous = catalogCache[key] ?: readCatalog()
+            val accepted = AppLaunch.accept(previous, live)
+            if (!accepted.reused) writeCatalog(accepted)
+            catalogCache[key] = accepted
+            accepted.apps
+        }
     }
 
     private fun read(): List<AppLaunch.Preference> {
@@ -361,8 +390,7 @@ class AppLaunchFiles(private val directory: File) : AppLaunch.Prefs {
     }
 
     private fun write(items: List<AppLaunch.Preference>) {
-        directory.mkdirs()
-        prefs.writeText(items.joinToString("\n", postfix = "\n") { encode(it) })
+        writeAtomic(prefs, items.joinToString("\n", postfix = "\n") { encode(it) })
     }
 
     private fun readCatalog(): AppLaunch.Snapshot? {
@@ -374,12 +402,29 @@ class AppLaunchFiles(private val directory: File) : AppLaunch.Prefs {
     }
 
     private fun writeCatalog(snapshot: AppLaunch.Snapshot) {
-        directory.mkdirs()
-        catalog.writeText(buildString {
+        writeAtomic(catalog, buildString {
             append(snapshot.fingerprint)
             snapshot.apps.forEach { append('\n').append(encodeApp(it)) }
             append('\n')
         })
+    }
+
+    private fun writeAtomic(target: File, text: String) {
+        directory.mkdirs()
+        val tmp = File(directory, "${target.name}.tmp.${Thread.currentThread().id}")
+        tmp.writeText(text)
+        try {
+            Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: Exception) {
+            try {
+                Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: Exception) {
+                if (!tmp.renameTo(target)) {
+                    target.writeText(text)
+                    tmp.delete()
+                }
+            }
+        }
     }
 
     private fun encode(preference: AppLaunch.Preference): String =
@@ -403,5 +448,8 @@ class AppLaunchFiles(private val directory: File) : AppLaunch.Prefs {
 
     private fun clean(value: String) = value.replace('\t', ' ').replace('\n', ' ').trim()
 
-    private val lock = Any()
+    companion object {
+        private val LOCK = Any()
+        private val catalogCache = HashMap<String, AppLaunch.Snapshot>()
+    }
 }

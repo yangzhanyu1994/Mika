@@ -235,13 +235,15 @@ class LegacySseMcpEndpoint private constructor(
             }
         }
 
+        private val SSE_JSON = Json { ignoreUnknownKeys = true }
+
         private suspend fun readEvents(
             base: HttpUrl,
             body: ResponseBody,
             endpointUrl: CompletableDeferred<HttpUrl>,
             pending: ConcurrentHashMap<Long, CompletableDeferred<JsonObject>>,
         ) {
-            val json = Json { ignoreUnknownKeys = true }
+            val json = SSE_JSON
             val source = body.source()
             var event = ""
             val data = StringBuilder()

@@ -66,6 +66,7 @@ import com.wangzan101.mika.core.verify.Verifier
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -76,6 +77,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -521,29 +524,9 @@ class AgentLoop(
         interruptedStep = 0
         // 除用户原话以外的上下文都经它生成:统一外壳、统一预算
         ctx = ContextBuilder(zone = zone)
-        val catalog = catalogJob.await()
-        val resolveStarted = now()
-        val effect = if (catalog != null && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX) &&
-            !(flags.deepLinks && DirectEntry.match(task) != null)) {
-            AppLaunch.effect(task, catalog, launchPrefs?.current().orEmpty())
-        } else null
-        val resolveMs = now() - resolveStarted
-        effect?.save?.let { launchPrefs?.save(it) }
-        effect?.revokePhrase?.let { launchPrefs?.removePhrase(it) }
-        val openingApp = (effect?.decision as? AppLaunch.Decision.Open)
-        val openJob = openingApp?.let { open ->
-            async {
-                AppLaunch.attempt(open.app, open.because, tools, resolveMs, prepare = {}) { call ->
-                    when (val outcome = executor.run(call, Origin.Replay)) {
-                        is ActionOutcome.Ran -> ToolExecution(outcome.content)
-                        is ActionOutcome.Refused -> ToolExecution(outcome.content)
-                        is ActionOutcome.Cancelled -> ToolExecution(buildJsonObject { put("ok", false); put("error", "cancelled") })
-                    }
-                }
-            }
-        }
+        // 先完成历史和上下文准备，再在 replayOpening 里执行预启动/直达，避免并发读写 ctx 与 ScreenSession
         val (history, labels) = prepareHistory(opening)
-        LoopSession(opening, offer, allToolNames, guards, recorder, executor, history, labels, inbox, effect, openJob, resolveStarted).run()
+        LoopSession(opening, offer, allToolNames, guards, recorder, executor, history, labels, inbox, catalogJob).run()
     }
 
     /** State shared by model turns and tool execution. Each suspending phase owns its temporary values. */
@@ -557,9 +540,7 @@ class AgentLoop(
         private val history: MutableList<Message>,
         private val labels: Map<String, String>,
         private val inbox: RunInbox?,
-        private val launchEffect: AppLaunch.Effect?,
-        private val launchJob: Deferred<AppLaunch.Attempt>?,
-        private val launchStartedAt: Long,
+        private val catalogJob: Deferred<List<AppLaunch.App>?>,
     ) {
         private val task = opening.task
         private var note = ""
@@ -611,6 +592,8 @@ class AgentLoop(
         }
         private var progressOnlyTurns = 0
         private var openedPackage: String? = null
+        private var launchAttempted = false
+        private var launchStartedAt = 0L
         private var reportedFirstModel = false
         private var intent: IntentGate.Intent? = null
         private var intentAssessed = false
@@ -634,23 +617,89 @@ class AgentLoop(
             return finalTurn(task, history, offer.current, maxSteps + 1, labels, place, recorder, facts(), inbox)
         }
 
+        private suspend fun mayRunOpeningAction(): Boolean {
+            if (provenance.origin != RunOrigin.Ui || intentGate == null) return true
+            if (!intentAssessed) intent = assessIntent()
+            return intent == null || intent == IntentGate.Intent.Read || intent == IntentGate.Intent.Act
+        }
+
+        private suspend fun handbackOpeningRead(
+            id: String,
+            source: String,
+            noteText: String,
+            readTool: String?,
+            read: ToolExecution?,
+        ) {
+            if (read != null && readTool != null && read.content["ok"] == JsonPrimitive(true)) {
+                history += Message(
+                    Role.Assistant,
+                    listOf(Part.Text(noteText), Part.ToolCall(id, readTool, "{}")),
+                    Author.Mika,
+                )
+                history += Message(
+                    Role.Tool,
+                    listOf(Part.ToolResult(id, ScreenElementTable.text(read.content, flags.tablesAtBirth), isError = false, read.observations.map { it.tag })),
+                    Author.Mika,
+                )
+                val pic = read.image
+                if (pic != null) {
+                    history += Message(Role.User, listOf(Part.Text(Feedback["action_frame_note"]), tools.modelImage(pic, read.imageIds.firstOrNull { it != null })), Author.Mika)
+                } else {
+                    tools.imageNow()?.let { (png, shotId) ->
+                        history += Message(Role.User, listOf(Part.Text(Feedback["action_frame_note"]), tools.modelImage(png, shotId)), Author.Mika)
+                    }
+                }
+                read.place?.let { place = it }
+            } else {
+                history += ctx.notice(source, noteText)
+            }
+        }
+
         private suspend fun replayOpening() {
             // 第一次模型调用之前:公开设置页先跳一次。跳成并且前台是设置时,不再回放点按路线(那些编号已经过期)。
-            // 没跳成只试一次,然后仍可回放或交给模型。点名用网页的任务不跳。
-            // 已经确定的应用也在这里等它的新屏幕。准备工作在打开的同时进行,点按要等这一次结束。
+            // 没跳成只试一次,然后仍可回放或交给模型。点名用网页、只读或无手机能力时不抢先打开。
+            val webOnly = task.trimStart().startsWith(WEB_CHANNEL_PREFIX)
+            val canLaunchApp = tools.index.nameOf(Verb.LaunchApp, "phone") != null
+            val canOpenLink = tools.index.nameOf(Verb.OpenLink, "phone") != null
+            val directJump = if (flags.deepLinks && canOpenLink && !webOnly) DirectEntry.match(task) else null
+            val catalog = catalogJob.await()
+            val resolveStarted = now()
+            val launchEffect = if (catalog != null && canLaunchApp && !webOnly && directJump == null) {
+                val savedPrefs = withContext(Dispatchers.IO) { launchPrefs?.current().orEmpty() }
+                AppLaunch.effect(task, catalog, savedPrefs)
+            } else null
+            val resolveMs = now() - resolveStarted
+            if (provenance.origin == RunOrigin.Ui && launchEffect != null) {
+                launchEffect.save?.let { withContext(Dispatchers.IO) { launchPrefs?.save(it) } }
+                launchEffect.revokePhrase?.let { withContext(Dispatchers.IO) { launchPrefs?.removePhrase(it) } }
+            }
             var jumpedToSettings = false
-            val launch = launchJob?.await()
+            var launch: AppLaunch.Attempt? = null
+            val openingApp = launchEffect?.decision as? AppLaunch.Decision.Open
+            if (openingApp != null && mayRunOpeningAction()) {
+                launchAttempted = true
+                launchStartedAt = resolveStarted
+                awaitGate()
+                launch = AppLaunch.attempt(openingApp.app, openingApp.because, tools, resolveMs, prepare = {}) { call ->
+                    when (val outcome = executor.run(call, Origin.Replay)) {
+                        is ActionOutcome.Ran -> outcome.exec
+                        is ActionOutcome.Refused -> ToolExecution(outcome.content)
+                        is ActionOutcome.Cancelled -> ToolExecution(buildJsonObject { put("ok", false); put("error", "cancelled") })
+                    }
+                }
+            }
             if (launch != null) {
                 emit(RunEvent.State(now(), "app_resolve_ms", launch.resolveMs.toString()))
                 emit(RunEvent.State(now(), "app_launch_ms", launch.launchMs.toString()))
                 emit(RunEvent.State(now(), "app_screen_ready_ms", launch.screenReadyMs.toString()))
                 emit(RunEvent.State(now(), "app_open", launch.because.name.lowercase()))
-                history += ctx.notice("app_launch", AppLaunch.note(launch))
+                handbackOpeningRead("app_launch_read", "app_launch", AppLaunch.note(launch), launch.readTool, launch.read)
                 if (launch.verified) {
                     openedPackage = launch.packageName
                     acted = true
-                    val named = launchEffect?.decision as? AppLaunch.Decision.Open
-                    if (launch.because == AppLaunch.Because.Named && named != null) launchPrefs?.noteUsed(named.app)
+                    if (provenance.origin == RunOrigin.Ui && launch.because == AppLaunch.Because.Named && openingApp != null) {
+                        withContext(Dispatchers.IO) { launchPrefs?.noteUsed(openingApp.app) }
+                    }
                 }
             } else launchEffect?.let { effect ->
                 AppLaunch.notice(effect)?.let { history += ctx.notice("app_launch", it) }
@@ -662,30 +711,24 @@ class AgentLoop(
                 code?.let { emit(RunEvent.State(now(), "app_open", it)) }
             }
             val launched = launch?.verified == true || launch?.error == "cancelled"
-            if (flags.deepLinks && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX)) {
-                DirectEntry.match(task)?.let { jump ->
-                    val attempt = DirectEntry.attempt(tools, jump) { call ->
-                        when (val outcome = executor.run(call, com.wangzan101.mika.core.action.Origin.Replay)) {
-                            is com.wangzan101.mika.core.action.ActionOutcome.Ran -> com.wangzan101.mika.core.tool.ToolExecution(outcome.content)
-                            is com.wangzan101.mika.core.action.ActionOutcome.Refused -> com.wangzan101.mika.core.tool.ToolExecution(outcome.content)
-                            is com.wangzan101.mika.core.action.ActionOutcome.Cancelled -> com.wangzan101.mika.core.tool.ToolExecution(
-                                kotlinx.serialization.json.buildJsonObject {
-                                    put("ok", false)
-                                    put("error", "cancelled")
-                                },
-                            )
-                        }
+            if (directJump != null && !launched && mayRunOpeningAction()) {
+                awaitGate()
+                val attempt = DirectEntry.attempt(tools, directJump) { call ->
+                    when (val outcome = executor.run(call, Origin.Replay)) {
+                        is ActionOutcome.Ran -> outcome.exec
+                        is ActionOutcome.Refused -> ToolExecution(outcome.content)
+                        is ActionOutcome.Cancelled -> ToolExecution(buildJsonObject { put("ok", false); put("error", "cancelled") })
                     }
-                    history += ctx.notice("direct_entry", DirectEntry.note(attempt))
-                    jumpedToSettings = attempt.verified
-                    if (jumpedToSettings) acted = true
                 }
+                handbackOpeningRead("direct_entry_read", "direct_entry", DirectEntry.note(attempt), attempt.readTool, attempt.read)
+                jumpedToSettings = attempt.verified
+                if (jumpedToSettings) acted = true
             }
             // 有合适的路线就先照着做,不调模型;做完或对不上都交还模型
             // 路线只记、只放手机上的做法:点名用网页的任务不回放
-            if (!jumpedToSettings && !launched && flags.replay && replay != null && !task.trimStart().startsWith(WEB_CHANNEL_PREFIX)) {
+            if (!jumpedToSettings && !launched && flags.replay && replay != null && !webOnly) {
                 val reviewRoute = provenance.origin == RunOrigin.Ui && intentGate != null && routeMatcher?.candidates(task)?.isNotEmpty() == true
-                if (reviewRoute) intent = assessIntent()
+                if (reviewRoute && !intentAssessed) intent = assessIntent()
                 if (!reviewRoute || intent == IntentGate.Intent.Read || intent == IntentGate.Intent.Act) {
                     replay.run(task, history, executor, ctx, track)?.let { place = it; acted = true }
                 }
@@ -703,7 +746,7 @@ class AgentLoop(
             val routed = try {
                 routedOrRedirect(inbox, history, offer.current, track, step, {
                     asked = it
-                    if (!reportedFirstModel && launchJob != null) {
+                    if (!reportedFirstModel && launchAttempted) {
                         reportedFirstModel = true
                         emit(RunEvent.State(now(), "app_to_first_model_ms", (it - launchStartedAt).toString()))
                     }
@@ -885,13 +928,7 @@ class AgentLoop(
             }
             val proposed = explicitBatch(calls)
             if (proposed != null) {
-                val siblings = calls.actions.drop(1).map { call ->
-                    Part.ToolResult(call.id, buildJsonObject {
-                        put("ok", true)
-                        put("included_in_batch", true)
-                        put("message", "This action was part of the ordered batch in the same reply. Read the first result to see which steps ran and why it stopped. Do not repeat a step that already ran.")
-                    }.toString(), isError = false)
-                }
+                val siblings = calls.batchSiblings(first)
                 val end = batch(proposed, siblings, history, offer.current, guards, executor, track, step, note, DO_STEPS_TOOL, reason, narration, recordReply = recordReply,
                     app = { place = it }, steerWaiting = { inbox?.hasSteers() == true },
                     noteVerdicts = { s, sub, v ->
@@ -899,6 +936,7 @@ class AgentLoop(
                         stuckAdvice(v, typed)
                     })
                 if (end != null) return end
+                if (completion.complete) return finalTurn(task, history, offer.current, step + 1, labels, place, recorder, facts(), inbox, Closeout.Completed, completion)
                 return null
             }
             if (flags.batchSteps && first.name == DO_STEPS_TOOL) {
@@ -1180,19 +1218,23 @@ class AgentLoop(
         val isError = exec.content["ok"] != JsonPrimitive(true)
         history += Message(Role.Tool, listOf(Part.ToolResult(first.id, ScreenElementTable.text(exec.content, flags.tablesAtBirth && !isError), isError, exec.observations.map { it.tag })) + skipped, Author.Mika)
         // 批做完(或停下)后再给模型一份当前元素表；只有元素信息不足才附画面。
-        // 最后一步已经截过的画面直接交给模型，不再读一遍。没有画面时才补一次。
+        // 仅转发模型可见图片(exec.image)，不把录屏帧(exec.frame)漏进非视觉/自适应视觉对话；
+        // 结果里已附 screen 时不再重复调用 lookNow() 或重复序列化屏幕 JSON。
         if (steps != null && ranAnyStep(exec.content)) {
-            val picture = exec.image ?: exec.frame
-            if (picture != null) {
-                val screen = exec.content["screen"] as? JsonObject
-                val text = screen?.let { ScreenElementTable.text(it, flags.tablesAtBirth) }.orEmpty()
-                history += Message(Role.User, listOfNotNull(
-                    text.takeIf { it.isNotEmpty() }?.let { Part.Text(batchViewNote(it)) },
-                    tools.modelImage(picture, exec.imageIds.firstOrNull { it != null }),
-                ), Author.Mika)
-            } else {
-                tools.lookNow()?.let { v ->
-                    history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(ScreenElementTable.text(v.content, flags.tablesAtBirth))), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
+            val attachedScreen = exec.content["screen"] as? JsonObject
+            val modelPicture = exec.image
+            when {
+                modelPicture != null -> {
+                    history += Message(Role.User, listOfNotNull(
+                        Part.Text(if (attachedScreen != null) Feedback["action_frame_note"] else batchViewNote("")),
+                        tools.modelImage(modelPicture, exec.imageIds.firstOrNull { it != null }),
+                    ), Author.Mika)
+                }
+                attachedScreen != null -> Unit
+                else -> {
+                    tools.lookNow()?.let { v ->
+                        history += Message(Role.User, listOfNotNull(Part.Text(batchViewNote(ScreenElementTable.text(v.content, flags.tablesAtBirth))), v.image?.let { tools.modelImage(it, v.imageId) }), Author.Mika)
+                    }
                 }
             }
         }
@@ -1225,16 +1267,25 @@ class AgentLoop(
     private fun explicitBatch(calls: ReplyCalls): Part.ToolCall? {
         if (!flags.batchSteps || confirmations?.hasGrant == true) return null
         val actions = calls.actions
-        if (actions.size < 2 || actions.any { it.name == DO_STEPS_TOOL }) return null
+        if (actions.size !in 2..MAX_STEPS || actions.any { it.name == DO_STEPS_TOOL }) return null
         val allowed = tools.batchable().toSet()
         if (actions.any { it.name !in allowed }) return null
-        val steps = JsonArray(actions.map { call ->
-            buildJsonObject {
+        val parsedSteps = mutableListOf<BatchStep>()
+        val stepJson = mutableListOf<JsonObject>()
+        for (call in actions) {
+            val args = try {
+                Json.parseToJsonElement(call.argsJson.ifBlank { "{}" }) as? JsonObject
+            } catch (_: SerializationException) {
+                null
+            } ?: return null
+            parsedSteps += BatchStep(call.name, args.toString())
+            stepJson += buildJsonObject {
                 put("tool", call.name)
-                put("args", parseArgs(call.argsJson))
+                put("args", args)
             }
-        })
-        return Part.ToolCall(actions.first().id, DO_STEPS_TOOL, buildJsonObject { put("steps", steps) }.toString())
+        }
+        if (BatchRunner.mixedSurface(parsedSteps, tools::surfaceOf) != null) return null
+        return Part.ToolCall(actions.first().id, DO_STEPS_TOOL, buildJsonObject { put("steps", JsonArray(stepJson)) }.toString())
     }
 
     /** do_steps 的结果里至少有一个子步真的执行了(没执行的停止项标着 executed=false)。 */

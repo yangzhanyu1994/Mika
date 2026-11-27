@@ -127,9 +127,14 @@ class ShellService(
         setFullscreenWindowingMode(id)
         ensureOrientationWatch()
         setImePolicy(id)
-        if (DisplayAwake.needed(flags, FLAG_OWN_DISPLAY_GROUP, displayGroup(id))) awake.start(id)
+        if (DisplayAwake.needed(flags, FLAG_OWN_DISPLAY_GROUP, displayGroup(id))) {
+            awakeStarted = true
+            awake.start(id)
+        }
         return id
     }
+
+    @Volatile private var awakeStarted = false
 
     /** 自成一组的虚拟屏一直不睡,见 [DisplayAwake]。 */
     private val awake by lazy {
@@ -173,7 +178,7 @@ class ShellService(
     private fun ownDisplay(displayId: Int): Boolean = synchronized(displays) { displayId in displays }
 
     override fun releaseDisplay(displayId: Int) {
-        awake.stop(displayId)
+        if (awakeStarted) awake.stop(displayId)
         // 锁里只摘下来,关监听(binder)和放屏在锁外做
         val (vd, watch) = synchronized(displays) {
             displays.remove(displayId) to (if (displays.isEmpty()) orientationWatch.also { orientationWatch = null } else null)
@@ -1250,10 +1255,13 @@ class ShellService(
             times.last() > STROKE_MAX_MS || (1 until n).any { times[it] < times[it - 1] }
         ) return false
         val down = SystemClock.uptimeMillis()
+        val props = arrayOf(MotionEvent.PointerProperties().apply { id = 0; toolType = MotionEvent.TOOL_TYPE_FINGER })
+        val coord = MotionEvent.PointerCoords().apply { pressure = 1f; size = 1f }
+        val coords = arrayOf(coord)
         fun event(i: Int, action: Int): MotionEvent {
-            val props = MotionEvent.PointerProperties().apply { id = 0; toolType = MotionEvent.TOOL_TYPE_FINGER }
-            val coords = MotionEvent.PointerCoords().apply { x = xs[i].toFloat(); y = ys[i].toFloat(); pressure = 1f; size = 1f }
-            return MotionEvent.obtain(down, down + times[i], action, 1, arrayOf(props), arrayOf(coords), 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+            coord.x = xs[i].toFloat()
+            coord.y = ys[i].toFloat()
+            return MotionEvent.obtain(down, down + times[i], action, 1, props, coords, 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
         }
         fun send(i: Int, action: Int): Boolean {
             val wait = down + times[i] - SystemClock.uptimeMillis()
@@ -1285,12 +1293,15 @@ class ShellService(
     private fun audioMuted(packageName: String, user: Int?, muted: Boolean): Boolean = synchronized(this.muted) {
         val key = AppAudioKey.of(packageName, user)
         if (muted) {
-            if (!this.muted.contains(key)) {
+            val inserted = !this.muted.contains(key)
+            if (inserted) {
                 val (code, out) = appops("get", packageName, user)
                 if (code != 0) return false
                 this.muted.put(key, parsePlayAudioMode(out))
             }
-            appops("set", packageName, user, "ignore").first == 0
+            val ok = appops("set", packageName, user, "ignore").first == 0
+            if (!ok && inserted) this.muted.remove(key)
+            ok
         } else {
             val ok = appops("set", packageName, user, AudioMuteLedger.restoreMode(this.muted[key])).first == 0
             if (ok) this.muted.remove(key)
@@ -1515,15 +1526,20 @@ class ShellService(
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun Bundle.parcelableFd(key: String): ParcelFileDescriptor? =
+        if (Build.VERSION.SDK_INT >= 33) getParcelable(key, ParcelFileDescriptor::class.java)
+        else getParcelable(key)
+
     private inline fun deviceFileCall(block: (DeviceFilePolicy) -> Bundle): Bundle = asCallAudioShell {
         val snapshot = filePolicy ?: return@asCallAudioShell Bundle().apply { putString("status", "policy_unsynced") }
         val response = block(snapshot.policy)
         synchronized(filePolicyLock) {
             if (filePolicy !== snapshot) {
-                response.getParcelable<ParcelFileDescriptor>("fd")?.close()
+                response.parcelableFd("fd")?.close()
                 Bundle().apply { putString("status", "policy_changed") }
             } else {
-                response.getParcelable<ParcelFileDescriptor>("fd")?.let { returnedCallPipes.set(listOf(it)) }
+                response.parcelableFd("fd")?.let { returnedCallPipes.set(listOf(it)) }
                 response
             }
         }
@@ -1542,8 +1558,8 @@ class ShellService(
     override fun openCallAudio(mode: Int, owner: IBinder): Bundle = asCallAudioShell {
         callAudio.open(mode, owner).also { result ->
             if (result.getBoolean("ready")) {
-                val down = result.getParcelable<ParcelFileDescriptor>("downlink")
-                val up = result.getParcelable<ParcelFileDescriptor>("uplink")
+                val down = result.parcelableFd("downlink")
+                val up = result.parcelableFd("uplink")
                 returnedCallPipes.set(listOfNotNull(down, up))
             }
         }
@@ -1599,7 +1615,10 @@ class ShellService(
         } catch (t: Throwable) {
             return result(-1, t.message ?: "Command could not start.")
         }
+        runCatching { process.outputStream.close() }
+        val bytesLock = Any()
         val bytes = ByteArrayOutputStream()
+        var truncated = false
         val reader = Thread {
             runCatching {
                 process.inputStream.use { input ->
@@ -1607,15 +1626,24 @@ class ShellService(
                     while (true) {
                         val count = input.read(buffer)
                         if (count < 0) break
-                        if (bytes.size() < COMMAND_OUTPUT_MAX) bytes.write(buffer, 0, minOf(count, COMMAND_OUTPUT_MAX - bytes.size()))
+                        synchronized(bytesLock) {
+                            val remaining = COMMAND_OUTPUT_MAX - bytes.size()
+                            if (remaining > 0) bytes.write(buffer, 0, minOf(count, remaining))
+                            if (bytes.size() >= COMMAND_OUTPUT_MAX && count > remaining) truncated = true
+                        }
                     }
                 }
             }
         }.apply { isDaemon = true; start() }
         val finished = process.waitFor(CMD_TIMEOUT_S, TimeUnit.SECONDS)
-        if (!finished) process.destroyForcibly()
+        if (!finished) {
+            process.destroyForcibly()
+            runCatching { process.inputStream.close() }
+        }
         reader.join(READER_JOIN_MS)
-        val output = bytes.toString(Charsets.UTF_8.name()) + if (bytes.size() >= COMMAND_OUTPUT_MAX) "\n[output truncated]" else ""
+        val output = synchronized(bytesLock) {
+            bytes.toString(Charsets.UTF_8.name()) + if (truncated || bytes.size() >= COMMAND_OUTPUT_MAX) "\n[output truncated]" else ""
+        }
         return result(if (finished) process.exitValue() else -1, output)
     }
 
@@ -1647,11 +1675,13 @@ class ShellService(
         synchronized(muted) { muted.packages() }.forEach { key ->
             AppAudioKey.parse(key)?.let { (pkg, user) -> audioMuted(pkg, user, false) } ?: synchronized(muted) { muted.remove(key) }
         }
-        awake.stopAll()
+        if (awakeStarted) awake.stopAll()
         val (all, watch) = synchronized(displays) {
             displays.values.toList().also { displays.clear() } to orientationWatch.also { orientationWatch = null }
         }
         watch?.close()
+        requestedOrientations.clear()
+        synchronized(kept) { kept.clear() }
         all.forEach { it.release() }
     }
 
@@ -1688,12 +1718,32 @@ class ShellService(
         }.onFailure { Log.w(TAG, "setDisplayImePolicy failed", it) }
     }
 
+    @get:SuppressLint("PrivateApi")
+    private val inputManagerInstance: Any by lazy {
+        runCatching {
+            Class.forName("android.hardware.input.InputManagerGlobal").getMethod("getInstance").invoke(null)
+        }.getOrNull() ?: Class.forName("android.hardware.input.InputManager").getMethod("getInstance").invoke(null)!!
+    }
+
+    @get:SuppressLint("PrivateApi")
+    private val setDisplayIdMethod: Method by lazy {
+        InputEvent::class.java.getMethod("setDisplayId", Int::class.java)
+    }
+
+    @get:SuppressLint("PrivateApi")
+    private val injectInputEventMethod: Method by lazy {
+        inputManagerInstance.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.java)
+    }
+
+    @get:SuppressLint("PrivateApi")
+    private val injectInputEventTargetedMethod: Method by lazy {
+        inputManagerInstance.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.java, Int::class.java)
+    }
+
     @SuppressLint("PrivateApi")
     private fun inject(event: InputEvent, displayId: Int, waitForFinish: Boolean = false): Boolean = try {
-        event.javaClass.getMethod("setDisplayId", Int::class.java).invoke(event, displayId)
-        val manager = inputManager()
-        manager.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.java)
-            .invoke(manager, event, injectMode(event is KeyEvent, waitForFinish)) as Boolean
+        setDisplayIdMethod.invoke(event, displayId)
+        injectInputEventMethod.invoke(inputManagerInstance, event, injectMode(event is KeyEvent, waitForFinish)) as Boolean
     } catch (t: Throwable) {
         Log.w(TAG, "injectInputEvent failed", t)
         false
@@ -1706,20 +1756,12 @@ class ShellService(
      */
     @SuppressLint("PrivateApi")
     private fun injectTo(event: InputEvent, displayId: Int, targetUid: Int): Boolean = try {
-        event.javaClass.getMethod("setDisplayId", Int::class.java).invoke(event, displayId)
-        val manager = inputManager()
-        manager.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.java, Int::class.java)
-            .invoke(manager, event, INJECT_MODE_WAIT_FOR_FINISH, targetUid) as Boolean
+        setDisplayIdMethod.invoke(event, displayId)
+        injectInputEventTargetedMethod.invoke(inputManagerInstance, event, INJECT_MODE_WAIT_FOR_FINISH, targetUid) as Boolean
     } catch (t: Throwable) {
         Log.w(TAG, "targeted injectInputEvent failed: ${(t.cause ?: t).javaClass.simpleName}")
         false
     }
-
-    /** API 34 起注入入口在 InputManagerGlobal,更早在 InputManager。 */
-    @SuppressLint("PrivateApi")
-    private fun inputManager(): Any = runCatching {
-        Class.forName("android.hardware.input.InputManagerGlobal").getMethod("getInstance").invoke(null)
-    }.getOrNull() ?: Class.forName("android.hardware.input.InputManager").getMethod("getInstance").invoke(null)!!
 
     private fun exec(vararg cmd: String): Int = sh(*cmd).first
 
@@ -1734,11 +1776,27 @@ class ShellService(
             Log.w(TAG, "exec ${cmd.joinToString(" ")} failed", t)
             return -1 to ""
         }
+        runCatching { p.outputStream.close() }
         val output = AtomicReference("")
-        val reader = Thread { output.set(runCatching { p.inputStream.bufferedReader().readText() }.getOrDefault("")) }
-            .apply { isDaemon = true; start() }
+        val reader = Thread {
+            val bytes = ByteArrayOutputStream()
+            runCatching {
+                p.inputStream.use { input ->
+                    val buffer = ByteArray(4096)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        val remaining = SH_OUTPUT_MAX - bytes.size()
+                        if (remaining > 0) bytes.write(buffer, 0, minOf(count, remaining))
+                    }
+                }
+            }
+            output.set(bytes.toString(Charsets.UTF_8.name()))
+        }.apply { isDaemon = true; start() }
         if (!p.waitFor(CMD_TIMEOUT_S, TimeUnit.SECONDS)) {
             p.destroyForcibly()
+            runCatching { p.inputStream.close() }
+            reader.join(READER_JOIN_MS)
             Log.w(TAG, "exec ${cmd.joinToString(" ")} timed out")
             return -1 to ""
         }
@@ -1755,6 +1813,7 @@ class ShellService(
         private const val STROKE_MAX_MS = 10_000L
         private const val CMD_TIMEOUT_S = 10L
         private const val COMMAND_OUTPUT_MAX = 64 * 1024
+        private const val SH_OUTPUT_MAX = 512 * 1024
         private const val READER_JOIN_MS = 1_000L
         private val MODE_RE = Regex("[a-z_]+")
         private const val PER_USER_RANGE = 100_000
