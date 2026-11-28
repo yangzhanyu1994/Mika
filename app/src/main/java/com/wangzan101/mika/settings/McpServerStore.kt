@@ -9,8 +9,15 @@ import com.wangzan101.mika.core.cap.mcp.McpOAuthTokens
 import com.wangzan101.mika.core.cap.mcp.McpStdioLauncher
 import com.wangzan101.mika.core.cap.mcp.StdioMcpEndpoint
 import com.wangzan101.mika.core.cap.mcp.parseStdioCommand
+import com.wangzan101.mika.core.cap.mcp.McpAnnotations
 import com.wangzan101.mika.core.cap.mcp.McpClientException
 import com.wangzan101.mika.core.cap.mcp.McpConnection
+import com.wangzan101.mika.core.cap.mcp.McpEndpoint
+import com.wangzan101.mika.core.cap.mcp.McpPromptArgument
+import com.wangzan101.mika.core.cap.mcp.McpPromptDescriptor
+import com.wangzan101.mika.core.cap.mcp.McpResourceDescriptor
+import com.wangzan101.mika.core.cap.mcp.McpResult
+import com.wangzan101.mika.core.cap.mcp.McpToolDescriptor
 import com.wangzan101.mika.core.cap.mcp.McpTrust
 import com.wangzan101.mika.core.net.NetProxy
 import com.wangzan101.mika.core.oauth.LoopbackCallback
@@ -20,6 +27,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +50,7 @@ import java.nio.file.StandardCopyOption
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** 外部 MCP server 的一条配置;token 不在这个对象里,单独加密存。 */
 @Serializable
@@ -101,6 +111,7 @@ class McpServerStore(
     private val file = File(dir, "mcp-servers.json")
     private val secretsFile = File(dir, "mcp-server-secrets.bin")
     private val refreshFile = File(dir, "mcp-refresh-on-start")
+    private val catalogFile = File(dir, "mcp-catalogs.json")
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val _servers = MutableStateFlow(loadServers())
     val servers: StateFlow<List<McpServerConfig>> = _servers.asStateFlow()
@@ -109,6 +120,7 @@ class McpServerStore(
     private val _health = MutableStateFlow<Map<String, McpHealth>>(emptyMap())
     /** 最近一次连接/测试的结果;只在进程内,不落盘。 */
     val health: StateFlow<Map<String, McpHealth>> = _health.asStateFlow()
+    private val catalogs = ConcurrentHashMap<String, CachedCatalog>().apply { putAll(loadCatalogs()) }
 
     @Synchronized fun add(name: String, url: String, token: String? = null): Result<McpServerConfig> =
         add(McpServerConfig(name = name.trim(), url = url.trim()), token)
@@ -127,6 +139,7 @@ class McpServerStore(
         val next = _servers.value.map { if (it.id == config.id) config else it }
         saveConfigs(next)
         _servers.value = next
+        invalidateCatalog(config.id)
         return Result.success(config)
     }
 
@@ -134,6 +147,7 @@ class McpServerStore(
         val next = _servers.value.filterNot { it.id == id }
         saveConfigs(next)
         _servers.value = next
+        invalidateCatalog(id)
         val secrets = loadSecrets().toMutableMap()
         val hadToken = secrets.remove(id) != null
         val hadOAuth = secrets.remove("oauth:$id") != null
@@ -202,6 +216,7 @@ class McpServerStore(
                 else -> null
             }
             val result = McpTestResult(name, instructions, endpoint.tools().map { it.name })
+            cacheCatalog(config.id, endpoint)
             _health.update { it + (config.id to McpHealth(true, null, result.tools, System.currentTimeMillis())) }
             Result.success(result)
         } finally {
@@ -253,30 +268,58 @@ class McpServerStore(
         resultStore: com.wangzan101.mika.core.cap.mcp.McpResultStore? = null,
         workspace: String = SETTINGS_WORKSPACE,
         budgetMs: Long = CONNECT_BUDGET_MS,
-    ): McpConnections = owner.acquire(Dispatchers.IO, { c: McpConnections -> c.close() }) { connections(resultStore, workspace, budgetMs) }
+        lazy: Boolean = false,
+    ): McpConnections = owner.acquire(Dispatchers.IO, { c: McpConnections -> c.close() }) { connections(resultStore, workspace, budgetMs, lazy) }
 
     /**
      * 并行连接所有启用项;单个失败只记录,不抛。整段最多等 [budgetMs]:到点还没连上的这次不接,
      * 记成失败(健康状态里写明超时),不拖住任务开头;已经连上的照常用。被取消时连上的也关掉再抛。
+     * [lazy] 为 true 时,已有本地工具清单缓存的 server 改为按需懒连接(任务开头 0ms,真正调工具时才握手);
+     * 近期刚探测失败且无缓存的 server 直接跳过,不拖住无关任务启动。
      */
     suspend fun connections(
         resultStore: com.wangzan101.mika.core.cap.mcp.McpResultStore? = null,
         workspace: String = SETTINGS_WORKSPACE,
         budgetMs: Long = CONNECT_BUDGET_MS,
+        lazy: Boolean = false,
     ): McpConnections {
         val enabled = _servers.value.filter { it.enabled }
         val done = ConcurrentHashMap<String, Result<McpConnection>>()
+        val eager = mutableListOf<McpServerConfig>()
+        val now = System.currentTimeMillis()
+        for (config in enabled) {
+            if (!lazy) {
+                eager += config
+                continue
+            }
+            val cached = catalogs[config.id]
+            if (cached != null) {
+                val endpoint = LazyMcpEndpoint(config, cached, workspace)
+                done[config.id] = Result.success(wrapConnection(config, endpoint, resultStore))
+                continue
+            }
+            val recent = _health.value[config.id]
+            val recentlyFailed = recent != null && !recent.ok && (now - recent.atMs) < FAILED_PROBE_COOLDOWN_MS
+            if (recentlyFailed) {
+                done[config.id] = Result.failure(McpClientException(recent.message ?: "recently unavailable; skipped"))
+            } else {
+                eager += config
+            }
+        }
+        val effectiveBudget = if (lazy) minOf(budgetMs, LAZY_DISCOVERY_BUDGET_MS) else budgetMs
         try {
-            withTimeoutOrNull(budgetMs) {
-                coroutineScope {
-                    enabled.map { config -> async { done[config.id] = attempt(config, resultStore, workspace) } }.awaitAll()
+            if (eager.isNotEmpty()) {
+                withTimeoutOrNull(effectiveBudget) {
+                    coroutineScope {
+                        eager.map { config -> async { done[config.id] = attempt(config, resultStore, workspace) } }.awaitAll()
+                    }
                 }
             }
         } catch (e: Throwable) {
             done.values.forEach { r -> r.getOrNull()?.let { (it.endpoint as? Closeable)?.let { c -> runCatching { c.close() } } } }
             throw e
         }
-        val late = "did not connect within ${(budgetMs + 999) / 1000} s; skipped for this task"
+        val late = "did not connect within ${(effectiveBudget + 999) / 1000} s; skipped for this task"
         val attempts = enabled.map { config ->
             config to (done[config.id] ?: Result.failure<McpConnection>(McpClientException(late)).also {
                 _health.update { h -> h + (config.id to McpHealth(false, late, emptyList(), System.currentTimeMillis())) }
@@ -284,7 +327,7 @@ class McpServerStore(
         }
         val connected = attempts.mapNotNull { (c, r) -> r.getOrNull()?.let { c to it } }
         val failures = attempts.mapNotNull { (c, r) -> r.exceptionOrNull()?.let { c.id to (it.message ?: it.javaClass.simpleName) } }
-        val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val closed = AtomicBoolean(false)
         return McpConnections(
             connections = connected.map { it.second },
             // 任务收尾和它的 ResourceScope 都会关;只关一次
@@ -294,6 +337,20 @@ class McpServerStore(
             failures = failures,
         )
     }
+
+    private fun wrapConnection(
+        config: McpServerConfig,
+        endpoint: McpEndpoint,
+        resultStore: com.wangzan101.mika.core.cap.mcp.McpResultStore?,
+    ): McpConnection = McpConnection(
+        endpoint = endpoint,
+        resultStore = resultStore,
+        maxCostUnits = config.maxCostUnits,
+        previewChars = config.previewChars,
+        trust = if (config.trust == "trust-annotations") McpTrust.TrustAnnotations else McpTrust.Restricted,
+        allowedTools = config.allowedTools?.toSet(),
+        displayName = config.name,
+    )
 
     /** 连一个 server 并记下健康状态。 */
     private suspend fun attempt(
@@ -309,15 +366,8 @@ class McpServerStore(
             Result.failure(e)
         }
         val connection: Result<McpConnection> = result.map { endpoint ->
-            McpConnection(
-                endpoint = endpoint,
-                resultStore = resultStore,
-                maxCostUnits = config.maxCostUnits,
-                previewChars = config.previewChars,
-                trust = if (config.trust == "trust-annotations") McpTrust.TrustAnnotations else McpTrust.Restricted,
-                allowedTools = config.allowedTools?.toSet(),
-                displayName = config.name,
-            )
+            cacheCatalog(config.id, endpoint)
+            wrapConnection(config, endpoint, resultStore)
         }
         _health.update {
             it + (config.id to connection.fold(
@@ -326,6 +376,60 @@ class McpServerStore(
             ))
         }
         return connection
+    }
+
+    /** 按需连接包装器:工具/资源/提示词目录直接读缓存,首次实际调用时才建立真实连接。 */
+    private inner class LazyMcpEndpoint(
+        private val config: McpServerConfig,
+        private val cached: CachedCatalog,
+        private val workspace: String,
+    ) : McpEndpoint, Closeable {
+        override val serverId: String = config.id
+        override val instructions: String? = cached.instructions
+        private val mutex = Mutex()
+        @Volatile private var live: McpEndpoint? = null
+        private val closed = AtomicBoolean(false)
+
+        override fun tools(): List<McpToolDescriptor> = cached.tools.map { it.toDescriptor() }
+        override fun resources(): List<McpResourceDescriptor> = cached.resources.map { it.toDescriptor() }
+        override fun prompts(): List<McpPromptDescriptor> = cached.prompts.map { it.toDescriptor() }
+
+        private suspend fun ensureConnected(): McpEndpoint {
+            live?.let { return it }
+            return mutex.withLock {
+                live?.let { return@withLock it }
+                if (closed.get()) throw McpClientException("MCP connection closed")
+                val headers = if (config.transport == "stdio") emptyMap() else authHeaders(config)
+                val opened = open(config, headers, workspace).getOrElse { e ->
+                    _health.update { it + (config.id to healthFailure(e)) }
+                    throw e
+                }
+                if (closed.get()) {
+                    (opened as? Closeable)?.let { runCatching { it.close() } }
+                    throw McpClientException("MCP connection closed")
+                }
+                cacheCatalog(config.id, opened)
+                _health.update { it + (config.id to McpHealth(true, null, opened.tools().map { t -> t.name }, System.currentTimeMillis())) }
+                live = opened
+                opened
+            }
+        }
+
+        override suspend fun call(name: String, arguments: JsonObject): McpResult =
+            ensureConnected().call(name, arguments)
+
+        override suspend fun readResource(uri: String): McpResult =
+            ensureConnected().readResource(uri)
+
+        override suspend fun getPrompt(name: String, arguments: JsonObject): McpResult =
+            ensureConnected().getPrompt(name, arguments)
+
+        override fun close() {
+            if (!closed.compareAndSet(false, true)) return
+            val target = live
+            live = null
+            (target as? Closeable)?.let { runCatching { it.close() } }
+        }
     }
 
     private suspend fun open(
@@ -487,6 +591,86 @@ class McpServerStore(
             host.startsWith("10.") || host.startsWith("192.168.") ||
             Regex("^172\\.(1[6-9]|2[0-9]|3[01])\\.").containsMatchIn(host)
 
+    private fun cacheCatalog(id: String, endpoint: McpEndpoint) {
+        catalogs[id] = CachedCatalog.from(endpoint)
+        saveCatalogs()
+    }
+
+    private fun invalidateCatalog(id: String) {
+        if (catalogs.remove(id) != null) saveCatalogs()
+    }
+
+    private fun loadCatalogs(): Map<String, CachedCatalog> =
+        if (!catalogFile.isFile) emptyMap()
+        else runCatching { json.decodeFromString<Map<String, CachedCatalog>>(catalogFile.readText()) }.getOrDefault(emptyMap())
+
+    @Synchronized private fun saveCatalogs() {
+        runCatching { atomicWrite(catalogFile) { json.encodeToString(catalogs.toMap()) } }
+    }
+
+    @Serializable
+    private data class CachedCatalog(
+        val instructions: String? = null,
+        val tools: List<CachedTool> = emptyList(),
+        val resources: List<CachedResource> = emptyList(),
+        val prompts: List<CachedPrompt> = emptyList(),
+    ) {
+        companion object {
+            fun from(endpoint: McpEndpoint) = CachedCatalog(
+                instructions = endpoint.instructions,
+                tools = endpoint.tools().map { t ->
+                    CachedTool(
+                        name = t.name,
+                        description = t.description,
+                        inputSchema = t.inputSchema,
+                        readOnlyHint = t.annotations.readOnlyHint,
+                        destructiveHint = t.annotations.destructiveHint,
+                        openWorldHint = t.annotations.openWorldHint,
+                        estimatedCostUnits = t.estimatedCostUnits,
+                    )
+                },
+                resources = endpoint.resources().map { CachedResource(it.uri, it.name, it.description, it.mimeType) },
+                prompts = endpoint.prompts().map { p ->
+                    CachedPrompt(p.name, p.description, p.arguments.map { CachedPromptArg(it.name, it.description, it.required) })
+                },
+            )
+        }
+    }
+
+    @Serializable
+    private data class CachedTool(
+        val name: String,
+        val description: String,
+        val inputSchema: JsonObject,
+        val readOnlyHint: Boolean? = null,
+        val destructiveHint: Boolean? = null,
+        val openWorldHint: Boolean? = null,
+        val estimatedCostUnits: Long = 0,
+    ) {
+        fun toDescriptor() = McpToolDescriptor(
+            name = name,
+            description = description,
+            inputSchema = inputSchema,
+            annotations = McpAnnotations(readOnlyHint, destructiveHint, openWorldHint),
+            estimatedCostUnits = estimatedCostUnits,
+        )
+    }
+
+    @Serializable
+    private data class CachedResource(val uri: String, val name: String, val description: String = "", val mimeType: String? = null) {
+        fun toDescriptor() = McpResourceDescriptor(uri, name, description, mimeType)
+    }
+
+    @Serializable
+    private data class CachedPromptArg(val name: String, val description: String = "", val required: Boolean = false) {
+        fun toDescriptor() = McpPromptArgument(name, description, required)
+    }
+
+    @Serializable
+    private data class CachedPrompt(val name: String, val description: String = "", val arguments: List<CachedPromptArg> = emptyList()) {
+        fun toDescriptor() = McpPromptDescriptor(name, description, arguments.map { it.toDescriptor() })
+    }
+
     companion object {
         /** 设置页测试 stdio server 时用的沙箱工作区;任务里用对话 ID。 */
         const val SETTINGS_WORKSPACE = "mcp-settings"
@@ -495,6 +679,10 @@ class McpServerStore(
          * 那是给工具调用的;开头只是握手,慢的这次先不接,不让任务一直停在「准备中」。沙箱里的 stdio server 要起 PRoot,留得宽一点。
          */
         const val CONNECT_BUDGET_MS = 15_000L
+        /** 懒连接模式下首次发现未缓存 server 的上限,避免离线 server 拖住无关任务启动。 */
+        const val LAZY_DISCOVERY_BUDGET_MS = 4_000L
+        /** 无缓存 server 探测失败后的冷却期,冷却期内直接跳过不再每次任务都重连。 */
+        const val FAILED_PROBE_COOLDOWN_MS = 5 * 60_000L
     }
 
     private fun isBlockedHost(host: String): Boolean =

@@ -486,4 +486,54 @@ class McpServerStoreTest {
             server.shutdown()
         }
     }
+
+    @Test fun lazyConnectionsUseCachedCatalogWithoutConnectingUntilToolCall() = runBlocking {
+        val server = MockWebServer().also { it.start() }
+        try {
+            scriptTools(server, "search")
+            val s = McpServerStore(tmp.root, ReverseCipher(), OkHttpClient())
+            val added = s.add("demo", "https://localhost/mcp").getOrThrow()
+            val config = added.copy(url = server.url("/mcp").newBuilder().host("127.0.0.1").build().toString(), allowLocalHttp = true)
+            s.update(config).getOrThrow()
+            s.test(config).getOrThrow()
+            val countAfterTest = server.requestCount
+
+            // Reopen store to verify cached catalog survives restart and connects lazily
+            val reopened = McpServerStore(tmp.root, ReverseCipher(), OkHttpClient())
+            val connections = reopened.connections(lazy = true)
+            assertEquals(0, connections.failures.size)
+            assertEquals(listOf("search"), connections.connections.single().endpoint.tools().map { it.name })
+            assertEquals(countAfterTest, server.requestCount)
+
+            // First actual tool call establishes the live connection on demand
+            scriptTools(server, "search")
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(
+                """{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"ok"}]}}"""
+            ))
+            val res = connections.connections.single().endpoint.call("search", kotlinx.serialization.json.JsonObject(emptyMap()))
+            assertEquals("ok", res.text)
+            assertTrue(server.requestCount > countAfterTest)
+            connections.close()
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test fun lazyConnectionsSkipRecentlyFailedServerImmediately() = runBlocking {
+        val tree = SandboxTree()
+        val closes = AtomicInteger()
+        val s = McpServerStore(tmp.root, ReverseCipher(), OkHttpClient(), stdio = leasingLauncher(tree, closes))
+        s.add(McpServerConfig(name = "silent", url = "", transport = "stdio", command = "silent", timeoutSec = 600)).getOrThrow()
+        val first = s.connections(budgetMs = 400, lazy = true)
+        assertEquals(1, first.failures.size)
+        first.close()
+
+        val started = System.nanoTime()
+        val second = s.connections(budgetMs = 5_000, lazy = true)
+        val tookMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue("expected fast skip but took $tookMs ms", tookMs < 500)
+        assertEquals(1, second.failures.size)
+        assertEquals(1, closes.get())
+        second.close()
+    }
 }

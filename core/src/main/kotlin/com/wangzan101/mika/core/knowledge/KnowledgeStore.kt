@@ -111,11 +111,16 @@ class KnowledgeStore(private val bundled: List<KnowledgeEntry>, notes: Map<Strin
         /** 附在 App/站点知识后面的用户补充的标题。 */
         const val NOTES_HEADER = "## The user's own notes (written by the user; when they differ from the text above or the current screen, the current screen takes precedence)"
 
+        private val defaultBundled: List<KnowledgeEntry> by lazy { readBundled(KnowledgeStore::class.java.classLoader) }
+
         /**
          * 读构建时生成的索引里的 App(APP.md,安卓)与站点(SITE.md,网页)知识;正文取主文件去掉头部,
          * App 与站点通过 [KnowledgeEntry.related] 互相关联。
          */
-        fun loadBundled(loader: ClassLoader = KnowledgeStore::class.java.classLoader): List<KnowledgeEntry> {
+        fun loadBundled(loader: ClassLoader = KnowledgeStore::class.java.classLoader): List<KnowledgeEntry> =
+            if (loader === KnowledgeStore::class.java.classLoader) defaultBundled else readBundled(loader)
+
+        private fun readBundled(loader: ClassLoader): List<KnowledgeEntry> {
             val catalog = GuideCatalog.loadBundled(loader)
             val infos = catalog.items.associateBy { it.kind to it.name }
             return catalog.rows.filter { it.kind == KnowledgeIndex.APP || it.kind == KnowledgeIndex.SITE }.map { e ->

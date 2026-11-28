@@ -37,13 +37,13 @@ class ForkReleaseHistoryTest {
     @Test fun bundledHistoryKeepsTheNewestNotesAndOlderEntries() {
         val source = File("src/main/assets/fork-release-history.md").readText()
         val history = ForkReleaseHistory.parse(source)
-        assertTrue(history.size >= 3)
-        assertEquals("0.2.27", history.first().version)
-        assertTrue(history.any { it.version == "0.2.26" })
+        assertTrue(history.size >= 4)
+        assertEquals("0.2.28", history.first().version)
+        assertTrue(history.any { it.version == "0.2.27" })
         assertTrue(history.any { it.version == "0.2.14" })
         val notes = history.first().notes
-        assertTrue(notes.contains("首步打开应用提速"))
-        assertTrue(notes.contains("应用识别"))
+        assertTrue(notes.contains("按需懒连接"))
+        assertTrue(notes.contains("开局准备"))
         assertFalse(notes.contains("do_steps"))
     }
 }
