@@ -263,7 +263,14 @@ class GuideCatalog private constructor(
         }
 
     companion object {
+        private val defaultBundled: GuideCatalog by lazy {
+            val loader = GuideCatalog::class.java.classLoader
+            val rows = loader.getResourceAsStream(KnowledgeIndex.RESOURCE)?.use { KnowledgeIndex.decode(it.readBytes().toString(Charsets.UTF_8)) }
+            GuideCatalog(loader, rows.orEmpty())
+        }
+
         fun loadBundled(loader: ClassLoader = GuideCatalog::class.java.classLoader): GuideCatalog {
+            if (loader === GuideCatalog::class.java.classLoader) return defaultBundled
             val rows = loader.getResourceAsStream(KnowledgeIndex.RESOURCE)?.use { KnowledgeIndex.decode(it.readBytes().toString(Charsets.UTF_8)) }
             return GuideCatalog(loader, rows.orEmpty())
         }

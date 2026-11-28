@@ -604,10 +604,11 @@ class TaskRun(
     private fun recordSink(record: RunHandle?): RunSink = record ?: RunSink.NONE
 
     private suspend fun loadLaunchAppsCatalog(
-        phoneScreen: LazyPhoneScreen,
         apps: List<Pair<String, String>>,
     ): List<com.wangzan101.mika.core.agent.AppLaunch.App> = withContext(Dispatchers.IO) {
-        val copies = runCatching { phoneScreen.appCopies() }.getOrDefault(emptyList())
+        val copies = phoneServices.hub.shell.value?.let { s ->
+            runCatching { AppCopyReader.read(s, apps) }.getOrNull()
+        }.orEmpty()
         com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir).load(
             apps,
             copies.map { Triple(it.packageName, it.userId, it.userName) },
@@ -998,6 +999,7 @@ class TaskRun(
                     resources,
                     com.wangzan101.mika.mcp.ConversationMcpResultStore(SandboxDirs(service), conversationId),
                     conversationId,
+                    lazy = true,
                 )
                 // 连接失败、超过总时限没连上的只在任务卡片上提示一句,不打断任务;详情在设置页的健康状态里
                 mcpConnections?.failures?.takeIf { it.isNotEmpty() }?.let { failures ->
@@ -1187,7 +1189,7 @@ class TaskRun(
                 // 同一网站、App 里连着联系别人、提交:两次之间隔一段随机的时间
                 outwardPacing = OutwardPacing.human(),
                 personaLabel = personaLabel,
-                launchApps = if (conditionCheck) null else ({ loadLaunchAppsCatalog(phoneScreen, apps) }),
+                launchApps = if (conditionCheck) null else ({ loadLaunchAppsCatalog(apps) }),
                 launchPrefs = if (conditionCheck || provenance.origin != RunOrigin.Ui) null else com.wangzan101.mika.core.agent.AppLaunchFiles(service.filesDir),
             )
             loop = agent
