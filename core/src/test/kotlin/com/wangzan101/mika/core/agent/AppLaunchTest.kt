@@ -180,6 +180,24 @@ class AppLaunchTest {
         assertEquals("买菜", pref.phrase)
         assertEquals(meituan.packageName, pref.app.packageName)
     }
+
+    @Test fun uniqueBrandStemAndVehicleSynonymsResolveAppLocally() {
+        val audi = AppLaunch.App("com.audi.connect", "奥迪连")
+        val fawAudi = AppLaunch.App("com.faw.audi", "一汽奥迪")
+        val apps = listOf(meituan, taobao, audi)
+        assertEquals(audi, (AppLaunch.effect("查看奥迪状态", apps, emptyList()).decision as AppLaunch.Decision.Open).app)
+        assertEquals(audi, (AppLaunch.effect("查看奥迪车辆状态", apps, emptyList()).decision as AppLaunch.Decision.Open).app)
+        assertTrue(AppLaunch.effect("查看奥迪状态", listOf(audi, fawAudi), emptyList()).decision is AppLaunch.Decision.None)
+
+        val pref = listOf(AppLaunch.Preference("车辆状态", audi, confirmed = true))
+        assertEquals(audi, (AppLaunch.effect("帮我查看车辆状态", apps, pref).decision as AppLaunch.Decision.Open).app)
+        assertEquals(audi, (AppLaunch.effect("帮我查看汽车状态", apps, pref).decision as AppLaunch.Decision.Open).app)
+        assertEquals(audi, (AppLaunch.effect("帮我看下车况", apps, pref).decision as AppLaunch.Decision.Open).app)
+
+        val routes = listOf("查看奥迪车辆状态" to listOf(audi.packageName))
+        assertEquals(audi, (AppLaunch.fromRoutes("帮我查看车辆状态", apps, routes) as AppLaunch.Decision.Open).app)
+        assertEquals(audi, (AppLaunch.fromRoutes("帮我查看汽车状态", apps, routes) as AppLaunch.Decision.Open).app)
+    }
 }
 
 private class ReadyScreen(

@@ -221,10 +221,36 @@ object AppLaunch {
         val hits = present.filter { mentioned(goal, it) }
         val matched = apps.filter { norm(it.label) in hits.map(::norm) }
         val narrowed = disambiguate(goal, matched)
+        if (hits.isEmpty() && present.isEmpty()) {
+            val stemMatched = uniqueStemApps(goal, apps, excluded)
+            if (stemMatched.isNotEmpty()) {
+                return Named(disambiguate(goal, stemMatched), listOf(stemMatched.first().label), null)
+            }
+        }
         val requested = requestedName(goal)
         val missing = if (hits.isEmpty() && present.size < 2 && requested != null && labels.none { mentioned(goal, it) }) requested else null
         val shown = if (hits.isEmpty() && present.size > 1) present else hits
         return Named(if (hits.isEmpty() && present.size > 1) emptyList() else narrowed, shown, missing)
+    }
+
+    /** 句子里提到某个已安装应用的唯一简称（如“奥迪”对应“奥迪连”）且带动作词时，直接命中。 */
+    private fun uniqueStemApps(goal: String, apps: List<App>, excluded: Set<String>): List<App> {
+        val text = norm(goal)
+        val byLabel = apps.groupBy { norm(it.label) }.filterKeys { it.length >= 3 && it !in excluded }
+        val candidates = byLabel.entries.mapNotNull { (labelNorm, group) ->
+            val stems = buildList {
+                for (len in 2 until labelNorm.length) {
+                    add(labelNorm.substring(0, len))
+                    add(labelNorm.substring(labelNorm.length - len))
+                }
+            }.distinct().filter { stem ->
+                stem.length >= 2 && stem !in GENERIC_STEMS && stem in text && mentioned(goal, stem)
+            }
+            val best = stems.maxByOrNull { it.length } ?: return@mapNotNull null
+            if (byLabel.keys.count { best in it } != 1) return@mapNotNull null
+            group to best.length
+        }
+        return if (candidates.size == 1) candidates.single().first else emptyList()
     }
 
     /** 只有点名了这个应用才算指定。句子里偶然出现的短词不算。 */
@@ -250,13 +276,40 @@ object AppLaunch {
     }
 
     private fun preference(goal: String, apps: List<App>, prefs: List<Preference>): Decision {
-        val normalized = norm(goal)
+        val normalized = canonical(goal)
         val excluded = excludedPackages(goal, apps)
-        val hits = prefs.filter { it.confirmed && norm(it.phrase).length >= 2 && norm(it.phrase) in normalized && it.app.packageName !in excluded }
+        val hits = prefs.filter { it.confirmed && canonical(it.phrase).length >= 2 && canonical(it.phrase) in normalized && it.app.packageName !in excluded }
         if (hits.size != 1) return Decision.None
         val wanted = hits.single().app
         val live = apps.filter { it.packageName == wanted.packageName && it.userId == wanted.userId }
         return if (live.size == 1) Decision.Open(live.single(), Because.Preference) else Decision.Missing(wanted.label)
+    }
+
+    /** 历史成功路线指向唯一一个已安装应用且与当前说法高度相似时，直接预启动该应用。 */
+    fun fromRoutes(goal: String, apps: List<App>, routes: List<Pair<String, List<String>>>): Decision {
+        if (goal.isBlank() || apps.isEmpty() || routes.isEmpty()) return Decision.None
+        val excluded = excludedPackages(goal, apps)
+        val goalBigrams = bigrams(canonical(goal))
+        if (goalBigrams.isEmpty()) return Decision.None
+        val byPkg = apps.groupBy { it.packageName }
+        val matched = routes.mapNotNull { (template, pkgs) ->
+            val clean = template.replace(ROUTE_SLOT, "\u0000")
+            val sim = jaccard(goalBigrams, bigrams(canonical(clean)))
+            if (sim < ROUTE_MIN_SIMILARITY) return@mapNotNull null
+            val live = pkgs.distinct().filter { it !in excluded }.mapNotNull { byPkg[it] }.flatten()
+            val pkgsFound = live.map { it.packageName }.distinct()
+            if (pkgsFound.size != 1) return@mapNotNull null
+            sim to disambiguate(goal, live)
+        }.filter { it.second.size == 1 }
+        if (matched.isEmpty()) return Decision.None
+        val uniqueApps = matched.map { it.second.single() }.distinctBy { it.packageName to it.userId }
+        return if (uniqueApps.size == 1) Decision.Open(uniqueApps.single(), Because.Preference) else Decision.None
+    }
+
+    /** 仅对带提问/讨论语气的句子走开局 IntentGate，避免明确打开指令先等一次模型思考。 */
+    fun isDiscussionLike(goal: String): Boolean {
+        val text = goal.trim().lowercase()
+        return DISCUSSION_CUES.any { it in text }
     }
 
     private fun remember(goal: String, apps: List<App>): Preference? {
@@ -330,12 +383,37 @@ object AppLaunch {
 
     private fun norm(value: String) = value.trim().lowercase().replace(WHITESPACE, "")
 
+    private fun canonical(value: String): String {
+        var out = norm(value)
+        for ((from, to) in SYNONYMS) out = out.replace(from, to)
+        return out
+    }
+
+    private fun bigrams(s: String): Set<String> =
+        s.windowed(2).filter { '\u0000' !in it }.toSet()
+
+    private fun jaccard(a: Set<String>, b: Set<String>): Double =
+        if (a.isEmpty() || b.isEmpty()) 0.0 else a.intersect(b).size.toDouble() / a.union(b).size
+
+    private const val ROUTE_MIN_SIMILARITY = 0.35
+    private val ROUTE_SLOT = Regex("\\{\\d+\\}")
     private val OPEN = Regex("(?:打开|启动|进入|open|launch)\\s*([^，。,\\s的里和并]{1,24})", RegexOption.IGNORE_CASE)
-    private val MARKERS = listOf("打开", "启动", "进入", "使用", "用", "在", "open", "launch", "use")
+    private val MARKERS = listOf("打开", "启动", "进入", "使用", "用", "在", "查看", "查", "看", "open", "launch", "use")
     private val NEGATION = Regex("(?:不要用|别用|不用|不要打开|don't use|do not use)\\s*([^，。,\\s]{1,24})", RegexOption.IGNORE_CASE)
     private val REMEMBER = listOf("以后都用", "以后用", "默认用", "记住用", "always use")
     private val FORGET = listOf("取消以后用", "取消默认用", "忘掉用", "不要再记住用")
     private val WHITESPACE = Regex("\\s+")
+    private val SYNONYMS = listOf("车况" to "车辆状态", "汽车" to "车辆", "爱车" to "车辆", "车子" to "车辆")
+    private val DISCUSSION_CUES = listOf(
+        "？", "?", "怎么", "如何", "为什么", "为啥", "怎样", "对吧", "是不是", "能不能", "可以吗",
+        "吗", "呢", "区别", "介绍", "解释", "以后可以", "以后能", "how ", "why ", "what ",
+    )
+    private val GENERIC_STEMS = setOf(
+        "手机", "系统", "服务", "应用", "助手", "中心", "管家", "设置", "商城", "工具", "生活", "钱包",
+        "相机", "相册", "音乐", "视频", "浏览器", "日历", "时钟", "天气", "地图", "搜索", "文件",
+        "短信", "电话", "邮件", "信息", "联系", "计算", "备忘", "便签", "录音", "游戏", "主题",
+        "安全", "健康", "运动", "状态", "车辆", "汽车", "外卖", "打车", "导航", "支付", "银行",
+    )
 }
 
 /** 偏好记在应用私有文件里。候选和已确认的偏好都只含应用名、包名和用户给的任务短语。 */
