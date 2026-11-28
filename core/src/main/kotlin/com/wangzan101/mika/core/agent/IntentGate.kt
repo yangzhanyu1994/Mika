@@ -12,7 +12,16 @@ import kotlinx.coroutines.CancellationException
 internal class IntentGate(private val judge: ChatModel, private val fallback: ChatModel? = null) {
     enum class Intent { Discuss, Read, Act }
 
-    suspend fun assess(task: String, priorTurns: List<Turn>): Intent? {
+    suspend fun assess(task: String, priorTurns: List<Turn>): Intent? =
+        assessPrimary(task, priorTurns) ?: assessFallback(task, priorTurns)
+
+    suspend fun assessPrimary(task: String, priorTurns: List<Turn>): Intent? =
+        ask(judge, task, priorTurns)
+
+    suspend fun assessFallback(task: String, priorTurns: List<Turn>): Intent? =
+        fallback?.let { ask(it, task, priorTurns) }
+
+    private suspend fun ask(candidate: ChatModel, task: String, priorTurns: List<Turn>): Intent? {
         val prior = Conversation.context(priorTurns, maxTurns = 3, maxTokens = 800)
             ?.parts?.filterIsInstance<Part.Text>()?.joinToString("\n") { it.text }.orEmpty()
         val input = buildString {
@@ -20,18 +29,14 @@ internal class IntentGate(private val judge: ChatModel, private val fallback: Ch
             append("The user's current message:\n").append(task)
         }
         val messages = listOf(Message(Role.User, listOf(Part.Text(input)), Author.User))
-        for (candidate in listOfNotNull(judge, fallback)) {
-            val result = try {
-                val reply = candidate.complete(Prompts.role("intent_gate"), messages, emptyList())
-                parse(reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text })
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
-            if (result != null) return result
+        return try {
+            val reply = candidate.complete(Prompts.role("intent_gate"), messages, emptyList())
+            parse(reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
         }
-        return null
     }
 
     companion object {

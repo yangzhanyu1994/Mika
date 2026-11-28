@@ -114,5 +114,34 @@ class ReviewFixesTest {
         assertTrue(discussState is TaskState.Succeeded)
         assertEquals(0, discussOpened)
         assertFalse(chatModel.requests.first().any { it.role == Role.Tool })
+
+        // Explicit open command must not block on IntentGate before launching
+        val directJudge = FakeModel(ModelReply(listOf(Part.Text("ACT")), StopReason.EndTurn, Usage(0, 0)))
+        val directModel = FakeModel(ModelReply(listOf(Part.Text("已打开奥迪连")), StopReason.EndTurn, Usage(0, 0)))
+        var audiOpened = 0
+        val audiScreen = object : ScreenPort by FakeScreen() {
+            override suspend fun openApp(packageName: String, cold: Boolean): ActionResult {
+                audiOpened++
+                return ActionResult.Ok()
+            }
+            override suspend fun snapshot(): ScreenSnapshot = ScreenSnapshot(
+                "s-audi", "com.audi.connect",
+                listOf(UiElement("@e1", "text", "车辆状态", 100, 100, listOf(0, 0, 200, 200), null, false, false, false)),
+                1080, 2400,
+            )
+            override suspend fun peek(): ScreenSnapshot = snapshot()
+        }
+        val directLoop = AgentLoop(
+            model = directModel,
+            tools = toolDispatcher(audiScreen),
+            basePrompt = "test",
+            intentJudge = directJudge,
+            reviewFinalAnswer = false,
+            launchApps = { listOf(AppLaunch.App("com.audi.connect", "奥迪连")) },
+        )
+        val directState = directLoop.run("查看奥迪状态")
+        assertTrue(directState is TaskState.Succeeded)
+        assertEquals(1, audiOpened)
+        assertTrue(directJudge.requests.isEmpty())
     }
 }

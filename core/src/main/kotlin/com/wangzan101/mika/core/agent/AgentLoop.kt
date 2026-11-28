@@ -666,7 +666,15 @@ class AgentLoop(
             val resolveStarted = now()
             val launchEffect = if (catalog != null && canLaunchApp && !webOnly && directJump == null) {
                 val savedPrefs = withContext(Dispatchers.IO) { launchPrefs?.current().orEmpty() }
-                AppLaunch.effect(task, catalog, savedPrefs)
+                val base = AppLaunch.effect(task, catalog, savedPrefs)
+                if (base.decision is AppLaunch.Decision.None && flags.replay && routeMatcher != null) {
+                    val fromRoute = AppLaunch.fromRoutes(
+                        task,
+                        catalog,
+                        routeMatcher.store.all().filter { !it.disabled }.map { it.template to it.packages },
+                    )
+                    if (fromRoute is AppLaunch.Decision.Open) base.copy(decision = fromRoute) else base
+                } else base
             } else null
             val resolveMs = now() - resolveStarted
             if (provenance.origin == RunOrigin.Ui && launchEffect != null) {
@@ -676,7 +684,12 @@ class AgentLoop(
             var jumpedToSettings = false
             var launch: AppLaunch.Attempt? = null
             val openingApp = launchEffect?.decision as? AppLaunch.Decision.Open
-            if (openingApp != null && mayRunOpeningAction()) {
+            val allowOpeningApp = openingApp != null && (!AppLaunch.isDiscussionLike(task) || mayRunOpeningAction())
+            if (openingApp != null && allowOpeningApp) {
+                if (!intentAssessed) {
+                    intentAssessed = true
+                    intent = IntentGate.Intent.Act
+                }
                 launchAttempted = true
                 launchStartedAt = resolveStarted
                 awaitGate()
@@ -743,18 +756,44 @@ class AgentLoop(
             _state.value = TaskState.Running(step, note, progress = progressState())
             offer.refresh()
             var asked = now()
-            val routed = try {
-                routedOrRedirect(inbox, history, offer.current, track, step, {
-                    asked = it
-                    if (!reportedFirstModel && launchAttempted) {
-                        reportedFirstModel = true
-                        emit(RunEvent.State(now(), "app_to_first_model_ms", (it - launchStartedAt).toString()))
-                    }
-                }, previewFor(step))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                return StopRules.modelFailed(e)
+            var repliedAtMs = 0L
+            val canParallelIntent = step == 1 && provenance.origin == RunOrigin.Ui && intentGate != null &&
+                !intentAssessed && opening.screen?.words?.isEmpty() != true
+            val (routed, parallelIntent) = coroutineScope {
+                val intentJob = if (canParallelIntent) async { intentGate!!.assessPrimary(task, opening.priorTurns) } else null
+                val modelResult = try {
+                    routedOrRedirect(inbox, history, offer.current, track, step, {
+                        asked = it
+                        if (!reportedFirstModel && launchAttempted) {
+                            reportedFirstModel = true
+                            emit(RunEvent.State(now(), "app_to_first_model_ms", (it - launchStartedAt).toString()))
+                        }
+                    }, previewFor(step))
+                } catch (e: CancellationException) {
+                    intentJob?.cancel()
+                    throw e
+                } catch (e: Exception) {
+                    intentJob?.cancel()
+                    return@coroutineScope Pair<Pair<ModelReply, ChatModel>?, IntentGate.Intent?>(null, null) to e
+                }
+                repliedAtMs = now()
+                if (modelResult == null) {
+                    intentJob?.cancel()
+                    return@coroutineScope Pair<Pair<ModelReply, ChatModel>?, IntentGate.Intent?>(null, null) to null
+                }
+                val proposed = modelResult.first.parts.firstActionCall()
+                val needsIntent = provenance.origin == RunOrigin.Ui && intentGate != null && proposed != null &&
+                    tools.verb(proposed.name) !in DISCUSSION_LOOKUP_VERBS
+                val assessed = if (needsIntent && intentJob != null) {
+                    intentJob.await()
+                } else {
+                    intentJob?.cancel()
+                    null
+                }
+                Pair(modelResult, assessed) to null
+            }.let { (pair, err) ->
+                if (err != null) return StopRules.modelFailed(err)
+                pair
             }
             if (routed == null) {
                 keepInterrupted(history, inbox, step)
@@ -764,7 +803,16 @@ class AgentLoop(
             val proposed = reply.parts.firstActionCall()
             if (provenance.origin == RunOrigin.Ui && intentGate != null && proposed != null &&
                 tools.verb(proposed.name) !in DISCUSSION_LOOKUP_VERBS) {
-                if (!intentAssessed) intent = assessIntent()
+                if (!intentAssessed) {
+                    intent = if (canParallelIntent) {
+                        intentAssessed = true
+                        val resolved = parallelIntent ?: intentGate.assessFallback(task, opening.priorTurns)
+                        emit(RunEvent.State(now(), "intent_gate", resolved?.name ?: "unavailable"))
+                        resolved
+                    } else {
+                        assessIntent()
+                    }
+                }
                 if (intent == IntentGate.Intent.Discuss) {
                     // 提议的调用尚未写进历史、也没有执行；重问一次，只给直接回答的机会。
                     val discussion = history + ctx.notice("conversation_intent",
@@ -773,6 +821,7 @@ class AgentLoop(
                     catch (e: CancellationException) { throw e }
                     catch (e: Exception) { return StopRules.modelFailed(e) }
                     used = caller.lastMainUsed
+                    repliedAtMs = now()
                 }
             }
             val rawText = reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()
@@ -787,8 +836,7 @@ class AgentLoop(
             val tool = first?.name
             val reason = first?.let { tools.callReason(it.name, parseArgs(it.argsJson)) }
             val retryWaitMs = caller.lastRetryWaitMs
-            val repliedAtMs = now()
-            val latencyMs = repliedAtMs - asked - retryWaitMs
+            val latencyMs = (repliedAtMs - asked - retryWaitMs).coerceAtLeast(0)
             // 随调用写的字是进度说明,界面上的实时那一行先用它
             val narration = text.takeIf { !calls.isEmpty && it.isNotEmpty() }
             _state.value = TaskState.Running(step, note, tool, progress = progressState(), reason = reason, narration = narration,
